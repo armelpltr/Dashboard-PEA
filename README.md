@@ -8,3 +8,4 @@
 - Bouton modifier mes action dans portefeuille
 - Bouton ajouter un achat sur action dans portefeuille
 - Ajouter grapgique dans portefeuille
+- Integrer une db ?
