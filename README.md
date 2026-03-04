@@ -5,3 +5,5 @@
 - Integrer Recherche et analyse etf
 - Ajouter logo action
 - Ajouter pp par défaut
+- Bouton modifier mes action dans portefeuille
+- Bouton ajouter un achat sur action dans portefeuille
