@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEA Track - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg: #0a0c10; --surface: #111318; --surface2: #191c24;
+            --border: #1e2230; --text: #e8eaf0; --muted: #5a6080;
+            --accent: #4f8ef7; --green: #22d3a0; --red: #f75555;
+        }
+        body { 
+            background-color: var(--bg); color: var(--text); 
+            font-family: 'Syne', sans-serif; 
+        }
+        .mono { font-family: 'DM Mono', monospace; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+        .hidden { display: none !important; }
+        input { background: var(--surface2); border: 1px solid var(--border); outline: none; }
+        input:focus { border-color: var(--accent); }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div id="login-page" class="flex items-center justify-center min-h-screen">
+        <div class="card p-10 w-full max-w-sm text-center">
+            <h1 class="text-3xl font-extrabold mb-2">PEA<span class="text-blue-500">Track</span></h1>
+            <p class="text-sm text-gray-500 mb-8">Espace personnel de suivi</p>
+            <div id="login-error" class="hidden bg-red-900/20 border border-red-500/50 text-red-500 p-3 rounded mb-4 text-sm"></div>
+            <input type="text" id="username" placeholder="Identifiant" class="w-full p-3 rounded-lg mb-4">
+            <input type="password" id="password" placeholder="Mot de passe" class="w-full p-3 rounded-lg mb-6">
+            <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition">Se connecter</button>
+            <p class="mt-6 text-[10px] text-gray-600 uppercase tracking-widest">nolan/nolan • armel/armel</p>
+        </div>
+    </div>
+
+    <div id="dashboard" class="hidden flex h-screen">
+        <aside class="w-64 border-r border-[#1e2230] p-6 flex flex-col">
+            <h2 class="text-xl font-extrabold mb-10">PEA<span class="text-blue-500">Track</span></h2>
+            <nav class="space-y-2 flex-1">
+                <button onclick="showTab('suivi')" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-[#191c24] text-gray-400 hover:text-white transition">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5"></i> Suivi
+                </button>
+                <button onclick="showTab('marche')" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-[#191c24] text-gray-400 hover:text-white transition">
+                    <i data-lucide="trending-up" class="w-5 h-5"></i> Marché
+                </button>
+            </nav>
+            <div class="border-t border-[#1e2230] pt-6 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div id="avatar" class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold">U</div>
+                    <span id="display-name" class="font-bold text-sm">User</span>
+                </div>
+                <button onclick="handleLogout()" class="text-gray-500 hover:text-red-500"><i data-lucide="log-out" class="w-4 h-4"></i></button>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-10">
+            <div id="tab-suivi">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 class="text-3xl font-extrabold tracking-tight">Mon Portefeuille</h1>
+                        <p class="text-gray-500 text-sm mono" id="line-count">0 lignes • Mis à jour</p>
+                    </div>
+                    <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Ajouter une ligne
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-4 gap-4 mb-8">
+                    <div class="card p-6">
+                        <p class="text-[10px] uppercase text-gray-500 font-bold mb-2">Valeur totale</p>
+                        <p class="text-2xl font-extrabold mono" id="total-val">0.00 €</p>
+                    </div>
+                    <div class="card p-6">
+                        <p class="text-[10px] uppercase text-gray-500 font-bold mb-2">Plus-value €</p>
+                        <p class="text-2xl font-extrabold mono" id="total-perf-eur">0.00 €</p>
+                    </div>
+                    <div class="card p-6">
+                        <p class="text-[10px] uppercase text-gray-500 font-bold mb-2">Plus-value %</p>
+                        <p class="text-2xl font-extrabold mono" id="total-perf-pct">0.00 %</p>
+                    </div>
+                    <div class="card p-6">
+                        <p class="text-[10px] uppercase text-gray-500 font-bold mb-2">Nombre d'actifs</p>
+                        <p class="text-2xl font-extrabold mono" id="assets-count">0</p>
+                    </div>
+                </div>
+
+                <div class="card overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-[#191c24] border-b border-[#1e2230]">
+                            <tr>
+                                <th class="p-4 text-gray-500 uppercase text-[10px]">Ticker</th>
+                                <th class="p-4 text-gray-500 uppercase text-[10px]">Nom</th>
+                                <th class="p-4 text-gray-500 uppercase text-[10px]">Secteur</th>
+                                <th class="p-4 text-gray-500 uppercase text-[10px] text-right">Qté</th>
+                                <th class="p-4 text-gray-500 uppercase text-[10px] text-right">PRU</th>
+                                <th class="p-4 text-gray-500 uppercase text-[10px] text-right">Valeur</th>
+                                <th class="p-4 text-gray-500 uppercase text-[10px] text-right">Perf.</th>
+                                <th class="p-4"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="portfolio-body">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-marche" class="hidden">
+                <h1 class="text-3xl font-extrabold tracking-tight mb-8">Marché</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="card p-6">
+                        <h3 class="font-bold mb-4 uppercase text-xs text-blue-500">Gros Actifs Mondiaux</h3>
+                        <div id="market-caps" class="space-y-4"></div>
+                    </div>
+                    <div class="card p-6">
+                        <h3 class="font-bold mb-4 uppercase text-xs text-green-500">Tendances</h3>
+                        <div id="market-trends" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="card p-8 w-full max-w-md">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-extrabold">Ajouter une ligne</h2>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-white"><i data-lucide="x"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] uppercase font-bold text-gray-500">Ticker (ex: AAPL, CW8, MC)</label>
+                    <input type="text" id="new-ticker" class="w-full p-3 rounded-lg mt-1 mono" oninput="checkTicker()">
+                    <p id="ticker-info" class="text-xs mt-2 text-gray-400"></p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500">Quantité</label>
+                        <input type="number" id="new-qty" class="w-full p-3 rounded-lg mt-1 mono">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500">Prix d'achat</label>
+                        <input type="number" id="new-pru" class="w-full p-3 rounded-lg mt-1 mono">
+                    </div>
+                </div>
+                <button onclick="addPosition()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg mt-4">Confirmer l'ajout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DONNÉES MOCKÉES
+        const TICKER_DB = {
+            'AAPL': { name: "Apple Inc.", sector: "Technologie", price: 189.30 },
+            'MSFT': { name: "Microsoft", sector: "Technologie", price: 415.20 },
+            'NVDA': { name: "NVIDIA", sector: "Semi-conducteurs", price: 875.40 },
+            'MC': { name: "LVMH", sector: "Luxe", price: 642.00 },
+            'CW8': { name: "Amundi MSCI World", sector: "ETF Monde", price: 424.10 },
+            'TTE': { name: "TotalEnergies", sector: "Énergie", price: 62.40 }
+        };
+
+        let currentUser = null;
+        let portfolio = [];
+
+        // INITIALISATION
+        lucide.createIcons();
+
+        function handleLogin() {
+            const id = document.getElementById('username').value.toLowerCase();
+            const pass = document.getElementById('password').value;
+            
+            if ((id === 'nolan' && pass === 'nolan') || (id === 'armel' && pass === 'armel')) {
+                currentUser = id;
+                document.getElementById('login-page').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                document.getElementById('display-name').innerText = id.charAt(0).toUpperCase() + id.slice(1);
+                document.getElementById('avatar').innerText = id.charAt(0).toUpperCase();
+                
+                // Charger données locales
+                const saved = localStorage.getItem('pea_data_' + id);
+                portfolio = saved ? JSON.parse(saved) : [];
+                renderPortfolio();
+                renderMarket();
+            } else {
+                const err = document.getElementById('login-error');
+                err.innerText = "Identifiant ou mot de passe incorrect";
+                err.classList.remove('hidden');
+            }
+        }
+
+        function handleLogout() {
+            location.reload();
+        }
+
+        function showTab(tab) {
+            document.getElementById('tab-suivi').classList.toggle('hidden', tab !== 'suivi');
+            document.getElementById('tab-marche').classList.toggle('hidden', tab !== 'marche');
+        }
+
+        // GESTION PORTFOLIO
+        function renderPortfolio() {
+            const body = document.getElementById('portfolio-body');
+            body.innerHTML = '';
+            let totalV = 0; let totalI = 0;
+
+            portfolio.forEach((pos, index) => {
+                const currentPrice = TICKER_DB[pos.ticker]?.price || pos.pru;
+                const value = pos.qty * currentPrice;
+                const invested = pos.qty * pos.pru;
+                const perfEur = value - invested;
+                const perfPct = (perfEur / invested) * 100;
+
+                totalV += value; totalI += invested;
+
+                body.innerHTML += `
+                    <tr class="border-b border-[#1e2230] hover:bg-[#191c24] transition">
+                        <td class="p-4"><span class="bg-blue-500/10 text-blue-500 px-2 py-1 rounded text-[10px] font-bold mono">${pos.ticker}</span></td>
+                        <td class="p-4 font-semibold">${pos.name}</td>
+                        <td class="p-4 text-gray-500 text-xs">${pos.sector}</td>
+                        <td class="p-4 text-right mono">${pos.qty}</td>
+                        <td class="p-4 text-right mono">${pos.pru.toFixed(2)} €</td>
+                        <td class="p-4 text-right font-bold mono">${value.toFixed(2)} €</td>
+                        <td class="p-4 text-right mono ${perfEur >= 0 ? 'text-green-400' : 'text-red-400'}">
+                            ${perfEur >= 0 ? '+' : ''}${perfEur.toFixed(2)}€ (${perfPct.toFixed(2)}%)
+                        </td>
+                        <td class="p-4 text-right">
+                            <button onclick="deletePosition(${index})" class="text-gray-600 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Update Stats
+            document.getElementById('total-val').innerText = totalV.toFixed(2) + " €";
+            const diff = totalV - totalI;
+            document.getElementById('total-perf-eur').innerText = (diff >= 0 ? '+' : '') + diff.toFixed(2) + " €";
+            document.getElementById('total-perf-eur').className = "text-2xl font-extrabold mono " + (diff >= 0 ? 'text-green-400' : 'text-red-400');
+            document.getElementById('total-perf-pct').innerText = (totalI > 0 ? (diff / totalI * 100).toFixed(2) : "0.00") + " %";
+            document.getElementById('assets-count').innerText = portfolio.length;
+            document.getElementById('line-count').innerText = `${portfolio.length} lignes • Mis à jour`;
+            
+            lucide.createIcons();
+            localStorage.setItem('pea_data_' + currentUser, JSON.stringify(portfolio));
+        }
+
+        // MODAL & AJOUT
+        function openModal() { document.getElementById('modal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        function checkTicker() {
+            const t = document.getElementById('new-ticker').value.toUpperCase();
+            const info = document.getElementById('ticker-info');
+            if (TICKER_DB[t]) {
+                info.innerText = `✅ ${TICKER_DB[t].name} (${TICKER_DB[t].sector})`;
+                info.className = "text-xs mt-2 text-green-500";
+            } else {
+                info.innerText = "Ticker inconnu (Ex: AAPL, MC, CW8...)";
+                info.className = "text-xs mt-2 text-red-500";
+            }
+        }
+
+        function addPosition() {
+            const t = document.getElementById('new-ticker').value.toUpperCase();
+            const q = parseFloat(document.getElementById('new-qty').value);
+            const p = parseFloat(document.getElementById('new-pru').value);
+
+            if (TICKER_DB[t] && q > 0 && p > 0) {
+                portfolio.push({
+                    ticker: t,
+                    name: TICKER_DB[t].name,
+                    sector: TICKER_DB[t].sector,
+                    qty: q,
+                    pru: p
+                });
+                renderPortfolio();
+                closeModal();
+                // Reset inputs
+                document.getElementById('new-ticker').value = '';
+                document.getElementById('new-qty').value = '';
+                document.getElementById('new-pru').value = '';
+            }
+        }
+
+        function deletePosition(index) {
+            portfolio.splice(index, 1);
+            renderPortfolio();
+        }
+
+        function renderMarket() {
+            const caps = document.getElementById('market-caps');
+            const trends = document.getElementById('market-trends');
+            
+            const dataCaps = [
+                { t: 'MSFT', n: 'Microsoft', c: '3.1T$' },
+                { t: 'AAPL', n: 'Apple', c: '2.9T$' },
+                { t: 'NVDA', n: 'Nvidia', c: '2.2T$' }
+            ];
+
+            caps.innerHTML = dataCaps.map(i => `
+                <div class="flex justify-between items-center p-2 hover:bg-white/5 rounded">
+                    <div><span class="text-blue-500 font-bold mr-2">${i.t}</span> <span class="text-sm">${i.n}</span></div>
+                    <div class="mono font-bold">${i.c}</div>
+                </div>
+            `).join('');
+
+            trends.innerHTML = `
+                <div class="p-2 flex justify-between"><span>NVIDIA (NVDA)</span> <span class="text-green-400 mono">+4.2%</span></div>
+                <div class="p-2 flex justify-between"><span>Tesla (TSLA)</span> <span class="text-red-400 mono">-2.1%</span></div>
+                <div class="p-2 flex justify-between"><span>Bitcoin</span> <span class="text-green-400 mono">+1.5%</span></div>
+            `;
+        }
+    </script>
+</body>
+</html>
