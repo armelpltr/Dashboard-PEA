@@ -7,3 +7,4 @@
 - Ajouter pp par défaut
 - Bouton modifier mes action dans portefeuille
 - Bouton ajouter un achat sur action dans portefeuille
+- Ajouter grapgique dans portefeuille
