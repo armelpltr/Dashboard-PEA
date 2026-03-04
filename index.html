@@ -1,0 +1,1991 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PEA Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --surface2: #181c23;
+    --border: #1e2330;
+    --border2: #252d3d;
+    --accent: #4fffb0;
+    --accent2: #00d4ff;
+    --accent3: #ff6b6b;
+    --text: #e8edf5;
+    --text2: #8a93a6;
+    --text3: #4a5568;
+    --gold: #f5c842;
+    --positive: #4fffb0;
+    --negative: #ff6b6b;
+    --radius: 12px;
+    --radius2: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── LOGIN ─────────────────────────────────────── */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .login-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 80%, rgba(79,255,176,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 40% at 80% 20%, rgba(0,212,255,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 80% 60% at 50% 50%, rgba(17,19,24,1) 0%, #0a0c0f 100%);
+  }
+
+  .login-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(78,255,176,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(78,255,176,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
+  }
+
+  .login-card {
+    position: relative;
+    width: 420px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 52px 48px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(79,255,176,0.05);
+  }
+
+  .login-logo {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .logo-icon {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 32px rgba(79,255,176,0.3);
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 8px 32px rgba(79,255,176,0.3); }
+    50% { box-shadow: 0 8px 48px rgba(79,255,176,0.5); }
+  }
+
+  .login-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+
+  .login-subtitle {
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 300;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius2);
+    padding: 13px 16px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .form-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,255,176,0.1);
+  }
+
+  .form-input::placeholder { color: var(--text3); }
+
+  .login-error {
+    background: rgba(255,107,107,0.1);
+    border: 1px solid rgba(255,107,107,0.3);
+    color: var(--negative);
+    padding: 10px 14px;
+    border-radius: var(--radius2);
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .btn-login {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: var(--radius2);
+    color: #0a0c0f;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+    margin-top: 8px;
+  }
+
+  .btn-login:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(79,255,176,0.4);
+  }
+
+  .btn-login:active { transform: translateY(0); }
+
+  /* ─── APP ────────────────────────────────────────── */
+  #app {
+    display: none;
+    min-height: 100vh;
+  }
+
+  /* ─── SIDEBAR ────────────────────────────────────── */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+  }
+
+  .sidebar-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-logo-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .sidebar-logo-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--text);
+    display: block;
+    letter-spacing: -0.3px;
+  }
+
+  .sidebar-logo-sub {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 20px 12px;
+  }
+
+  .nav-section-label {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 0 12px;
+    margin-bottom: 8px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius2);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 14px;
+    font-weight: 400;
+    margin-bottom: 2px;
+    border: 1px solid transparent;
+  }
+
+  .nav-item:hover {
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  .nav-item.active {
+    background: rgba(79,255,176,0.08);
+    color: var(--accent);
+    border-color: rgba(79,255,176,0.15);
+  }
+
+  .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .sidebar-user {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .user-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius2);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+
+  .user-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: #0a0c0f;
+    flex-shrink: 0;
+  }
+
+  .user-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    flex: 1;
+    text-transform: capitalize;
+  }
+
+  .btn-logout {
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    transition: color 0.2s;
+    line-height: 1;
+  }
+
+  .btn-logout:hover { color: var(--negative); }
+
+  /* ─── MAIN ────────────────────────────────────────── */
+  .main {
+    margin-left: 240px;
+    min-height: 100vh;
+    padding: 32px;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ─── PORTFOLIO ─────────────────────────────────── */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .page-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    color: var(--text);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 4px;
+    font-weight: 300;
+  }
+
+  /* Stats cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--border2); }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0.5;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: -0.5px;
+  }
+
+  .stat-change {
+    font-size: 12px;
+    margin-top: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .stat-change.pos { color: var(--positive); }
+  .stat-change.neg { color: var(--negative); }
+
+  /* Table */
+  .table-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .table-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .table-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .btn-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(79,255,176,0.1);
+    border: 1px solid rgba(79,255,176,0.2);
+    color: var(--accent);
+    padding: 9px 16px;
+    border-radius: var(--radius2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .btn-add:hover {
+    background: rgba(79,255,176,0.18);
+    border-color: rgba(79,255,176,0.4);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    padding: 12px 24px;
+    text-align: left;
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 400;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  th:last-child, td:last-child { text-align: right; }
+
+  td {
+    padding: 16px 24px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .ticker-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ticker-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--surface2), var(--border2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent2);
+    border: 1px solid var(--border2);
+    font-family: 'DM Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  .ticker-name { font-weight: 500; color: var(--text); }
+  .ticker-sym {
+    font-size: 11px;
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    margin-top: 1px;
+  }
+
+  .mono { font-family: 'DM Mono', monospace; }
+
+  .badge-pos {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(79,255,176,0.1);
+    color: var(--positive);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .badge-neg {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,107,107,0.1);
+    color: var(--negative);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .btn-del {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text3);
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  .btn-del:hover {
+    background: rgba(255,107,107,0.1);
+    border-color: rgba(255,107,107,0.3);
+    color: var(--negative);
+  }
+
+  .empty-state {
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--text3);
+  }
+
+  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+  .empty-text { font-size: 14px; }
+
+  /* ─── MODAL ─────────────────────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    width: 420px;
+    padding: 32px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+    animation: modal-in 0.2s ease;
+  }
+
+  @keyframes modal-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .modal-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .modal-sub {
+    font-size: 13px;
+    color: var(--text2);
+    margin-bottom: 28px;
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .btn-secondary {
+    flex: 1;
+    padding: 11px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    border-radius: var(--radius2);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .btn-secondary:hover { border-color: var(--text3); color: var(--text); }
+
+  .btn-primary {
+    flex: 1;
+    padding: 11px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    color: #0a0c0f;
+    border-radius: var(--radius2);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(79,255,176,0.35);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .search-result {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius2);
+    padding: 12px 14px;
+    margin-top: 8px;
+    display: none;
+  }
+
+  .search-result.visible { display: block; }
+
+  .search-result-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .search-result-price {
+    font-size: 20px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  .search-result-info {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 2px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .loading-spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-loading { font-size: 13px; color: var(--text2); margin-top: 8px; }
+  .status-error { font-size: 13px; color: var(--negative); margin-top: 8px; }
+
+  .price-tag {
+    display: inline-block;
+    background: rgba(245,200,66,0.12);
+    color: var(--gold);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  /* ─── ANALYSE PAGE ─────────────────────────────────── */
+  .analyse-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .analyse-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .analyse-panel-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .analyse-panel-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .icon-portfolio { background: rgba(79,255,176,0.12); }
+  .icon-search    { background: rgba(0,212,255,0.12); }
+
+  .analyse-panel-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .analyse-panel-sub {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .analyse-stock-list {
+    padding: 8px 0;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .analyse-stock-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .analyse-stock-item:last-child { border-bottom: none; }
+
+  .analyse-stock-item:hover { background: rgba(255,255,255,0.03); }
+
+  .analyse-stock-item.selected {
+    background: rgba(79,255,176,0.06);
+    border-left: 2px solid var(--accent);
+    padding-left: 18px;
+  }
+
+  .asi-left { display: flex; align-items: center; gap: 10px; }
+
+  .asi-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent2);
+    font-family: 'DM Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  .asi-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .asi-ticker { font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; }
+
+  .asi-right { text-align: right; }
+  .asi-price { font-size: 13px; font-family: 'DM Mono', monospace; color: var(--text); }
+  .asi-change { font-size: 11px; font-family: 'DM Mono', monospace; }
+  .asi-change.pos { color: var(--positive); }
+  .asi-change.neg { color: var(--negative); }
+
+  .analyse-search-box {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .analyse-result-zone {
+    padding: 20px;
+  }
+
+  .ar-empty {
+    text-align: center;
+    color: var(--text3);
+    padding: 32px 0;
+    font-size: 13px;
+  }
+
+  /* Result card */
+  .result-card {
+    display: none;
+  }
+  .result-card.visible { display: block; }
+
+  .rc-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .rc-icon {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--surface2), var(--border2));
+    border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+    color: var(--accent2);
+    font-family: 'DM Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  .rc-name { font-size: 16px; font-weight: 500; color: var(--text); }
+  .rc-ticker-exch { font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+  .rc-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .rc-price {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px;
+    color: var(--text);
+    letter-spacing: -1px;
+  }
+
+  .rc-currency { font-size: 16px; color: var(--text2); }
+
+  .rc-change-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .rc-change-badge.pos { background: rgba(79,255,176,0.12); color: var(--positive); }
+  .rc-change-badge.neg { background: rgba(255,107,107,0.12); color: var(--negative); }
+
+  .rc-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .rc-stat {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius2);
+    padding: 12px 14px;
+  }
+
+  .rc-stat-label {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 4px;
+  }
+
+  .rc-stat-val {
+    font-size: 14px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .rc-ai-section {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius2);
+    padding: 16px;
+  }
+
+  .rc-ai-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .rc-ai-text {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  .btn-analyse {
+    width: 100%;
+    padding: 11px;
+    background: rgba(79,255,176,0.1);
+    border: 1px solid rgba(79,255,176,0.2);
+    color: var(--accent);
+    border-radius: var(--radius2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-analyse:hover {
+    background: rgba(79,255,176,0.18);
+    border-color: rgba(79,255,176,0.4);
+  }
+
+  .btn-analyse:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .analyse-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text2);
+    padding: 12px 0;
+  }
+
+
+  /* ─── SCORE ─────────────────────────────────────── */
+  .score-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+
+  .score-left { flex: 1; }
+
+  .score-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 4px;
+  }
+
+  .score-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 48px;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+
+  .score-verdict {
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  .score-gauge-wrap { width: 100px; flex-shrink: 0; }
+  .score-gauge { width: 100%; }
+
+  .breakdown-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 10px;
+  }
+
+  .breakdown-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .breakdown-bar-label {
+    font-size: 12px;
+    color: var(--text2);
+    width: 100px;
+    flex-shrink: 0;
+  }
+
+  .breakdown-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .breakdown-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(.4,0,.2,1);
+  }
+
+  .breakdown-bar-score {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text2);
+    width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+
+  /* ─── INDICATORS ────────────────────────────────── */
+  .indicators-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .indicator-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius2);
+    padding: 14px 16px;
+    transition: border-color 0.2s;
+  }
+
+  .indicator-card:hover { border-color: var(--border2); }
+
+  .ind-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .ind-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .ind-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .ind-badge.good  { background: rgba(79,255,176,0.12); color: var(--positive); }
+  .ind-badge.warn  { background: rgba(245,200,66,0.12); color: var(--gold); }
+  .ind-badge.bad   { background: rgba(255,107,107,0.12); color: var(--negative); }
+  .ind-badge.neu   { background: rgba(138,147,166,0.12); color: var(--text2); }
+
+  .ind-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    color: var(--text);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+
+  .ind-bar-track {
+    height: 4px;
+    background: var(--border2);
+    border-radius: 2px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+
+  .ind-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.7s cubic-bezier(.4,0,.2,1);
+    width: 0%;
+  }
+
+  .ind-desc {
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.4;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ─── LOGIN ──────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-bg"></div>
+  <div class="login-grid"></div>
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">📈</div>
+      <div class="login-title">PEA Dashboard</div>
+      <div class="login-subtitle">Suivi de portefeuille</div>
+    </div>
+    <div class="login-error" id="login-error">Identifiants incorrects</div>
+    <div class="form-group">
+      <label class="form-label">Identifiant</label>
+      <input type="text" class="form-input" id="input-user" placeholder="nom d'utilisateur" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input type="password" class="form-input" id="input-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" onclick="doLogin()">Connexion</button>
+  </div>
+</div>
+
+<!-- ─── APP ──────────────────────────────────────── -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📈</div>
+      <span class="sidebar-logo-title">PEA Dashboard</span>
+      <div class="sidebar-logo-sub">v1.0</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <div class="nav-item active" onclick="showPage('portfolio')">
+        <span class="nav-icon">💼</span> Portefeuille
+      </div>
+      <div class="nav-item" onclick="showPage('analyse')">
+        <span class="nav-icon">🔍</span> Analyse
+      </div>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <span class="user-name" id="user-name-display">armel</span>
+        <button class="btn-logout" onclick="doLogout()" title="Déconnexion">⏻</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- PORTFOLIO PAGE -->
+    <div class="page active" id="page-portfolio">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Portefeuille</div>
+          <div class="page-subtitle" id="portfolio-date">Mis à jour aujourd'hui</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Valeur totale</div>
+          <div class="stat-value" id="stat-total">— €</div>
+          <div class="stat-change" id="stat-total-change">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Investi</div>
+          <div class="stat-value" id="stat-invested">— €</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">+/- Value</div>
+          <div class="stat-value" id="stat-pnl">— €</div>
+          <div class="stat-change" id="stat-pnl-pct">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Nb. lignes</div>
+          <div class="stat-value" id="stat-lines">0</div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header">
+          <span class="table-title">Mes actions</span>
+          <button class="btn-add" onclick="openModal()">＋ Ajouter une ligne</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Qté</th>
+              <th>Prix achat</th>
+              <th>Prix actuel</th>
+              <th>Valeur</th>
+              <th>+/- Value</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="portfolio-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-text">Aucune action dans le portefeuille.<br>Ajoutez votre première ligne.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYSE PAGE -->
+    <div class="page" id="page-analyse">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Analyse</div>
+          <div class="page-subtitle">Analysez vos positions et explorez de nouvelles actions</div>
+        </div>
+      </div>
+
+      <div class="analyse-grid">
+
+        <!-- Panel gauche : portefeuille -->
+        <div class="analyse-panel">
+          <div class="analyse-panel-header">
+            <div class="analyse-panel-icon icon-portfolio">💼</div>
+            <div>
+              <div class="analyse-panel-title">Mon portefeuille</div>
+              <div class="analyse-panel-sub">Cliquez sur une action pour l'analyser</div>
+            </div>
+          </div>
+          <div class="analyse-stock-list" id="analyse-portfolio-list">
+            <div class="ar-empty">Votre portefeuille est vide.</div>
+          </div>
+        </div>
+
+        <!-- Panel droite : résultat analyse -->
+        <div class="analyse-panel">
+          <div class="analyse-panel-header">
+            <div class="analyse-panel-icon icon-search">🔍</div>
+            <div>
+              <div class="analyse-panel-title">Rechercher une action</div>
+              <div class="analyse-panel-sub">Ou sélectionnez dans votre portefeuille</div>
+            </div>
+          </div>
+
+          <div class="analyse-search-box">
+            <input type="text" class="form-input" id="analyse-search-input"
+              placeholder="Nom ou ticker… (ex: LVMH, AAPL)"
+              oninput="onAnalyseInput()" style="font-size:13px;">
+            <div id="analyse-search-status" style="margin-top:6px;"></div>
+          </div>
+
+          <div class="analyse-result-zone">
+            <div class="ar-empty" id="analyse-empty">Sélectionnez ou recherchez une action pour voir l'analyse.</div>
+
+            <div class="result-card" id="result-card">
+              <!-- Header -->
+              <div class="rc-header">
+                <div class="rc-icon" id="rc-icon">—</div>
+                <div style="flex:1">
+                  <div class="rc-name" id="rc-name">—</div>
+                  <div class="rc-ticker-exch" id="rc-ticker-exch">—</div>
+                </div>
+              </div>
+
+              <!-- Prix + variation -->
+              <div class="rc-price-row">
+                <div class="rc-price" id="rc-price">—</div>
+                <div class="rc-currency" id="rc-currency"></div>
+                <div class="rc-change-badge" id="rc-change-badge">—</div>
+              </div>
+
+              <!-- Score global -->
+              <div class="score-card" id="score-card" style="display:none">
+                <div class="score-left">
+                  <div class="score-label">Score global</div>
+                  <div class="score-value" id="score-value">—</div>
+                  <div class="score-verdict" id="score-verdict">—</div>
+                </div>
+                <div class="score-gauge-wrap">
+                  <svg class="score-gauge" viewBox="0 0 120 70">
+                    <path d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="#1e2330" stroke-width="12" stroke-linecap="round"/>
+                    <path id="gauge-arc" d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="#4fffb0" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 157"/>
+                  </svg>
+                </div>
+              </div>
+
+
+
+              <!-- Stats fondamentales -->
+              <div class="rc-stats" id="rc-stats"></div>
+
+              <!-- Indicateurs clés -->
+              <div id="key-indicators" style="display:none; margin-bottom:16px;">
+                <div class="breakdown-title" style="margin-bottom:12px;">Indicateurs clés</div>
+                <div class="indicators-grid">
+                  <div class="indicator-card" id="ind-pe">
+                    <div class="ind-top">
+                      <span class="ind-label">P/E Ratio</span>
+                      <span class="ind-badge" id="ind-pe-badge">—</span>
+                    </div>
+                    <div class="ind-value" id="ind-pe-val">—</div>
+                    <div class="ind-bar-track"><div class="ind-bar-fill" id="ind-pe-bar"></div></div>
+                    <div class="ind-desc" id="ind-pe-desc">—</div>
+                  </div>
+                  <div class="indicator-card" id="ind-beta">
+                    <div class="ind-top">
+                      <span class="ind-label">Bêta</span>
+                      <span class="ind-badge" id="ind-beta-badge">—</span>
+                    </div>
+                    <div class="ind-value" id="ind-beta-val">—</div>
+                    <div class="ind-bar-track"><div class="ind-bar-fill" id="ind-beta-bar"></div></div>
+                    <div class="ind-desc" id="ind-beta-desc">—</div>
+                  </div>
+                  <div class="indicator-card" id="ind-div">
+                    <div class="ind-top">
+                      <span class="ind-label">Dividende</span>
+                      <span class="ind-badge" id="ind-div-badge">—</span>
+                    </div>
+                    <div class="ind-value" id="ind-div-val">—</div>
+                    <div class="ind-bar-track"><div class="ind-bar-fill" id="ind-div-bar"></div></div>
+                    <div class="ind-desc" id="ind-div-desc">—</div>
+                  </div>
+                  <div class="indicator-card" id="ind-mom">
+                    <div class="ind-top">
+                      <span class="ind-label">Momentum 3m</span>
+                      <span class="ind-badge" id="ind-mom-badge">—</span>
+                    </div>
+                    <div class="ind-value" id="ind-mom-val">—</div>
+                    <div class="ind-bar-track"><div class="ind-bar-fill" id="ind-mom-bar"></div></div>
+                    <div class="ind-desc" id="ind-mom-desc">—</div>
+                  </div>
+                </div>
+              </div>
+
+
+
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ─── MODAL ─────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">Ajouter une action</div>
+    <div class="modal-sub">Entrez le nom ou le ticker pour trouver le cours actuel.</div>
+
+    <div class="form-group">
+      <label class="form-label">Nom ou ticker <span class="price-tag">auto prix</span></label>
+      <input type="text" class="form-input" id="modal-ticker" placeholder="ex: LVMH, Apple, TotalEnergies…" oninput="onTickerInput()">
+      <div id="search-status"></div>
+      <div class="search-result" id="search-result">
+        <div class="search-result-name" id="res-name">—</div>
+        <div class="search-result-price" id="res-price">—</div>
+        <div class="search-result-info" id="res-info">—</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Quantité</label>
+      <input type="number" class="form-input" id="modal-qty" placeholder="10" min="0.001" step="any">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Prix d'achat (€)</label>
+      <input type="number" class="form-input" id="modal-buy-price" placeholder="150.00" min="0" step="any">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn-primary" id="btn-confirm" onclick="confirmAdd()" disabled>Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── AUTH ────────────────────────────────────────────
+const USERS = { armel: 'armel', nolan: 'nolan' };
+let currentUser = null;
+
+// Storage helpers (per-user)
+function getPortfolio(user) {
+  try {
+    return JSON.parse(localStorage.getItem(`pea_portfolio_${user}`)) || [];
+  } catch { return []; }
+}
+function savePortfolio(user, data) {
+  localStorage.setItem(`pea_portfolio_${user}`, JSON.stringify(data));
+}
+
+function doLogin() {
+  const u = document.getElementById('input-user').value.trim().toLowerCase();
+  const p = document.getElementById('input-pass').value;
+  const err = document.getElementById('login-error');
+  if (USERS[u] && USERS[u] === p) {
+    err.style.display = 'none';
+    currentUser = u;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('user-avatar').textContent = u[0].toUpperCase();
+    document.getElementById('user-name-display').textContent = u;
+    const d = new Date();
+    document.getElementById('portfolio-date').textContent =
+      'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    renderPortfolio();
+  } else {
+    err.style.display = 'block';
+  }
+}
+
+document.getElementById('input-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('input-user').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('input-pass').focus();
+});
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('input-user').value = '';
+  document.getElementById('input-pass').value = '';
+}
+
+// ─── NAVIGATION ──────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id === 'analyse') renderAnalysePortfolio();
+}
+
+// ─── PORTFOLIO ────────────────────────────────────────
+function fmt(n) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+
+function renderPortfolio() {
+  const data = getPortfolio(currentUser);
+  const tbody = document.getElementById('portfolio-tbody');
+  const empty = document.getElementById('empty-state');
+
+  tbody.innerHTML = '';
+
+  let totalVal = 0, totalInvested = 0;
+
+  if (data.length === 0) {
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    data.forEach((row, i) => {
+      const val = row.qty * row.currentPrice;
+      const invested = row.qty * row.buyPrice;
+      const pnl = val - invested;
+      const pct = invested > 0 ? (pnl / invested) * 100 : 0;
+      totalVal += val;
+      totalInvested += invested;
+
+      const abbr = (row.name || row.ticker || '?').substring(0, 3).toUpperCase();
+      const isPos = pnl >= 0;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div class="ticker-cell">
+            <div class="ticker-icon">${abbr}</div>
+            <div>
+              <div class="ticker-name">${row.name || row.ticker}</div>
+              <div class="ticker-sym">${row.ticker || ''}</div>
+            </div>
+          </div>
+        </td>
+        <td class="mono">${row.qty}</td>
+        <td class="mono">${fmt(row.buyPrice)}</td>
+        <td class="mono">${fmt(row.currentPrice)}</td>
+        <td class="mono" style="font-weight:500">${fmt(val)}</td>
+        <td>
+          <span class="${isPos ? 'badge-pos' : 'badge-neg'}">
+            ${isPos ? '▲' : '▼'} ${fmt(Math.abs(pnl))} (${isPos ? '+' : ''}${pct.toFixed(2)}%)
+          </span>
+        </td>
+        <td><button class="btn-del" onclick="deleteRow(${i})" title="Supprimer">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  const totalPnl = totalVal - totalInvested;
+  const totalPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+
+  document.getElementById('stat-total').textContent = data.length ? fmt(totalVal) : '— €';
+  document.getElementById('stat-invested').textContent = data.length ? fmt(totalInvested) : '— €';
+  const pnlEl = document.getElementById('stat-pnl');
+  pnlEl.textContent = data.length ? fmt(totalPnl) : '— €';
+  pnlEl.style.color = totalPnl >= 0 ? 'var(--positive)' : 'var(--negative)';
+  document.getElementById('stat-pnl-pct').textContent = data.length ? `${totalPnl >= 0 ? '+' : ''}${totalPct.toFixed(2)}%` : '—';
+  document.getElementById('stat-pnl-pct').className = 'stat-change ' + (totalPnl >= 0 ? 'pos' : 'neg');
+  document.getElementById('stat-lines').textContent = data.length;
+}
+
+function deleteRow(i) {
+  const data = getPortfolio(currentUser);
+  data.splice(i, 1);
+  savePortfolio(currentUser, data);
+  renderPortfolio();
+}
+
+// ─── MODAL ────────────────────────────────────────────
+let searchTimer = null;
+let foundPrice = null;
+let foundName = null;
+let foundTicker = null;
+
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('modal-ticker').value = '';
+  document.getElementById('modal-qty').value = '';
+  document.getElementById('modal-buy-price').value = '';
+  document.getElementById('search-result').classList.remove('visible');
+  document.getElementById('search-status').innerHTML = '';
+  document.getElementById('btn-confirm').disabled = true;
+  foundPrice = null; foundName = null; foundTicker = null;
+  setTimeout(() => document.getElementById('modal-ticker').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function onTickerInput() {
+  clearTimeout(searchTimer);
+  const val = document.getElementById('modal-ticker').value.trim();
+  document.getElementById('search-result').classList.remove('visible');
+  document.getElementById('btn-confirm').disabled = true;
+  foundPrice = null;
+
+  if (val.length < 2) {
+    document.getElementById('search-status').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('search-status').innerHTML =
+    '<div class="status-loading"><span class="loading-spinner"></span> Recherche du cours…</div>';
+
+  searchTimer = setTimeout(() => fetchPrice(val), 700);
+}
+
+// ─── YAHOO FINANCE ───────────────────────────────────
+// Step 1 : search ticker from name via Yahoo autocomplete
+// ─── YAHOO FINANCE via allorigins proxy ──────────────
+function proxyUrl(url) {
+  return 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+}
+
+async function fetchPrice(query) {
+  const statusEl = document.getElementById('search-status');
+  const resultEl = document.getElementById('search-result');
+  resultEl.classList.remove('visible');
+  document.getElementById('btn-confirm').disabled = true;
+  foundPrice = null;
+
+  try {
+    // Step 1 — autocomplete pour trouver le ticker
+    statusEl.innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Recherche de l\'action…</div>';
+    const searchYahoo = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(query) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
+    const sr = await fetch(proxyUrl(searchYahoo));
+    if (!sr.ok) throw new Error('Erreur réseau.');
+    const sraw = await sr.json();
+    const sd = JSON.parse(sraw.contents);
+    if (!sd || sd.error) throw new Error('Réponse invalide.');
+
+    const quotes = (sd.quotes || []).filter(q =>
+      q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND'
+    );
+    if (!quotes.length) throw new Error('Action introuvable. Essayez le ticker exact (ex: MC.PA, AAPL, TTE.PA).');
+    const best = quotes[0];
+
+    // Step 2 — cours en temps réel
+    statusEl.innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Récupération du cours…</div>';
+    const quoteYahoo = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(best.symbol) + '?interval=1d&range=1d';
+    const qr = await fetch(proxyUrl(quoteYahoo));
+    const qraw = await qr.json();
+    const qd = JSON.parse(qraw.contents);
+
+    const result = qd.chart && qd.chart.result && qd.chart.result[0];
+    if (!result) throw new Error('Cours non disponible pour ce symbole.');
+    const meta = result.meta;
+
+    foundPrice  = meta.regularMarketPrice;
+    foundName   = best.longname || best.shortname || best.symbol;
+    foundTicker = best.symbol;
+
+    const prev = meta.chartPreviousClose || meta.previousClose || foundPrice;
+    const changePct = prev ? ((foundPrice - prev) / prev) * 100 : 0;
+    const isPos = changePct >= 0;
+
+    document.getElementById('res-name').textContent  = foundName;
+    document.getElementById('res-price').textContent =
+      foundPrice.toFixed(2) + ' ' + (meta.currency || '');
+    document.getElementById('res-info').textContent  =
+      best.symbol + '  ·  ' + (meta.exchangeName || '') +
+      '  ·  ' + (isPos ? '▲' : '▼') + ' ' + Math.abs(changePct).toFixed(2) + "% aujourd'hui";
+
+    statusEl.innerHTML = '';
+    resultEl.classList.add('visible');
+    document.getElementById('btn-confirm').disabled = false;
+
+    if (!document.getElementById('modal-buy-price').value) {
+      document.getElementById('modal-buy-price').value = foundPrice.toFixed(2);
+    }
+
+  } catch (err) {
+    statusEl.innerHTML = '<div class="status-error">⚠ ' + (err.message || 'Erreur inconnue.') + '</div>';
+    console.error(err);
+  }
+}
+
+function confirmAdd() {
+  const qty = parseFloat(document.getElementById('modal-qty').value);
+  const buyPrice = parseFloat(document.getElementById('modal-buy-price').value);
+
+  if (!foundPrice || !qty || qty <= 0 || !buyPrice || buyPrice <= 0) {
+    alert('Veuillez remplir tous les champs correctement.');
+    return;
+  }
+
+  const data = getPortfolio(currentUser);
+  data.push({
+    name: foundName || document.getElementById('modal-ticker').value,
+    ticker: foundTicker || '',
+    qty: qty,
+    buyPrice: buyPrice,
+    currentPrice: foundPrice,
+    addedAt: new Date().toISOString()
+  });
+  savePortfolio(currentUser, data);
+  closeModal();
+  renderPortfolio();
+}
+// ─── ANALYSE PAGE ────────────────────────────────────
+let analyseTimer = null;
+let currentAnalyseData = null;
+
+function renderAnalysePortfolio() {
+  const list = document.getElementById('analyse-portfolio-list');
+  if (!list) return;
+  const data = getPortfolio(currentUser);
+  if (!data.length) {
+    list.innerHTML = '<div class="ar-empty">Votre portefeuille est vide.</div>';
+    return;
+  }
+  list.innerHTML = data.map((row, i) => {
+    const abbr = (row.name || row.ticker || '?').substring(0,3).toUpperCase();
+    const pct = row.currentPrice && row.buyPrice
+      ? ((row.currentPrice - row.buyPrice) / row.buyPrice * 100) : 0;
+    const isPos = pct >= 0;
+    return '<div class="analyse-stock-item" onclick="selectPortfolioStock(' + i + ')" id="asi-' + i + '">' +
+      '<div class="asi-left">' +
+        '<div class="asi-icon">' + abbr + '</div>' +
+        '<div>' +
+          '<div class="asi-name">' + (row.name || row.ticker) + '</div>' +
+          '<div class="asi-ticker">' + (row.ticker || '') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="asi-right">' +
+        '<div class="asi-price">' + (row.currentPrice ? row.currentPrice.toFixed(2) : '—') + '</div>' +
+        '<div class="asi-change ' + (isPos ? 'pos' : 'neg') + '">' + (isPos ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(2) + '%</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function selectPortfolioStock(i) {
+  document.querySelectorAll('.analyse-stock-item').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById('asi-' + i);
+  if (el) el.classList.add('selected');
+  const data = getPortfolio(currentUser);
+  const row = data[i];
+  if (!row) return;
+  const pct = row.currentPrice && row.buyPrice
+    ? ((row.currentPrice - row.buyPrice) / row.buyPrice * 100) : 0;
+  currentAnalyseData = {
+    name: row.name, ticker: row.ticker,
+    price: row.currentPrice, currency: 'EUR', exchange: '',
+    changePct: pct, buyPrice: row.buyPrice, qty: row.qty,
+  };
+  showResultCard(currentAnalyseData);
+  document.getElementById('analyse-search-input').value = '';
+  document.getElementById('analyse-search-status').innerHTML = '';
+}
+
+function showResultCard(d) {
+  document.getElementById('analyse-empty').style.display = 'none';
+  document.getElementById('result-card').classList.add('visible');
+  document.getElementById('score-card').style.display = 'none';
+
+
+  const abbr = (d.name || d.ticker || '?').substring(0,3).toUpperCase();
+  document.getElementById('rc-icon').textContent = abbr;
+  document.getElementById('rc-name').textContent = d.name || d.ticker;
+  document.getElementById('rc-ticker-exch').textContent =
+    (d.ticker || '') + (d.exchange ? '  ·  ' + d.exchange : '');
+  document.getElementById('rc-price').textContent = d.price ? d.price.toFixed(2) : '—';
+  document.getElementById('rc-currency').textContent = d.currency || '';
+
+  const isPos = d.changePct >= 0;
+  const badge = document.getElementById('rc-change-badge');
+  badge.textContent = (isPos ? '▲ +' : '▼ ') + d.changePct.toFixed(2) + '%';
+  badge.className = 'rc-change-badge ' + (isPos ? 'pos' : 'neg');
+
+  const stats = document.getElementById('rc-stats');
+  const rows = [];
+  if (d.buyPrice) {
+    rows.push(['Prix achat', d.buyPrice.toFixed(2) + ' ' + (d.currency||'')]);
+    const pnlUnit = d.price - d.buyPrice;
+    rows.push(['+/- unit.', (pnlUnit >= 0 ? '+' : '') + pnlUnit.toFixed(2)]);
+  }
+  if (d.qty) {
+    rows.push(['Quantité', d.qty]);
+    rows.push(['Valeur', (d.price * d.qty).toFixed(2) + ' ' + (d.currency||'')]);
+  }
+  stats.innerHTML = rows.map(function(r) {
+    return '<div class="rc-stat"><div class="rc-stat-label">' + r[0] + '</div><div class="rc-stat-val">' + r[1] + '</div></div>';
+  }).join('');
+
+  // Lancer le score automatiquement
+  runAnalyse();
+}
+
+function onAnalyseInput() {
+  clearTimeout(analyseTimer);
+  const val = document.getElementById('analyse-search-input').value.trim();
+  document.getElementById('analyse-search-status').innerHTML = '';
+  if (val.length < 2) return;
+  document.getElementById('analyse-search-status').innerHTML =
+    '<div class="status-loading"><span class="loading-spinner"></span> Recherche...</div>';
+  analyseTimer = setTimeout(function() { fetchAnalyseStock(val); }, 700);
+}
+
+async function fetchAnalyseStock(query) {
+  const statusEl = document.getElementById('analyse-search-status');
+  try {
+    const searchYahoo = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(query) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
+    const sr = await fetch(proxyUrl(searchYahoo));
+    const sraw = await sr.json();
+    const sd = JSON.parse(sraw.contents);
+    const quotes = (sd.quotes || []).filter(function(q) {
+      return q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND';
+    });
+    if (!quotes.length) throw new Error('Action introuvable.');
+    const best = quotes[0];
+
+    const quoteYahoo = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(best.symbol) + '?interval=1d&range=1d';
+    const qr = await fetch(proxyUrl(quoteYahoo));
+    const qraw = await qr.json();
+    const qd = JSON.parse(qraw.contents);
+    const result = qd.chart && qd.chart.result && qd.chart.result[0];
+    if (!result) throw new Error('Cours non disponible.');
+    const meta = result.meta;
+    const prev = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
+    const changePct = prev ? ((meta.regularMarketPrice - prev) / prev * 100) : 0;
+
+    currentAnalyseData = {
+      name: best.longname || best.shortname || best.symbol,
+      ticker: best.symbol,
+      price: meta.regularMarketPrice,
+      currency: meta.currency || '',
+      exchange: meta.exchangeName || '',
+      changePct: changePct,
+      prevClose: prev,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
+      regularMarketVolume: meta.regularMarketVolume,
+    };
+    statusEl.innerHTML = '';
+    document.querySelectorAll('.analyse-stock-item').forEach(function(el) { el.classList.remove('selected'); });
+    showResultCard(currentAnalyseData);
+  } catch(err) {
+    statusEl.innerHTML = '<div class="status-error">&#9888; ' + (err.message || 'Erreur') + '</div>';
+  }
+}
+
+// ─── MOTEUR DE SCORE ─────────────────────────────────
+// Logique : base 50 pts, ajustements P/E · Beta · Momentum · Dividende
+// Données : page HTML Yahoo Finance scrapée via allorigins (1 seule requête)
+
+async function fetchYahooPage(ticker) {
+  const url = 'https://finance.yahoo.com/quote/' + encodeURIComponent(ticker);
+  const r   = await fetch(proxyUrl(url));
+  const raw = await r.json();
+  const html = raw.contents || '';
+  const out  = {};
+
+  const rx = (re) => { const m = html.match(re); return m ? parseFloat(m[1]) : null; };
+
+  out.pe           = rx(/"trailingPE":\{"raw":([\d.]+)/);
+  out.perFwd       = rx(/"forwardPE":\{"raw":([\d.]+)/);
+  out.beta         = rx(/"beta":\{"raw":([\d.]+)/);
+  out.dividendYield= rx(/"dividendYield":\{"raw":([\d.]+)/);   // ex: 0.0422
+  out.dividendRate = rx(/"dividendRate":\{"raw":([\d.]+)/);    // montant brut €
+  out.pct          = rx(/"regularMarketChangePercent":\{"raw":(-?[\d.]+)/);
+  out.h52          = rx(/"fiftyTwoWeekHigh":\{"raw":([\d.]+)/);
+  out.l52          = rx(/"fiftyTwoWeekLow":\{"raw":([\d.]+)/);
+  out.targetPrice  = rx(/"targetMeanPrice":\{"raw":([\d.]+)/);
+  out.recMean      = rx(/"recommendationMean":\{"raw":([\d.]+)/);
+  out.nbAnalysts   = rx(/"numberOfAnalystOpinions":\{"raw":(\d+)/);
+
+  // Variation 1J si pas déjà dans currentAnalyseData
+  if (out.pct === null) {
+    out.pct = rx(/"regularMarketChangePercent":(-?[\d.]+)/);
+  }
+
+  return out;
+}
+
+function calcScore(d, pctDay) {
+  // d = objet retourné par fetchYahooPage
+  // pctDay = variation du jour en % (fallback si absent dans d)
+  let score = 50;
+  const details = [];
+
+  // ── P/E ─────────────────────────────────────────────
+  const pe = d.pe != null ? d.pe : (d.perFwd != null ? d.perFwd : NaN);
+  if (!isNaN(pe)) {
+    if      (pe < 10)  { score += 18; details.push('P/E ' + pe.toFixed(1) + ' très bas (+18)'); }
+    else if (pe < 15)  { score += 14; details.push('P/E ' + pe.toFixed(1) + ' bas (+14)'); }
+    else if (pe < 25)  { score += 10; details.push('P/E ' + pe.toFixed(1) + ' correct (+10)'); }
+    else if (pe < 40)  { score +=  3; details.push('P/E ' + pe.toFixed(1) + ' élevé (+3)'); }
+    else if (pe < 60)  { score -=  8; details.push('P/E ' + pe.toFixed(1) + ' très élevé (−8)'); }
+    else               { score -= 18; details.push('P/E ' + pe.toFixed(1) + ' excessif (−18)'); }
+  } else {
+    details.push('P/E non disponible (0)');
+  }
+
+  // ── BETA ────────────────────────────────────────────
+  const beta = d.beta != null ? d.beta : NaN;
+  if (!isNaN(beta)) {
+    if      (beta < 0.5)  { score += 12; details.push('Beta ' + beta.toFixed(2) + ' très défensif (+12)'); }
+    else if (beta < 0.8)  { score += 10; details.push('Beta ' + beta.toFixed(2) + ' défensif (+10)'); }
+    else if (beta <= 1.2) { score +=  5; details.push('Beta ' + beta.toFixed(2) + ' neutre (+5)'); }
+    else if (beta <= 1.6) { score -=  5; details.push('Beta ' + beta.toFixed(2) + ' volatil (−5)'); }
+    else                  { score -= 12; details.push('Beta ' + beta.toFixed(2) + ' très volatil (−12)'); }
+  } else {
+    details.push('Beta non disponible (0)');
+  }
+
+  // ── MOMENTUM (variation du jour) ────────────────────
+  const pct = (d.pct != null ? d.pct : pctDay) || 0;
+  if      (pct >  3) { score += 14; details.push('Momentum jour +' + pct.toFixed(2) + '% (+14)'); }
+  else if (pct >  0) { score +=  7; details.push('Momentum jour +' + pct.toFixed(2) + '% (+7)'); }
+  else if (pct > -3) { score -=  7; details.push('Momentum jour ' + pct.toFixed(2) + '% (−7)'); }
+  else               { score -= 14; details.push('Momentum jour ' + pct.toFixed(2) + '% (−14)'); }
+
+  // ── DIVIDENDE ───────────────────────────────────────
+  const hasDividend = (d.dividendYield != null && d.dividendYield > 0) ||
+                      (d.dividendRate  != null && d.dividendRate  > 0);
+  if (hasDividend) {
+    const yld = d.dividendYield ? (d.dividendYield * 100) : null;
+    if (yld && yld > 5)      { score += 14; details.push('Dividende ' + yld.toFixed(1) + '% élevé (+14)'); }
+    else if (yld && yld > 2) { score += 10; details.push('Dividende ' + yld.toFixed(1) + '% (+10)'); }
+    else                     { score += 10; details.push('Dividende versé (+10)'); }
+  } else {
+    details.push('Pas de dividende (0)');
+  }
+
+  score = Math.max(5, Math.min(95, Math.round(score)));
+
+  const color   = score >= 65 ? 'var(--positive)' : score <= 35 ? 'var(--negative)' : 'var(--gold)';
+  const emoji   = score >= 65 ? '🟢' : score <= 35 ? '🔴' : '🟡';
+  const verdict = score >= 65 ? 'ACHETER' : score <= 35 ? 'VENDRE' : 'CONSERVER';
+
+  return { score, color, emoji, verdict, details, pe, beta, pct, hasDividend, d };
+}
+
+function renderScoreUI(r) {
+  // Score principal
+  document.getElementById('score-card').style.display = 'flex';
+  const sv = document.getElementById('score-value');
+  sv.textContent = r.score;
+  sv.style.color = r.color;
+  const verd = document.getElementById('score-verdict');
+  verd.textContent = r.emoji + ' ' + r.verdict;
+  verd.style.color = r.color;
+
+  // Gauge SVG arc
+  const arc    = document.getElementById('gauge-arc');
+  const filled = (r.score / 100) * 157;
+  arc.setAttribute('stroke-dasharray', filled + ' ' + (157 - filled));
+  arc.setAttribute('stroke', r.color);
+
+
+}
+
+async function runAnalyse() {
+  if (!currentAnalyseData) return;
+
+  // Afficher un loader dans la score card pendant le fetch
+  const sc = document.getElementById('score-card');
+  sc.style.display = 'flex';
+  document.getElementById('score-value').textContent = '…';
+  document.getElementById('score-value').style.color = 'var(--text2)';
+  document.getElementById('score-verdict').textContent = 'Chargement…';
+  document.getElementById('score-verdict').style.color = 'var(--text2)';
+  document.getElementById('gauge-arc').setAttribute('stroke-dasharray', '0 157');
+
+  const ticker   = currentAnalyseData.ticker;
+  const curPrice = currentAnalyseData.price;
+  const pctDay   = currentAnalyseData.changePct || 0;
+
+  try {
+    const ydata = await fetchYahooPage(ticker);
+    const r     = calcScore(ydata, pctDay);
+
+    renderScoreUI(r);
+
+    // Stats enrichies
+    const statRows = [];
+    if (currentAnalyseData.buyPrice) {
+      statRows.push(['Prix achat', currentAnalyseData.buyPrice.toFixed(2)]);
+      const pu = curPrice - currentAnalyseData.buyPrice;
+      statRows.push(['+/- unit.', (pu >= 0 ? '+' : '') + pu.toFixed(2)]);
+    }
+    if (r.pe != null && !isNaN(r.pe))    statRows.push(['P/E', r.pe.toFixed(1)]);
+    if (r.beta != null && !isNaN(r.beta))statRows.push(['Beta', r.beta.toFixed(2)]);
+    if (r.d.dividendYield)               statRows.push(['Dividende', (r.d.dividendYield*100).toFixed(2) + '%']);
+    if (r.d.targetPrice)                 statRows.push(['Obj. analystes', r.d.targetPrice.toFixed(2)]);
+    if (r.d.recMean)                     statRows.push(['Consensus', r.d.recMean.toFixed(1) + '/5']);
+    if (r.d.h52)                         statRows.push(['+haut 52s', r.d.h52.toFixed(2)]);
+    if (r.d.l52)                         statRows.push(['+bas 52s',  r.d.l52.toFixed(2)]);
+
+    document.getElementById('rc-stats').innerHTML = statRows.map(function(row) {
+      return '<div class="rc-stat"><div class="rc-stat-label">' + row[0] +
+             '</div><div class="rc-stat-val">' + row[1] + '</div></div>';
+    }).join('');
+
+  } catch(err) {
+    console.error(err);
+  }
+}
+
+</script>
