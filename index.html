@@ -993,21 +993,35 @@ const TICKER_DOMAIN = {
   // ETF — pas de logo pertinent, on laisse fallback
 };
 
+// Reverse map: ticker → ISIN (built from ISIN_MAP)
+const TICKER_TO_ISIN = Object.fromEntries(Object.entries(ISIN_MAP).map(([k,v]) => [v, k]));
+
+// Store foundISIN when user searches by ISIN
+let foundISIN = null;
+
 function logoHtml(ticker, size, cssClass) {
   const abbr = ticker.replace(/\.[A-Z]+$/, '').slice(0, 3).toUpperCase();
-  // Normaliser le ticker : retirer le suffixe de bourse (.PA, .AS, .DE...)
   const sym  = ticker.replace(/\.[A-Z]+$/, '');
+  const isin = TICKER_TO_ISIN[ticker] || null;
   const r    = Math.round(size * 0.22);
   const st   = 'width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;object-fit:contain';
 
-  // Sources de logos dans l'ordre de fiabilité
-  const src1 = 'https://assets.parqet.com/logos/symbol/' + sym;
-  const src2 = 'https://financialmodelingprep.com/image-stock/' + ticker + '.png';
-  const src3 = 'https://www.google.com/s2/favicons?domain=' + (TICKER_DOMAIN[ticker] || sym.toLowerCase() + '.com') + '&sz=64';
+  // Sources par ordre de fiabilité
+  const src1 = isin
+    ? 'https://assets.parqet.com/logos/isin/' + isin
+    : 'https://assets.parqet.com/logos/symbol/' + sym;
+  const src2 = isin
+    ? 'https://assets.parqet.com/logos/symbol/' + sym
+    : 'https://assets.parqet.com/logos/symbol/' + ticker;
+  const fallbackDomain = TICKER_DOMAIN[ticker] || (sym.toLowerCase() + '.com');
+  const src3 = 'https://www.google.com/s2/favicons?domain=' + fallbackDomain + '&sz=64';
+
+  const onFinal = 'var p=this.parentNode;p.textContent=\x22' + abbr + '\x22;p.classList.remove(\x22logo-wrap\x22)';
+  const onErr2  = 'this.src=\x22' + src3 + '\x22;this.onerror=function(){' + onFinal + '}';
+  const onErr1  = 'this.src=\x22' + src2 + '\x22;this.onerror=function(){' + onErr2 + '}';
 
   return '<div class="' + cssClass + ' logo-wrap">' +
-    '<img src="' + src1 + '" style="' + st + '" ' +
-    'onerror="this.src=\x22' + src2 + '\x22;this.onerror=function(){this.src=\x22' + src3 + '\x22;this.onerror=function(){var p=this.parentNode;p.textContent=\x22' + abbr + '\x22;p.classList.remove(\x22logo-wrap\x22)}}">' +
+    '<img src="' + src1 + '" style="' + st + '" onerror="' + onErr1 + '">' +
     '</div>';
 }
 // ── Résolution ISIN → ticker Yahoo ──────────────────────
@@ -1041,10 +1055,15 @@ async function smartSearch(query) {
 
   // 1. ISIN détecté (12 car, commence par 2 lettres)
   if (/^[A-Z]{2}[A-Z0-9]{10}$/i.test(q)) {
-    const ticker = await isinToTicker(q.toUpperCase());
-    if (ticker) return [{ symbol: ticker, longname: ticker, quoteType: 'EQUITY' }];
-    throw new Error('ISIN introuvable via OpenFIGI.');
+    const isinUpper = q.toUpperCase();
+    const ticker = await isinToTicker(isinUpper);
+    if (ticker) {
+      foundISIN = isinUpper;
+      return [{ symbol: ticker, longname: ticker, quoteType: ISIN_MAP[isinUpper] ? 'EQUITY' : 'EQUITY' }];
+    }
+    throw new Error('ISIN introuvable.');
   }
+  foundISIN = null;
 
   // 2. Recherche Yahoo standard (nom ou ticker)
   const searchUrl = 'https://query1.finance.yahoo.com/v1/finance/search?q='
@@ -1139,6 +1158,7 @@ function confirmAdd() {
   data.push({
     name:         foundName || document.getElementById('modal-ticker').value,
     ticker:       foundTicker || '',
+    isin:         foundISIN || TICKER_TO_ISIN[foundTicker] || null,
     qty:          qty,
     buyPrice:     buyPrice,
     currentPrice: foundPrice,
