@@ -1,0 +1,2612 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PEA Dashboard</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg:      #08090d;
+  --s1:      #0d0f14;
+  --s2:      #12151c;
+  --s3:      #181c25;
+  --border:  rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.11);
+  --text:    #e2e8f4;
+  --text2:   #9aa3b5;
+  --text3:   #5a6275;
+  --muted2:  #2e3340;
+  --positive:#22d98a;
+  --negative:#f04f6a;
+  --gold:    #f0b429;
+  --positive-d: rgba(34,217,138,0.09);
+  --negative-d: rgba(240,79,106,0.09);
+  --mono:    'JetBrains Mono', monospace;
+  --sans:    'Plus Jakarta Sans', sans-serif;
+  --radius:  10px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--muted2); border-radius:2px; }
+
+/* ─── LOGIN ─────────────────────────────────────── */
+#login-screen {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  position:relative; overflow:hidden;
+}
+.login-bg {
+  position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse 65% 55% at 8% 92%, rgba(34,217,138,.06) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 45% at 92% 8%,  rgba(99,179,237,.04) 0%, transparent 60%),
+    var(--bg);
+}
+.login-grid {
+  position:absolute; inset:0;
+  background-image:
+    linear-gradient(rgba(34,217,138,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34,217,138,.025) 1px, transparent 1px);
+  background-size:48px 48px;
+  mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black 0%, transparent 80%);
+}
+.login-card {
+  position:relative; width:390px;
+  background:var(--s1); border:1px solid var(--border2); border-radius:16px;
+  padding:42px 38px;
+  box-shadow: 0 0 0 1px rgba(34,217,138,.04), 0 28px 64px rgba(0,0,0,.65);
+}
+.login-logo { text-align:center; margin-bottom:30px; }
+.logo-icon {
+  width:50px; height:50px;
+  background:linear-gradient(135deg, var(--positive), #63b3ed);
+  border-radius:14px; display:inline-grid; place-items:center;
+  font-size:22px; margin-bottom:14px;
+  box-shadow: 0 0 28px rgba(34,217,138,.22);
+  animation: logo-glow 3s ease-in-out infinite;
+}
+@keyframes logo-glow { 0%,100% { box-shadow:0 0 28px rgba(34,217,138,.22); } 50% { box-shadow:0 0 42px rgba(34,217,138,.42); } }
+.login-title    { font-size:22px; font-weight:700; letter-spacing:-.3px; }
+.login-subtitle { font-size:10px; color:var(--text3); letter-spacing:2.5px; text-transform:uppercase; font-family:var(--mono); margin-top:4px; }
+
+.form-group { margin-bottom:14px; }
+.form-label {
+  display:block; font-size:10px; font-weight:600;
+  color:var(--text3); text-transform:uppercase; letter-spacing:1.5px;
+  margin-bottom:6px; font-family:var(--mono);
+}
+.form-input {
+  width:100%; background:var(--s2); border:1px solid var(--border2);
+  border-radius:8px; padding:11px 13px;
+  color:var(--text); font-family:var(--mono); font-size:13px; outline:none; transition:all .18s;
+}
+.form-input:focus { border-color:var(--positive); box-shadow:0 0 0 3px rgba(34,217,138,.1); }
+.form-input::placeholder { color:var(--text3); }
+
+.login-error {
+  background:var(--negative-d); border:1px solid rgba(240,79,106,.25);
+  color:var(--negative); padding:9px 12px; border-radius:7px;
+  font-size:12px; font-family:var(--mono); margin-bottom:12px; display:none;
+}
+.btn-login {
+  width:100%; padding:12px; background:var(--positive); border:none; border-radius:8px;
+  color:#08090d; font-family:var(--sans); font-size:13px; font-weight:700;
+  cursor:pointer; transition:all .18s; margin-top:4px;
+}
+.btn-login:hover { box-shadow:0 0 22px rgba(34,217,138,.38); transform:translateY(-1px); }
+.btn-login:active { transform:none; }
+
+/* ─── LAYOUT ─────────────────────────────────────── */
+#app { display:none; min-height:100vh; position:relative; }
+.sidebar {
+  position:fixed; left:0; top:0; bottom:0; width:220px;
+  background:var(--s1); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; z-index:100;
+}
+.sidebar-logo {
+  padding:20px 18px 16px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:10px;
+}
+.sidebar-logo-icon {
+  width:32px; height:32px;
+  background:linear-gradient(135deg, var(--positive), #63b3ed);
+  border-radius:8px; display:grid; place-items:center; font-size:15px; flex-shrink:0;
+}
+.sidebar-logo-title { font-size:14px; font-weight:700; color:var(--text); letter-spacing:-.2px; }
+.sidebar-logo-sub   { font-size:9px; color:var(--text3); font-family:var(--mono); margin-top:1px; letter-spacing:.8px; }
+
+.sidebar-nav { flex:1; padding:12px 10px; }
+.nav-section-label {
+  font-size:9px; font-weight:600; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:2px; padding:0 9px; margin:4px 0 5px; font-family:var(--mono);
+}
+.nav-item {
+  display:flex; align-items:center; gap:9px; padding:9px 9px;
+  border-radius:7px; cursor:pointer; color:var(--text2); font-size:13px; font-weight:500;
+  transition:all .14s; border:1px solid transparent; margin-bottom:1px;
+}
+.nav-item:hover  { background:var(--s2); color:var(--text); }
+.nav-item.active { background:rgba(34,217,138,.08); color:var(--positive); border-color:rgba(34,217,138,.14); }
+.nav-icon { font-size:14px; width:18px; text-align:center; flex-shrink:0; }
+
+.sidebar-user { padding:11px; border-top:1px solid var(--border); }
+.user-card {
+  display:flex; align-items:center; gap:9px;
+  background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:8px 11px;
+}
+.user-avatar {
+  width:26px; height:26px; border-radius:50%;
+  background:linear-gradient(135deg, var(--positive), #63b3ed);
+  display:grid; place-items:center; font-size:11px; font-weight:700; color:#08090d; flex-shrink:0;
+}
+.user-name   { font-size:12px; font-weight:600; color:var(--text); flex:1; text-transform:capitalize; }
+.btn-logout  { background:none; border:none; color:var(--text3); cursor:pointer; font-size:13px; padding:3px; transition:color .18s; }
+.btn-logout:hover { color:var(--negative); }
+
+.main { margin-left:220px; min-height:100vh; padding:26px 28px; }
+.page { display:none; }
+.page.active { display:block; animation:pg-in .22s ease; }
+@keyframes pg-in { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
+
+/* ─── PAGE HEADER ─── */
+.page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; }
+.page-title    { font-size:24px; font-weight:700; letter-spacing:-.4px; }
+.page-subtitle { font-size:12px; color:var(--text2); margin-top:3px; }
+
+/* ─── STATS GRID ─── */
+.stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:13px; margin-bottom:20px; }
+.stat-card {
+  background:var(--s1); border:1px solid var(--border); border-radius:var(--radius);
+  padding:17px 19px; position:relative; overflow:hidden;
+}
+.stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.stat-card:nth-child(1)::before { background:linear-gradient(90deg,#63b3ed,transparent); }
+.stat-card:nth-child(2)::before { background:linear-gradient(90deg,var(--positive),transparent); }
+.stat-card:nth-child(3)::before { background:linear-gradient(90deg,var(--gold),transparent); }
+.stat-card:nth-child(4)::before { background:linear-gradient(90deg,#b794f4,transparent); }
+.stat-label  { font-size:9px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:7px; font-family:var(--mono); }
+.stat-value  { font-size:20px; font-weight:700; color:var(--text); letter-spacing:-.3px; font-family:var(--mono); }
+.stat-change { font-size:11px; margin-top:3px; font-family:var(--mono); }
+
+/* ─── TABLE CARD ─── */
+.table-container { background:var(--s1); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.table-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:15px 20px; border-bottom:1px solid var(--border);
+}
+.table-title { font-size:13px; font-weight:600; }
+.btn-add {
+  display:flex; align-items:center; gap:5px;
+  background:rgba(34,217,138,.09); border:1px solid rgba(34,217,138,.2);
+  color:var(--positive); padding:7px 13px; border-radius:7px;
+  font-size:12px; font-weight:600; cursor:pointer; transition:all .18s; font-family:var(--sans);
+}
+.btn-add:hover { background:rgba(34,217,138,.15); border-color:rgba(34,217,138,.36); }
+
+table { width:100%; border-collapse:collapse; }
+th {
+  padding:9px 20px; text-align:left; font-size:9px; font-weight:600;
+  color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; font-family:var(--mono);
+  background:rgba(255,255,255,0.018); border-bottom:1px solid var(--border);
+}
+th:last-child, td:last-child { text-align:right; }
+td { padding:13px 20px; font-size:13px; border-bottom:1px solid var(--border); transition:background .1s; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(255,255,255,0.016); }
+
+.ticker-cell { display:flex; align-items:center; gap:10px; }
+.ticker-icon {
+  width:32px; height:32px; border-radius:8px; background:var(--s3); border:1px solid var(--border2);
+  display:grid; place-items:center; font-size:9px; font-weight:700; color:var(--positive); font-family:var(--mono); flex-shrink:0;
+}
+.ticker-icon.logo-wrap, .asi-icon.logo-wrap, .rc-icon.logo-wrap {
+  background:var(--s2); border-color:var(--border); padding:3px; overflow:hidden;
+}
+.ticker-icon.logo-wrap, .asi-icon.logo-wrap, .rc-icon.logo-wrap {
+  background:var(--s2); border-color:var(--border); padding:3px; overflow:hidden;
+}
+.ticker-icon.logo-wrap { background:var(--s2); border-color:var(--border); padding:3px; }
+.asi-icon.logo-wrap    { background:var(--s2); border-color:var(--border); padding:2px; }
+.rc-icon.logo-wrap     { background:var(--s2); border-color:var(--border); padding:4px; }
+.ticker-icon.logo-wrap, .asi-icon.logo-wrap, .rc-icon.logo-wrap {
+  background:var(--s2); border-color:var(--border); padding:3px; overflow:hidden;
+}
+.ticker-name { font-size:13px; font-weight:600; }
+.ticker-sym  { font-size:10px; color:var(--text2); font-family:var(--mono); margin-top:1px; }
+.mono { font-family:var(--mono); }
+
+.badge-pos { display:inline-flex; align-items:center; gap:3px; background:var(--positive-d); color:var(--positive); padding:3px 7px; border-radius:4px; font-size:11px; font-family:var(--mono); }
+.badge-neg { display:inline-flex; align-items:center; gap:3px; background:var(--negative-d); color:var(--negative); padding:3px 7px; border-radius:4px; font-size:11px; font-family:var(--mono); }
+
+.btn-del  { background:none; border:1px solid var(--border); color:var(--text3); width:26px; height:26px; border-radius:6px; cursor:pointer; font-size:12px; transition:all .18s; display:inline-grid; place-items:center; }
+.btn-edit { background:none; border:1px solid var(--border); color:var(--text3); width:26px; height:26px; border-radius:6px; cursor:pointer; font-size:12px; transition:all .18s; display:inline-grid; place-items:center; }
+.btn-edit:hover { background:rgba(88,166,255,.1); border-color:rgba(88,166,255,.3); color:#58a6ff; }
+.edit-tabs { display:flex; gap:8px; margin-bottom:20px; }
+.edit-tab  { flex:1; padding:9px; border-radius:7px; border:1px solid var(--border2); background:var(--s2); color:var(--text2); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; font-family:var(--sans); }
+.edit-tab.active-buy  { background:rgba(34,217,138,.1); border-color:rgba(34,217,138,.3); color:var(--positive); }
+.edit-tab.active-sell { background:rgba(240,79,106,.1); border-color:rgba(240,79,106,.3); color:var(--negative); }
+.edit-info { background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:18px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.edit-info-item label { font-size:9px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:1.2px; font-family:var(--mono); display:block; margin-bottom:3px; }
+.edit-info-item span  { font-size:13px; font-family:var(--mono); color:var(--text); }
+.btn-edit { background:none; border:1px solid var(--border); color:var(--text3); width:26px; height:26px; border-radius:6px; cursor:pointer; font-size:11px; transition:all .18s; display:inline-grid; place-items:center; }
+.btn-edit:hover { background:rgba(88,166,255,.1); border-color:rgba(88,166,255,.3); color:var(--blue); }
+.btn-del:hover { background:var(--negative-d); border-color:rgba(240,79,106,.25); color:var(--negative); }
+
+.empty-state { padding:50px 20px; text-align:center; color:var(--text2); }
+.empty-icon  { font-size:32px; margin-bottom:9px; opacity:.3; }
+.empty-text  { font-size:13px; line-height:1.6; }
+
+/* ─── MODAL ─── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.72); backdrop-filter:blur(8px); display:none; align-items:center; justify-content:center; z-index:1000; }
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--s1); border:1px solid var(--border2); border-radius:14px; width:400px; padding:26px;
+  box-shadow:0 32px 64px rgba(0,0,0,.65); animation:pg-in .2s ease;
+}
+.modal-title { font-size:18px; font-weight:700; margin-bottom:4px; letter-spacing:-.3px; }
+.modal-sub   { font-size:12px; color:var(--text2); margin-bottom:20px; }
+.modal-footer { display:flex; gap:9px; margin-top:18px; }
+.btn-secondary { flex:1; padding:10px; background:var(--s2); border:1px solid var(--border2); color:var(--text2); border-radius:7px; font-size:13px; cursor:pointer; transition:all .18s; font-family:var(--sans); }
+.btn-secondary:hover { color:var(--text); }
+.btn-primary   { flex:1; padding:10px; background:var(--positive); border:none; color:#08090d; border-radius:7px; font-size:13px; font-weight:700; cursor:pointer; transition:all .18s; font-family:var(--sans); }
+.btn-primary:hover { box-shadow:0 0 18px rgba(34,217,138,.35); }
+.btn-primary:disabled { opacity:.4; cursor:not-allowed; box-shadow:none; }
+
+.search-result       { background:var(--s2); border:1px solid var(--border2); border-radius:8px; padding:11px 13px; margin-top:8px; display:none; }
+.search-result.visible { display:block; }
+.search-result-name  { font-size:13px; font-weight:600; }
+.search-result-price { font-size:18px; font-family:var(--mono); color:var(--positive); margin-top:4px; }
+.search-result-info  { font-size:10px; color:var(--text2); margin-top:2px; font-family:var(--mono); }
+.loading-spinner     { display:inline-block; width:11px; height:11px; border:2px solid var(--border2); border-top-color:var(--positive); border-radius:50%; animation:spin .6s linear infinite; vertical-align:middle; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.status-loading { font-size:11px; color:var(--text2); margin-top:8px; font-family:var(--mono); }
+.status-error   { font-size:11px; color:var(--negative); margin-top:8px; font-family:var(--mono); }
+.price-tag      { display:inline-block; background:rgba(240,180,41,.12); color:var(--gold); padding:2px 7px; border-radius:4px; font-size:10px; font-family:var(--mono); margin-left:6px; vertical-align:middle; }
+
+/* ─── ANALYSE ─── */
+.analyse-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+.analyse-panel { background:var(--s1); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.analyse-panel-header { padding:14px 17px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:9px; }
+.analyse-panel-icon   { width:28px; height:28px; border-radius:7px; display:grid; place-items:center; font-size:13px; flex-shrink:0; }
+.icon-portfolio { background:rgba(34,217,138,.1); }
+.icon-search    { background:rgba(99,179,237,.1); }
+.analyse-panel-title { font-size:13px; font-weight:600; }
+.analyse-panel-sub   { font-size:11px; color:var(--text2); }
+
+.analyse-stock-list { max-height:280px; overflow-y:auto; }
+.analyse-stock-item {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 17px; cursor:pointer; transition:background .12s;
+  border-bottom:1px solid var(--border);
+}
+.analyse-stock-item:last-child { border-bottom:none; }
+.analyse-stock-item:hover { background:rgba(255,255,255,0.022); }
+.analyse-stock-item.selected { background:rgba(34,217,138,.06); border-left:2px solid var(--positive); padding-left:15px; }
+
+.asi-left  { display:flex; align-items:center; gap:9px; }
+.asi-icon  { width:30px; height:30px; border-radius:8px; background:var(--s3); border:1px solid var(--border2); display:grid; place-items:center; font-size:9px; font-weight:700; color:var(--positive); font-family:var(--mono); flex-shrink:0; }
+.asi-name  { font-size:12px; font-weight:600; }
+.asi-ticker { font-size:10px; color:var(--text2); font-family:var(--mono); }
+.asi-right { text-align:right; }
+.asi-price { font-size:12px; font-family:var(--mono); }
+.asi-change     { font-size:10px; font-family:var(--mono); }
+.asi-change.pos { color:var(--positive); }
+.asi-change.neg { color:var(--negative); }
+
+.analyse-search-box  { padding:13px 15px; border-bottom:1px solid var(--border); }
+.analyse-result-zone { padding:17px; }
+.ar-empty { text-align:center; color:var(--text3); padding:32px 0; font-size:13px; line-height:1.7; }
+
+.result-card { display:none; }
+.result-card.visible { display:block; }
+
+.rc-header      { display:flex; align-items:center; gap:12px; margin-bottom:15px; }
+.rc-icon        { width:40px; height:40px; border-radius:10px; background:var(--s3); border:1px solid var(--border2); display:grid; place-items:center; font-size:11px; font-weight:700; color:var(--positive); font-family:var(--mono); flex-shrink:0; }
+.rc-name        { font-size:14px; font-weight:700; }
+.rc-ticker-exch { font-size:10px; color:var(--text2); font-family:var(--mono); margin-top:2px; }
+
+.rc-price-row   { display:flex; align-items:baseline; gap:9px; margin-bottom:15px; }
+.rc-price       { font-size:30px; font-weight:700; letter-spacing:-.8px; }
+.rc-currency    { font-size:13px; color:var(--text2); }
+.rc-change-badge     { padding:3px 9px; border-radius:5px; font-size:11px; font-family:var(--mono); }
+.rc-change-badge.pos { background:var(--positive-d); color:var(--positive); }
+.rc-change-badge.neg { background:var(--negative-d); color:var(--negative); }
+
+.rc-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:15px; }
+.rc-stat       { background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+.rc-stat-label { font-size:9px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:1.2px; font-family:var(--mono); margin-bottom:4px; }
+.rc-stat-val   { font-size:13px; font-family:var(--mono); font-weight:500; }
+
+/* ─── SCORE CARD ─── */
+.score-card {
+  background:var(--s2); border:1px solid var(--border2); border-radius:9px; padding:16px;
+  display:none; flex-direction:row; align-items:center; gap:16px;
+}
+.score-left { flex-shrink:0; }
+.score-label  { font-size:9px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; font-family:var(--mono); margin-bottom:5px; }
+.score-value  { font-size:40px; font-weight:700; letter-spacing:-2px; line-height:1; font-family:var(--mono); }
+.score-verdict { font-size:13px; font-weight:600; margin-top:4px; letter-spacing:.3px; }
+.score-gauge-wrap { flex-shrink:0; }
+.score-gauge { width:108px; }
+
+/* ─── LOGO PAGE ─── */
+.logo-page        { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; text-align:center; gap:16px; }
+.big-logo-icon    { width:84px; height:84px; border-radius:24px; background:linear-gradient(135deg,var(--positive),#63b3ed); display:grid; place-items:center; font-size:38px; box-shadow:0 14px 48px rgba(34,217,138,.26); animation:float 4s ease-in-out infinite; }
+@keyframes float  { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
+.big-logo-title   { font-size:44px; font-weight:700; letter-spacing:-1.5px; }
+.big-logo-line    { width:52px; height:2px; background:linear-gradient(90deg,var(--positive),#63b3ed); border-radius:1px; }
+.big-logo-subtitle { font-family:var(--mono); font-size:10px; color:var(--text3); letter-spacing:3px; text-transform:uppercase; }
+.big-logo-version  { font-family:var(--mono); font-size:10px; color:var(--text3); border:1px solid var(--border); padding:4px 13px; border-radius:20px; }
+
+/* hidden extras */
+.breakdown-title, .breakdown-bar-row, .score-breakdown { display:none; }
+
+/* ─── EDIT MODAL ─── */
+.edit-tabs { display:flex; gap:6px; margin-bottom:18px; }
+.edit-tab {
+  flex:1; padding:8px; border:1px solid var(--border2); border-radius:7px;
+  background:var(--s2); color:var(--text2); font-size:12px; font-weight:500;
+  cursor:pointer; transition:all .15s; font-family:var(--sans);
+}
+.edit-tab.active { background:rgba(34,217,138,.1); border-color:rgba(34,217,138,.25); color:var(--positive); }
+.edit-tab:hover:not(.active) { background:var(--s3); color:var(--text); }
+
+.edit-info-row {
+  background:var(--s2); border:1px solid var(--border); border-radius:8px;
+  padding:10px 13px; font-family:var(--mono); font-size:12px; color:var(--text2);
+  display:flex; gap:16px; flex-wrap:wrap;
+}
+.edit-info-row span { color:var(--text); font-weight:500; }
+
+.edit-preview {
+  background:rgba(34,217,138,.06); border:1px solid rgba(34,217,138,.18);
+  border-radius:8px; padding:10px 13px; font-family:var(--mono); font-size:12px;
+  color:var(--text2); margin-top:4px; display:flex; gap:16px; flex-wrap:wrap;
+}
+.edit-preview span { color:var(--positive); font-weight:600; }
+.edit-preview.warn  { background:rgba(240,179,41,.06); border-color:rgba(240,179,41,.2); }
+.edit-preview.warn span { color:var(--gold); }
+.edit-preview.loss  { background:rgba(240,79,106,.06); border-color:rgba(240,79,106,.2); }
+.edit-preview.loss span { color:var(--negative); }
+</style>
+</head>
+<body>
+
+<!-- ─── LOGIN ──────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-bg"></div>
+  <div class="login-grid"></div>
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">📈</div>
+      <div class="login-title">PEA Dashboard</div>
+      <div class="login-subtitle">Suivi de portefeuille</div>
+    </div>
+    <div class="login-error" id="login-error">Identifiants incorrects</div>
+    <div class="form-group">
+      <label class="form-label">Identifiant</label>
+      <input type="text" class="form-input" id="input-user" placeholder="nom d'utilisateur" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input type="password" class="form-input" id="input-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" onclick="doLogin()">Connexion</button>
+  </div>
+</div>
+
+<!-- ─── APP ──────────────────────────────────────── -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📈</div>
+      <span class="sidebar-logo-title">PEA Dashboard</span>
+      <div class="sidebar-logo-sub">v1.0</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <div class="nav-item active" onclick="showPage('portfolio')">
+        <span class="nav-icon">💼</span> Portefeuille
+      </div>
+      <div class="nav-item" onclick="showPage('analyse')">
+        <span class="nav-icon">🔍</span> Analyse
+      </div>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <span class="user-name" id="user-name-display">armel</span>
+        <button class="btn-logout" onclick="doLogout()" title="Déconnexion">⏻</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- PORTFOLIO PAGE -->
+    <div class="page active" id="page-portfolio">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Portefeuille</div>
+          <div class="page-subtitle" id="portfolio-date">Mis à jour aujourd'hui</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Valeur totale</div>
+          <div class="stat-value" id="stat-total">— €</div>
+          <div class="stat-change" id="stat-total-change">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Investi</div>
+          <div class="stat-value" id="stat-invested">— €</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">+/- Value</div>
+          <div class="stat-value" id="stat-pnl">— €</div>
+          <div class="stat-change" id="stat-pnl-pct">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Nb. lignes</div>
+          <div class="stat-value" id="stat-lines">0</div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header">
+          <span class="table-title">Mes actions</span>
+          <button class="btn-add" onclick="openModal()">＋ Ajouter une ligne</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Qté</th>
+              <th>Prix achat</th>
+              <th>Prix actuel</th>
+              <th>Valeur</th>
+              <th>+/- Value</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="portfolio-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-text">Aucune action dans le portefeuille.<br>Ajoutez votre première ligne.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYSE PAGE -->
+    <div class="page" id="page-analyse">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Analyse</div>
+          <div class="page-subtitle">Analysez vos positions et explorez de nouvelles actions</div>
+        </div>
+      </div>
+
+      <div class="analyse-grid">
+
+        <!-- Panel gauche : portefeuille -->
+        <div class="analyse-panel">
+          <div class="analyse-panel-header">
+            <div class="analyse-panel-icon icon-portfolio">💼</div>
+            <div>
+              <div class="analyse-panel-title">Mon portefeuille</div>
+              <div class="analyse-panel-sub">Cliquez sur une action pour l'analyser</div>
+            </div>
+          </div>
+          <div class="analyse-stock-list" id="analyse-portfolio-list">
+            <div class="ar-empty">Votre portefeuille est vide.</div>
+          </div>
+        </div>
+
+        <!-- Panel droite : résultat analyse -->
+        <div class="analyse-panel">
+          <div class="analyse-panel-header">
+            <div class="analyse-panel-icon icon-search">🔍</div>
+            <div>
+              <div class="analyse-panel-title">Rechercher une action</div>
+              <div class="analyse-panel-sub">Ou sélectionnez dans votre portefeuille</div>
+            </div>
+          </div>
+
+          <div class="analyse-search-box">
+            <input type="text" class="form-input" id="analyse-search-input"
+              placeholder="Nom ou ticker… (ex: LVMH, AAPL)"
+              oninput="onAnalyseInput()" style="font-size:13px;">
+            <div id="analyse-search-status" style="margin-top:6px;"></div>
+          </div>
+
+          <div class="analyse-result-zone">
+            <div class="ar-empty" id="analyse-empty">Sélectionnez ou recherchez une action pour voir l'analyse.</div>
+
+            <div class="result-card" id="result-card">
+              <!-- Header -->
+              <div class="rc-header">
+                <div class="rc-icon" id="rc-icon">—</div>
+                <div style="flex:1">
+                  <div class="rc-name" id="rc-name">—</div>
+                  <div class="rc-ticker-exch" id="rc-ticker-exch">—</div>
+                </div>
+              </div>
+
+              <!-- Prix + variation -->
+              <div class="rc-price-row">
+                <div class="rc-price" id="rc-price">—</div>
+                <div class="rc-currency" id="rc-currency"></div>
+                <div class="rc-change-badge" id="rc-change-badge">—</div>
+              </div>
+
+              <!-- Score global -->
+              <div class="score-card" id="score-card" style="display:none">
+                <div class="score-left">
+                  <div class="score-label">Score global</div>
+                  <div class="score-value" id="score-value">—</div>
+                  <div class="score-verdict" id="score-verdict">—</div>
+                </div>
+                <div class="score-gauge-wrap">
+                  <svg class="score-gauge" viewBox="0 0 120 70">
+                    <path d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="#1e2330" stroke-width="12" stroke-linecap="round"/>
+                    <path id="gauge-arc" d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="#4fffb0" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 157"/>
+                  </svg>
+                </div>
+              </div>
+
+
+
+              <!-- Stats fondamentales -->
+              <div class="rc-stats" id="rc-stats"></div>
+
+              <!-- Indicateurs clés -->
+              <div id="key-indicators" style="display:none; margin-bottom:16px;">
+                <div class="breakdown-title" style="margin-bottom:12px;">Indicateurs clés</div>
+                <div class="indicators-grid">
+                  <div class="indicator-card" id="ind-pe">
+                    <div class="ind-top">
+                      <span class="ind-label">P/E Ratio</span>
+                      <span class="ind-badge" id="ind-pe-badge">—</span>
+                    </div>
+                    <div class="ind-value" id="ind-pe-val">—</div>
+                    <div class="ind-bar-track"><div class="ind-bar-fill" id="ind-pe-bar"></div></div>
+                    <div class="ind-desc" id="ind-pe-desc">—</div>
+                  </div>
+                  <div class="indicator-card" id="ind-beta">
+                    <div class="ind-top">
+                      <span class="ind-label">Bêta</span>
+                      <span class="ind-badge" id="ind-beta-badge">—</span>
+                    </div>
+                    <div class="ind-value" id="ind-beta-val">—</div>
+                    <div class="ind-bar-track"><div class="ind-bar-fill" id="ind-beta-bar"></div></div>
+                    <div class="ind-desc" id="ind-beta-desc">—</div>
+                  </div>
+                  <div class="indicator-card" id="ind-div">
+                    <div class="ind-top">
+                      <span class="ind-label">Dividende</span>
+                      <span class="ind-badge" id="ind-div-badge">—</span>
+                    </div>
+                    <div class="ind-value" id="ind-div-val">—</div>
+                    <div class="ind-bar-track"><div class="ind-bar-fill" id="ind-div-bar"></div></div>
+                    <div class="ind-desc" id="ind-div-desc">—</div>
+                  </div>
+                  <div class="indicator-card" id="ind-mom">
+                    <div class="ind-top">
+                      <span class="ind-label">Momentum 3m</span>
+                      <span class="ind-badge" id="ind-mom-badge">—</span>
+                    </div>
+                    <div class="ind-value" id="ind-mom-val">—</div>
+                    <div class="ind-bar-track"><div class="ind-bar-fill" id="ind-mom-bar"></div></div>
+                    <div class="ind-desc" id="ind-mom-desc">—</div>
+                  </div>
+                </div>
+              </div>
+
+
+
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ─── MODAL ─────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">Ajouter une action</div>
+    <div class="modal-sub">Entrez le nom ou le ticker pour trouver le cours actuel.</div>
+
+    <div class="form-group">
+      <label class="form-label">Nom ou ticker <span class="price-tag">auto prix</span></label>
+      <input type="text" class="form-input" id="modal-ticker" placeholder="ex: LVMH, Apple, TotalEnergies…" oninput="onTickerInput()">
+      <div id="search-status"></div>
+      <div class="search-result" id="search-result">
+        <div class="search-result-name" id="res-name">—</div>
+        <div class="search-result-price" id="res-price">—</div>
+        <div class="search-result-info" id="res-info">—</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Quantité</label>
+      <input type="number" class="form-input" id="modal-qty" placeholder="10" min="0.001" step="any">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Prix d'achat (€)</label>
+      <input type="number" class="form-input" id="modal-buy-price" placeholder="150.00" min="0" step="any">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn-primary" id="btn-confirm" onclick="confirmAdd()" disabled>Ajouter</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL EDITION -->
+<div class="modal-overlay" id="edit-modal-overlay" onclick="closeEditModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title" id="edit-modal-title">Modifier</div>
+    <div class="modal-sub"   id="edit-modal-sub">—</div>
+    <div class="edit-tabs">
+      <button class="edit-tab active-buy" id="tab-buy"  onclick="setEditTab('buy')">+ Acheter</button>
+      <button class="edit-tab"            id="tab-sell" onclick="setEditTab('sell')">- Vendre</button>
+    </div>
+    <div class="edit-info">
+      <div class="edit-info-item"><label>Position</label><span id="edit-cur-qty">-</span></div>
+      <div class="edit-info-item"><label>PRU</label><span id="edit-cur-pru">-</span></div>
+      <div class="edit-info-item"><label>Prix actuel</label><span id="edit-cur-price">-</span></div>
+      <div class="edit-info-item"><label>+/- Value</label><span id="edit-cur-pnl">-</span></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" id="edit-qty-label">Quantite a acheter</label>
+      <input type="number" class="form-input" id="edit-qty" placeholder="10" min="0.001" step="any">
+    </div>
+    <div class="form-group" id="edit-price-group">
+      <label class="form-label">Prix (EUR)</label>
+      <input type="number" class="form-input" id="edit-price" placeholder="150.00" min="0" step="any">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeEditModal()">Annuler</button>
+      <button class="btn-primary" id="btn-edit-confirm" onclick="confirmEdit()">Confirmer</button>
+    </div>
+  </div>
+</div>
+<script>
+// ─── AUTH ────────────────────────────────────────────
+const USERS = { armel: 'armel', nolan: 'nolan' };
+let currentUser = null;
+
+// Storage helpers (per-user)
+function getPortfolio(user) {
+  try {
+    return JSON.parse(localStorage.getItem(`pea_portfolio_${user}`)) || [];
+  } catch { return []; }
+}
+function savePortfolio(user, data) {
+  localStorage.setItem(`pea_portfolio_${user}`, JSON.stringify(data));
+}
+
+function doLogin() {
+  const u = document.getElementById('input-user').value.trim().toLowerCase();
+  const p = document.getElementById('input-pass').value;
+  const err = document.getElementById('login-error');
+  if (USERS[u] && USERS[u] === p) {
+    err.style.display = 'none';
+    currentUser = u;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('user-avatar').textContent = u[0].toUpperCase();
+    document.getElementById('user-name-display').textContent = u;
+    const d = new Date();
+    document.getElementById('portfolio-date').textContent =
+      'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    renderPortfolio();
+  } else {
+    err.style.display = 'block';
+  }
+}
+
+document.getElementById('input-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('input-user').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('input-pass').focus();
+});
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('input-user').value = '';
+  document.getElementById('input-pass').value = '';
+}
+
+// ─── NAVIGATION ──────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id === 'analyse') renderAnalysePortfolio();
+}
+
+// ─── PORTFOLIO ────────────────────────────────────────
+function fmt(n) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+
+function renderPortfolio() {
+  const data = getPortfolio(currentUser);
+  const tbody = document.getElementById('portfolio-tbody');
+  const empty = document.getElementById('empty-state');
+
+  tbody.innerHTML = '';
+
+  let totalVal = 0, totalInvested = 0;
+
+  if (data.length === 0) {
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    data.forEach((row, i) => {
+      const val = row.qty * row.currentPrice;
+      const invested = row.qty * row.buyPrice;
+      const pnl = val - invested;
+      const pct = invested > 0 ? (pnl / invested) * 100 : 0;
+      totalVal += val;
+      totalInvested += invested;
+
+      const abbr = (row.name || row.ticker || '?').substring(0, 3).toUpperCase();
+      const isPos = pnl >= 0;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div class="ticker-cell">
+            ${logoHtml(row.ticker, 26, 'ticker-icon')}
+            <div>
+              <div class="ticker-name">${row.name || row.ticker}</div>
+              <div class="ticker-sym">${row.ticker || ''}</div>
+            </div>
+          </div>
+        </td>
+        <td class="mono">${row.qty}</td>
+        <td class="mono">${fmt(row.buyPrice)}</td>
+        <td class="mono">${fmt(row.currentPrice)}</td>
+        <td class="mono" style="font-weight:500">${fmt(val)}</td>
+        <td>
+          <span class="${isPos ? 'badge-pos' : 'badge-neg'}">
+            ${isPos ? '▲' : '▼'} ${fmt(Math.abs(pnl))} (${isPos ? '+' : ''}${pct.toFixed(2)}%)
+          </span>
+        </td>
+        <td style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
+          <button class="btn-edit" onclick="openEditModal(${i})" title="Modifier">✏</button>
+          <button class="btn-del" onclick="deleteRow(${i})" title="Supprimer" title="Supprimer">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  const totalPnl = totalVal - totalInvested;
+  const totalPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+
+  document.getElementById('stat-total').textContent = data.length ? fmt(totalVal) : '— €';
+  document.getElementById('stat-invested').textContent = data.length ? fmt(totalInvested) : '— €';
+  const pnlEl = document.getElementById('stat-pnl');
+  pnlEl.textContent = data.length ? fmt(totalPnl) : '— €';
+  pnlEl.style.color = totalPnl >= 0 ? 'var(--positive)' : 'var(--negative)';
+  document.getElementById('stat-pnl-pct').textContent = data.length ? `${totalPnl >= 0 ? '+' : ''}${totalPct.toFixed(2)}%` : '—';
+  document.getElementById('stat-pnl-pct').className = 'stat-change ' + (totalPnl >= 0 ? 'pos' : 'neg');
+  document.getElementById('stat-lines').textContent = data.length;
+}
+
+function deleteRow(i) {
+  const data = getPortfolio(currentUser);
+  data.splice(i, 1);
+  savePortfolio(currentUser, data);
+  renderPortfolio();
+}
+let editRowIndex = -1;
+let editTab = 'buy';
+
+function openEditModal(i) {
+  const row = getPortfolio(currentUser)[i];
+  editRowIndex = i;
+  document.getElementById('edit-modal-title').textContent = row.name || row.ticker;
+  document.getElementById('edit-modal-sub').textContent   = row.ticker;
+  document.getElementById('edit-cur-qty').textContent     = row.qty;
+  document.getElementById('edit-cur-pru').textContent     = fmt(row.buyPrice);
+  document.getElementById('edit-cur-price').textContent   = fmt(row.currentPrice);
+  var pnl = (row.currentPrice - row.buyPrice) * row.qty;
+  var el  = document.getElementById('edit-cur-pnl');
+  el.textContent = (pnl >= 0 ? '+' : '') + fmt(pnl);
+  el.style.color = pnl >= 0 ? 'var(--positive)' : 'var(--negative)';
+  document.getElementById('edit-qty').value   = '';
+  document.getElementById('edit-price').value = '';
+  setEditTab('buy');
+  document.getElementById('edit-modal-overlay').classList.add('open');
+}
+function closeEditModal() {
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+}
+function closeEditModalOutside(e) {
+  if (e.target === document.getElementById('edit-modal-overlay')) closeEditModal();
+}
+function setEditTab(tab) {
+  editTab = tab;
+  var row = getPortfolio(currentUser)[editRowIndex];
+  document.getElementById('tab-buy').className  = 'edit-tab' + (tab === 'buy'  ? ' active-buy'  : '');
+  document.getElementById('tab-sell').className = 'edit-tab' + (tab === 'sell' ? ' active-sell' : '');
+  var btn = document.getElementById('btn-edit-confirm');
+  if (tab === 'buy') {
+    document.getElementById('edit-qty-label').textContent = 'Quantite a acheter';
+    document.getElementById('edit-price-group').style.display = 'block';
+    btn.textContent = 'Acheter';
+    btn.style.background = 'var(--positive)';
+    if (row) document.getElementById('edit-price').value = row.currentPrice.toFixed(2);
+  } else {
+    document.getElementById('edit-qty-label').textContent = 'Quantite a vendre (max ' + (row ? row.qty : '') + ')';
+    document.getElementById('edit-price-group').style.display = 'none';
+    btn.textContent = 'Vendre';
+    btn.style.background = 'var(--negative)';
+  }
+}
+function confirmEdit() {
+  var data = getPortfolio(currentUser);
+  var row  = data[editRowIndex];
+  var qty  = parseFloat(document.getElementById('edit-qty').value);
+  if (!qty || qty <= 0) { alert('Quantite invalide.'); return; }
+  if (editTab === 'buy') {
+    var price = parseFloat(document.getElementById('edit-price').value);
+    if (!price || price <= 0) { alert('Prix invalide.'); return; }
+    var newQty = row.qty + qty;
+    row.buyPrice = Math.round(((row.qty * row.buyPrice + qty * price) / newQty) * 10000) / 10000;
+    row.qty      = Math.round(newQty * 10000) / 10000;
+  } else {
+    if (qty > row.qty) { alert('Quantite superieure a la position.'); return; }
+    if (qty === row.qty) {
+      data.splice(editRowIndex, 1);
+      savePortfolio(currentUser, data);
+      closeEditModal();
+      renderPortfolio();
+      return;
+    }
+    row.qty = Math.round((row.qty - qty) * 10000) / 10000;
+  }
+  savePortfolio(currentUser, data);
+  closeEditModal();
+  renderPortfolio();
+}
+
+
+// ─── MODAL ────────────────────────────────────────────
+let searchTimer = null;
+let foundPrice = null;
+let foundName = null;
+let foundTicker = null;
+
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('modal-ticker').value = '';
+  document.getElementById('modal-qty').value = '';
+  document.getElementById('modal-buy-price').value = '';
+  document.getElementById('search-result').classList.remove('visible');
+  document.getElementById('search-status').innerHTML = '';
+  document.getElementById('btn-confirm').disabled = true;
+  foundPrice = null; foundName = ''; foundTicker = '';
+  foundQuoteType = 'EQUITY'; foundPE = null; foundBeta = null;
+  foundDivYield = null; foundHasDividend = false;
+  foundPrice = null; foundName = null; foundTicker = null;
+  setTimeout(() => document.getElementById('modal-ticker').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function onTickerInput() {
+  clearTimeout(searchTimer);
+  const val = document.getElementById('modal-ticker').value.trim();
+  document.getElementById('search-result').classList.remove('visible');
+  document.getElementById('btn-confirm').disabled = true;
+  foundPrice = null;
+
+  if (val.length < 2) {
+    document.getElementById('search-status').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('search-status').innerHTML =
+    '<div class="status-loading"><span class="loading-spinner"></span> Recherche du cours…</div>';
+
+  searchTimer = setTimeout(() => fetchPrice(val), 700);
+}
+
+// ─── YAHOO FINANCE ───────────────────────────────────
+// Step 1 : search ticker from name via Yahoo autocomplete
+// ─── YAHOO FINANCE via allorigins proxy ──────────────
+function proxyUrl(url) {
+  return 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+}
+
+
+// ─── BASE ETF LOCALE ─────────────────────────────────
+// Recherche par nom, ISIN ou ticker — avant d'appeler Yahoo
+const ETF_DB = [
+  // ── ETF PEA (Euronext Paris) ──
+  { ticker:'PANX.PA', isin:'FR0013412285', name:'Amundi PEA Nasdaq 100', aliases:['amundi nasdaq','pea nasdaq','nasdaq 100 pea','panx'] },
+  { ticker:'PCEU.PA', isin:'FR0013412269', name:'Amundi PEA Euro Stoxx 50', aliases:['amundi euro stoxx','pea euro stoxx','pceu'] },
+  { ticker:'RS2K.PA', isin:'FR0011714066', name:'Amundi PEA Russell 2000', aliases:['amundi russell','pea russell','rs2k','russell 2000'] },
+  { ticker:'PAEEM.PA',isin:'FR0013412020', name:'Amundi PEA MSCI Emerging Markets', aliases:['amundi emerging','pea emerging','pea émergents','paeem'] },
+  { ticker:'MWRD.PA', isin:'LU1681045370', name:'Amundi MSCI World UCITS', aliases:['amundi world','mwrd','msci world amundi'] },
+  { ticker:'CW8.PA',  isin:'LU1681043599', name:'Amundi MSCI World UCITS Acc', aliases:['cw8','amundi cw8','world amundi acc'] },
+  { ticker:'ESE.PA',  isin:'FR0013311273', name:'BNP Paribas Easy S&P 500 UCITS', aliases:['bnp sp500','bnp s&p','ese','bnp paribas easy'] },
+  { ticker:'WPEA.PA', isin:'IE0002XZSHO1', name:'Invesco MSCI World UCITS PEA', aliases:['invesco world pea','wpea'] },
+  { ticker:'EWLD.PA', isin:'IE00B4L5Y983', name:'iShares Core MSCI World UCITS PEA', aliases:['ishares world pea','ewld'] },
+
+  // ── ETF Euronext Amsterdam ──
+  { ticker:'IWDA.AS', isin:'IE00B4L5Y983', name:'iShares Core MSCI World UCITS', aliases:['ishares world','iwda','msci world ishares'] },
+  { ticker:'CSPX.AS', isin:'IE00B5BMR087', name:'iShares Core S&P 500 UCITS', aliases:['ishares sp500','cspx','s&p 500 ishares'] },
+  { ticker:'EMIM.AS', isin:'IE00BKM4GZ66', name:'iShares Core MSCI EM IMI UCITS', aliases:['ishares emerging','emim'] },
+  { ticker:'EIMI.AS', isin:'IE00BD45KH83', name:'iShares Core MSCI EM IMI UCITS USD', aliases:['ishares em','eimi'] },
+  { ticker:'VWRL.AS', isin:'IE00B3RBWM25', name:'Vanguard FTSE All-World UCITS', aliases:['vanguard all world','vwrl','ftse all world'] },
+  { ticker:'VWCE.AS', isin:'IE00BK5BQT80', name:'Vanguard FTSE All-World Acc UCITS', aliases:['vanguard world acc','vwce'] },
+  { ticker:'VAGF.AS', isin:'IE00BG47KB92', name:'Vanguard Global Aggregate Bond UCITS', aliases:['vanguard bond','vagf'] },
+  { ticker:'IUSQ.AS', isin:'IE00B4L5YX21', name:'iShares MSCI ACWI UCITS', aliases:['ishares acwi','iusq','acwi'] },
+  { ticker:'SPPW.AS', isin:'IE00B7KQ7B66', name:'SPDR S&P 500 UCITS', aliases:['spdr sp500','sppw'] },
+
+  // ── ETF US (CTO) ──
+  { ticker:'SPY',     isin:'US78462F1030', name:'SPDR S&P 500 ETF Trust', aliases:['spy','s&p 500','spdr'] },
+  { ticker:'QQQ',     isin:'US46090E1038', name:'Invesco QQQ Nasdaq 100', aliases:['qqq','nasdaq 100','invesco qqq'] },
+  { ticker:'VTI',     isin:'US9229087690', name:'Vanguard Total Stock Market ETF', aliases:['vti','vanguard total'] },
+  { ticker:'VT',      isin:'US9220427424', name:'Vanguard Total World Stock ETF', aliases:['vt','vanguard world'] },
+  { ticker:'VOO',     isin:'US9229083632', name:'Vanguard S&P 500 ETF', aliases:['voo','vanguard sp500'] },
+  { ticker:'ARKK',    isin:'US00214Q1040', name:'ARK Innovation ETF', aliases:['ark','arkk','ark innovation'] },
+  { ticker:'GLD',     isin:'US78463V1070', name:'SPDR Gold Shares', aliases:['gld','gold','or'] },
+  { ticker:'TLT',     isin:'US4642874329', name:'iShares 20+ Year Treasury Bond ETF', aliases:['tlt','treasury','obligations'] },
+  { ticker:'SOXX',    isin:'US4642887412', name:'iShares Semiconductor ETF', aliases:['soxx','semiconducteurs','semi'] },
+
+  // ── ETF Obligataires / Autres ──
+  { ticker:'SGLD.AS', isin:'IE00B579F325', name:'Invesco Physical Gold ETC', aliases:['invesco gold','sgld','or physique'] },
+  { ticker:'XDWD.AS', isin:'IE00BJ0KDQ92', name:'Xtrackers MSCI World Swap UCITS', aliases:['xtrackers world','xdwd'] },
+  { ticker:'BNKE.PA', isin:'LU1829219556', name:'Lyxor Euro Stoxx Banks UCITS', aliases:['lyxor banks','bnke','banques'] },
+];
+
+function searchETFLocal(query) {
+  const q = query.toLowerCase().trim();
+  // Match ISIN exact
+  const byIsin = ETF_DB.find(e => e.isin.toLowerCase() === q);
+  if (byIsin) return byIsin;
+  // Match ticker exact
+  const byTicker = ETF_DB.find(e => e.ticker.toLowerCase() === q || e.ticker.toLowerCase().replace(/\.[a-z]+$/, '') === q);
+  if (byTicker) return byTicker;
+  // Match name ou alias (contient)
+  const byName = ETF_DB.find(e =>
+    e.name.toLowerCase().includes(q) ||
+    e.aliases.some(a => a.includes(q))
+  );
+  return byName || null;
+}
+
+// ── Proxy robuste ──────────────────────────────────────
+async function fetchWithFallback(url) {
+  // Proxies triés par fiabilité sur GitHub Pages
+  const attempts = [
+    // allorigins — le plus connu, renvoie { contents, status }
+    async (u) => {
+      const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(u), {signal: AbortSignal.timeout(8000)});
+      const j = await r.json();
+      if (!j.contents || j.contents === 'null') throw new Error('empty');
+      return j.contents;
+    },
+    // corsproxy.io — renvoie le body directement
+    async (u) => {
+      const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(u), {signal: AbortSignal.timeout(8000)});
+      if (!r.ok) throw new Error('not ok');
+      return await r.text();
+    },
+    // allorigins avec query2
+    async (u) => {
+      const u2 = u.replace('query1.', 'query2.');
+      const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(u2), {signal: AbortSignal.timeout(8000)});
+      const j = await r.json();
+      if (!j.contents || j.contents === 'null') throw new Error('empty');
+      return j.contents;
+    },
+    // cors.eu.org
+    async (u) => {
+      const r = await fetch('https://cors.eu.org/' + u, {signal: AbortSignal.timeout(8000)});
+      if (!r.ok) throw new Error('not ok');
+      return await r.text();
+    },
+    // codetabs
+    async (u) => {
+      const r = await fetch('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u), {signal: AbortSignal.timeout(8000)});
+      if (!r.ok) throw new Error('not ok');
+      return await r.text();
+    },
+  ];
+
+  let lastErr = '';
+  for (const attempt of attempts) {
+    try {
+      const raw = await attempt(url);
+      // Valider que c'est du JSON Yahoo valide
+      const parsed = JSON.parse(raw);
+      // Vérifier pas d'erreur Yahoo
+      if (parsed.chart && parsed.chart.error && parsed.chart.error.code) continue;
+      if (parsed.finance && parsed.finance.error) continue;
+      return raw;
+    } catch(e) {
+      lastErr = e.message;
+      continue;
+    }
+  }
+  throw new Error('Service temporairement indisponible. Réessayez dans quelques secondes. (' + lastErr + ')');
+}
+
+// ── Table ISIN → ticker (ETF/actions françaises courants) ─
+const ISIN_MAP = {
+  // ETF Amundi PEA
+  'FR0011871110': 'PANX.PA',  // Amundi PEA Nasdaq 100
+  'FR0013412285': 'MWRD.PA',  // Amundi MSCI World
+  'FR0011550185': 'PE500.PA', // Amundi PEA S&P 500
+  'FR0013412020': 'PAEEM.PA', // Amundi PEA Emerging Markets
+  'LU1681043599': 'CW8.PA',   // Amundi MSCI World UCITS
+  // ETF iShares
+  'IE00B4L5Y983': 'IWDA.AS',  // iShares Core MSCI World
+  'IE00B52SFT06': 'CSPX.L',   // iShares Core S&P 500
+  'IE00B3RBWM25': 'IWDA.AS',
+  // ETF Lyxor/Société Générale
+  'FR0011871128': 'PVAL.PA',
+  'LU0496786574': 'LYYA.PA',
+  // Actions CAC 40
+  'FR0000131104': 'BNP.PA',
+  'FR0000120271': 'AI.PA',
+  'FR0000120073': 'AIR.PA',
+  'FR0000120628': 'ACA.PA',
+  'FR0000120172': 'OR.PA',
+  'FR0000121014': 'MC.PA',
+  'FR0000054900': 'EN.PA',
+  'FR0000120321': 'SAN.PA',
+  'FR0000131708': 'SGO.PA',
+  'FR0000124711': 'SU.PA',
+  'FR0000125486': 'VIE.PA',
+  'FR0000120693': 'TTE.PA',
+  'FR0000133308': 'DG.PA',
+  'FR0010242511': 'DSY.PA',
+  'FR0000052292': 'RMS.PA',
+  'FR0000121261': 'BN.PA',
+  'FR0000130809': 'CS.PA',
+  'FR0000120503': 'RNO.PA',
+  'FR0000130650': 'ORA.PA',
+  'FR0000121667': 'VIV.PA',
+  'FR0000121485': 'ML.PA',
+  'FR0010208488': 'ENGI.PA', // Engie
+  'FR0000120578': 'ATO.PA',  // Atos
+  'FR0000131906': 'FP.PA',   // TotalEnergies (alt ISIN)
+  'FR0000045072': 'CNA.PA',  // Natixis
+  'FR0010307819': 'GLE.PA',  // Société Générale (alt)
+  'FR0000035081': 'AXA.PA',  // AXA (alt)
+  'FR0000073272': 'EDF.PA',  // EDF
+  'FR0000125338': 'FTE.PA',  // Orange (alt)
+  'FR0000131755': 'GBT.PA',  // Guerbet
+  'FR0000060303': 'HO.PA',
+  'FR0010307819': 'GLE.PA',
+  'FR0000052292': 'RMS.PA',
+};
+
+
+// ── LOGOS ────────────────────────────────────────────────
+// Logos chargés dynamiquement depuis Yahoo Finance
+
+// Reverse map: ticker → ISIN (built from ISIN_MAP)
+const LOGO_CACHE = {};
+const TICKER_TO_ISIN = Object.fromEntries(Object.entries(ISIN_MAP).map(([k,v]) => [v, k]));
+
+// Store foundISIN when user searches by ISIN
+let foundISIN = null;
+
+function logoHtml(ticker, size, cssClass) {
+  const abbr = ticker.replace(/\.[A-Z]+$/, '').slice(0, 3).toUpperCase();
+  const r    = Math.round(size * 0.25);
+  const st   = 'width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;object-fit:contain';
+  const url  = LOGO_CACHE[ticker] || null;
+
+  if (!url) return '<div class="' + cssClass + '">' + abbr + '</div>';
+
+  const onErr = 'var p=this.parentNode;p.textContent=\x22' + abbr + '\x22;p.classList.remove(\x22logo-wrap\x22)';
+  return '<div class="' + cssClass + ' logo-wrap">' +
+    '<img src="' + url + '" style="' + st + '" onerror="' + onErr + '">' +
+    '</div>';
+}
+// ── Résolution ISIN → ticker Yahoo ──────────────────────
+async function isinToTicker(isin) {
+  // 1. Table locale en premier (instantané, pas de réseau)
+  if (ISIN_MAP[isin]) return ISIN_MAP[isin];
+
+  // 2. OpenFIGI en fallback
+  try {
+    const r = await fetch('https://api.openfigi.com/v3/mapping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify([{ idType: 'ID_ISIN', idValue: isin }]),
+      signal: AbortSignal.timeout(6000)
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const hits = data[0] && data[0].data;
+    if (!hits || !hits.length) return null;
+    const pref = hits.find(h => h.exchCode && ['EPA','XETRA','AMS','LSE','NYQ','NAS','PCX'].includes(h.exchCode));
+    const hit  = pref || hits[0];
+    const exchMap = { EPA: '.PA', XETRA: '.DE', AMS: '.AS', LSE: '.L', NYQ: '', NAS: '', PCX: '' };
+    const suffix = exchMap[hit.exchCode] !== undefined ? exchMap[hit.exchCode] : '';
+    return hit.ticker + suffix;
+  } catch(e) { return null; }
+}
+
+// ── Recherche intelligente : nom / ticker / ISIN ────────
+async function smartSearch(query) {
+  const q = query.trim();
+
+  // 1. ISIN détecté (12 car, commence par 2 lettres)
+  if (/^[A-Z]{2}[A-Z0-9]{10}$/i.test(q)) {
+    const isinUpper = q.toUpperCase();
+    const ticker = await isinToTicker(isinUpper);
+    if (ticker) {
+      foundISIN = isinUpper;
+      return [{ symbol: ticker, longname: ticker, quoteType: ISIN_MAP[isinUpper] ? 'EQUITY' : 'EQUITY' }];
+    }
+    throw new Error('ISIN introuvable.');
+  }
+  foundISIN = null;
+
+  // 2. Recherche Yahoo standard (nom ou ticker)
+  const searchUrl = 'https://query1.finance.yahoo.com/v1/finance/search?q='
+    + encodeURIComponent(q) + '&lang=fr&region=FR&quotesCount=8&newsCount=0';
+  const raw = await fetchWithFallback(searchUrl);
+  const sd  = JSON.parse(raw);
+  const quotes = (sd.quotes || []).filter(q =>
+    q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND'
+  );
+  if (quotes.length) return quotes;
+
+  throw new Error('Aucun résultat. Essayez le ticker (ex: PANX.PA) ou l\'ISIN.');
+}
+
+async function fetchPrice(query) {
+  const statusEl = document.getElementById('search-status');
+  const resultEl = document.getElementById('search-result');
+  resultEl.classList.remove('visible');
+  document.getElementById('btn-confirm').disabled = true;
+  foundPrice = null;
+
+  try {
+    statusEl.innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Recherche…</div>';
+
+    // Étape 1 : cherche dans la base ETF locale (nom, ISIN, ticker)
+    const localETF = searchETFLocal(query);
+    let best;
+    if (localETF) {
+      best = { symbol: localETF.ticker, longname: localETF.name, quoteType: 'ETF' };
+    } else {
+      // Étape 2 : autocomplete Yahoo
+      const searchUrl = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(query) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
+      const sraw = await fetchWithFallback(searchUrl);
+      const sd = JSON.parse(sraw);
+      if (!sd || sd.error) throw new Error('Réponse invalide.');
+      const quotes = (sd.quotes || []).filter(q =>
+        q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND'
+      );
+      if (!quotes.length) throw new Error('Introuvable. Essayez le ticker (ex: MC.PA, IWDA.AS, AAPL).');
+      best = quotes[0];
+    }
+
+    // Step 2 — cours
+    statusEl.innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Récupération du cours…</div>';
+    const chartUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(best.symbol) + '?interval=1d&range=5d';
+    const qraw = await fetchWithFallback(chartUrl);
+    const qd = JSON.parse(qraw);
+
+    const result = qd.chart && qd.chart.result && qd.chart.result[0];
+    if (!result) throw new Error('Cours non disponible pour ce symbole.');
+    const meta = result.meta;
+
+    foundPrice  = meta.regularMarketPrice;
+    foundName   = best.longname || best.shortname || best.symbol;
+    foundTicker = best.symbol;
+
+    const prev = meta.chartPreviousClose || meta.previousClose || foundPrice;
+    const changePct = prev ? ((foundPrice - prev) / prev) * 100 : 0;
+    const isPos = changePct >= 0;
+
+    document.getElementById('res-name').textContent  = foundName;
+    document.getElementById('res-price').textContent =
+      foundPrice.toFixed(2) + ' ' + (meta.currency || '');
+    document.getElementById('res-info').textContent  =
+      best.symbol + '  ·  ' + (meta.exchangeName || '') +
+      '  ·  ' + (isPos ? '▲' : '▼') + ' ' + Math.abs(changePct).toFixed(2) + "% aujourd'hui";
+
+    statusEl.innerHTML = '';
+    resultEl.classList.add('visible');
+    document.getElementById('btn-confirm').disabled = false;
+
+    if (!document.getElementById('modal-buy-price').value) {
+      document.getElementById('modal-buy-price').value = foundPrice.toFixed(2);
+    }
+
+  } catch (err) {
+    statusEl.innerHTML = '<div class="status-error">⚠ ' + (err.message || 'Erreur inconnue.') + '</div>';
+    console.error(err);
+  }
+}
+
+function confirmAdd() {
+  const qty = parseFloat(document.getElementById('modal-qty').value);
+  const buyPrice = parseFloat(document.getElementById('modal-buy-price').value);
+
+  if (!foundPrice || !qty || qty <= 0 || !buyPrice || buyPrice <= 0) {
+    alert('Veuillez remplir tous les champs correctement.');
+    return;
+  }
+
+  const data = getPortfolio(currentUser);
+  data.push({
+    name:         foundName || document.getElementById('modal-ticker').value,
+    ticker:       foundTicker || '',
+    isin:         foundISIN || TICKER_TO_ISIN[foundTicker] || null,
+    qty:          qty,
+    buyPrice:     buyPrice,
+    currentPrice: foundPrice,
+    quoteType:    foundQuoteType || 'EQUITY',
+    pe:           foundPE,
+    beta:         foundBeta,
+    dividendYield:foundDivYield,
+    hasDividend:  foundHasDividend,
+    addedAt:      new Date().toISOString()
+  });
+  savePortfolio(currentUser, data);
+  closeModal();
+  renderPortfolio();
+}
+// ─── ANALYSE PAGE ────────────────────────────────────
+let analyseTimer = null;
+let currentAnalyseData = null;
+
+function renderAnalysePortfolio() {
+  const list = document.getElementById('analyse-portfolio-list');
+  if (!list) return;
+  const data = getPortfolio(currentUser);
+  if (!data.length) {
+    list.innerHTML = '<div class="ar-empty">Votre portefeuille est vide.</div>';
+    return;
+  }
+  list.innerHTML = data.map((row, i) => {
+    const abbr = (row.name || row.ticker || '?').substring(0,3).toUpperCase();
+    const pct = row.currentPrice && row.buyPrice
+      ? ((row.currentPrice - row.buyPrice) / row.buyPrice * 100) : 0;
+    const isPos = pct >= 0;
+    return '<div class="analyse-stock-item" onclick="selectPortfolioStock(' + i + ')" id="asi-' + i + '">' +
+      '<div class="asi-left">' +
+        logoHtml(row.ticker, 24, 'asi-icon') +
+        '<div>' +
+          '<div class="asi-name">' + (row.name || row.ticker) + '</div>' +
+          '<div class="asi-ticker">' + (row.ticker || '') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="asi-right">' +
+        '<div class="asi-price">' + (row.currentPrice ? row.currentPrice.toFixed(2) : '—') + '</div>' +
+        '<div class="asi-change ' + (isPos ? 'pos' : 'neg') + '">' + (isPos ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(2) + '%</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function selectPortfolioStock(i) {
+  document.querySelectorAll('.analyse-stock-item').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById('asi-' + i);
+  if (el) el.classList.add('selected');
+  const data = getPortfolio(currentUser);
+  const row = data[i];
+  if (!row) return;
+  const pct = row.currentPrice && row.buyPrice
+    ? ((row.currentPrice - row.buyPrice) / row.buyPrice * 100) : 0;
+  currentAnalyseData = {
+    name:         row.name,
+    ticker:       row.ticker,
+    price:        row.currentPrice,
+    currency:     'EUR',
+    exchange:     '',
+    changePct:    pct,
+    buyPrice:     row.buyPrice,
+    qty:          row.qty,
+    quoteType:    row.quoteType    || 'EQUITY',
+    pe:           row.pe           || null,
+    beta:         row.beta         || null,
+    dividendYield:row.dividendYield|| null,
+    hasDividend:  row.hasDividend  || false,
+  };
+  showResultCard(currentAnalyseData);
+  document.getElementById('analyse-search-input').value = '';
+  document.getElementById('analyse-search-status').innerHTML = '';
+}
+
+function showResultCard(d) {
+  if (d.logoUrl && d.ticker) LOGO_CACHE[d.ticker] = d.logoUrl;
+  document.getElementById('analyse-empty').style.display = 'none';
+  document.getElementById('result-card').classList.add('visible');
+  document.getElementById('score-card').style.display = 'none';
+
+
+  const abbr = (d.name || d.ticker || '?').substring(0,3).toUpperCase();
+  document.getElementById('rc-icon').outerHTML = logoHtml(d.ticker, 32, 'rc-icon');
+  document.getElementById('rc-name').textContent = d.name || d.ticker;
+  document.getElementById('rc-ticker-exch').textContent =
+    (d.ticker || '') + (d.exchange ? '  ·  ' + d.exchange : '');
+  document.getElementById('rc-price').textContent = d.price ? d.price.toFixed(2) : '—';
+  document.getElementById('rc-currency').textContent = d.currency || '';
+
+  const isPos = d.changePct >= 0;
+  const badge = document.getElementById('rc-change-badge');
+  badge.textContent = (isPos ? '▲ +' : '▼ ') + d.changePct.toFixed(2) + '%';
+  badge.className = 'rc-change-badge ' + (isPos ? 'pos' : 'neg');
+
+  const stats = document.getElementById('rc-stats');
+  const rows = [];
+  if (d.buyPrice) {
+    rows.push(['Prix achat', d.buyPrice.toFixed(2) + ' ' + (d.currency||'')]);
+    const pnlUnit = d.price - d.buyPrice;
+    rows.push(['+/- unit.', (pnlUnit >= 0 ? '+' : '') + pnlUnit.toFixed(2)]);
+  }
+  if (d.qty) {
+    rows.push(['Quantité', d.qty]);
+    rows.push(['Valeur', (d.price * d.qty).toFixed(2) + ' ' + (d.currency||'')]);
+  }
+  stats.innerHTML = rows.map(function(r) {
+    return '<div class="rc-stat"><div class="rc-stat-label">' + r[0] + '</div><div class="rc-stat-val">' + r[1] + '</div></div>';
+  }).join('');
+
+  // Lancer le score automatiquement
+  runAnalyse();
+}
+
+function onAnalyseInput() {
+  clearTimeout(analyseTimer);
+  const val = document.getElementById('analyse-search-input').value.trim();
+  document.getElementById('analyse-search-status').innerHTML = '';
+  if (val.length < 2) return;
+  document.getElementById('analyse-search-status').innerHTML =
+    '<div class="status-loading"><span class="loading-spinner"></span> Recherche...</div>';
+  analyseTimer = setTimeout(function() { fetchAnalyseStock(val); }, 700);
+}
+
+async function fetchAnalyseStock(query) {
+  const statusEl = document.getElementById('analyse-search-status');
+  try {
+    // Cherche d'abord dans la base ETF locale
+    const localETF2 = searchETFLocal(query);
+    let best;
+    if (localETF2) {
+      best = { symbol: localETF2.ticker, longname: localETF2.name, quoteType: 'ETF' };
+    } else {
+      const searchUrl2 = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(query) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
+      const sraw2 = await fetchWithFallback(searchUrl2);
+      const sd = JSON.parse(sraw2);
+      const quotes = (sd.quotes || []).filter(function(q) {
+        return q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND';
+      });
+      if (!quotes.length) throw new Error('Action introuvable.');
+      best = quotes[0];
+    }
+
+    const chartUrl2 = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(best.symbol) + '?interval=1d&range=5d';
+    const qraw = await fetchWithFallback(chartUrl2);
+    const qd = JSON.parse(qraw);
+    const result = qd.chart && qd.chart.result && qd.chart.result[0];
+    if (!result) throw new Error('Cours non disponible.');
+    const meta = result.meta;
+    const prev = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
+    const changePct = prev ? ((meta.regularMarketPrice - prev) / prev * 100) : 0;
+
+    currentAnalyseData = {
+      name: best.longname || best.shortname || best.symbol,
+      ticker: best.symbol,
+      price: meta.regularMarketPrice,
+      currency: meta.currency || '',
+      exchange: meta.exchangeName || '',
+      changePct: changePct,
+      prevClose: prev,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
+      regularMarketVolume: meta.regularMarketVolume,
+      quoteType:     best.quoteType             || 'EQUITY',
+      logoUrl:       best.logoUrl || (best.logos && best.logos[0] ? (best.logos[0].url || best.logos[0]) : null),
+      pe:            meta.trailingPE            || null,
+      beta:          meta.beta                  || null,
+      dividendYield: meta.trailingAnnualDividendRate > 0
+                       ? (meta.trailingAnnualDividendRate / meta.regularMarketPrice)
+                       : (meta.dividendYield || null),
+      hasDividend:   (meta.trailingAnnualDividendRate > 0) || false,
+    };
+    statusEl.innerHTML = '';
+    document.querySelectorAll('.analyse-stock-item').forEach(function(el) { el.classList.remove('selected'); });
+    showResultCard(currentAnalyseData);
+  } catch(err) {
+    statusEl.innerHTML = '<div class="status-error">&#9888; ' + (err.message || 'Erreur') + '</div>';
+  }
+}
+
+// ─── MOTEUR DE SCORE ─────────────────────────────────
+// Même logique que bourse-v2 : base 50, P/E + Beta + Momentum + Dividende
+// Données tirées directement du meta Yahoo v8/finance/chart (déjà fetché)
+
+function calcScore(d) {
+  const isETF = d.quoteType === 'ETF' || d.quoteType === 'MUTUALFUND';
+  let score = 50;
+
+  if (isETF) {
+    // ETF : pas de P/E pertinent — score basé sur Beta + Momentum + Dividende
+    // Beta (volatilité du tracker)
+    const beta = parseFloat(d.beta);
+    if (!isNaN(beta) && beta > 0) {
+      score += beta < 0.8 ? 15 : beta <= 1.1 ? 10 : beta <= 1.4 ? 5 : beta <= 1.8 ? -5 : -12;
+    }
+    // Momentum
+    const pct = d.changePct || 0;
+    if      (pct >  3) score += 20;
+    else if (pct >  0) score += 12;
+    else if (pct < -3) score -= 20;
+    else               score -=  8;
+    // Distribution
+    if (d.hasDividend || (d.dividendYield && d.dividendYield > 0)) score += 15;
+
+  } else {
+    // ACTION : P/E + Beta + Momentum + Dividende
+    const pe = parseFloat(d.pe);
+    if (!isNaN(pe) && pe > 0) {
+      score += pe < 15 ? 18 : pe < 25 ? 10 : pe > 60 ? -18 : pe > 40 ? -8 : 0;
+    }
+    const beta = parseFloat(d.beta);
+    if (!isNaN(beta) && beta > 0) {
+      score += beta < 0.8 ? 10 : beta > 1.8 ? -12 : beta > 1.3 ? -5 : 0;
+    }
+    const pct = d.changePct || 0;
+    if      (pct >  3) score += 14;
+    else if (pct >  0) score +=  7;
+    else if (pct < -3) score -= 14;
+    else               score -=  7;
+    if (d.hasDividend || (d.dividendYield && d.dividendYield > 0)) score += 10;
+  }
+
+  score = Math.max(5, Math.min(95, Math.round(score)));
+
+  const color   = score >= 65 ? 'var(--positive)' : score <= 35 ? 'var(--negative)' : 'var(--gold)';
+  const verdict = score >= 65 ? '🟢 ACHETER'      : score <= 35 ? '🔴 VENDRE'       : '🟡 CONSERVER';
+
+  return { score, color, verdict, isETF };
+}
+
+async function runAnalyse() {
+  if (!currentAnalyseData) return;
+
+  // Afficher loader
+  const sc = document.getElementById('score-card');
+  sc.style.display = 'flex';
+  document.getElementById('score-value').textContent  = '…';
+  document.getElementById('score-value').style.color  = 'var(--text2)';
+  document.getElementById('score-verdict').textContent = 'Calcul…';
+  document.getElementById('score-verdict').style.color = 'var(--text2)';
+  document.getElementById('gauge-arc').setAttribute('stroke-dasharray', '0 157');
+
+  try {
+    const r = calcScore(currentAnalyseData);
+
+    // Score number + verdict
+    document.getElementById('score-value').textContent  = r.score;
+    document.getElementById('score-value').style.color  = r.color;
+    document.getElementById('score-verdict').textContent = r.verdict;
+    document.getElementById('score-verdict').style.color = r.color;
+
+    // Gauge arc
+    const filled = (r.score / 100) * 157;
+    document.getElementById('gauge-arc').setAttribute('stroke-dasharray', filled + ' ' + (157 - filled));
+    document.getElementById('gauge-arc').setAttribute('stroke', r.color);
+
+    // Stats enrichies
+    const statRows = [];
+    if (currentAnalyseData.buyPrice) {
+      statRows.push(['Prix achat', currentAnalyseData.buyPrice.toFixed(2)]);
+      const pu = currentAnalyseData.price - currentAnalyseData.buyPrice;
+      statRows.push(['+/- unit.', (pu >= 0 ? '+' : '') + pu.toFixed(2)]);
+    }
+    if (currentAnalyseData.pe)    statRows.push(['P/E', parseFloat(currentAnalyseData.pe).toFixed(1)]);
+    if (currentAnalyseData.beta)  statRows.push(['Beta', parseFloat(currentAnalyseData.beta).toFixed(2)]);
+    if (currentAnalyseData.dividendYield && currentAnalyseData.dividendYield > 0)
+      statRows.push(['Dividende', (currentAnalyseData.dividendYield * 100).toFixed(2) + '%']);
+    if (currentAnalyseData.fiftyTwoWeekHigh) statRows.push(['+haut 52s', currentAnalyseData.fiftyTwoWeekHigh.toFixed(2)]);
+    if (currentAnalyseData.fiftyTwoWeekLow)  statRows.push(['+bas 52s',  currentAnalyseData.fiftyTwoWeekLow.toFixed(2)]);
+    if (currentAnalyseData.qty) {
+      statRows.push(['Quantité', currentAnalyseData.qty]);
+      statRows.push(['Valeur', (currentAnalyseData.price * currentAnalyseData.qty).toFixed(2) + ' ' + (currentAnalyseData.currency || '')]);
+    }
+
+    document.getElementById('rc-stats').innerHTML = statRows.map(function(row) {
+      return '<div class="rc-stat"><div class="rc-stat-label">' + row[0] +
+             '</div><div class="rc-stat-val">' + row[1] + '</div></div>';
+    }).join('');
+
+  } catch(err) {
+    document.getElementById('score-verdict').textContent = 'Données insuffisantes';
+    console.error(err);
+  }
+}
+
+</script>
+
+<!-- ─── EDIT MODAL ─────────────────────────────────── -->
+<div class="modal-overlay" id="edit-modal-overlay" onclick="closeEditModalOutside(event)">
+  <div class="modal" style="width:460px">
+    <div class="modal-title" id="edit-modal-title">Modifier la position</div>
+    <div class="modal-sub" id="edit-modal-sub">—</div>
+    <div class="edit-tabs">
+      <button class="edit-tab active" id="tab-buy"  onclick="switchEditTab('buy')">💰 Acheter +</button>
+      <button class="edit-tab"        id="tab-sell" onclick="switchEditTab('sell')">📤 Vendre</button>
+      <button class="edit-tab"        id="tab-edit" onclick="switchEditTab('edit')">✏ Modifier</button>
+    </div>
+    <!-- Acheter + (DCA) -->
+    <div class="edit-pane" id="pane-buy">
+      <div class="edit-info-row" id="buy-current-info"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Quantité à acheter</label>
+        <input type="number" class="form-input" id="edit-buy-qty" placeholder="ex: 10" min="0.001" step="any" oninput="updateBuyPreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix d'achat unitaire (€)</label>
+        <input type="number" class="form-input" id="edit-buy-price" placeholder="prix actuel" min="0" step="any" oninput="updateBuyPreview()">
+      </div>
+      <div class="edit-preview" id="buy-preview"></div>
+    </div>
+    <!-- Vendre -->
+    <div class="edit-pane" id="pane-sell" style="display:none">
+      <div class="edit-info-row" id="sell-current-info"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Quantité à vendre</label>
+        <input type="number" class="form-input" id="edit-sell-qty" placeholder="ex: 5" min="0.001" step="any" oninput="updateSellPreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix de vente unitaire (€)</label>
+        <input type="number" class="form-input" id="edit-sell-price" placeholder="prix actuel" min="0" step="any" oninput="updateSellPreview()">
+      </div>
+      <div class="edit-preview" id="sell-preview"></div>
+    </div>
+    <!-- Modifier manuellement -->
+    <div class="edit-pane" id="pane-edit" style="display:none">
+      <div class="form-group" style="margin-top:4px">
+        <label class="form-label">Quantité totale</label>
+        <input type="number" class="form-input" id="edit-qty" min="0.001" step="any">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix de revient moyen (€)</label>
+        <input type="number" class="form-input" id="edit-price" min="0" step="any">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeEditModal()">Annuler</button>
+      <button class="btn-primary" id="edit-confirm-btn" onclick="confirmEdit()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── EDIT MODAL ──────────────────────────────────────
+let editRowIndex = null;
+let editTab = 'buy';
+
+function openEditModal(i) {
+  editRowIndex = i;
+  editTab = 'buy';
+  const data = getPortfolio(currentUser);
+  const row  = data[i];
+
+  document.getElementById('edit-modal-title').textContent = row.name || row.ticker;
+  document.getElementById('edit-modal-sub').textContent =
+    row.ticker + '  ·  ' + row.qty + ' part' + (row.qty > 1 ? 's' : '') +
+    '  ·  PRU ' + row.buyPrice.toFixed(2) + ' €';
+
+  // Infos onglet achat
+  document.getElementById('buy-current-info').innerHTML =
+    'Qté actuelle : <span>' + row.qty + '</span>' +
+    '&emsp;PRU : <span>' + row.buyPrice.toFixed(2) + ' €</span>' +
+    '&emsp;Cours : <span>' + (row.currentPrice || '—') + ' €</span>';
+
+  // Infos onglet vente
+  document.getElementById('sell-current-info').innerHTML =
+    'Qté disponible : <span>' + row.qty + '</span>' +
+    '&emsp;PRU : <span>' + row.buyPrice.toFixed(2) + ' €</span>' +
+    '&emsp;Cours : <span>' + (row.currentPrice || '—') + ' €</span>';
+
+  // Pré-remplir onglet modifier
+  document.getElementById('edit-qty').value   = row.qty;
+  document.getElementById('edit-price').value = row.buyPrice;
+
+  // Reset champs
+  document.getElementById('edit-buy-qty').value    = '';
+  document.getElementById('edit-buy-price').value  = row.currentPrice || '';
+  document.getElementById('edit-sell-qty').value   = '';
+  document.getElementById('edit-sell-price').value = row.currentPrice || '';
+  document.getElementById('buy-preview').style.display  = 'none';
+  document.getElementById('sell-preview').style.display = 'none';
+
+  switchEditTab('buy');
+  document.getElementById('edit-modal-overlay').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+  editRowIndex = null;
+}
+
+function closeEditModalOutside(e) {
+  if (e.target === document.getElementById('edit-modal-overlay')) closeEditModal();
+}
+
+function switchEditTab(tab) {
+  editTab = tab;
+  ['buy','sell','edit'].forEach(t => {
+    document.getElementById('pane-' + t).style.display = t === tab ? 'block' : 'none';
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+  });
+}
+
+function updateBuyPreview() {
+  const data = getPortfolio(currentUser);
+  const row  = data[editRowIndex];
+  const addQty   = parseFloat(document.getElementById('edit-buy-qty').value)   || 0;
+  const addPrice = parseFloat(document.getElementById('edit-buy-price').value)  || 0;
+  const prev = document.getElementById('buy-preview');
+  if (!addQty || !addPrice) { prev.style.display = 'none'; return; }
+
+  const newQty    = row.qty + addQty;
+  const newCost   = (row.qty * row.buyPrice) + (addQty * addPrice);
+  const newPRU    = newCost / newQty;
+
+  prev.style.display = 'flex';
+  prev.className = 'edit-preview';
+  prev.innerHTML =
+    'Nouvelle qté : <span>' + newQty + '</span>' +
+    '&emsp;Nouveau PRU : <span>' + newPRU.toFixed(2) + ' €</span>' +
+    '&emsp;Investi total : <span>' + newCost.toFixed(2) + ' €</span>';
+}
+
+function updateSellPreview() {
+  const data  = getPortfolio(currentUser);
+  const row   = data[editRowIndex];
+  const sellQty   = parseFloat(document.getElementById('edit-sell-qty').value)   || 0;
+  const sellPrice = parseFloat(document.getElementById('edit-sell-price').value)  || 0;
+  const prev = document.getElementById('sell-preview');
+  if (!sellQty || !sellPrice) { prev.style.display = 'none'; return; }
+  if (sellQty > row.qty) {
+    prev.style.display = 'flex';
+    prev.className = 'edit-preview warn';
+    prev.innerHTML = '⚠ Quantité supérieure à la position actuelle (' + row.qty + ')';
+    return;
+  }
+
+  const pnl      = (sellPrice - row.buyPrice) * sellQty;
+  const pnlPct   = ((sellPrice - row.buyPrice) / row.buyPrice) * 100;
+  const remainQty = row.qty - sellQty;
+  const isPos    = pnl >= 0;
+
+  prev.style.display = 'flex';
+  prev.className = 'edit-preview' + (isPos ? '' : ' loss');
+  prev.innerHTML =
+    'Reste : <span>' + remainQty + ' parts</span>' +
+    '&emsp;+/- : <span>' + (isPos ? '+' : '') + pnl.toFixed(2) + ' € (' + pnlPct.toFixed(2) + '%)</span>';
+}
+
+function confirmEdit() {
+  const data = getPortfolio(currentUser);
+  const row  = data[editRowIndex];
+
+  if (editTab === 'buy') {
+    const addQty   = parseFloat(document.getElementById('edit-buy-qty').value);
+    const addPrice = parseFloat(document.getElementById('edit-buy-price').value);
+    if (!addQty || addQty <= 0 || !addPrice || addPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    const newQty  = row.qty + addQty;
+    const newCost = (row.qty * row.buyPrice) + (addQty * addPrice);
+    row.qty      = newQty;
+    row.buyPrice = newCost / newQty;
+
+  } else if (editTab === 'sell') {
+    const sellQty   = parseFloat(document.getElementById('edit-sell-qty').value);
+    const sellPrice = parseFloat(document.getElementById('edit-sell-price').value);
+    if (!sellQty || sellQty <= 0 || !sellPrice || sellPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    if (sellQty > row.qty) { alert('Quantité supérieure à la position.'); return; }
+    if (sellQty === row.qty) {
+      // Vente totale = suppression de la ligne
+      data.splice(editRowIndex, 1);
+      savePortfolio(currentUser, data);
+      closeEditModal();
+      renderPortfolio();
+      return;
+    }
+    row.qty -= sellQty;
+
+  } else if (editTab === 'edit') {
+    const newQty   = parseFloat(document.getElementById('edit-qty').value);
+    const newPrice = parseFloat(document.getElementById('edit-price').value);
+    if (!newQty || newQty <= 0 || !newPrice || newPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    row.qty      = newQty;
+    row.buyPrice = newPrice;
+  }
+
+  data[editRowIndex] = row;
+  savePortfolio(currentUser, data);
+  closeEditModal();
+  renderPortfolio();
+}
+</script>
+
+<!-- ─── EDIT MODAL ─────────────────────────────────── -->
+<div class="modal-overlay" id="edit-modal-overlay" onclick="closeEditModalOutside(event)">
+  <div class="modal" style="width:460px">
+    <div class="modal-title" id="edit-modal-title">Modifier la position</div>
+    <div class="modal-sub" id="edit-modal-sub">—</div>
+    <div class="edit-tabs">
+      <button class="edit-tab active" id="tab-buy"  onclick="switchEditTab('buy')">💰 Acheter +</button>
+      <button class="edit-tab"        id="tab-sell" onclick="switchEditTab('sell')">📤 Vendre</button>
+      <button class="edit-tab"        id="tab-edit" onclick="switchEditTab('edit')">✏ Modifier</button>
+    </div>
+    <!-- Acheter + (DCA) -->
+    <div class="edit-pane" id="pane-buy">
+      <div class="edit-info-row" id="buy-current-info"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Quantité à acheter</label>
+        <input type="number" class="form-input" id="edit-buy-qty" placeholder="ex: 10" min="0.001" step="any" oninput="updateBuyPreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix d'achat unitaire (€)</label>
+        <input type="number" class="form-input" id="edit-buy-price" placeholder="prix actuel" min="0" step="any" oninput="updateBuyPreview()">
+      </div>
+      <div class="edit-preview" id="buy-preview"></div>
+    </div>
+    <!-- Vendre -->
+    <div class="edit-pane" id="pane-sell" style="display:none">
+      <div class="edit-info-row" id="sell-current-info"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Quantité à vendre</label>
+        <input type="number" class="form-input" id="edit-sell-qty" placeholder="ex: 5" min="0.001" step="any" oninput="updateSellPreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix de vente unitaire (€)</label>
+        <input type="number" class="form-input" id="edit-sell-price" placeholder="prix actuel" min="0" step="any" oninput="updateSellPreview()">
+      </div>
+      <div class="edit-preview" id="sell-preview"></div>
+    </div>
+    <!-- Modifier manuellement -->
+    <div class="edit-pane" id="pane-edit" style="display:none">
+      <div class="form-group" style="margin-top:4px">
+        <label class="form-label">Quantité totale</label>
+        <input type="number" class="form-input" id="edit-qty" min="0.001" step="any">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix de revient moyen (€)</label>
+        <input type="number" class="form-input" id="edit-price" min="0" step="any">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeEditModal()">Annuler</button>
+      <button class="btn-primary" id="edit-confirm-btn" onclick="confirmEdit()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── EDIT MODAL ──────────────────────────────────────
+let editRowIndex = null;
+let editTab = 'buy';
+
+function openEditModal(i) {
+  editRowIndex = i;
+  editTab = 'buy';
+  const data = getPortfolio(currentUser);
+  const row  = data[i];
+
+  document.getElementById('edit-modal-title').textContent = row.name || row.ticker;
+  document.getElementById('edit-modal-sub').textContent =
+    row.ticker + '  ·  ' + row.qty + ' part' + (row.qty > 1 ? 's' : '') +
+    '  ·  PRU ' + row.buyPrice.toFixed(2) + ' €';
+
+  // Infos onglet achat
+  document.getElementById('buy-current-info').innerHTML =
+    'Qté actuelle : <span>' + row.qty + '</span>' +
+    '&emsp;PRU : <span>' + row.buyPrice.toFixed(2) + ' €</span>' +
+    '&emsp;Cours : <span>' + (row.currentPrice || '—') + ' €</span>';
+
+  // Infos onglet vente
+  document.getElementById('sell-current-info').innerHTML =
+    'Qté disponible : <span>' + row.qty + '</span>' +
+    '&emsp;PRU : <span>' + row.buyPrice.toFixed(2) + ' €</span>' +
+    '&emsp;Cours : <span>' + (row.currentPrice || '—') + ' €</span>';
+
+  // Pré-remplir onglet modifier
+  document.getElementById('edit-qty').value   = row.qty;
+  document.getElementById('edit-price').value = row.buyPrice;
+
+  // Reset champs
+  document.getElementById('edit-buy-qty').value    = '';
+  document.getElementById('edit-buy-price').value  = row.currentPrice || '';
+  document.getElementById('edit-sell-qty').value   = '';
+  document.getElementById('edit-sell-price').value = row.currentPrice || '';
+  document.getElementById('buy-preview').style.display  = 'none';
+  document.getElementById('sell-preview').style.display = 'none';
+
+  switchEditTab('buy');
+  document.getElementById('edit-modal-overlay').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+  editRowIndex = null;
+}
+
+function closeEditModalOutside(e) {
+  if (e.target === document.getElementById('edit-modal-overlay')) closeEditModal();
+}
+
+function switchEditTab(tab) {
+  editTab = tab;
+  ['buy','sell','edit'].forEach(t => {
+    document.getElementById('pane-' + t).style.display = t === tab ? 'block' : 'none';
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+  });
+}
+
+function updateBuyPreview() {
+  const data = getPortfolio(currentUser);
+  const row  = data[editRowIndex];
+  const addQty   = parseFloat(document.getElementById('edit-buy-qty').value)   || 0;
+  const addPrice = parseFloat(document.getElementById('edit-buy-price').value)  || 0;
+  const prev = document.getElementById('buy-preview');
+  if (!addQty || !addPrice) { prev.style.display = 'none'; return; }
+
+  const newQty    = row.qty + addQty;
+  const newCost   = (row.qty * row.buyPrice) + (addQty * addPrice);
+  const newPRU    = newCost / newQty;
+
+  prev.style.display = 'flex';
+  prev.className = 'edit-preview';
+  prev.innerHTML =
+    'Nouvelle qté : <span>' + newQty + '</span>' +
+    '&emsp;Nouveau PRU : <span>' + newPRU.toFixed(2) + ' €</span>' +
+    '&emsp;Investi total : <span>' + newCost.toFixed(2) + ' €</span>';
+}
+
+function updateSellPreview() {
+  const data  = getPortfolio(currentUser);
+  const row   = data[editRowIndex];
+  const sellQty   = parseFloat(document.getElementById('edit-sell-qty').value)   || 0;
+  const sellPrice = parseFloat(document.getElementById('edit-sell-price').value)  || 0;
+  const prev = document.getElementById('sell-preview');
+  if (!sellQty || !sellPrice) { prev.style.display = 'none'; return; }
+  if (sellQty > row.qty) {
+    prev.style.display = 'flex';
+    prev.className = 'edit-preview warn';
+    prev.innerHTML = '⚠ Quantité supérieure à la position actuelle (' + row.qty + ')';
+    return;
+  }
+
+  const pnl      = (sellPrice - row.buyPrice) * sellQty;
+  const pnlPct   = ((sellPrice - row.buyPrice) / row.buyPrice) * 100;
+  const remainQty = row.qty - sellQty;
+  const isPos    = pnl >= 0;
+
+  prev.style.display = 'flex';
+  prev.className = 'edit-preview' + (isPos ? '' : ' loss');
+  prev.innerHTML =
+    'Reste : <span>' + remainQty + ' parts</span>' +
+    '&emsp;+/- : <span>' + (isPos ? '+' : '') + pnl.toFixed(2) + ' € (' + pnlPct.toFixed(2) + '%)</span>';
+}
+
+function confirmEdit() {
+  const data = getPortfolio(currentUser);
+  const row  = data[editRowIndex];
+
+  if (editTab === 'buy') {
+    const addQty   = parseFloat(document.getElementById('edit-buy-qty').value);
+    const addPrice = parseFloat(document.getElementById('edit-buy-price').value);
+    if (!addQty || addQty <= 0 || !addPrice || addPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    const newQty  = row.qty + addQty;
+    const newCost = (row.qty * row.buyPrice) + (addQty * addPrice);
+    row.qty      = newQty;
+    row.buyPrice = newCost / newQty;
+
+  } else if (editTab === 'sell') {
+    const sellQty   = parseFloat(document.getElementById('edit-sell-qty').value);
+    const sellPrice = parseFloat(document.getElementById('edit-sell-price').value);
+    if (!sellQty || sellQty <= 0 || !sellPrice || sellPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    if (sellQty > row.qty) { alert('Quantité supérieure à la position.'); return; }
+    if (sellQty === row.qty) {
+      // Vente totale = suppression de la ligne
+      data.splice(editRowIndex, 1);
+      savePortfolio(currentUser, data);
+      closeEditModal();
+      renderPortfolio();
+      return;
+    }
+    row.qty -= sellQty;
+
+  } else if (editTab === 'edit') {
+    const newQty   = parseFloat(document.getElementById('edit-qty').value);
+    const newPrice = parseFloat(document.getElementById('edit-price').value);
+    if (!newQty || newQty <= 0 || !newPrice || newPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    row.qty      = newQty;
+    row.buyPrice = newPrice;
+  }
+
+  data[editRowIndex] = row;
+  savePortfolio(currentUser, data);
+  closeEditModal();
+  renderPortfolio();
+}
+</script>
+
+<!-- ─── EDIT MODAL ─────────────────────────────────── -->
+<div class="modal-overlay" id="edit-modal-overlay" onclick="closeEditModalOutside(event)">
+  <div class="modal" style="width:460px">
+    <div class="modal-title" id="edit-modal-title">Modifier la position</div>
+    <div class="modal-sub" id="edit-modal-sub">—</div>
+    <div class="edit-tabs">
+      <button class="edit-tab active" id="tab-buy"  onclick="switchEditTab('buy')">💰 Acheter +</button>
+      <button class="edit-tab"        id="tab-sell" onclick="switchEditTab('sell')">📤 Vendre</button>
+      <button class="edit-tab"        id="tab-edit" onclick="switchEditTab('edit')">✏ Modifier</button>
+    </div>
+    <!-- Acheter + (DCA) -->
+    <div class="edit-pane" id="pane-buy">
+      <div class="edit-info-row" id="buy-current-info"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Quantité à acheter</label>
+        <input type="number" class="form-input" id="edit-buy-qty" placeholder="ex: 10" min="0.001" step="any" oninput="updateBuyPreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix d'achat unitaire (€)</label>
+        <input type="number" class="form-input" id="edit-buy-price" placeholder="prix actuel" min="0" step="any" oninput="updateBuyPreview()">
+      </div>
+      <div class="edit-preview" id="buy-preview"></div>
+    </div>
+    <!-- Vendre -->
+    <div class="edit-pane" id="pane-sell" style="display:none">
+      <div class="edit-info-row" id="sell-current-info"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Quantité à vendre</label>
+        <input type="number" class="form-input" id="edit-sell-qty" placeholder="ex: 5" min="0.001" step="any" oninput="updateSellPreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix de vente unitaire (€)</label>
+        <input type="number" class="form-input" id="edit-sell-price" placeholder="prix actuel" min="0" step="any" oninput="updateSellPreview()">
+      </div>
+      <div class="edit-preview" id="sell-preview"></div>
+    </div>
+    <!-- Modifier manuellement -->
+    <div class="edit-pane" id="pane-edit" style="display:none">
+      <div class="form-group" style="margin-top:4px">
+        <label class="form-label">Quantité totale</label>
+        <input type="number" class="form-input" id="edit-qty" min="0.001" step="any">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix de revient moyen (€)</label>
+        <input type="number" class="form-input" id="edit-price" min="0" step="any">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeEditModal()">Annuler</button>
+      <button class="btn-primary" id="edit-confirm-btn" onclick="confirmEdit()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── EDIT MODAL ──────────────────────────────────────
+let editRowIndex = null;
+let editTab = 'buy';
+
+function openEditModal(i) {
+  editRowIndex = i;
+  editTab = 'buy';
+  const data = getPortfolio(currentUser);
+  const row  = data[i];
+
+  document.getElementById('edit-modal-title').textContent = row.name || row.ticker;
+  document.getElementById('edit-modal-sub').textContent =
+    row.ticker + '  ·  ' + row.qty + ' part' + (row.qty > 1 ? 's' : '') +
+    '  ·  PRU ' + row.buyPrice.toFixed(2) + ' €';
+
+  // Infos onglet achat
+  document.getElementById('buy-current-info').innerHTML =
+    'Qté actuelle : <span>' + row.qty + '</span>' +
+    '&emsp;PRU : <span>' + row.buyPrice.toFixed(2) + ' €</span>' +
+    '&emsp;Cours : <span>' + (row.currentPrice || '—') + ' €</span>';
+
+  // Infos onglet vente
+  document.getElementById('sell-current-info').innerHTML =
+    'Qté disponible : <span>' + row.qty + '</span>' +
+    '&emsp;PRU : <span>' + row.buyPrice.toFixed(2) + ' €</span>' +
+    '&emsp;Cours : <span>' + (row.currentPrice || '—') + ' €</span>';
+
+  // Pré-remplir onglet modifier
+  document.getElementById('edit-qty').value   = row.qty;
+  document.getElementById('edit-price').value = row.buyPrice;
+
+  // Reset champs
+  document.getElementById('edit-buy-qty').value    = '';
+  document.getElementById('edit-buy-price').value  = row.currentPrice || '';
+  document.getElementById('edit-sell-qty').value   = '';
+  document.getElementById('edit-sell-price').value = row.currentPrice || '';
+  document.getElementById('buy-preview').style.display  = 'none';
+  document.getElementById('sell-preview').style.display = 'none';
+
+  switchEditTab('buy');
+  document.getElementById('edit-modal-overlay').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+  editRowIndex = null;
+}
+
+function closeEditModalOutside(e) {
+  if (e.target === document.getElementById('edit-modal-overlay')) closeEditModal();
+}
+
+function switchEditTab(tab) {
+  editTab = tab;
+  ['buy','sell','edit'].forEach(t => {
+    document.getElementById('pane-' + t).style.display = t === tab ? 'block' : 'none';
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+  });
+}
+
+function updateBuyPreview() {
+  const data = getPortfolio(currentUser);
+  const row  = data[editRowIndex];
+  const addQty   = parseFloat(document.getElementById('edit-buy-qty').value)   || 0;
+  const addPrice = parseFloat(document.getElementById('edit-buy-price').value)  || 0;
+  const prev = document.getElementById('buy-preview');
+  if (!addQty || !addPrice) { prev.style.display = 'none'; return; }
+
+  const newQty    = row.qty + addQty;
+  const newCost   = (row.qty * row.buyPrice) + (addQty * addPrice);
+  const newPRU    = newCost / newQty;
+
+  prev.style.display = 'flex';
+  prev.className = 'edit-preview';
+  prev.innerHTML =
+    'Nouvelle qté : <span>' + newQty + '</span>' +
+    '&emsp;Nouveau PRU : <span>' + newPRU.toFixed(2) + ' €</span>' +
+    '&emsp;Investi total : <span>' + newCost.toFixed(2) + ' €</span>';
+}
+
+function updateSellPreview() {
+  const data  = getPortfolio(currentUser);
+  const row   = data[editRowIndex];
+  const sellQty   = parseFloat(document.getElementById('edit-sell-qty').value)   || 0;
+  const sellPrice = parseFloat(document.getElementById('edit-sell-price').value)  || 0;
+  const prev = document.getElementById('sell-preview');
+  if (!sellQty || !sellPrice) { prev.style.display = 'none'; return; }
+  if (sellQty > row.qty) {
+    prev.style.display = 'flex';
+    prev.className = 'edit-preview warn';
+    prev.innerHTML = '⚠ Quantité supérieure à la position actuelle (' + row.qty + ')';
+    return;
+  }
+
+  const pnl      = (sellPrice - row.buyPrice) * sellQty;
+  const pnlPct   = ((sellPrice - row.buyPrice) / row.buyPrice) * 100;
+  const remainQty = row.qty - sellQty;
+  const isPos    = pnl >= 0;
+
+  prev.style.display = 'flex';
+  prev.className = 'edit-preview' + (isPos ? '' : ' loss');
+  prev.innerHTML =
+    'Reste : <span>' + remainQty + ' parts</span>' +
+    '&emsp;+/- : <span>' + (isPos ? '+' : '') + pnl.toFixed(2) + ' € (' + pnlPct.toFixed(2) + '%)</span>';
+}
+
+function confirmEdit() {
+  const data = getPortfolio(currentUser);
+  const row  = data[editRowIndex];
+
+  if (editTab === 'buy') {
+    const addQty   = parseFloat(document.getElementById('edit-buy-qty').value);
+    const addPrice = parseFloat(document.getElementById('edit-buy-price').value);
+    if (!addQty || addQty <= 0 || !addPrice || addPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    const newQty  = row.qty + addQty;
+    const newCost = (row.qty * row.buyPrice) + (addQty * addPrice);
+    row.qty      = newQty;
+    row.buyPrice = newCost / newQty;
+
+  } else if (editTab === 'sell') {
+    const sellQty   = parseFloat(document.getElementById('edit-sell-qty').value);
+    const sellPrice = parseFloat(document.getElementById('edit-sell-price').value);
+    if (!sellQty || sellQty <= 0 || !sellPrice || sellPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    if (sellQty > row.qty) { alert('Quantité supérieure à la position.'); return; }
+    if (sellQty === row.qty) {
+      // Vente totale = suppression de la ligne
+      data.splice(editRowIndex, 1);
+      savePortfolio(currentUser, data);
+      closeEditModal();
+      renderPortfolio();
+      return;
+    }
+    row.qty -= sellQty;
+
+  } else if (editTab === 'edit') {
+    const newQty   = parseFloat(document.getElementById('edit-qty').value);
+    const newPrice = parseFloat(document.getElementById('edit-price').value);
+    if (!newQty || newQty <= 0 || !newPrice || newPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    row.qty      = newQty;
+    row.buyPrice = newPrice;
+  }
+
+  data[editRowIndex] = row;
+  savePortfolio(currentUser, data);
+  closeEditModal();
+  renderPortfolio();
+}
+</script>
+
+<!-- ─── EDIT MODAL ─────────────────────────────────── -->
+<div class="modal-overlay" id="edit-modal-overlay" onclick="closeEditModalOutside(event)">
+  <div class="modal" style="width:460px">
+    <div class="modal-title" id="edit-modal-title">Modifier la position</div>
+    <div class="modal-sub" id="edit-modal-sub">—</div>
+    <div class="edit-tabs">
+      <button class="edit-tab active" id="tab-buy"  onclick="switchEditTab('buy')">💰 Acheter +</button>
+      <button class="edit-tab"        id="tab-sell" onclick="switchEditTab('sell')">📤 Vendre</button>
+      <button class="edit-tab"        id="tab-edit" onclick="switchEditTab('edit')">✏ Modifier</button>
+    </div>
+    <!-- Acheter + (DCA) -->
+    <div class="edit-pane" id="pane-buy">
+      <div class="edit-info-row" id="buy-current-info"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Quantité à acheter</label>
+        <input type="number" class="form-input" id="edit-buy-qty" placeholder="ex: 10" min="0.001" step="any" oninput="updateBuyPreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix d'achat unitaire (€)</label>
+        <input type="number" class="form-input" id="edit-buy-price" placeholder="prix actuel" min="0" step="any" oninput="updateBuyPreview()">
+      </div>
+      <div class="edit-preview" id="buy-preview"></div>
+    </div>
+    <!-- Vendre -->
+    <div class="edit-pane" id="pane-sell" style="display:none">
+      <div class="edit-info-row" id="sell-current-info"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Quantité à vendre</label>
+        <input type="number" class="form-input" id="edit-sell-qty" placeholder="ex: 5" min="0.001" step="any" oninput="updateSellPreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix de vente unitaire (€)</label>
+        <input type="number" class="form-input" id="edit-sell-price" placeholder="prix actuel" min="0" step="any" oninput="updateSellPreview()">
+      </div>
+      <div class="edit-preview" id="sell-preview"></div>
+    </div>
+    <!-- Modifier manuellement -->
+    <div class="edit-pane" id="pane-edit" style="display:none">
+      <div class="form-group" style="margin-top:4px">
+        <label class="form-label">Quantité totale</label>
+        <input type="number" class="form-input" id="edit-qty" min="0.001" step="any">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix de revient moyen (€)</label>
+        <input type="number" class="form-input" id="edit-price" min="0" step="any">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeEditModal()">Annuler</button>
+      <button class="btn-primary" id="edit-confirm-btn" onclick="confirmEdit()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── EDIT MODAL ──────────────────────────────────────
+let editRowIndex = null;
+let editTab = 'buy';
+
+function openEditModal(i) {
+  editRowIndex = i;
+  editTab = 'buy';
+  const data = getPortfolio(currentUser);
+  const row  = data[i];
+
+  document.getElementById('edit-modal-title').textContent = row.name || row.ticker;
+  document.getElementById('edit-modal-sub').textContent =
+    row.ticker + '  ·  ' + row.qty + ' part' + (row.qty > 1 ? 's' : '') +
+    '  ·  PRU ' + row.buyPrice.toFixed(2) + ' €';
+
+  // Infos onglet achat
+  document.getElementById('buy-current-info').innerHTML =
+    'Qté actuelle : <span>' + row.qty + '</span>' +
+    '&emsp;PRU : <span>' + row.buyPrice.toFixed(2) + ' €</span>' +
+    '&emsp;Cours : <span>' + (row.currentPrice || '—') + ' €</span>';
+
+  // Infos onglet vente
+  document.getElementById('sell-current-info').innerHTML =
+    'Qté disponible : <span>' + row.qty + '</span>' +
+    '&emsp;PRU : <span>' + row.buyPrice.toFixed(2) + ' €</span>' +
+    '&emsp;Cours : <span>' + (row.currentPrice || '—') + ' €</span>';
+
+  // Pré-remplir onglet modifier
+  document.getElementById('edit-qty').value   = row.qty;
+  document.getElementById('edit-price').value = row.buyPrice;
+
+  // Reset champs
+  document.getElementById('edit-buy-qty').value    = '';
+  document.getElementById('edit-buy-price').value  = row.currentPrice || '';
+  document.getElementById('edit-sell-qty').value   = '';
+  document.getElementById('edit-sell-price').value = row.currentPrice || '';
+  document.getElementById('buy-preview').style.display  = 'none';
+  document.getElementById('sell-preview').style.display = 'none';
+
+  switchEditTab('buy');
+  document.getElementById('edit-modal-overlay').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+  editRowIndex = null;
+}
+
+function closeEditModalOutside(e) {
+  if (e.target === document.getElementById('edit-modal-overlay')) closeEditModal();
+}
+
+function switchEditTab(tab) {
+  editTab = tab;
+  ['buy','sell','edit'].forEach(t => {
+    document.getElementById('pane-' + t).style.display = t === tab ? 'block' : 'none';
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+  });
+}
+
+function updateBuyPreview() {
+  const data = getPortfolio(currentUser);
+  const row  = data[editRowIndex];
+  const addQty   = parseFloat(document.getElementById('edit-buy-qty').value)   || 0;
+  const addPrice = parseFloat(document.getElementById('edit-buy-price').value)  || 0;
+  const prev = document.getElementById('buy-preview');
+  if (!addQty || !addPrice) { prev.style.display = 'none'; return; }
+
+  const newQty    = row.qty + addQty;
+  const newCost   = (row.qty * row.buyPrice) + (addQty * addPrice);
+  const newPRU    = newCost / newQty;
+
+  prev.style.display = 'flex';
+  prev.className = 'edit-preview';
+  prev.innerHTML =
+    'Nouvelle qté : <span>' + newQty + '</span>' +
+    '&emsp;Nouveau PRU : <span>' + newPRU.toFixed(2) + ' €</span>' +
+    '&emsp;Investi total : <span>' + newCost.toFixed(2) + ' €</span>';
+}
+
+function updateSellPreview() {
+  const data  = getPortfolio(currentUser);
+  const row   = data[editRowIndex];
+  const sellQty   = parseFloat(document.getElementById('edit-sell-qty').value)   || 0;
+  const sellPrice = parseFloat(document.getElementById('edit-sell-price').value)  || 0;
+  const prev = document.getElementById('sell-preview');
+  if (!sellQty || !sellPrice) { prev.style.display = 'none'; return; }
+  if (sellQty > row.qty) {
+    prev.style.display = 'flex';
+    prev.className = 'edit-preview warn';
+    prev.innerHTML = '⚠ Quantité supérieure à la position actuelle (' + row.qty + ')';
+    return;
+  }
+
+  const pnl      = (sellPrice - row.buyPrice) * sellQty;
+  const pnlPct   = ((sellPrice - row.buyPrice) / row.buyPrice) * 100;
+  const remainQty = row.qty - sellQty;
+  const isPos    = pnl >= 0;
+
+  prev.style.display = 'flex';
+  prev.className = 'edit-preview' + (isPos ? '' : ' loss');
+  prev.innerHTML =
+    'Reste : <span>' + remainQty + ' parts</span>' +
+    '&emsp;+/- : <span>' + (isPos ? '+' : '') + pnl.toFixed(2) + ' € (' + pnlPct.toFixed(2) + '%)</span>';
+}
+
+function confirmEdit() {
+  const data = getPortfolio(currentUser);
+  const row  = data[editRowIndex];
+
+  if (editTab === 'buy') {
+    const addQty   = parseFloat(document.getElementById('edit-buy-qty').value);
+    const addPrice = parseFloat(document.getElementById('edit-buy-price').value);
+    if (!addQty || addQty <= 0 || !addPrice || addPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    const newQty  = row.qty + addQty;
+    const newCost = (row.qty * row.buyPrice) + (addQty * addPrice);
+    row.qty      = newQty;
+    row.buyPrice = newCost / newQty;
+
+  } else if (editTab === 'sell') {
+    const sellQty   = parseFloat(document.getElementById('edit-sell-qty').value);
+    const sellPrice = parseFloat(document.getElementById('edit-sell-price').value);
+    if (!sellQty || sellQty <= 0 || !sellPrice || sellPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    if (sellQty > row.qty) { alert('Quantité supérieure à la position.'); return; }
+    if (sellQty === row.qty) {
+      // Vente totale = suppression de la ligne
+      data.splice(editRowIndex, 1);
+      savePortfolio(currentUser, data);
+      closeEditModal();
+      renderPortfolio();
+      return;
+    }
+    row.qty -= sellQty;
+
+  } else if (editTab === 'edit') {
+    const newQty   = parseFloat(document.getElementById('edit-qty').value);
+    const newPrice = parseFloat(document.getElementById('edit-price').value);
+    if (!newQty || newQty <= 0 || !newPrice || newPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    row.qty      = newQty;
+    row.buyPrice = newPrice;
+  }
+
+  data[editRowIndex] = row;
+  savePortfolio(currentUser, data);
+  closeEditModal();
+  renderPortfolio();
+}
+</script>
+
+<!-- ─── EDIT MODAL ─────────────────────────────────── -->
+<div class="modal-overlay" id="edit-modal-overlay" onclick="closeEditModalOutside(event)">
+  <div class="modal" style="width:460px">
+    <div class="modal-title" id="edit-modal-title">Modifier la position</div>
+    <div class="modal-sub" id="edit-modal-sub">—</div>
+    <div class="edit-tabs">
+      <button class="edit-tab active" id="tab-buy"  onclick="switchEditTab('buy')">💰 Acheter +</button>
+      <button class="edit-tab"        id="tab-sell" onclick="switchEditTab('sell')">📤 Vendre</button>
+      <button class="edit-tab"        id="tab-edit" onclick="switchEditTab('edit')">✏ Modifier</button>
+    </div>
+    <!-- Acheter + (DCA) -->
+    <div class="edit-pane" id="pane-buy">
+      <div class="edit-info-row" id="buy-current-info"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Quantité à acheter</label>
+        <input type="number" class="form-input" id="edit-buy-qty" placeholder="ex: 10" min="0.001" step="any" oninput="updateBuyPreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix d'achat unitaire (€)</label>
+        <input type="number" class="form-input" id="edit-buy-price" placeholder="prix actuel" min="0" step="any" oninput="updateBuyPreview()">
+      </div>
+      <div class="edit-preview" id="buy-preview"></div>
+    </div>
+    <!-- Vendre -->
+    <div class="edit-pane" id="pane-sell" style="display:none">
+      <div class="edit-info-row" id="sell-current-info"></div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Quantité à vendre</label>
+        <input type="number" class="form-input" id="edit-sell-qty" placeholder="ex: 5" min="0.001" step="any" oninput="updateSellPreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix de vente unitaire (€)</label>
+        <input type="number" class="form-input" id="edit-sell-price" placeholder="prix actuel" min="0" step="any" oninput="updateSellPreview()">
+      </div>
+      <div class="edit-preview" id="sell-preview"></div>
+    </div>
+    <!-- Modifier manuellement -->
+    <div class="edit-pane" id="pane-edit" style="display:none">
+      <div class="form-group" style="margin-top:4px">
+        <label class="form-label">Quantité totale</label>
+        <input type="number" class="form-input" id="edit-qty" min="0.001" step="any">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prix de revient moyen (€)</label>
+        <input type="number" class="form-input" id="edit-price" min="0" step="any">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeEditModal()">Annuler</button>
+      <button class="btn-primary" id="edit-confirm-btn" onclick="confirmEdit()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── EDIT MODAL ──────────────────────────────────────
+let editRowIndex = null;
+let editTab = 'buy';
+
+function openEditModal(i) {
+  editRowIndex = i;
+  editTab = 'buy';
+  const data = getPortfolio(currentUser);
+  const row  = data[i];
+
+  document.getElementById('edit-modal-title').textContent = row.name || row.ticker;
+  document.getElementById('edit-modal-sub').textContent =
+    row.ticker + '  ·  ' + row.qty + ' part' + (row.qty > 1 ? 's' : '') +
+    '  ·  PRU ' + row.buyPrice.toFixed(2) + ' €';
+
+  // Infos onglet achat
+  document.getElementById('buy-current-info').innerHTML =
+    'Qté actuelle : <span>' + row.qty + '</span>' +
+    '&emsp;PRU : <span>' + row.buyPrice.toFixed(2) + ' €</span>' +
+    '&emsp;Cours : <span>' + (row.currentPrice || '—') + ' €</span>';
+
+  // Infos onglet vente
+  document.getElementById('sell-current-info').innerHTML =
+    'Qté disponible : <span>' + row.qty + '</span>' +
+    '&emsp;PRU : <span>' + row.buyPrice.toFixed(2) + ' €</span>' +
+    '&emsp;Cours : <span>' + (row.currentPrice || '—') + ' €</span>';
+
+  // Pré-remplir onglet modifier
+  document.getElementById('edit-qty').value   = row.qty;
+  document.getElementById('edit-price').value = row.buyPrice;
+
+  // Reset champs
+  document.getElementById('edit-buy-qty').value    = '';
+  document.getElementById('edit-buy-price').value  = row.currentPrice || '';
+  document.getElementById('edit-sell-qty').value   = '';
+  document.getElementById('edit-sell-price').value = row.currentPrice || '';
+  document.getElementById('buy-preview').style.display  = 'none';
+  document.getElementById('sell-preview').style.display = 'none';
+
+  switchEditTab('buy');
+  document.getElementById('edit-modal-overlay').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+  editRowIndex = null;
+}
+
+function closeEditModalOutside(e) {
+  if (e.target === document.getElementById('edit-modal-overlay')) closeEditModal();
+}
+
+function switchEditTab(tab) {
+  editTab = tab;
+  ['buy','sell','edit'].forEach(t => {
+    document.getElementById('pane-' + t).style.display = t === tab ? 'block' : 'none';
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+  });
+}
+
+function updateBuyPreview() {
+  const data = getPortfolio(currentUser);
+  const row  = data[editRowIndex];
+  const addQty   = parseFloat(document.getElementById('edit-buy-qty').value)   || 0;
+  const addPrice = parseFloat(document.getElementById('edit-buy-price').value)  || 0;
+  const prev = document.getElementById('buy-preview');
+  if (!addQty || !addPrice) { prev.style.display = 'none'; return; }
+
+  const newQty    = row.qty + addQty;
+  const newCost   = (row.qty * row.buyPrice) + (addQty * addPrice);
+  const newPRU    = newCost / newQty;
+
+  prev.style.display = 'flex';
+  prev.className = 'edit-preview';
+  prev.innerHTML =
+    'Nouvelle qté : <span>' + newQty + '</span>' +
+    '&emsp;Nouveau PRU : <span>' + newPRU.toFixed(2) + ' €</span>' +
+    '&emsp;Investi total : <span>' + newCost.toFixed(2) + ' €</span>';
+}
+
+function updateSellPreview() {
+  const data  = getPortfolio(currentUser);
+  const row   = data[editRowIndex];
+  const sellQty   = parseFloat(document.getElementById('edit-sell-qty').value)   || 0;
+  const sellPrice = parseFloat(document.getElementById('edit-sell-price').value)  || 0;
+  const prev = document.getElementById('sell-preview');
+  if (!sellQty || !sellPrice) { prev.style.display = 'none'; return; }
+  if (sellQty > row.qty) {
+    prev.style.display = 'flex';
+    prev.className = 'edit-preview warn';
+    prev.innerHTML = '⚠ Quantité supérieure à la position actuelle (' + row.qty + ')';
+    return;
+  }
+
+  const pnl      = (sellPrice - row.buyPrice) * sellQty;
+  const pnlPct   = ((sellPrice - row.buyPrice) / row.buyPrice) * 100;
+  const remainQty = row.qty - sellQty;
+  const isPos    = pnl >= 0;
+
+  prev.style.display = 'flex';
+  prev.className = 'edit-preview' + (isPos ? '' : ' loss');
+  prev.innerHTML =
+    'Reste : <span>' + remainQty + ' parts</span>' +
+    '&emsp;+/- : <span>' + (isPos ? '+' : '') + pnl.toFixed(2) + ' € (' + pnlPct.toFixed(2) + '%)</span>';
+}
+
+function confirmEdit() {
+  const data = getPortfolio(currentUser);
+  const row  = data[editRowIndex];
+
+  if (editTab === 'buy') {
+    const addQty   = parseFloat(document.getElementById('edit-buy-qty').value);
+    const addPrice = parseFloat(document.getElementById('edit-buy-price').value);
+    if (!addQty || addQty <= 0 || !addPrice || addPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    const newQty  = row.qty + addQty;
+    const newCost = (row.qty * row.buyPrice) + (addQty * addPrice);
+    row.qty      = newQty;
+    row.buyPrice = newCost / newQty;
+
+  } else if (editTab === 'sell') {
+    const sellQty   = parseFloat(document.getElementById('edit-sell-qty').value);
+    const sellPrice = parseFloat(document.getElementById('edit-sell-price').value);
+    if (!sellQty || sellQty <= 0 || !sellPrice || sellPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    if (sellQty > row.qty) { alert('Quantité supérieure à la position.'); return; }
+    if (sellQty === row.qty) {
+      // Vente totale = suppression de la ligne
+      data.splice(editRowIndex, 1);
+      savePortfolio(currentUser, data);
+      closeEditModal();
+      renderPortfolio();
+      return;
+    }
+    row.qty -= sellQty;
+
+  } else if (editTab === 'edit') {
+    const newQty   = parseFloat(document.getElementById('edit-qty').value);
+    const newPrice = parseFloat(document.getElementById('edit-price').value);
+    if (!newQty || newQty <= 0 || !newPrice || newPrice <= 0) {
+      alert('Veuillez remplir tous les champs.'); return;
+    }
+    row.qty      = newQty;
+    row.buyPrice = newPrice;
+  }
+
+  data[editRowIndex] = row;
+  savePortfolio(currentUser, data);
+  closeEditModal();
+  renderPortfolio();
+}
