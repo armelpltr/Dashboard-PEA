@@ -446,14 +446,21 @@ color:var(–text2); margin-top:4px; display:flex; gap:16px; flex-wrap:wrap;
       <div class="nav-item" onclick="showPage('graphiques')">
         <span class="nav-icon">📊</span> Graphiques
       </div>
-    </nav>
-    <div class="sidebar-user">
-      <div class="user-card">
-        <div class="user-avatar" id="user-avatar">A</div>
-        <span class="user-name" id="user-name-display">armel</span>
-        <button class="btn-logout" onclick="doLogout()" title="Déconnexion">⏻</button>
-      </div>
-    </div>
+
+```
+  <div class="nav-item" onclick="downloadHTML()" style="margin-top:auto">
+    <span class="nav-icon">⬇️</span> Télécharger
+  </div>
+</nav>
+<div class="sidebar-user">
+  <div class="user-card">
+    <div class="user-avatar" id="user-avatar">A</div>
+    <span class="user-name" id="user-name-display">armel</span>
+    <button class="btn-logout" onclick="doLogout()" title="Déconnexion">⏻</button>
+  </div>
+</div>
+```
+
   </aside>
 
   <main class="main">
@@ -2226,6 +2233,17 @@ async function renderPortfolioChart() {
     console.error('Portfolio chart error:', e);
   }
 }
+function downloadHTML() {
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'index.html';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 </script>
 
 </body>
