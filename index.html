@@ -2068,7 +2068,9 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
     // Inventaire : quantité détenue de chaque ticker à ce jour
     const inventory = {}; // { ticker: qty }
     data.forEach(row => {
-      const buyTs = Math.floor(new Date(row.buyDate + 'T12:00:00').getTime() / 1000);
+      const buyTs = row.buyDate
+        ? Math.floor(new Date(row.buyDate + 'T12:00:00').getTime() / 1000)
+        : graphStart;
       if (buyTs <= dayTs) {
         inventory[row.ticker] = (inventory[row.ticker] || 0) + row.qty;
       }
@@ -2119,7 +2121,9 @@ async function renderPortfolioChart() {
 
     // Plus ancien buyDate du portefeuille
     const oldestBuyTs = data.reduce((min, row) => {
-      const ts = Math.floor(new Date(row.buyDate + 'T12:00:00').getTime() / 1000);
+      const ts = row.buyDate
+        ? Math.floor(new Date(row.buyDate + 'T12:00:00').getTime() / 1000)
+        : 0;
       return ts < min ? ts : min;
     }, Infinity);
 
