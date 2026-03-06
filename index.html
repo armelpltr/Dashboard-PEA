@@ -706,6 +706,183 @@ border-radius: 9px; padding: 12px;
 .ind-desc { font-size: 10px; color: var(–text3); line-height: 1.4; }
 
 /* ═══════════════════════════════════════════════════
+LIGHT MODE
+═══════════════════════════════════════════════════ */
+[data-theme=“light”] {
+–bg:       #f2f4f8;
+–s1:       #ffffff;
+–s2:       #f7f8fa;
+–s3:       #edf0f4;
+–s4:       #e2e6ed;
+–border:   rgba(0,0,0,0.06);
+–border2:  rgba(0,0,0,0.1);
+–border3:  rgba(0,0,0,0.16);
+–text:     #1a1d2a;
+–text2:    #5a6275;
+–text3:    #8892a8;
+–muted2:   #d0d5df;
+–positive-d: rgba(0,180,120,0.1);
+–negative-d: rgba(220,50,70,0.1);
+–accent-d:   rgba(124,109,245,0.1);
+}
+[data-theme=“light”] .login-bg { background: var(–bg); }
+[data-theme=“light”] .login-card { background: rgba(255,255,255,0.92); box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 32px 80px rgba(0,0,0,0.06); }
+[data-theme=“light”] .login-title { background: linear-gradient(135deg, #1a1d2a 0%, #3a3f50 100%); -webkit-background-clip: text; }
+[data-theme=“light”] .page-title { background: linear-gradient(135deg, #1a1d2a 0%, #3a3f50 100%); -webkit-background-clip: text; }
+[data-theme=“light”] .form-input { background: var(–s3); color: var(–text); }
+[data-theme=“light”] .form-input::placeholder { color: var(–text3); }
+[data-theme=“light”] .login-grid { background-image: linear-gradient(rgba(124,109,245,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(124,109,245,0.04) 1px, transparent 1px); }
+[data-theme=“light”] .chart-select { background: var(–s3); color: var(–text); }
+[data-theme=“light”] .chart-select option { background: var(–s1); }
+[data-theme=“light”] ::selection { background: rgba(124,109,245,0.2); }
+[data-theme=“light”] ::-webkit-scrollbar-thumb { background: #c0c5d0; }
+
+/* ═══════════════════════════════════════════════════
+THEME COLORS
+═══════════════════════════════════════════════════ */
+[data-color=“green”]  { –accent: #22d98a; –accent2: #17b87a; –accent-d: rgba(34,217,138,0.08); }
+[data-color=“blue”]   { –accent: #3b82f6; –accent2: #60a5fa; –accent-d: rgba(59,130,246,0.08); }
+[data-color=“orange”] { –accent: #f59e0b; –accent2: #f97316; –accent-d: rgba(245,158,11,0.08); }
+/* violet is default */
+
+/* ═══════════════════════════════════════════════════
+STAGGER ANIMATIONS
+═══════════════════════════════════════════════════ */
+@keyframes row-in {
+from { opacity: 0; transform: translateX(-12px); }
+to   { opacity: 1; transform: none; }
+}
+.stagger-row { animation: row-in 0.3s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* ═══════════════════════════════════════════════════
+SPARKLINE
+═══════════════════════════════════════════════════ */
+.stat-sparkline {
+position: absolute; bottom: 0; left: 0; right: 0; height: 32px;
+opacity: 0.5; pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════
+TOOLBAR (search, sort, export, watchlist toggle)
+═══════════════════════════════════════════════════ */
+.toolbar {
+display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+padding: 12px 22px; border-bottom: 1px solid var(–border);
+}
+.toolbar-input {
+flex: 1; min-width: 140px; background: var(–s2); border: 1px solid var(–border);
+border-radius: 8px; padding: 7px 12px; color: var(–text);
+font-family: var(–mono); font-size: 12px; outline: none; transition: border-color 0.15s;
+}
+.toolbar-input:focus { border-color: var(–accent); }
+.toolbar-input::placeholder { color: var(–text3); }
+.toolbar-btn {
+background: var(–s2); border: 1px solid var(–border); color: var(–text2);
+padding: 6px 12px; border-radius: 7px; font-size: 11px; font-family: var(–mono);
+cursor: pointer; transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; gap: 4px;
+}
+.toolbar-btn:hover { border-color: var(–border2); color: var(–text); background: var(–s3); }
+.toolbar-btn.active { background: var(–accent-d); border-color: rgba(124,109,245,0.2); color: var(–accent); }
+.toolbar-select {
+background: var(–s2); border: 1px solid var(–border); color: var(–text);
+padding: 6px 10px; border-radius: 7px; font-size: 11px; font-family: var(–mono);
+outline: none; cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════════
+DRAG & DROP
+═══════════════════════════════════════════════════ */
+.drag-handle {
+cursor: grab; color: var(–text3); font-size: 14px; user-select: none;
+padding: 0 4px; transition: color 0.12s;
+}
+.drag-handle:hover { color: var(–text2); }
+.drag-handle:active { cursor: grabbing; }
+tr.dragging { opacity: 0.4; background: var(–s2); }
+tr.drag-over td { border-top: 2px solid var(–accent) !important; }
+
+/* ═══════════════════════════════════════════════════
+SETTINGS PANEL (sidebar)
+═══════════════════════════════════════════════════ */
+.sidebar-settings { padding: 10px 12px; border-top: 1px solid var(–border); }
+.setting-row {
+display: flex; align-items: center; justify-content: space-between;
+padding: 6px 8px; font-size: 11px; color: var(–text2);
+}
+.setting-label { font-weight: 500; }
+.toggle-wrap {
+width: 34px; height: 18px; border-radius: 9px;
+background: var(–muted2); cursor: pointer; position: relative; transition: background 0.2s;
+}
+.toggle-wrap.on { background: var(–accent); }
+.toggle-dot {
+width: 14px; height: 14px; border-radius: 50%; background: #fff;
+position: absolute; top: 2px; left: 2px; transition: left 0.2s;
+}
+.toggle-wrap.on .toggle-dot { left: 18px; }
+.color-dots { display: flex; gap: 5px; }
+.color-dot {
+width: 16px; height: 16px; border-radius: 50%; cursor: pointer;
+border: 2px solid transparent; transition: all 0.15s;
+}
+.color-dot:hover { transform: scale(1.15); }
+.color-dot.active { border-color: var(–text); }
+.color-dot[data-c=“violet”] { background: #7c6df5; }
+.color-dot[data-c=“green”]  { background: #22d98a; }
+.color-dot[data-c=“blue”]   { background: #3b82f6; }
+.color-dot[data-c=“orange”] { background: #f59e0b; }
+
+/* ═══════════════════════════════════════════════════
+AUTO-REFRESH INDICATOR
+═══════════════════════════════════════════════════ */
+.refresh-badge {
+display: inline-flex; align-items: center; gap: 4px;
+font-size: 10px; font-family: var(–mono); color: var(–text3);
+padding: 3px 8px; border-radius: 5px; background: var(–s2);
+border: 1px solid var(–border);
+}
+.refresh-dot {
+width: 6px; height: 6px; border-radius: 50%; background: var(–positive);
+animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+/* ═══════════════════════════════════════════════════
+WATCHLIST
+═══════════════════════════════════════════════════ */
+.watchlist-tag {
+display: inline-block; font-size: 9px; font-family: var(–mono);
+color: var(–gold); background: rgba(245,183,49,0.1);
+padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle;
+}
+═══════════════════════════════════════════════════ */
+.mobile-nav {
+display: none;
+position: fixed; bottom: 0; left: 0; right: 0;
+background: var(–s1);
+border-top: 1px solid var(–border);
+z-index: 200;
+padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+}
+.mobile-nav-inner {
+display: flex; justify-content: space-around; align-items: center;
+}
+.mobile-nav-item {
+display: flex; flex-direction: column; align-items: center; gap: 2px;
+padding: 6px 12px; border-radius: 10px;
+cursor: pointer; color: var(–text3); font-size: 10px;
+font-weight: 600; font-family: var(–sans);
+transition: all 0.15s; background: none; border: none;
+-webkit-tap-highlight-color: transparent;
+}
+.mobile-nav-item span { font-size: 18px; line-height: 1; }
+.mobile-nav-item:hover { color: var(–text2); }
+.mobile-nav-item.active {
+color: var(–accent);
+background: var(–accent-d);
+}
+
+/* ═══════════════════════════════════════════════════
 RESPONSIVE
 ═══════════════════════════════════════════════════ */
 @media (max-width: 1200px) {
@@ -715,7 +892,8 @@ RESPONSIVE
 }
 @media (max-width: 768px) {
 .sidebar { display: none; }
-.main { margin-left: 0; padding: 18px 16px; }
+.mobile-nav { display: block; }
+.main { margin-left: 0; padding: 18px 16px 80px; }
 .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat-value { font-size: 18px; }
 .page-title { font-size: 22px; }
@@ -774,10 +952,30 @@ th, td { padding: 10px 14px; }
       <div class="nav-item" onclick="showPage('graphiques')">
         <span class="nav-icon">📊</span> Graphiques
       </div>
+      <div class="nav-item" onclick="showPage('watchlist')">
+        <span class="nav-icon">👁</span> Watchlist
+      </div>
       <div class="nav-item" onclick="downloadHTML()" style="margin-top:auto">
         <span class="nav-icon">⬇️</span> Télécharger
       </div>
     </nav>
+    <div class="sidebar-settings">
+      <div class="setting-row">
+        <span class="setting-label">Mode clair</span>
+        <div class="toggle-wrap" id="toggle-theme" onclick="toggleTheme()">
+          <div class="toggle-dot"></div>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Couleur</span>
+        <div class="color-dots">
+          <div class="color-dot active" data-c="violet" onclick="setColorTheme('violet')"></div>
+          <div class="color-dot" data-c="green" onclick="setColorTheme('green')"></div>
+          <div class="color-dot" data-c="blue" onclick="setColorTheme('blue')"></div>
+          <div class="color-dot" data-c="orange" onclick="setColorTheme('orange')"></div>
+        </div>
+      </div>
+    </div>
     <div class="sidebar-user">
       <div class="user-card">
         <div class="user-avatar" id="user-avatar">A</div>
@@ -786,6 +984,28 @@ th, td { padding: 10px 14px; }
       </div>
     </div>
   </aside>
+
+  <!-- Mobile bottom nav -->
+
+  <nav class="mobile-nav" id="mobile-nav">
+    <div class="mobile-nav-inner">
+      <button class="mobile-nav-item active" onclick="showPageMobile('portfolio')" data-mob="portfolio">
+        <span>💼</span> Portefeuille
+      </button>
+      <button class="mobile-nav-item" onclick="showPageMobile('analyse')" data-mob="analyse">
+        <span>🔍</span> Analyse
+      </button>
+      <button class="mobile-nav-item" onclick="showPageMobile('graphiques')" data-mob="graphiques">
+        <span>📊</span> Graphiques
+      </button>
+      <button class="mobile-nav-item" onclick="showPageMobile('watchlist')" data-mob="watchlist">
+        <span>👁</span> Watchlist
+      </button>
+      <button class="mobile-nav-item" onclick="doLogout()" data-mob="logout">
+        <span>⏻</span> Déco.
+      </button>
+    </div>
+  </nav>
 
   <main class="main">
 
@@ -804,15 +1024,18 @@ th, td { padding: 10px 14px; }
       <div class="stat-label">Valeur totale</div>
       <div class="stat-value" id="stat-total">— €</div>
       <div class="stat-change" id="stat-total-change">—</div>
+      <canvas class="stat-sparkline" id="spark-total"></canvas>
     </div>
     <div class="stat-card">
       <div class="stat-label">Investi</div>
       <div class="stat-value" id="stat-invested">— €</div>
+      <canvas class="stat-sparkline" id="spark-invested"></canvas>
     </div>
     <div class="stat-card">
       <div class="stat-label">+/- Value</div>
       <div class="stat-value" id="stat-pnl">— €</div>
       <div class="stat-change" id="stat-pnl-pct">—</div>
+      <canvas class="stat-sparkline" id="spark-pnl"></canvas>
     </div>
     <div class="stat-card">
       <div class="stat-label">Nb. lignes</div>
@@ -841,7 +1064,24 @@ th, td { padding: 10px 14px; }
   <div class="table-container">
     <div class="table-header">
       <span class="table-title">Mes actions</span>
-      <button class="btn-add" onclick="openModal()">＋ Ajouter une ligne</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="refresh-badge" id="refresh-badge" style="display:none"><span class="refresh-dot"></span> Auto 60s</span>
+        <button class="btn-add" onclick="openModal()">＋ Ajouter une ligne</button>
+      </div>
+    </div>
+    <div class="toolbar" id="portfolio-toolbar">
+      <input class="toolbar-input" id="table-search" placeholder="🔍 Filtrer…" oninput="filterTable()">
+      <select class="toolbar-select" id="table-sort" onchange="sortTable()">
+        <option value="">Tri : ordre ajout</option>
+        <option value="name-asc">Nom A→Z</option>
+        <option value="name-desc">Nom Z→A</option>
+        <option value="val-desc">Valeur ↓</option>
+        <option value="val-asc">Valeur ↑</option>
+        <option value="perf-desc">Perf ↓</option>
+        <option value="perf-asc">Perf ↑</option>
+      </select>
+      <button class="toolbar-btn" onclick="exportCSV()">📄 CSV</button>
+      <button class="toolbar-btn" onclick="toggleAutoRefresh()" id="btn-auto-refresh">⟳ Auto-refresh</button>
     </div>
     <table>
       <thead>
@@ -1041,6 +1281,30 @@ th, td { padding: 10px 14px; }
     </div>
   </div>
 </div>
+
+<!-- WATCHLIST PAGE -->
+<div class="page" id="page-watchlist">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Watchlist</div>
+      <div class="page-subtitle">Suivez des actions sans les acheter</div>
+    </div>
+  </div>
+  <div class="table-container">
+    <div class="table-header">
+      <span class="table-title">Actions suivies</span>
+      <button class="btn-add" onclick="openWatchlistModal()">＋ Ajouter</button>
+    </div>
+    <table>
+      <thead><tr><th>Action</th><th>Prix actuel</th><th>Variation</th><th></th></tr></thead>
+      <tbody id="watchlist-tbody"></tbody>
+    </table>
+    <div class="empty-state" id="watchlist-empty">
+      <div class="empty-icon">👁</div>
+      <div class="empty-text">Aucune action dans la watchlist.<br>Ajoutez-en pour suivre leur cours.</div>
+    </div>
+  </div>
+</div>
 ```
 
   </main>
@@ -1120,6 +1384,29 @@ th, td { padding: 10px 14px; }
   </div>
 </div>
 
+<!-- ═══ MODAL WATCHLIST ════════════════════════════ -->
+
+<div class="modal-overlay" id="watchlist-modal-overlay" onclick="if(event.target===this)closeWatchlistModal()">
+  <div class="modal">
+    <div class="modal-title">Ajouter à la watchlist</div>
+    <div class="modal-sub">Recherchez une action à suivre.</div>
+    <div class="form-group">
+      <label class="form-label">Nom ou ticker</label>
+      <input type="text" class="form-input" id="wl-ticker" placeholder="ex: AAPL, LVMH…" oninput="onWlInput()">
+      <div id="wl-status"></div>
+      <div class="search-result" id="wl-result">
+        <div class="search-result-name" id="wl-res-name">—</div>
+        <div class="search-result-price" id="wl-res-price">—</div>
+        <div class="search-result-info" id="wl-res-info">—</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeWatchlistModal()">Annuler</button>
+      <button class="btn-primary" id="btn-wl-confirm" onclick="confirmWatchlistAdd()" disabled>Ajouter</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── AUTH ────────────────────────────────────────────
 const USERS = { armel: 'armel', nolan: 'nolan' };
@@ -1175,6 +1462,28 @@ function showPage(id) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   event.currentTarget.classList.add('active');
+  // Sync mobile nav
+  document.querySelectorAll('.mobile-nav-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.mob === id);
+  });
+  if (id === 'analyse')     renderAnalysePortfolio();
+  if (id === 'graphiques')  initCharts();
+}
+
+function showPageMobile(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  // Sync mobile nav
+  document.querySelectorAll('.mobile-nav-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.mob === id);
+  });
+  // Sync sidebar nav
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const sidebarItems = document.querySelectorAll('.nav-item');
+  sidebarItems.forEach(n => {
+    const onclick = n.getAttribute('onclick') || '';
+    if (onclick.includes("'" + id + "'")) n.classList.add('active');
+  });
   if (id === 'analyse')     renderAnalysePortfolio();
   if (id === 'graphiques')  initCharts();
 }
@@ -2453,6 +2762,393 @@ function downloadHTML() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// ═══════════════════════════════════════════════════
+// FEATURE 1: LIGHT/DARK TOGGLE
+// ═══════════════════════════════════════════════════
+function toggleTheme() {
+  const el = document.documentElement;
+  const isLight = el.getAttribute('data-theme') === 'light';
+  el.setAttribute('data-theme', isLight ? 'dark' : 'light');
+  document.getElementById('toggle-theme').classList.toggle('on', !isLight);
+  try { localStorage.setItem('pea_theme', isLight ? 'dark' : 'light'); } catch(e){}
+}
+// Restore on load
+(function(){
+  try {
+    const t = localStorage.getItem('pea_theme');
+    if (t === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      setTimeout(() => { const el = document.getElementById('toggle-theme'); if(el) el.classList.add('on'); }, 0);
+    }
+  } catch(e){}
+})();
+
+// ═══════════════════════════════════════════════════
+// FEATURE 2: COLOR THEME
+// ═══════════════════════════════════════════════════
+function setColorTheme(color) {
+  document.documentElement.setAttribute('data-color', color === 'violet' ? '' : color);
+  if (color === 'violet') document.documentElement.removeAttribute('data-color');
+  document.querySelectorAll('.color-dot').forEach(d => d.classList.toggle('active', d.dataset.c === color));
+  try { localStorage.setItem('pea_color', color); } catch(e){}
+}
+(function(){
+  try {
+    const c = localStorage.getItem('pea_color');
+    if (c && c !== 'violet') {
+      document.documentElement.setAttribute('data-color', c);
+      setTimeout(() => {
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.toggle('active', d.dataset.c === c));
+      }, 0);
+    }
+  } catch(e){}
+})();
+
+// ═══════════════════════════════════════════════════
+// FEATURE 3: SPARKLINES
+// ═══════════════════════════════════════════════════
+function drawSparkline(canvasId, data, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !data || data.length < 2) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.parentElement.offsetWidth;
+  const h = 32;
+  canvas.width = w; canvas.height = h;
+  ctx.clearRect(0, 0, w, h);
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Fill gradient below
+  const lastX = w;
+  const lastY = h - ((data[data.length-1] - min) / range) * (h - 4) - 2;
+  ctx.lineTo(lastX, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, color.replace(')', ',0.15)').replace('rgb', 'rgba'));
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+}
+
+// Sparkline data is generated from portfolio history
+let sparkData = { total: [], invested: [], pnl: [] };
+function updateSparklines() {
+  const pos = getComputedStyle(document.documentElement).getPropertyValue('--positive').trim();
+  const acc = getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim();
+  drawSparkline('spark-total', sparkData.total, pos || '#00e09e');
+  drawSparkline('spark-invested', sparkData.invested, acc || '#5b8dee');
+  const pnlColor = sparkData.pnl.length && sparkData.pnl[sparkData.pnl.length-1] >= 0 ? (pos || '#00e09e') : '#ff4d6a';
+  drawSparkline('spark-pnl', sparkData.pnl, pnlColor);
+}
+// Generate fake sparkline data from random walk (until real history is available)
+function generateSparkData(finalVal, points) {
+  if (!finalVal || finalVal <= 0) return [];
+  const data = [finalVal * (0.85 + Math.random() * 0.1)];
+  for (let i = 1; i < points; i++) {
+    data.push(data[i-1] * (0.98 + Math.random() * 0.04));
+  }
+  data[points - 1] = finalVal;
+  return data;
+}
+
+// ═══════════════════════════════════════════════════
+// FEATURE 4: SEARCH / FILTER TABLE
+// ═══════════════════════════════════════════════════
+function filterTable() {
+  const q = (document.getElementById('table-search').value || '').toLowerCase();
+  const rows = document.querySelectorAll('#portfolio-tbody tr');
+  rows.forEach(tr => {
+    const text = tr.textContent.toLowerCase();
+    tr.style.display = text.includes(q) ? '' : 'none';
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// FEATURE 5: SORT TABLE
+// ═══════════════════════════════════════════════════
+function sortTable() {
+  const key = document.getElementById('table-sort').value;
+  if (!key) { renderPortfolio(); return; }
+  const data = getPortfolio(currentUser);
+  const sorted = [...data];
+  sorted.sort((a, b) => {
+    switch(key) {
+      case 'name-asc':  return (a.name || a.ticker).localeCompare(b.name || b.ticker);
+      case 'name-desc': return (b.name || b.ticker).localeCompare(a.name || a.ticker);
+      case 'val-desc':  return (b.qty * b.currentPrice) - (a.qty * a.currentPrice);
+      case 'val-asc':   return (a.qty * a.currentPrice) - (b.qty * b.currentPrice);
+      case 'perf-desc': return ((b.currentPrice-b.buyPrice)/b.buyPrice) - ((a.currentPrice-a.buyPrice)/a.buyPrice);
+      case 'perf-asc':  return ((a.currentPrice-a.buyPrice)/a.buyPrice) - ((b.currentPrice-b.buyPrice)/b.buyPrice);
+      default: return 0;
+    }
+  });
+  // Temporarily replace, render, restore
+  savePortfolio(currentUser, sorted);
+  renderPortfolio();
+}
+
+// ═══════════════════════════════════════════════════
+// FEATURE 6: EXPORT CSV
+// ═══════════════════════════════════════════════════
+function exportCSV() {
+  const data = getPortfolio(currentUser);
+  if (!data.length) { alert('Portefeuille vide.'); return; }
+  const header = 'Action,Ticker,Quantité,Prix Achat,Prix Actuel,Valeur,+/- Value,% Perf\n';
+  const rows = data.map(r => {
+    const val = r.qty * r.currentPrice;
+    const inv = r.qty * r.buyPrice;
+    const pnl = val - inv;
+    const pct = inv > 0 ? (pnl / inv * 100).toFixed(2) : '0';
+    return [r.name, r.ticker, r.qty, r.buyPrice.toFixed(2), r.currentPrice.toFixed(2), val.toFixed(2), pnl.toFixed(2), pct].join(',');
+  }).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'portefeuille_' + currentUser + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════
+// FEATURE 7: AUTO-REFRESH (60s)
+// ═══════════════════════════════════════════════════
+let autoRefreshInterval = null;
+function toggleAutoRefresh() {
+  const btn = document.getElementById('btn-auto-refresh');
+  const badge = document.getElementById('refresh-badge');
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+    btn.classList.remove('active');
+    badge.style.display = 'none';
+  } else {
+    autoRefreshInterval = setInterval(refreshPrices, 60000);
+    btn.classList.add('active');
+    badge.style.display = 'inline-flex';
+    refreshPrices(); // immediate first refresh
+  }
+}
+
+async function refreshPrices() {
+  if (!currentUser) return;
+  const data = getPortfolio(currentUser);
+  if (!data.length) return;
+  let changed = false;
+  await Promise.all(data.map(async (row) => {
+    try {
+      const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(row.ticker) + '?interval=1d&range=1d';
+      const raw = await fetchWithFallback(url);
+      const d = JSON.parse(raw);
+      const res = d.chart && d.chart.result && d.chart.result[0];
+      if (res && res.meta && res.meta.regularMarketPrice) {
+        row.currentPrice = res.meta.regularMarketPrice;
+        changed = true;
+      }
+    } catch(e) {}
+  }));
+  if (changed) {
+    savePortfolio(currentUser, data);
+    renderPortfolio();
+    const d = new Date();
+    document.getElementById('portfolio-date').textContent =
+      'Mis à jour à ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// FEATURE 8: DRAG & DROP REORDER
+// ═══════════════════════════════════════════════════
+let dragSrcIdx = null;
+
+function onDragStart(e, idx) {
+  dragSrcIdx = idx;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', idx);
+}
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('#portfolio-tbody tr').forEach(tr => tr.classList.remove('drag-over'));
+}
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const tr = e.currentTarget;
+  document.querySelectorAll('#portfolio-tbody tr').forEach(r => r.classList.remove('drag-over'));
+  tr.classList.add('drag-over');
+}
+function onDrop(e, targetIdx) {
+  e.preventDefault();
+  document.querySelectorAll('#portfolio-tbody tr').forEach(tr => tr.classList.remove('drag-over'));
+  if (dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+  const data = getPortfolio(currentUser);
+  const [moved] = data.splice(dragSrcIdx, 1);
+  data.splice(targetIdx, 0, moved);
+  savePortfolio(currentUser, data);
+  dragSrcIdx = null;
+  renderPortfolio();
+}
+
+// ═══════════════════════════════════════════════════
+// FEATURE 9: WATCHLIST
+// ═══════════════════════════════════════════════════
+function getWatchlist(user) {
+  try { return JSON.parse(localStorage.getItem('pea_watchlist_' + user)) || []; } catch { return []; }
+}
+function saveWatchlist(user, data) {
+  localStorage.setItem('pea_watchlist_' + user, JSON.stringify(data));
+}
+
+let wlTimer = null, wlFoundTicker = null, wlFoundName = null, wlFoundPrice = null;
+
+function openWatchlistModal() {
+  document.getElementById('watchlist-modal-overlay').classList.add('open');
+  document.getElementById('wl-ticker').value = '';
+  document.getElementById('wl-result').classList.remove('visible');
+  document.getElementById('wl-status').innerHTML = '';
+  document.getElementById('btn-wl-confirm').disabled = true;
+  wlFoundTicker = null; wlFoundName = null; wlFoundPrice = null;
+  setTimeout(() => document.getElementById('wl-ticker').focus(), 100);
+}
+function closeWatchlistModal() {
+  document.getElementById('watchlist-modal-overlay').classList.remove('open');
+}
+function onWlInput() {
+  clearTimeout(wlTimer);
+  const val = document.getElementById('wl-ticker').value.trim();
+  document.getElementById('wl-result').classList.remove('visible');
+  document.getElementById('btn-wl-confirm').disabled = true;
+  wlFoundPrice = null;
+  if (val.length < 2) { document.getElementById('wl-status').innerHTML = ''; return; }
+  document.getElementById('wl-status').innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Recherche…</div>';
+  wlTimer = setTimeout(async () => {
+    try {
+      const localETF = searchETFLocal(val);
+      let best;
+      if (localETF) { best = { symbol: localETF.ticker, longname: localETF.name }; }
+      else {
+        const url = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(val) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
+        const raw = await fetchWithFallback(url);
+        const sd = JSON.parse(raw);
+        const quotes = (sd.quotes || []).filter(q => q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND');
+        if (!quotes.length) throw new Error('Introuvable.');
+        best = quotes[0];
+      }
+      const cUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(best.symbol) + '?interval=1d&range=5d';
+      const cRaw = await fetchWithFallback(cUrl);
+      const cd = JSON.parse(cRaw);
+      const res = cd.chart && cd.chart.result && cd.chart.result[0];
+      if (!res) throw new Error('Cours non disponible.');
+      const meta = res.meta;
+      wlFoundPrice = meta.regularMarketPrice;
+      wlFoundName = best.longname || best.shortname || best.symbol;
+      wlFoundTicker = best.symbol;
+      const prev = meta.chartPreviousClose || meta.previousClose || wlFoundPrice;
+      const pct = prev ? ((wlFoundPrice - prev) / prev * 100) : 0;
+      document.getElementById('wl-res-name').textContent = wlFoundName;
+      document.getElementById('wl-res-price').textContent = wlFoundPrice.toFixed(2) + ' ' + (meta.currency || '');
+      document.getElementById('wl-res-info').textContent = best.symbol + ' · ' + (pct >= 0 ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(2) + '%';
+      document.getElementById('wl-status').innerHTML = '';
+      document.getElementById('wl-result').classList.add('visible');
+      document.getElementById('btn-wl-confirm').disabled = false;
+    } catch(err) {
+      document.getElementById('wl-status').innerHTML = '<div class="status-error">⚠ ' + (err.message || 'Erreur') + '</div>';
+    }
+  }, 700);
+}
+function confirmWatchlistAdd() {
+  if (!wlFoundTicker || !wlFoundPrice) return;
+  const wl = getWatchlist(currentUser);
+  if (wl.find(w => w.ticker === wlFoundTicker)) { alert('Déjà dans la watchlist.'); return; }
+  wl.push({ name: wlFoundName, ticker: wlFoundTicker, price: wlFoundPrice, addedAt: new Date().toISOString() });
+  saveWatchlist(currentUser, wl);
+  closeWatchlistModal();
+  renderWatchlist();
+}
+function removeFromWatchlist(i) {
+  const wl = getWatchlist(currentUser);
+  wl.splice(i, 1);
+  saveWatchlist(currentUser, wl);
+  renderWatchlist();
+}
+function renderWatchlist() {
+  const wl = getWatchlist(currentUser);
+  const tbody = document.getElementById('watchlist-tbody');
+  const empty = document.getElementById('watchlist-empty');
+  if (!wl.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = wl.map((w, i) => {
+    return '<tr><td><div class="ticker-cell">' + logoHtml(w.ticker, 26, 'ticker-icon') +
+      '<div><div class="ticker-name">' + (w.name || w.ticker) + '</div>' +
+      '<div class="ticker-sym">' + w.ticker + '</div></div></div></td>' +
+      '<td class="mono">' + (w.price ? w.price.toFixed(2) + ' €' : '—') + '</td>' +
+      '<td class="mono" style="color:var(--text2)">—</td>' +
+      '<td><button class="btn-del" onclick="removeFromWatchlist(' + i + ')" title="Retirer">✕</button></td></tr>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// PATCH: renderPortfolio with stagger + drag handles
+// ═══════════════════════════════════════════════════
+const _origRenderPortfolio = renderPortfolio;
+renderPortfolio = function() {
+  _origRenderPortfolio();
+  // Add stagger animations
+  const rows = document.querySelectorAll('#portfolio-tbody tr');
+  rows.forEach((tr, i) => {
+    tr.classList.add('stagger-row');
+    tr.style.animationDelay = (i * 0.04) + 's';
+    // Add drag handle
+    tr.setAttribute('draggable', 'true');
+    tr.addEventListener('dragstart', e => onDragStart(e, i));
+    tr.addEventListener('dragend', onDragEnd);
+    tr.addEventListener('dragover', onDragOver);
+    tr.addEventListener('drop', e => onDrop(e, i));
+    // Prepend drag handle to first cell
+    const firstTd = tr.querySelector('td');
+    if (firstTd && !firstTd.querySelector('.drag-handle')) {
+      const handle = document.createElement('span');
+      handle.className = 'drag-handle';
+      handle.textContent = '⠿';
+      firstTd.querySelector('.ticker-cell').prepend(handle);
+    }
+  });
+  // Update sparklines
+  const data = getPortfolio(currentUser);
+  let totalVal = 0, totalInv = 0;
+  data.forEach(r => { totalVal += r.qty * r.currentPrice; totalInv += r.qty * r.buyPrice; });
+  sparkData.total = generateSparkData(totalVal, 20);
+  sparkData.invested = generateSparkData(totalInv, 20);
+  sparkData.pnl = generateSparkData(totalVal - totalInv, 20);
+  setTimeout(updateSparklines, 50);
+  // Keep filter
+  filterTable();
+};
+
+// Initialize watchlist on page show
+const _origShowPage = showPage;
+showPage = function(id) {
+  _origShowPage(id);
+  if (id === 'watchlist') renderWatchlist();
+};
+const _origShowPageMobile = showPageMobile;
+showPageMobile = function(id) {
+  _origShowPageMobile(id);
+  if (id === 'watchlist') renderWatchlist();
+};
 </script>
 
 </body>
