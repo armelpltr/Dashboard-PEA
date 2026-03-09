@@ -1697,7 +1697,7 @@ body.sb-collapsed .main { margin-left: 58px; }
       <div class="page-header">
         <div>
           <div class="page-title">Dividendes</div>
-          <div class="page-subtitle">Historique des versements par action détenue · <span style="color:var(--accent);font-size:11px">✦ Données générées par Mistral AI · mise à jour hebdomadaire</span></div>
+          <div class="page-subtitle">Historique des versements par action détenue</div>
         </div>
       </div>
 
@@ -5767,7 +5767,7 @@ function initDividendes() {
             <td class="mono">${r.qty}</td>
             <td class="mono" style="color:var(--gold);font-weight:600">${totalRecu > 0 ? totalRecu.toFixed(2)+' €' : '—'}</td>
             <td class="mono" style="color:var(--text2)">${lastKnown ? lastKnown.amount.toFixed(2)+' €/action' : '—'}</td>
-            <td style="font-size:11px;color:var(--text2)">${nextEstim}</td>
+            <td style="font-size:11px;color:var(--text2)">${nextEstim !== '—' ? nextEstim + ' <span style="color:var(--accent);font-size:9px">✦ IA</span>' : '—'}</td>
             <td>${holdingBadge}</td>
           </tr>`;
         }).join('');
@@ -5811,9 +5811,9 @@ function initDividendes() {
             const srcBadge = e.source==='reçu'
               ? '<span style="background:rgba(124,109,245,0.15);color:#a89cf7;font-size:10px;padding:1px 7px;border-radius:4px">✓ Saisi</span>'
               : e.source==='reçu-auto'
-              ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">✓ Reçu auto</span>'
+              ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px" title="Calculé automatiquement par Mistral AI">✓ Reçu · ✦ IA</span>'
               : e.source==='estimé'
-              ? '<span style="background:rgba(245,183,49,0.15);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px">⏳ Estimé</span>'
+              ? '<span style="background:rgba(245,183,49,0.15);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px" title="Estimé par Mistral AI">⏳ Estimé · ✦ IA</span>'
               : '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Référence</span>';
             return `<tr>
               <td class="mono" style="font-size:12px;color:var(--text2)">${ds}</td>
