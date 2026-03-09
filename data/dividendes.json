@@ -1,0 +1,545 @@
+{
+  "generated_at": "2026-03-09",
+  "dividends": {
+    "AI.PA": {
+      "ticker": "AI.PA",
+      "name": "Air Liquide",
+      "history": [
+        {
+          "date": "2025-05-15",
+          "amount": 3.0,
+          "label": "Dividende 2025"
+        },
+        {
+          "date": "2024-05-16",
+          "amount": 2.9,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2023-05-17",
+          "amount": 2.8,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2022-05-18",
+          "amount": 2.7,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2021-05-19",
+          "amount": 2.6,
+          "label": "Dividende 2021"
+        }
+      ],
+      "next": {
+        "date": "2026-05-14",
+        "amount_estimated": 3.1,
+        "confirmed": false
+      }
+    },
+    "TTE.PA": {
+      "ticker": "TTE.PA",
+      "name": "TotalEnergies",
+      "history": [
+        {
+          "date": "2025-05-15",
+          "amount": 2.8,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-05-16",
+          "amount": 2.7,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-05-17",
+          "amount": 2.65,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-05-18",
+          "amount": 2.6,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-05-19",
+          "amount": 2.55,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-05-20",
+        "amount_estimated": 2.85,
+        "confirmed": false
+      }
+    },
+    "BNP.PA": {
+      "ticker": "BNP.PA",
+      "name": "BNP Paribas",
+      "history": [
+        {
+          "date": "2025-05-07",
+          "amount": 3.6,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-05-08",
+          "amount": 3.4,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-05-10",
+          "amount": 3.2,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-05-11",
+          "amount": 3.0,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-05-12",
+          "amount": 2.8,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-05-06",
+        "amount_estimated": 3.7,
+        "confirmed": false
+      }
+    },
+    "ACA.PA": {
+      "ticker": "ACA.PA",
+      "name": "Crédit Agricole",
+      "history": [
+        {
+          "date": "2025-05-15",
+          "amount": 1.2,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-05-16",
+          "amount": 1.15,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-05-17",
+          "amount": 1.1,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-05-18",
+          "amount": 1.05,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-05-19",
+          "amount": 1.0,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-05-20",
+        "amount_estimated": 1.25,
+        "confirmed": false
+      }
+    },
+    "SAN.PA": {
+      "ticker": "SAN.PA",
+      "name": "Sanofi",
+      "history": [
+        {
+          "date": "2025-05-15",
+          "amount": 3.7,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-05-16",
+          "amount": 3.6,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-05-18",
+          "amount": 3.5,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-05-19",
+          "amount": 3.4,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-05-20",
+          "amount": 3.3,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-05-14",
+        "amount_estimated": 3.8,
+        "confirmed": false
+      }
+    },
+    "OR.PA": {
+      "ticker": "OR.PA",
+      "name": "L'Oréal",
+      "history": [
+        {
+          "date": "2025-04-15",
+          "amount": 4.5,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-04-10",
+          "amount": 4.3,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-04-12",
+          "amount": 4.1,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-04-13",
+          "amount": 3.9,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-04-14",
+          "amount": 3.7,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-04-15",
+        "amount_estimated": 4.6,
+        "confirmed": false
+      }
+    },
+    "MC.PA": {
+      "ticker": "MC.PA",
+      "name": "LVMH",
+      "history": [
+        {
+          "date": "2025-04-15",
+          "amount": 12.0,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-04-16",
+          "amount": 11.0,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-04-18",
+          "amount": 10.0,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-04-19",
+          "amount": 9.0,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-04-20",
+          "amount": 8.0,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-04-15",
+        "amount_estimated": 13.0,
+        "confirmed": false
+      }
+    },
+    "ENGI.PA": {
+      "ticker": "ENGI.PA",
+      "name": "Engie",
+      "history": [
+        {
+          "date": "2025-05-15",
+          "amount": 0.85,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-05-16",
+          "amount": 0.8,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-05-17",
+          "amount": 0.75,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-05-18",
+          "amount": 0.7,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-05-19",
+          "amount": 0.65,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-05-20",
+        "amount_estimated": 0.9,
+        "confirmed": false
+      }
+    },
+    "DG.PA": {
+      "ticker": "DG.PA",
+      "name": "Vinci",
+      "history": [
+        {
+          "date": "2025-04-15",
+          "amount": 2.5,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-04-16",
+          "amount": 2.4,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-04-18",
+          "amount": 2.3,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-04-19",
+          "amount": 2.2,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-04-20",
+          "amount": 2.1,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-04-15",
+        "amount_estimated": 2.6,
+        "confirmed": false
+      }
+    },
+    "SU.PA": {
+      "ticker": "SU.PA",
+      "name": "Schneider Electric",
+      "history": [
+        {
+          "date": "2025-05-15",
+          "amount": 3.5,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-05-16",
+          "amount": 3.3,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-05-17",
+          "amount": 3.1,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-05-18",
+          "amount": 2.9,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-05-19",
+          "amount": 2.7,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-05-14",
+        "amount_estimated": 3.6,
+        "confirmed": false
+      }
+    },
+    "RI.PA": {
+      "ticker": "RI.PA",
+      "name": "Pernod Ricard",
+      "history": [
+        {
+          "date": "2025-05-15",
+          "amount": 3.0,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-05-16",
+          "amount": 2.8,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-05-17",
+          "amount": 2.6,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-05-18",
+          "amount": 2.4,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-05-19",
+          "amount": 2.2,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-05-14",
+        "amount_estimated": 3.1,
+        "confirmed": false
+      }
+    },
+    "CAP.PA": {
+      "ticker": "CAP.PA",
+      "name": "Capgemini",
+      "history": [
+        {
+          "date": "2025-05-15",
+          "amount": 3.5,
+          "label": "Dividende 2025"
+        },
+        {
+          "date": "2024-05-16",
+          "amount": 3.3,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2023-05-17",
+          "amount": 3.1,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2022-05-18",
+          "amount": 2.9,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2021-05-19",
+          "amount": 2.7,
+          "label": "Dividende 2021"
+        }
+      ],
+      "next": {
+        "date": "2026-05-14",
+        "amount_estimated": 3.6,
+        "confirmed": false
+      }
+    },
+    "KER.PA": {
+      "ticker": "KER.PA",
+      "name": "Kering",
+      "history": [
+        {
+          "date": "2025-04-15",
+          "amount": 1.5,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-04-10",
+          "amount": 1.4,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-04-12",
+          "amount": 1.3,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-04-14",
+          "amount": 1.2,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-04-15",
+          "amount": 1.1,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-04-15",
+        "amount_estimated": 1.6,
+        "confirmed": false
+      }
+    },
+    "SAF.PA": {
+      "ticker": "SAF.PA",
+      "name": "Safran",
+      "history": [
+        {
+          "date": "2025-05-15",
+          "amount": 1.5,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-05-16",
+          "amount": 1.4,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-05-17",
+          "amount": 1.3,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-05-18",
+          "amount": 1.2,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-05-19",
+          "amount": 1.1,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-05-20",
+        "amount_estimated": 1.6,
+        "confirmed": false
+      }
+    },
+    "CS.PA": {
+      "ticker": "CS.PA",
+      "name": "AXA",
+      "history": [
+        {
+          "date": "2025-05-15",
+          "amount": 1.8,
+          "label": "Dividende 2024"
+        },
+        {
+          "date": "2024-05-16",
+          "amount": 1.7,
+          "label": "Dividende 2023"
+        },
+        {
+          "date": "2023-05-17",
+          "amount": 1.6,
+          "label": "Dividende 2022"
+        },
+        {
+          "date": "2022-05-18",
+          "amount": 1.5,
+          "label": "Dividende 2021"
+        },
+        {
+          "date": "2021-05-19",
+          "amount": 1.4,
+          "label": "Dividende 2020"
+        }
+      ],
+      "next": {
+        "date": "2026-05-14",
+        "amount_estimated": 1.85,
+        "confirmed": false
+      }
+    }
+  }
+}
