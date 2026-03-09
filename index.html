@@ -5711,12 +5711,16 @@ function initDividendes() {
     // Dividendes manuellement enregistrés pour ce ticker
     const manualReceived = divTxs.filter(t => t.ticker === r.ticker);
 
+    // Récupérer la date d'achat depuis le portfolio OU depuis les transactions
+    const buyTxs    = txs.filter(t => t.type === 'buy' && t.ticker === r.ticker);
+    const firstBuy  = buyDate || (buyTxs.length ? buyTxs.map(t=>t.date).sort()[0] : null);
+
     // Dividendes automatiquement détectés : versés pendant la détention, date passée, pas "next"
-    const autoReceived = buyDate
+    const autoReceived = firstBuy
       ? history.filter(d =>
-          !d.next &&                    // pas un dividende futur estimé
-          d.date >= buyDate &&          // pendant la détention
-          d.date <= today               // déjà versé
+          !d.next &&
+          d.date >= firstBuy &&
+          d.date <= today
         )
       : [];
 
@@ -5730,10 +5734,10 @@ function initDividendes() {
     });
 
     const totalRecu     = allReceived.reduce((s, t) => s + t.qty * t.price, 0);
-    const duringHolding = buyDate ? history.filter(d => !d.next && d.date >= buyDate && d.date <= today) : [];
+    const duringHolding = firstBuy ? history.filter(d => !d.next && d.date >= firstBuy && d.date <= today) : [];
     const nextEstim     = calcNextDivDate(history);
     const lastKnown     = history.find(d => !d.next) || null;
-    return { r, history, buyDate, allReceived, totalRecu, duringHolding, nextEstim, lastKnown };
+    return { r, history, buyDate: firstBuy, allReceived, totalRecu, duringHolding, nextEstim, lastKnown };
   })).then(rows => {
     // Mettre à jour KPIs dynamiques
     const totalHolding = rows.reduce((s, x) => s + x.duringHolding.length, 0);
@@ -5779,16 +5783,18 @@ function initDividendes() {
     });
     rows.forEach(({r, history, buyDate, allReceived}) => {
       const today = new Date().toISOString().slice(0,10);
+      const buyTxsFallback = txs.filter(t => t.type==='buy' && t.ticker===r.ticker);
+      const firstBuyDate   = buyDate || (buyTxsFallback.length ? buyTxsFallback.map(t=>t.date).sort()[0] : null);
       (history||[]).forEach(d => {
         const alreadyManual = divTxs.find(t => t.ticker===r.ticker && t.date===d.date);
         if (alreadyManual) return;
-        const during = buyDate ? (d.date >= buyDate && d.date <= today && !d.next) : false;
+        const during = firstBuyDate ? (d.date >= firstBuyDate && d.date <= today && !d.next) : false;
         const isAutoReceived = during;
         allEntries.push({
           date: d.date, ticker: r.ticker, name: r.name,
           amount: d.amount * r.qty, perShare: d.amount,
           label: d.label||'', source: isAutoReceived ? 'reçu-auto' : (d.next ? 'estimé' : 'référence'),
-          duringHolding: during || (d.next && buyDate && d.date >= buyDate),
+          duringHolding: during || (d.next && firstBuyDate && d.date >= firstBuyDate),
         });
       });
     });
