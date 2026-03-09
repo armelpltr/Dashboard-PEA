@@ -5701,14 +5701,36 @@ function initDividendes() {
 
   // Fetch async puis render
   Promise.all(actions.map(async r => {
-    const history = await fetchDivHistory(r.ticker);
-    const buyDate = r.buyDate || null;
-    const received = divTxs.filter(t => t.ticker === r.ticker);
-    const totalRecu = received.reduce((s, t) => s + t.qty * t.price, 0);
-    const duringHolding = buyDate ? history.filter(d => d.date >= buyDate) : [];
-    const nextEstim = calcNextDivDate(history);
-    const lastKnown = history[0] || null;
-    return { r, history, buyDate, received, totalRecu, duringHolding, nextEstim, lastKnown };
+    const history  = await fetchDivHistory(r.ticker);
+    const buyDate  = r.buyDate || null;
+    const today    = new Date().toISOString().slice(0, 10);
+
+    // Dividendes manuellement enregistrés pour ce ticker
+    const manualReceived = divTxs.filter(t => t.ticker === r.ticker);
+
+    // Dividendes automatiquement détectés : versés pendant la détention, date passée, pas "next"
+    const autoReceived = buyDate
+      ? history.filter(d =>
+          !d.next &&                    // pas un dividende futur estimé
+          d.date >= buyDate &&          // pendant la détention
+          d.date <= today               // déjà versé
+        )
+      : [];
+
+    // Fusionner manuel + auto (éviter doublons par date)
+    const allReceived = [...manualReceived];
+    autoReceived.forEach(d => {
+      const alreadyManual = manualReceived.find(t => t.date === d.date);
+      if (!alreadyManual) {
+        allReceived.push({ ticker: r.ticker, name: r.name, date: d.date, qty: r.qty, price: d.amount, auto: true });
+      }
+    });
+
+    const totalRecu     = allReceived.reduce((s, t) => s + t.qty * t.price, 0);
+    const duringHolding = buyDate ? history.filter(d => !d.next && d.date >= buyDate && d.date <= today) : [];
+    const nextEstim     = calcNextDivDate(history);
+    const lastKnown     = history.find(d => !d.next) || null;
+    return { r, history, buyDate, allReceived, totalRecu, duringHolding, nextEstim, lastKnown };
   })).then(rows => {
     // Mettre à jour KPIs dynamiques
     const totalHolding = rows.reduce((s, x) => s + x.duringHolding.length, 0);
@@ -5750,14 +5772,21 @@ function initDividendes() {
     // Historique complet
     let allEntries = [];
     divTxs.forEach(t => {
-      allEntries.push({ date: t.date||'', ticker: t.ticker, name: t.name||t.ticker, amount: t.qty*t.price, perShare: t.price, label: '', source: 'enregistré', duringHolding: true });
+      allEntries.push({ date: t.date||'', ticker: t.ticker, name: t.name||t.ticker, amount: t.qty*t.price, perShare: t.price, label: '', source: 'reçu', duringHolding: true });
     });
-    rows.forEach(({r, history, buyDate}) => {
+    rows.forEach(({r, history, buyDate, allReceived}) => {
+      const today = new Date().toISOString().slice(0,10);
       (history||[]).forEach(d => {
-        const alreadyIn = allEntries.find(e => e.ticker===r.ticker && e.date===d.date && e.source==='enregistré');
-        if (alreadyIn) return;
-        const during = buyDate ? d.date >= buyDate : false;
-        allEntries.push({ date: d.date, ticker: r.ticker, name: r.name, amount: d.amount*r.qty, perShare: d.amount, label: d.label||'', source: 'historique', duringHolding: during });
+        const alreadyManual = divTxs.find(t => t.ticker===r.ticker && t.date===d.date);
+        if (alreadyManual) return;
+        const during = buyDate ? (d.date >= buyDate && d.date <= today && !d.next) : false;
+        const isAutoReceived = during;
+        allEntries.push({
+          date: d.date, ticker: r.ticker, name: r.name,
+          amount: d.amount * r.qty, perShare: d.amount,
+          label: d.label||'', source: isAutoReceived ? 'reçu-auto' : (d.next ? 'estimé' : 'référence'),
+          duringHolding: during || (d.next && buyDate && d.date >= buyDate),
+        });
       });
     });
     allEntries.sort((a,b) => b.date.localeCompare(a.date));
@@ -5776,8 +5805,12 @@ function initDividendes() {
             const periodBadge = e.duringHolding
               ? '<span style="background:rgba(0,224,158,0.12);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">Pendant détention</span>'
               : '<span style="background:var(--s3);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Avant achat</span>';
-            const srcBadge = e.source==='enregistré'
-              ? '<span style="background:rgba(124,109,245,0.15);color:#a89cf7;font-size:10px;padding:1px 7px;border-radius:4px">✓ Reçu</span>'
+            const srcBadge = e.source==='reçu'
+              ? '<span style="background:rgba(124,109,245,0.15);color:#a89cf7;font-size:10px;padding:1px 7px;border-radius:4px">✓ Saisi</span>'
+              : e.source==='reçu-auto'
+              ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">✓ Reçu auto</span>'
+              : e.source==='estimé'
+              ? '<span style="background:rgba(245,183,49,0.15);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px">⏳ Estimé</span>'
               : '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Référence</span>';
             return `<tr>
               <td class="mono" style="font-size:12px;color:var(--text2)">${ds}</td>
