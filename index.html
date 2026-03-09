@@ -1697,7 +1697,7 @@ body.sb-collapsed .main { margin-left: 58px; }
       <div class="page-header">
         <div>
           <div class="page-title">Dividendes</div>
-          <div class="page-subtitle">Historique des versements par action détenue</div>
+          <div class="page-subtitle">Historique des versements par action détenue · <span style="color:var(--accent);font-size:11px">✦ Données générées par Mistral AI · mise à jour hebdomadaire</span></div>
         </div>
       </div>
 
@@ -5606,6 +5606,9 @@ async function loadDivJson() {
     const json = await res.json();
     _divJsonData   = json.dividends || {};
     _divJsonLoaded = true;
+    // Afficher la date de génération dans le sous-titre
+    const subEl = document.querySelector('#page-dividendes .page-subtitle span');
+    if (subEl && json.generated_at) subEl.textContent = '✦ Données Mistral AI · mis à jour le ' + new Date(json.generated_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
     console.log('✅ dividendes.json chargé (' + json.generated_at + ')');
   } catch(e) {
     console.warn('⚠️ dividendes.json non disponible, historique vide.', e);
