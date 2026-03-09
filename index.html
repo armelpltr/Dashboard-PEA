@@ -1048,6 +1048,19 @@ body.sb-collapsed .main { margin-left: 58px; }
       <div class="nav-item" onclick="showPage('watchlist')">
         <span class="nav-icon">👁</span> Watchlist
       </div>
+      <div class="nav-section-label" style="margin-top:10px">Analytique</div>
+      <div class="nav-item" onclick="showPage('base100')">
+        <span class="nav-icon">📐</span> Base 100
+      </div>
+      <div class="nav-item" onclick="showPage('projections')">
+        <span class="nav-icon">🔭</span> Projections
+      </div>
+      <div class="nav-item" onclick="showPage('bilan')">
+        <span class="nav-icon">📅</span> Bilan annuel
+      </div>
+      <div class="nav-item" onclick="showPage('trophees')">
+        <span class="nav-icon">🏆</span> Trophées
+      </div>
     </nav>
     <div class="sidebar-settings">
       <div class="setting-row">
@@ -1455,6 +1468,143 @@ body.sb-collapsed .main { margin-left: 58px; }
           <div class="empty-text">Aucune action dans la watchlist.<br>Ajoutez-en pour suivre leur cours.</div>
         </div>
       </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         BASE 100 PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-base100">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Base 100</div>
+          <div class="page-subtitle">Performance relative depuis le premier achat de chaque actif</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div id="b100-legend" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12px"></div>
+        </div>
+      </div>
+
+      <div class="section-card" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div class="section-title">Performance normalisée — chaque ligne démarre à 100</div>
+          <div style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--text3)">
+            <svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--text2)" stroke-width="1.5" stroke-dasharray="4 3"/></svg>
+            Référence 100
+            <svg width="22" height="10" style="margin-left:6px"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--text3)" stroke-width="1.5" stroke-dasharray="3 2"/></svg>
+            Livret A 2,5%
+          </div>
+        </div>
+        <div style="position:relative;height:380px">
+          <canvas id="chart-base100"></canvas>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header">
+          <span class="table-title">Performances actuelles vs base 100</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Actif</th>
+            <th>1er prix connu</th>
+            <th>Prix actuel</th>
+            <th>Base 100 → ?</th>
+            <th>Performance</th>
+            <th>vs Livret A</th>
+          </tr></thead>
+          <tbody id="b100-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         PROJECTIONS PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-projections">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Projections</div>
+          <div class="page-subtitle">Simulation patrimoniale long terme avec intérêts composés</div>
+        </div>
+      </div>
+
+      <div class="section-card" style="margin-bottom:18px">
+        <div class="section-title" style="margin-bottom:16px">Paramètres de simulation</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px">
+          <div>
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Valeur actuelle (€)</label>
+            <input type="number" id="proj-base" value="0" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Apport mensuel (€)</label>
+            <input type="number" id="proj-monthly" value="112" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">CAGR annuel (%)</label>
+            <input type="number" id="proj-cagr" value="7.5" step="0.5" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+          </div>
+          <div style="background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;justify-content:center">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">Livret A benchmark</div>
+            <div style="font-size:18px;font-weight:700;color:var(--text2);font-family:var(--mono);margin-top:3px">2,5 % / an</div>
+          </div>
+        </div>
+        <div style="position:relative;height:320px">
+          <canvas id="chart-projections"></canvas>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header"><span class="table-title">Tableau des projections</span></div>
+        <table>
+          <thead><tr>
+            <th>Horizon</th>
+            <th>Patrimoine total</th>
+            <th>Apports cumulés</th>
+            <th>Plus-values</th>
+            <th>Ratio PV / Apports</th>
+            <th>Livret A équiv.</th>
+            <th>Avantage vs LA</th>
+          </tr></thead>
+          <tbody id="proj-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         BILAN ANNUEL PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-bilan">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Bilan annuel</div>
+          <div class="page-subtitle">Performance année par année comparée au Livret A</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:18px" id="bilan-cards"></div>
+
+      <div class="section-card">
+        <div class="section-title" style="margin-bottom:16px">Comparaison portfolio vs Livret A vs Apports</div>
+        <div style="position:relative;height:260px">
+          <canvas id="chart-bilan"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         TROPHÉES PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-trophees">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Trophées</div>
+          <div class="page-subtitle">Les paliers se valident automatiquement selon les valeurs réelles du portefeuille</div>
+        </div>
+      </div>
+
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px" id="trophy-summary"></div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px" id="trophy-categories"></div>
     </div>
 
   </main>
@@ -4522,6 +4672,574 @@ const _origShowPageMobile = showPageMobile;
 showPageMobile = function(id) {
   _origShowPageMobile(id);
   if (id === 'watchlist') renderWatchlist();
+};
+// ═══════════════════════════════════════════════════
+//  BASE 100
+// ═══════════════════════════════════════════════════
+const B100_COLORS = ['#7c6df5','#f5b731','#00e09e','#ff4d6a','#5b8dee'];
+
+// ── Prix mensuels historiques (clôture fin de mois) ──────────────────────────
+// ESEE  = BNP Easy S&P 500 (ESE.PA)           FR0013311273
+// PUST  = Amundi PEA Nasdaq 100 (PANX.PA)     FR0013412285  (ex-PUST, ticker utilisateur)
+// WPEA  = Invesco MSCI World PEA (WPEA.PA)    IE0002XZSHO1
+// PAEEM = Amundi PEA MSCI Emerging ESG (PAEEM.PA) FR0013412020
+// ESE50 = BNP Easy Euro Stoxx 50 Cap (ESE.PA) FR0012739431  — ticker Euronext : EESE.PA / ESG50
+const B100_PRICES = {
+  ESEE:  {'2025-02':29.93,'2025-03':29.10,'2025-04':28.50,'2025-05':29.00,'2025-06':29.20,'2025-07':29.40,'2025-08':29.10,'2025-09':28.90,'2025-10':29.30,'2025-11':29.50,'2025-12':29.20,'2026-01':29.40,'2026-02':29.10,'2026-03':29.30},
+  PUST:  {'2025-02':72.40,'2025-03':69.80,'2025-04':67.50,'2025-05':70.20,'2025-06':72.10,'2025-07':74.50,'2025-08':73.20,'2025-09':71.80,'2025-10':75.30,'2025-11':78.60,'2025-12':76.90,'2026-01':79.40,'2026-02':87.28,'2026-03':85.14},
+  WPEA:  {'2025-02':5.33,'2025-03':5.86,'2025-04':5.394,'2025-05':5.22,'2025-06':5.421,'2025-07':5.508,'2025-08':5.648,'2025-09':5.744,'2025-10':5.95,'2025-11':6.168,'2025-12':6.10,'2026-01':6.145,'2026-02':6.18,'2026-03':6.202},
+  PAEEM: {'2025-02':24.60,'2025-03':25.10,'2025-04':24.80,'2025-05':25.40,'2025-06':25.90,'2025-07':26.30,'2025-08':25.70,'2025-09':26.10,'2025-10':26.80,'2025-11':27.20,'2025-12':26.90,'2026-01':27.60,'2026-02':28.10,'2026-03':27.80},
+  ESE50: {'2025-02':51.20,'2025-03':52.40,'2025-04':50.80,'2025-05':52.10,'2025-06':53.40,'2025-07':54.20,'2025-08':53.10,'2025-09':52.60,'2025-10':53.80,'2025-11':54.90,'2025-12':54.10,'2026-01':55.60,'2026-02':56.20,'2026-03':55.40},
+};
+
+// Cours actuels (mars 2026)
+const B100_CURRENT = { ESEE:29.52, PUST:85.73, WPEA:6.14, PAEEM:27.95, ESE50:55.80 };
+const B100_NAMES   = {
+  ESEE:  'S&P 500 (ESEE)',
+  PUST:  'Nasdaq 100 (PUST)',
+  WPEA:  'MSCI World (WPEA)',
+  PAEEM: 'MSCI Emerging ESG (PAEEM)',
+  ESE50: 'Euro Stoxx 50 Cap (ESE50)',
+};
+
+let chartBase100 = null;
+
+function getMonths(from, to) {
+  const months = [];
+  let d = new Date(from + '-01');
+  const end = new Date(to + '-01');
+  while (d <= end) {
+    months.push(d.toISOString().slice(0,7));
+    d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  }
+  return months;
+}
+
+function initBase100() {
+  const months = getMonths('2025-02', '2026-03');
+  const livretMonthly = 0.025 / 12;
+  const livretData = months.map((_, i) => parseFloat((100 * Math.pow(1 + livretMonthly, i)).toFixed(3)));
+
+  const tickers = Object.keys(B100_PRICES);
+  const datasets = [];
+
+  tickers.forEach((t, i) => {
+    const ph = B100_PRICES[t];
+    const keys = Object.keys(ph).sort();
+    if (!keys.length) return;
+    const firstKey = keys[0];
+    const firstPrice = ph[firstKey];
+
+    const data = months.map(m => {
+      if (m < firstKey) return null;
+      const known = keys.filter(k => k <= m);
+      if (!known.length) return null;
+      const lastKey = known[known.length - 1];
+      const price = (lastKey === keys[keys.length - 1] && B100_CURRENT[t]) ? B100_CURRENT[t] : ph[lastKey];
+      return parseFloat(((price / firstPrice) * 100).toFixed(2));
+    });
+
+    datasets.push({
+      label: t,
+      data,
+      borderColor: B100_COLORS[i % B100_COLORS.length],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.3,
+      spanGaps: false,
+    });
+  });
+
+  // Livret A dataset
+  datasets.unshift({
+    label: 'Livret A',
+    data: livretData,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderDash: [4, 3],
+    pointRadius: 0,
+    tension: 0.2,
+  });
+
+  const ctx = document.getElementById('chart-base100');
+  if (!ctx) return;
+  if (chartBase100) { chartBase100.destroy(); chartBase100 = null; }
+
+  chartBase100 = new Chart(ctx, {
+    type: 'line',
+    data: { labels: months, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#12141f',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#8892a8',
+          bodyColor: '#edf0f7',
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) : '—'}`,
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#495068', font: { size: 10 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#495068', font: { size: 10 } },
+          afterDataLimits: axis => { axis.min = Math.min(axis.min, 95); }
+        }
+      },
+      annotation: {},
+    }
+  });
+
+  // Custom legend
+  const legend = document.getElementById('b100-legend');
+  if (legend) {
+    legend.innerHTML = tickers.map((t, i) =>
+      `<div style="display:flex;align-items:center;gap:5px">
+        <span style="width:14px;height:3px;background:${B100_COLORS[i % B100_COLORS.length]};display:inline-block;border-radius:2px"></span>
+        <span style="color:var(--text2)">${t}</span>
+      </div>`
+    ).join('');
+  }
+
+  // Table
+  const tbody = document.getElementById('b100-tbody');
+  if (!tbody) return;
+  const livretNow = parseFloat((100 * Math.pow(1 + 0.025 / 12, months.length - 1)).toFixed(2));
+
+  tbody.innerHTML = tickers.map((t, i) => {
+    const ph = B100_PRICES[t];
+    const keys = Object.keys(ph).sort();
+    if (!keys.length) return '';
+    const firstPrice = ph[keys[0]];
+    const currentPrice = B100_CURRENT[t] || ph[keys[keys.length - 1]];
+    const base100Now = parseFloat(((currentPrice / firstPrice) * 100).toFixed(2));
+    const perf = ((currentPrice / firstPrice - 1) * 100);
+    const vsLA = (base100Now - livretNow);
+    const isPos = perf >= 0;
+    const vPos = vsLA >= 0;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${B100_COLORS[i % B100_COLORS.length]};display:inline-block"></span>
+        <span style="font-size:12px">${B100_NAMES[t]}</span>
+      </div></td>
+      <td class="mono" style="font-size:12px">${firstPrice.toFixed(3)} €</td>
+      <td class="mono" style="font-size:12px">${currentPrice.toFixed(2)} €</td>
+      <td class="mono" style="font-size:13px;font-weight:600">${base100Now.toFixed(1)}</td>
+      <td><span class="${isPos ? 'badge-pos' : 'badge-neg'}">${isPos ? '▲' : '▼'} ${Math.abs(perf).toFixed(2)}%</span></td>
+      <td class="mono" style="font-size:12px;color:${vPos ? 'var(--positive)' : 'var(--negative)'}">${vPos ? '+' : ''}${vsLA.toFixed(1)} pts</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+//  PROJECTIONS
+// ═══════════════════════════════════════════════════
+let chartProj = null;
+
+function calcProjections(base, monthly, cagrPct) {
+  const mr = cagrPct / 100 / 12;
+  const livretMr = 0.025 / 12;
+  return [1, 5, 10, 15, 20, 25, 30, 35, 40].map(y => {
+    const n = y * 12;
+    const grown = base * Math.pow(1 + cagrPct / 100, y);
+    const contrib = mr > 0 ? monthly * (Math.pow(1 + mr, n) - 1) / mr : monthly * n;
+    const total = parseFloat((grown + contrib).toFixed(2));
+    const apports = parseFloat((base + monthly * n).toFixed(2));
+    const plusValues = parseFloat((total - apports).toFixed(2));
+    const livretGrown = base * Math.pow(1 + 0.025, y);
+    const livretContrib = livretMr > 0 ? monthly * (Math.pow(1 + livretMr, n) - 1) / livretMr : monthly * n;
+    const livretA = parseFloat((livretGrown + livretContrib).toFixed(2));
+    return { years: y, total, apports, plusValues, livretA };
+  });
+}
+
+function fmtCompact(n) {
+  const a = Math.abs(n);
+  if (a >= 1e6) return (n / 1e6).toFixed(2) + ' M€';
+  if (a >= 1e3) return (n / 1e3).toFixed(1) + ' k€';
+  return n.toFixed(0) + ' €';
+}
+
+function renderProjections() {
+  const base    = parseFloat(document.getElementById('proj-base')?.value) || 0;
+  const monthly = parseFloat(document.getElementById('proj-monthly')?.value) || 0;
+  const cagr    = parseFloat(document.getElementById('proj-cagr')?.value) || 7.5;
+  const data    = calcProjections(base, monthly, cagr);
+
+  // Chart
+  const ctx = document.getElementById('chart-projections');
+  if (ctx) {
+    if (chartProj) { chartProj.destroy(); chartProj = null; }
+    chartProj = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: data.map(d => d.years + ' ans'),
+        datasets: [
+          { label: 'Patrimoine total', data: data.map(d => d.total),      borderColor: '#7c6df5', backgroundColor: 'rgba(124,109,245,0.08)', fill: true,  borderWidth: 2.5, pointRadius: 3, tension: 0.4 },
+          { label: 'Apports cumulés', data: data.map(d => d.apports),    borderColor: '#f5b731', backgroundColor: 'transparent',               fill: false, borderWidth: 2,   pointRadius: 2, tension: 0.4, borderDash: [5,3] },
+          { label: 'Plus-values',      data: data.map(d => d.plusValues), borderColor: '#00e09e', backgroundColor: 'transparent',               fill: false, borderWidth: 2,   pointRadius: 2, tension: 0.4 },
+          { label: 'Livret A',         data: data.map(d => d.livretA),    borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'transparent', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0.4, borderDash: [3,2] },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: '#8892a8', font: { size: 11 } } },
+          tooltip: {
+            backgroundColor: '#12141f', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+            titleColor: '#8892a8', bodyColor: '#edf0f7',
+            callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtCompact(ctx.parsed.y)}` }
+          }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#495068', font: { size: 11 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#495068', font: { size: 10 }, callback: v => fmtCompact(v) } }
+        }
+      }
+    });
+  }
+
+  // Table
+  const tbody = document.getElementById('proj-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = data.map((d, i) => {
+    const avLA = (d.total - d.livretA);
+    const ratioPct = d.apports > 0 ? Math.round(d.plusValues / d.apports * 100) : 0;
+    return `<tr style="${i % 2 === 0 ? '' : 'background:var(--s2)'}">
+      <td style="font-weight:700;color:var(--accent)">${d.years} ans</td>
+      <td class="mono" style="font-weight:600">${fmtCompact(d.total)}</td>
+      <td class="mono" style="color:var(--gold)">${fmtCompact(d.apports)}</td>
+      <td class="mono" style="color:var(--positive);font-weight:600">${fmtCompact(d.plusValues)}</td>
+      <td class="mono" style="color:var(--text2)">${ratioPct}%</td>
+      <td class="mono" style="color:var(--text2)">${fmtCompact(d.livretA)}</td>
+      <td class="mono" style="color:${avLA >= 0 ? 'var(--positive)' : 'var(--negative)'};font-weight:600">${avLA >= 0 ? '+' : ''}${fmtCompact(avLA)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function initProjections() {
+  // Pre-fill base with current portfolio value
+  const pf = getPortfolio(currentUser);
+  const totalVal = pf.reduce((s, r) => s + r.qty * r.currentPrice, 0);
+  const el = document.getElementById('proj-base');
+  if (el) el.value = totalVal.toFixed(2);
+  renderProjections();
+}
+
+// ═══════════════════════════════════════════════════
+//  BILAN ANNUEL — 100% dynamique depuis localStorage
+// ═══════════════════════════════════════════════════
+let chartBilan = null;
+
+function computeBilanAnnuel() {
+  const txs        = getTransactions(currentUser);   // [{type, ticker, qty, price, date, realizedPnl}]
+  const versements = getVersements(currentUser);      // [{amount, date}]
+  const portfolio  = getPortfolio(currentUser);       // [{ticker, qty, buyPrice, currentPrice, ...}]
+
+  // Valeur actuelle totale du portefeuille (cours live)
+  const valeurActuelle = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
+
+  // Regrouper par année les transactions d'achat
+  const years = {};
+
+  // --- Apports par année depuis les versements
+  versements.forEach(v => {
+    if (!v.date) return;
+    const y = new Date(v.date + 'T12:00:00').getFullYear();
+    if (!years[y]) years[y] = { apport: 0, frais: 0, dividendes: 0, realizedPnl: 0, txCount: 0 };
+    years[y].apport += v.amount;
+  });
+
+  // --- Si pas de versements, reconstruire les apports depuis les achats
+  if (!versements.length) {
+    txs.filter(t => t.type === 'buy').forEach(t => {
+      if (!t.date) return;
+      const y = new Date(t.date + 'T12:00:00').getFullYear();
+      if (!years[y]) years[y] = { apport: 0, frais: 0, dividendes: 0, realizedPnl: 0, txCount: 0 };
+      years[y].apport += t.qty * t.price;
+    });
+  }
+
+  // --- Gains réalisés et dividendes par année
+  txs.forEach(t => {
+    if (!t.date) return;
+    const y = new Date(t.date + 'T12:00:00').getFullYear();
+    if (!years[y]) years[y] = { apport: 0, frais: 0, dividendes: 0, realizedPnl: 0, txCount: 0 };
+    if (t.type === 'sell' && t.realizedPnl != null) years[y].realizedPnl += t.realizedPnl;
+    if (t.type === 'dividend') years[y].dividendes += t.qty * t.price;
+    years[y].txCount++;
+  });
+
+  // Années triées
+  const sortedYears = Object.keys(years).map(Number).sort();
+  const currentYear = new Date().getFullYear();
+
+  // Apports cumulés au fil du temps + Livret A simulé
+  let apportCumul = 0;
+  const LIVRET_A_RATE = 0.025;
+
+  return sortedYears.map(y => {
+    const d        = years[y];
+    const apport   = d.apport;
+    apportCumul   += apport;
+
+    // Livret A : simulation des apports de l'année placés en milieu d'année
+    // Intérêts sur le cumul précédent (année pleine) + apport année en cours (demi-année)
+    const apportCumulAvant = apportCumul - apport;
+    const livretA = apportCumulAvant * (1 + LIVRET_A_RATE) + apport * (1 + LIVRET_A_RATE / 2);
+
+    const isCurrentYear = (y === currentYear);
+
+    // Valeur portefeuille : on affiche la valeur actuelle pour toutes les années
+    // (on n'a pas d'historique de valeur par année clôturée, donc on utilise la valeur live)
+    const valeur = valeurActuelle;
+
+    // Plus-value latente = valeur actuelle − apports cumulés à cette date
+    const pv = valeurActuelle - apportCumul;
+    const perfPct = apportCumul > 0 ? pv / apportCumul : null;
+
+    return {
+      year:        y,
+      label:       isCurrentYear ? y + ' YTD' : String(y),
+      isYTD:       isCurrentYear,
+      apport,
+      apportTotal: apportCumul,
+      valeur,
+      pv,
+      perfPct,
+      livretA:     parseFloat(livretA.toFixed(2)),
+      realizedPnl: parseFloat(d.realizedPnl.toFixed(2)),
+      dividendes:  parseFloat(d.dividendes.toFixed(2)),
+    };
+  });
+}
+
+function initBilan() {
+  const data  = computeBilanAnnuel();
+  const cards = document.getElementById('bilan-cards');
+
+  if (!data.length) {
+    if (cards) cards.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center">Aucune donnée — ajoutez des transactions ou des versements.</div>';
+    return;
+  }
+
+  // ── Cards ────────────────────────────────────────
+  if (cards) {
+    cards.innerHTML = data.map(y => {
+      const avLA   = y.valeur !== null ? (y.valeur - y.livretA) : null;
+      const avPos  = avLA !== null && avLA >= 0;
+
+      const rows = [
+        { label: "Apport de l'année",  value: y.apport.toFixed(2) + ' €',      color: 'var(--text)' },
+        { label: 'Apports cumulés',     value: y.apportTotal.toFixed(2) + ' €', color: 'var(--text2)' },
+        y.valeur !== null
+          ? { label: 'Valeur actuelle', value: y.valeur.toFixed(2) + ' €',      color: 'var(--accent)', bold: true }
+          : { label: 'Valeur actuelle', value: '—',                              color: 'var(--text3)' },
+        y.pv !== null
+          ? { label: 'Plus-value latente', value: (y.pv >= 0 ? '+' : '') + y.pv.toFixed(2) + ' €', color: y.pv >= 0 ? 'var(--positive)' : 'var(--negative)' }
+          : null,
+        y.realizedPnl !== 0
+          ? { label: 'Gains réalisés', value: (y.realizedPnl >= 0 ? '+' : '') + y.realizedPnl.toFixed(2) + ' €', color: y.realizedPnl >= 0 ? 'var(--positive)' : 'var(--negative)' }
+          : null,
+        y.dividendes > 0
+          ? { label: 'Dividendes reçus', value: y.dividendes.toFixed(2) + ' €', color: 'var(--gold)' }
+          : null,
+      ].filter(Boolean);
+
+      const perfBadge = y.perfPct !== null
+        ? `<span style="background:${y.perfPct >= 0 ? 'rgba(0,224,158,0.12)' : 'rgba(255,77,106,0.12)'};color:${y.perfPct >= 0 ? 'var(--positive)' : 'var(--negative)'};border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700;font-family:var(--mono)">${y.perfPct >= 0 ? '+' : ''}${(y.perfPct * 100).toFixed(2)}%</span>`
+        : '<span style="background:var(--s3);color:var(--text3);border-radius:8px;padding:4px 10px;font-size:11px">données partielles</span>';
+
+      return `<div class="section-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+          <div style="font-family:var(--display);font-size:20px;font-weight:700">${y.label}</div>
+          ${perfBadge}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          ${rows.map(row => `
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text3);font-size:12px">${row.label}</span>
+            <span style="color:${row.color};font-size:13px;font-weight:${row.bold ? 700 : 500};font-family:var(--mono)">${row.value}</span>
+          </div>`).join('')}
+        </div>
+        <div style="margin-top:12px;background:var(--s3);border-radius:10px;padding:10px 14px;border:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:6px">📊 vs Livret A 2,5%</div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:var(--text2);font-size:12px">Livret A équivalent</span>
+            <span style="font-family:var(--mono);font-size:12px;color:var(--text2)">${y.livretA.toFixed(2)} €</span>
+          </div>
+          ${avLA !== null ? `
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span style="color:var(--text2);font-size:12px">Avantage portefeuille</span>
+            <span style="font-family:var(--mono);font-size:13px;font-weight:700;color:${avPos ? 'var(--positive)' : 'var(--negative)'}">${avPos ? '+' : ''}${avLA.toFixed(2)} €</span>
+          </div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Graphique ────────────────────────────────────
+  const ctx = document.getElementById('chart-bilan');
+  if (!ctx) return;
+  if (chartBilan) { chartBilan.destroy(); chartBilan = null; }
+
+  chartBilan = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(y => y.label),
+      datasets: [
+        {
+          label: 'Portefeuille',
+          data: data.map(y => y.valeur),
+          backgroundColor: 'rgba(124,109,245,0.75)',
+          borderColor: '#7c6df5',
+          borderWidth: 1, borderRadius: 4,
+        },
+        {
+          label: 'Livret A simulé',
+          data: data.map(y => y.livretA),
+          backgroundColor: 'rgba(255,77,106,0.75)',
+          borderColor: '#ff4d6a',
+          borderWidth: 1, borderRadius: 4,
+        },
+        {
+          label: 'Apports cumulés',
+          data: data.map(y => y.apportTotal),
+          backgroundColor: 'rgba(245,183,49,0.75)',
+          borderColor: '#f5b731',
+          borderWidth: 1, borderRadius: 4,
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#8892a8', font: { size: 11 } } },
+        tooltip: {
+          backgroundColor: '#12141f', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+          titleColor: '#8892a8', bodyColor: '#edf0f7',
+          callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y != null ? c.parsed.y.toFixed(2) + ' €' : '—'}` }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#495068', font: { size: 12 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#495068', font: { size: 10 }, callback: v => fmtCompact(v) } }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  TROPHÉES
+// ═══════════════════════════════════════════════════
+const TROPHIES = {
+  patrimoine: { label: '💼 Patrimoine',  key: 'patrimoine', paliers: [500,1000,1500,2000,2500,3000,3500,4000,4500,5000] },
+  rendement:  { label: '📈 Plus-value',  key: 'rendement',  paliers: [50,100,150,200,250,300,350,400,450,500] },
+  dividendes: { label: '🎁 Dividendes',  key: 'dividendes', paliers: [10,20,30,40,50,60,70,80,90,100] },
+};
+
+function initTrophees() {
+  const pf   = getPortfolio(currentUser);
+  const txs  = getTransactions(currentUser);
+
+  const totalVal      = pf.reduce((s, r) => s + r.qty * r.currentPrice, 0);
+  const totalInvested = pf.reduce((s, r) => s + r.qty * r.buyPrice, 0);
+  const totalPnl      = totalVal - totalInvested;
+  // Dividends: sum realizedPnl from 'dividend' type or estimate from known yields
+  const divEstim = pf.reduce((s, r) => s + (r.dividendYield ? r.dividendYield * r.qty * r.currentPrice : 0), 0);
+
+  const values = { patrimoine: totalVal, rendement: totalPnl, dividendes: divEstim };
+
+  // Summary
+  const summary = document.getElementById('trophy-summary');
+  if (summary) {
+    const totalUnlocked = Object.values(TROPHIES).reduce((s, cat) => s + cat.paliers.filter(p => values[cat.key] >= p).length, 0);
+    const totalPossible = Object.values(TROPHIES).reduce((s, cat) => s + cat.paliers.length, 0);
+    const nextPatrimoine = TROPHIES.patrimoine.paliers.find(p => values.patrimoine < p) || TROPHIES.patrimoine.paliers[TROPHIES.patrimoine.paliers.length - 1];
+    summary.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-label">🏆 Total débloqués</div>
+        <div class="stat-value" style="color:var(--gold)">${totalUnlocked} / ${totalPossible}</div>
+        <div class="stat-change pos">Trophées obtenus</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">💼 Patrimoine</div>
+        <div class="stat-value">${totalVal.toFixed(0)} €</div>
+        <div class="stat-change pos">${TROPHIES.patrimoine.paliers.filter(p => totalVal >= p).length} / ${TROPHIES.patrimoine.paliers.length} paliers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">📈 Plus-value latente</div>
+        <div class="stat-value" style="color:${totalPnl >= 0 ? 'var(--positive)' : 'var(--negative)'}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(0)} €</div>
+        <div class="stat-change ${totalPnl >= 0 ? 'pos' : 'neg'}">${TROPHIES.rendement.paliers.filter(p => totalPnl >= p).length} / ${TROPHIES.rendement.paliers.length} paliers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">🎯 Prochain palier</div>
+        <div class="stat-value" style="color:var(--accent2)">${nextPatrimoine.toLocaleString('fr-FR')} €</div>
+        <div class="stat-change">Patrimoine</div>
+      </div>
+    `;
+  }
+
+  // Categories
+  const cats = document.getElementById('trophy-categories');
+  if (!cats) return;
+  cats.innerHTML = Object.values(TROPHIES).map(cat => {
+    const current = values[cat.key];
+    const unlocked = cat.paliers.filter(p => current >= p).length;
+    return `<div class="section-card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <div style="font-family:var(--display);font-size:16px;font-weight:700">${cat.label}</div>
+        <div style="font-size:12px;color:var(--accent)">${unlocked} / ${cat.paliers.length}</div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Actuel : <span style="font-family:var(--mono);color:var(--text)">${current.toFixed(0)} €</span></div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        ${cat.paliers.map(s => {
+          const ok  = current >= s;
+          const pct = Math.min(100, (current / s) * 100).toFixed(0);
+          return `<div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:14px;flex-shrink:0">${ok ? '✅' : '⬜'}</span>
+            <div style="flex:1">
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                <span style="font-size:11px;color:${ok ? 'var(--positive)' : 'var(--text3)'};font-weight:${ok ? 600 : 400}">${s.toLocaleString('fr-FR')} €</span>
+                <span style="font-size:10px;color:var(--text3);font-family:var(--mono)">${pct}%</span>
+              </div>
+              <div style="height:3px;background:var(--s4);border-radius:2px;overflow:hidden">
+                <div style="width:${pct}%;height:100%;background:${ok ? 'var(--positive)' : 'var(--accent)'};border-radius:2px;opacity:${ok ? 1 : 0.5};transition:width .5s ease"></div>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+//  HOOK showPage for new pages
+// ═══════════════════════════════════════════════════
+const _origShowPageAnalytique = showPage;
+showPage = function(id) {
+  _origShowPageAnalytique(id);
+  if (id === 'base100')     initBase100();
+  if (id === 'projections') initProjections();
+  if (id === 'bilan')       initBilan();
+  if (id === 'trophees')    initTrophees();
+};
+const _origShowPageMobileAnalytique = showPageMobile;
+showPageMobile = function(id) {
+  _origShowPageMobileAnalytique(id);
+  if (id === 'base100')     initBase100();
+  if (id === 'projections') initProjections();
+  if (id === 'bilan')       initBilan();
+  if (id === 'trophees')    initTrophees();
 };
 </script>
 </body>
