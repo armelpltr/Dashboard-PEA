@@ -5681,10 +5681,10 @@ function initDividendes() {
   // KPIs immédiats
   const kpis = document.getElementById('div-kpis');
   if (kpis) kpis.innerHTML = `
-    <div class="stat-card">
+    <div class="stat-card" id="div-kpi-recus">
       <div class="stat-label">🎁 Dividendes reçus</div>
-      <div class="stat-value" style="color:var(--gold)">${divRecus.toFixed(2)} €</div>
-      <div class="stat-change pos">${divTxs.length} versement(s) enregistré(s)</div>
+      <div class="stat-value" style="color:var(--gold)">—</div>
+      <div class="stat-change pos">Chargement…</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">📋 Actions suivies</div>
@@ -5740,10 +5740,17 @@ function initDividendes() {
     return { r, history, buyDate: firstBuy, allReceived, totalRecu, duringHolding, nextEstim, lastKnown };
   })).then(rows => {
     // Mettre à jour KPIs dynamiques
-    const totalHolding = rows.reduce((s, x) => s + x.duringHolding.length, 0);
+    const totalHolding   = rows.reduce((s, x) => s + x.duringHolding.length, 0);
+    const totalRecuAuto  = rows.reduce((s, x) => s + x.totalRecu, 0);
+    const totalVersionts = rows.reduce((s, x) => s + x.allReceived.length, 0);
     const nextRows = rows.filter(x => x.nextEstim !== '—').sort((a, b) => a.nextEstim.localeCompare(b.nextEstim));
+    const kpiRecus   = document.getElementById('div-kpi-recus');
     const kpiHolding = document.getElementById('div-kpi-holding');
     const kpiNext    = document.getElementById('div-kpi-next');
+    if (kpiRecus) kpiRecus.innerHTML = `
+      <div class="stat-label">🎁 Dividendes reçus</div>
+      <div class="stat-value" style="color:var(--gold)">${totalRecuAuto.toFixed(2)} €</div>
+      <div class="stat-change pos">${totalVersionts} versement(s) détecté(s)</div>`;
     if (kpiHolding) kpiHolding.innerHTML = `
       <div class="stat-label">📅 Versements pendant détention</div>
       <div class="stat-value">${totalHolding}</div>
