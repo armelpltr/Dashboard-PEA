@@ -1036,16 +1036,177 @@ body.sb-collapsed .main { margin-left: 58px; }
   .charts-grid { grid-template-columns: 1fr; }
   .analyse-grid { grid-template-columns: 1fr; }
 }
+/* ═══════════════════════════════════════════════════
+   MOBILE — responsive complet
+   ═══════════════════════════════════════════════════ */
+
+/* ─── MOBILE HEADER ─── */
+.mobile-header {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 56px;
+  background: rgba(10,12,20,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  z-index: 150;
+  padding: 0 16px;
+  align-items: center; justify-content: space-between;
+}
+.mobile-header-logo {
+  display: flex; align-items: center; gap: 10px;
+}
+.mobile-header-icon {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: grid; place-items: center; font-size: 14px;
+}
+.mobile-header-title {
+  font-family: var(--display); font-size: 16px; font-weight: 800; letter-spacing: -0.3px;
+}
+.mobile-header-actions { display: flex; align-items: center; gap: 8px; }
+.mobile-header-btn {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: var(--s2); border: 1px solid var(--border);
+  display: grid; place-items: center; cursor: pointer; font-size: 14px;
+  color: var(--text2); transition: all 0.15s;
+}
+.mobile-header-btn:hover { background: var(--s3); color: var(--text); }
+
+/* ─── MOBILE BOTTOM NAV ─── */
+.mobile-nav {
+  display: none;
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(10,12,20,0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  z-index: 200;
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+}
+.mobile-nav-inner {
+  display: flex; justify-content: space-around; align-items: center;
+}
+.mobile-nav-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 10px; border-radius: 10px;
+  cursor: pointer; color: var(--text3); font-size: 10px;
+  font-weight: 600; font-family: var(--sans);
+  transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+  background: none; border: none; min-width: 52px;
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-nav-item span { font-size: 20px; line-height: 1; transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+.mobile-nav-item.active {
+  color: var(--accent);
+  background: var(--accent-d);
+}
+.mobile-nav-item.active span { transform: scale(1.15); }
+
+/* ─── MOBILE DRAWER (pages secondaires) ─── */
+.mobile-drawer-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(4,6,11,0.7); backdrop-filter: blur(8px);
+  z-index: 300;
+}
+.mobile-drawer-overlay.open { display: flex; align-items: flex-end; }
+.mobile-drawer {
+  width: 100%; background: var(--s1);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--border2);
+  padding: 12px 0 calc(20px + env(safe-area-inset-bottom, 0px));
+  max-height: 75vh; overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+}
+.mobile-drawer-overlay.open .mobile-drawer { transform: translateY(0); }
+.mobile-drawer-handle {
+  width: 36px; height: 4px; border-radius: 2px;
+  background: var(--border2); margin: 0 auto 16px;
+}
+.mobile-drawer-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 20px; cursor: pointer; color: var(--text2);
+  font-size: 14px; font-weight: 500; transition: background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-drawer-item:hover, .mobile-drawer-item:active { background: rgba(255,255,255,0.03); }
+.mobile-drawer-item.active { color: var(--accent); }
+.mobile-drawer-icon { font-size: 18px; width: 24px; text-align: center; }
+.mobile-drawer-section {
+  font-size: 9px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 2px;
+  padding: 8px 20px 4px; font-family: var(--mono);
+}
+
 @media (max-width: 768px) {
-  .sidebar { display: none; }
+  /* Masquer sidebar desktop */
+  .sidebar { display: none !important; }
+  .sidebar-toggle { display: none !important; }
+
+  /* Afficher éléments mobile */
+  .mobile-header { display: flex; }
   .mobile-nav { display: block; }
-  .main { margin-left: 0; padding: 18px 16px 80px; }
-  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .stat-value { font-size: 18px; }
+
+  /* Layout principal */
+  .main {
+    margin-left: 0 !important;
+    padding: 72px 14px calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Grilles */
+  .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 10px; }
+  .charts-grid { grid-template-columns: 1fr !important; }
+  .analyse-grid { grid-template-columns: 1fr !important; }
+
+  /* Typographie */
   .page-title { font-size: 22px; }
-  .login-card { width: 92vw; padding: 32px 24px; }
-  table { font-size: 12px; }
-  th, td { padding: 10px 14px; }
+  .stat-value { font-size: 17px; }
+  .stat-label { font-size: 9px; }
+
+  /* Login */
+  .login-card { width: 92vw; padding: 32px 20px; }
+
+  /* Tables */
+  table { font-size: 11px; }
+  th, td { padding: 10px 10px; }
+
+  /* Page header */
+  .page-header { flex-direction: column; gap: 10px; align-items: flex-start; }
+  .page-header > div:last-child { width: 100%; }
+
+  /* Masquer colonnes moins importantes sur mobile */
+  .hide-mobile { display: none !important; }
+
+  /* Stat cards — 1 colonne sur très petit */
+  .stat-card { padding: 14px 14px; }
+
+  /* Section cards */
+  .section-card { padding: 16px 14px; }
+
+  /* Table container scroll horizontal */
+  .table-container { overflow-x: auto; }
+  .table-container table { min-width: 480px; }
+
+  /* Modales plein écran sur mobile */
+  .modal { width: 92vw !important; max-height: 85vh; overflow-y: auto; }
+
+  /* Toolbar */
+  .toolbar { gap: 6px; padding: 10px 14px; }
+  .toolbar input { font-size: 12px; }
+
+  /* Charts hauteur réduite */
+  canvas { max-height: 220px; }
+
+  /* Light mode header */
+  [data-theme="light"] .mobile-header {
+    background: rgba(255,255,255,0.92);
+  }
+}
+
+/* Très petit écran */
+@media (max-width: 380px) {
+  .stats-grid { grid-template-columns: 1fr !important; }
+  .main { padding: 72px 10px calc(80px + env(safe-area-inset-bottom, 0px)); }
+  .mobile-nav-item { padding: 6px 6px; min-width: 44px; font-size: 9px; }
 }
 </style>
 </head>
@@ -1135,6 +1296,89 @@ body.sb-collapsed .main { margin-left: 58px; }
 
 <!-- ═══ APP ═════════════════════════════════════════ -->
 <div id="app">
+
+  <!-- ─── MOBILE HEADER ───────────────────────────── -->
+  <header class="mobile-header" id="mobile-header">
+    <div class="mobile-header-logo">
+      <div class="mobile-header-icon">📈</div>
+      <div class="mobile-header-title">PEA Dashboard</div>
+    </div>
+    <div class="mobile-header-actions">
+      <div class="mobile-header-btn" onclick="openMobileDrawer()" title="Plus">☰</div>
+      <div class="mobile-header-btn" onclick="openProfilModal()" id="mobile-avatar-btn" title="Profil">
+        <span id="mobile-avatar-letter" style="font-size:13px;font-weight:700;font-family:var(--display)">?</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ─── MOBILE BOTTOM NAV ───────────────────────── -->
+  <nav class="mobile-nav">
+    <div class="mobile-nav-inner">
+      <button class="mobile-nav-item active" data-mob="portfolio" onclick="showPageMobile('portfolio')">
+        <span>💼</span>PEA
+      </button>
+      <button class="mobile-nav-item" data-mob="watchlist" onclick="showPageMobile('watchlist')">
+        <span>👁</span>Watch
+      </button>
+      <button class="mobile-nav-item" data-mob="graphiques" onclick="showPageMobile('graphiques')">
+        <span>📊</span>Charts
+      </button>
+      <button class="mobile-nav-item" data-mob="dividendes" onclick="showPageMobile('dividendes')">
+        <span>💰</span>Divid.
+      </button>
+      <button class="mobile-nav-item" onclick="openMobileDrawer()">
+        <span>⋯</span>Plus
+      </button>
+    </div>
+  </nav>
+
+  <!-- ─── MOBILE DRAWER ───────────────────────────── -->
+  <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" onclick="if(event.target===this)closeMobileDrawer()">
+    <div class="mobile-drawer">
+      <div class="mobile-drawer-handle"></div>
+      <div class="mobile-drawer-section">Navigation</div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('portfolio');closeMobileDrawer()" data-mob="portfolio">
+        <span class="mobile-drawer-icon">💼</span>Portefeuille
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('analyse');closeMobileDrawer()" data-mob="analyse">
+        <span class="mobile-drawer-icon">🔍</span>Analyse
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('watchlist');closeMobileDrawer()" data-mob="watchlist">
+        <span class="mobile-drawer-icon">👁</span>Watchlist
+      </div>
+      <div class="mobile-drawer-section">Analytique</div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('base100');closeMobileDrawer()" data-mob="base100">
+        <span class="mobile-drawer-icon">📐</span>Base 100
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('projections');closeMobileDrawer()" data-mob="projections">
+        <span class="mobile-drawer-icon">🔭</span>Projections
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('bilan');closeMobileDrawer()" data-mob="bilan">
+        <span class="mobile-drawer-icon">📅</span>Bilan annuel
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('trophees');closeMobileDrawer()" data-mob="trophees">
+        <span class="mobile-drawer-icon">🏆</span>Trophées
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('calendrier');closeMobileDrawer()" data-mob="calendrier">
+        <span class="mobile-drawer-icon">📆</span>Calendrier
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('graphiques');closeMobileDrawer()" data-mob="graphiques">
+        <span class="mobile-drawer-icon">📊</span>Graphiques
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('dividendes');closeMobileDrawer()" data-mob="dividendes">
+        <span class="mobile-drawer-icon">💰</span>Dividendes
+      </div>
+      <div class="mobile-drawer-section">Compte</div>
+      <div class="mobile-drawer-item" onclick="openProfilModal();closeMobileDrawer()">
+        <span class="mobile-drawer-icon">👤</span>Mon profil
+      </div>
+      <div style="height:1px;background:var(--border);margin:8px 20px"></div>
+      <div class="mobile-drawer-item" onclick="doLogout()" style="color:var(--negative)">
+        <span class="mobile-drawer-icon">⏻</span>Déconnexion
+      </div>
+    </div>
+  </div>
+
   <aside class="sidebar" id="sidebar">
     <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">◀</button>
     <div class="sidebar-logo">
@@ -1305,7 +1549,7 @@ body.sb-collapsed .main { margin-left: 58px; }
             <tr>
               <th>Action</th>
               <th>Qté</th>
-              <th>Prix achat</th>
+              <th class="hide-mobile">Prix achat</th>
               <th>Prix actuel</th>
               <th>Valeur</th>
               <th>+/- Value</th>
@@ -2266,6 +2510,7 @@ async function startApp(user) {
   document.getElementById('user-avatar').textContent = displayName[0].toUpperCase();
   document.getElementById('user-name-display').textContent = displayName;
   loadProfilePage(user);
+  updateMobileAvatar(user);
   const d = new Date();
   document.getElementById('portfolio-date').textContent =
     'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -2413,6 +2658,36 @@ document.getElementById('input-email').addEventListener('keydown', e => { if (e.
 document.getElementById('reg-pass2').addEventListener('keydown', e => { if (e.key === 'Enter') window.doRegister(); });
 
 // ─── NAVIGATION ──────────────────────────────────────
+
+// Mobile drawer
+window.openMobileDrawer = function() {
+  document.getElementById('mobile-drawer-overlay').classList.add('open');
+};
+window.closeMobileDrawer = function() {
+  document.getElementById('mobile-drawer-overlay').classList.remove('open');
+};
+
+// Sync active states across mobile nav + drawer
+function syncMobileNav(id) {
+  document.querySelectorAll('.mobile-nav-item[data-mob]').forEach(b => {
+    b.classList.toggle('active', b.dataset.mob === id);
+  });
+  document.querySelectorAll('.mobile-drawer-item[data-mob]').forEach(b => {
+    b.classList.toggle('active', b.dataset.mob === id);
+  });
+}
+
+// Update mobile header avatar
+function updateMobileAvatar(user) {
+  const letter = document.getElementById('mobile-avatar-letter');
+  if (!letter) return;
+  if (user && user.photoURL) {
+    letter.innerHTML = `<img src="${user.photoURL}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">`;
+  } else if (user) {
+    letter.textContent = (user.displayName || user.email || '?')[0].toUpperCase();
+  }
+}
+
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -2429,14 +2704,10 @@ function showPage(id) {
 function showPageMobile(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  // Sync mobile nav
-  document.querySelectorAll('.mobile-nav-item').forEach(b => {
-    b.classList.toggle('active', b.dataset.mob === id);
-  });
+  syncMobileNav(id);
   // Sync sidebar nav
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const sidebarItems = document.querySelectorAll('.nav-item');
-  sidebarItems.forEach(n => {
+  document.querySelectorAll('.nav-item').forEach(n => {
     const onclick = n.getAttribute('onclick') || '';
     if (onclick.includes("'" + id + "'")) n.classList.add('active');
   });
