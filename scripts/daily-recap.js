@@ -226,7 +226,7 @@ async function sendEmail({ to, toName, subject, html }) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      sender:  { name: 'PEA Dashboard', email: 'noreply@dashboard-pea.fr' },
+      sender:  { name: 'PEA Dashboard', email: 'armelpltr14@gmail.com' },
       to:      [{ email: to, name: toName }],
       subject,
       htmlContent: html,
