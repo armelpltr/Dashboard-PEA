@@ -1177,6 +1177,10 @@ body.sb-collapsed .main { margin-left: 58px; }
       <div class="nav-item" onclick="showPage('dividendes')">
         <span class="nav-icon">💰</span> Dividendes
       </div>
+      <div class="nav-section-label" style="margin-top:10px">Compte</div>
+      <div class="nav-item" onclick="showPage('profil')" id="nav-profil">
+        <span class="nav-icon">👤</span> Profil
+      </div>
     </nav>
     <div class="sidebar-settings">
       <div class="setting-row">
@@ -1196,10 +1200,10 @@ body.sb-collapsed .main { margin-left: 58px; }
       </div>
     </div>
     <div class="sidebar-user">
-      <div class="user-card">
+      <div class="user-card" onclick="showPage('profil')" style="cursor:pointer" title="Mon profil">
         <div class="user-avatar" id="user-avatar">A</div>
-        <span class="user-name" id="user-name-display">armel</span>
-        <button class="btn-logout" onclick="doLogout()" title="Déconnexion">⏻</button>
+        <span class="user-name" id="user-name-display">—</span>
+        <button class="btn-logout" onclick="event.stopPropagation();doLogout()" title="Déconnexion">⏻</button>
       </div>
     </div>
   </aside>
@@ -1817,6 +1821,95 @@ body.sb-collapsed .main { margin-left: 58px; }
       </div>
     </div>
 
+
+    <!-- ══════════════════════════════════════════════
+         PROFIL PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-profil">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Mon profil</div>
+          <div class="page-subtitle">Gérez vos informations personnelles et la sécurité de votre compte</div>
+        </div>
+      </div>
+
+      <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
+
+        <!-- Avatar + infos principales -->
+        <div class="section-card">
+          <div style="display:flex;align-items:center;gap:20px;margin-bottom:22px">
+            <div id="profil-avatar-big" style="
+              width:72px;height:72px;border-radius:20px;flex-shrink:0;
+              background:linear-gradient(135deg,var(--accent),var(--accent2));
+              display:grid;place-items:center;font-size:28px;font-weight:700;color:#fff;
+              font-family:var(--display);box-shadow:0 8px 24px rgba(124,109,245,0.3);
+              overflow:hidden;position:relative;">
+              <span id="profil-avatar-letter">?</span>
+              <img id="profil-avatar-img" src="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />
+            </div>
+            <div>
+              <div id="profil-display-name" style="font-family:var(--display);font-size:20px;font-weight:700">—</div>
+              <div id="profil-email" style="font-size:12px;color:var(--text2);font-family:var(--mono);margin-top:4px">—</div>
+              <div id="profil-provider-badge" style="margin-top:8px"></div>
+            </div>
+          </div>
+
+          <!-- Nom d'affichage -->
+          <div class="form-group">
+            <label class="form-label">Nom d'affichage</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="form-input" id="profil-name-input" placeholder="Votre prénom ou pseudo" style="flex:1">
+              <button onclick="saveDisplayName()" style="
+                padding:0 18px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.25);
+                color:var(--accent);border-radius:10px;font-size:13px;font-weight:600;
+                cursor:pointer;white-space:nowrap;transition:all 0.2s;font-family:var(--sans);">
+                Sauvegarder
+              </button>
+            </div>
+          </div>
+
+          <div id="profil-name-status" style="font-size:12px;font-family:var(--mono);margin-top:-8px;margin-bottom:8px"></div>
+        </div>
+
+        <!-- Changer le mot de passe -->
+        <div class="section-card" id="profil-password-section">
+          <div class="section-title" style="margin-bottom:16px">🔒 Changer le mot de passe</div>
+          <div class="form-group">
+            <label class="form-label">Mot de passe actuel</label>
+            <input type="password" class="form-input" id="profil-old-pass" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nouveau mot de passe</label>
+            <input type="password" class="form-input" id="profil-new-pass" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirmer le nouveau mot de passe</label>
+            <input type="password" class="form-input" id="profil-new-pass2" placeholder="••••••••">
+          </div>
+          <div id="profil-pass-status" style="font-size:12px;font-family:var(--mono);margin-bottom:12px"></div>
+          <button onclick="saveNewPassword()" style="
+            padding:10px 20px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.25);
+            color:var(--accent);border-radius:10px;font-size:13px;font-weight:600;
+            cursor:pointer;transition:all 0.2s;font-family:var(--sans);">
+            Mettre à jour le mot de passe
+          </button>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="section-card" style="border-color:rgba(255,77,106,0.15)">
+          <div class="section-title" style="margin-bottom:6px;color:var(--negative)">⚠️ Zone dangereuse</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:16px">La suppression de votre compte est irréversible. Toutes vos données seront perdues.</div>
+          <button onclick="confirmDeleteAccount()" style="
+            padding:10px 20px;background:var(--negative-d);border:1px solid rgba(255,77,106,0.25);
+            color:var(--negative);border-radius:10px;font-size:13px;font-weight:600;
+            cursor:pointer;transition:all 0.2s;font-family:var(--sans);">
+            Supprimer mon compte
+          </button>
+        </div>
+
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1985,7 +2078,7 @@ body.sb-collapsed .main { margin-left: 58px; }
 <script type="module">
 // ─── FIREBASE AUTH ────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup }
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -2096,11 +2189,12 @@ window.doLogout = async function() {
 function startApp(user) {
   currentUser = user.uid;
   window.currentUser = user.uid;
-  const displayName = user.email.split('@')[0];
+  const displayName = user.displayName || user.email.split('@')[0];
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('user-avatar').textContent = displayName[0].toUpperCase();
   document.getElementById('user-name-display').textContent = displayName;
+  loadProfilePage(user);
   const d = new Date();
   document.getElementById('portfolio-date').textContent =
     'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -2127,6 +2221,115 @@ onAuthStateChanged(fbAuth, user => {
     stopApp();
   }
 });
+
+// ─── PROFIL ───────────────────────────────────────────
+function loadProfilePage(user) {
+  if (!user) return;
+
+  // Avatar
+  const letter = document.getElementById('profil-avatar-letter');
+  const img    = document.getElementById('profil-avatar-img');
+  const big    = document.getElementById('profil-avatar-big');
+  if (user.photoURL) {
+    img.src = user.photoURL;
+    img.style.display = 'block';
+    letter.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    letter.style.display = 'block';
+    letter.textContent = (user.displayName || user.email || '?')[0].toUpperCase();
+  }
+
+  // Nom & email
+  const nameEl = document.getElementById('profil-display-name');
+  const emailEl = document.getElementById('profil-email');
+  const nameInput = document.getElementById('profil-name-input');
+  nameEl.textContent = user.displayName || user.email.split('@')[0];
+  emailEl.textContent = user.email;
+  nameInput.value = user.displayName || '';
+
+  // Badge fournisseur
+  const badge = document.getElementById('profil-provider-badge');
+  const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+  badge.innerHTML = isGoogle
+    ? '<span style="font-size:10px;background:rgba(66,133,244,0.12);color:#4285F4;border:1px solid rgba(66,133,244,0.25);padding:2px 8px;border-radius:4px;font-family:var(--mono)">Connecté via Google</span>'
+    : '<span style="font-size:10px;background:var(--accent-d);color:var(--accent);border:1px solid rgba(124,109,245,0.2);padding:2px 8px;border-radius:4px;font-family:var(--mono)">Email / Mot de passe</span>';
+
+  // Cacher section MDP si Google
+  const passSection = document.getElementById('profil-password-section');
+  if (passSection) passSection.style.display = isGoogle ? 'none' : 'block';
+}
+
+window.saveDisplayName = async function() {
+  const user = fbAuth.currentUser;
+  const name = document.getElementById('profil-name-input').value.trim();
+  const status = document.getElementById('profil-name-status');
+  if (!name) { status.textContent = 'Le nom ne peut pas être vide.'; status.style.color = 'var(--negative)'; return; }
+  try {
+    await updateProfile(user, { displayName: name });
+    // Update sidebar
+    document.getElementById('user-name-display').textContent = name;
+    document.getElementById('user-avatar').textContent = name[0].toUpperCase();
+    document.getElementById('profil-display-name').textContent = name;
+    status.textContent = '✓ Nom mis à jour !';
+    status.style.color = 'var(--positive)';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  } catch(e) {
+    status.textContent = 'Erreur : ' + e.message;
+    status.style.color = 'var(--negative)';
+  }
+};
+
+window.saveNewPassword = async function() {
+  const user = fbAuth.currentUser;
+  const oldPass  = document.getElementById('profil-old-pass').value;
+  const newPass  = document.getElementById('profil-new-pass').value;
+  const newPass2 = document.getElementById('profil-new-pass2').value;
+  const status   = document.getElementById('profil-pass-status');
+  status.textContent = '';
+
+  if (!oldPass || !newPass || !newPass2) { status.textContent = 'Remplissez tous les champs.'; status.style.color = 'var(--negative)'; return; }
+  if (newPass !== newPass2) { status.textContent = 'Les mots de passe ne correspondent pas.'; status.style.color = 'var(--negative)'; return; }
+  if (newPass.length < 6) { status.textContent = 'Mot de passe trop court (6 caractères min).'; status.style.color = 'var(--negative)'; return; }
+
+  try {
+    const cred = EmailAuthProvider.credential(user.email, oldPass);
+    await reauthenticateWithCredential(user, cred);
+    await updatePassword(user, newPass);
+    document.getElementById('profil-old-pass').value = '';
+    document.getElementById('profil-new-pass').value = '';
+    document.getElementById('profil-new-pass2').value = '';
+    status.textContent = '✓ Mot de passe mis à jour !';
+    status.style.color = 'var(--positive)';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  } catch(e) {
+    const msgs = {
+      'auth/wrong-password': 'Mot de passe actuel incorrect.',
+      'auth/weak-password':  'Nouveau mot de passe trop faible.',
+      'auth/too-many-requests': 'Trop de tentatives. Réessayez plus tard.',
+    };
+    status.textContent = msgs[e.code] || 'Erreur : ' + e.message;
+    status.style.color = 'var(--negative)';
+  }
+};
+
+window.confirmDeleteAccount = async function() {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.')) return;
+  const user = fbAuth.currentUser;
+  const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+  try {
+    if (!isGoogle) {
+      const pass = prompt('Entrez votre mot de passe pour confirmer la suppression :');
+      if (!pass) return;
+      const cred = EmailAuthProvider.credential(user.email, pass);
+      await reauthenticateWithCredential(user, cred);
+    }
+    await deleteUser(user);
+    // onAuthStateChanged → stopApp()
+  } catch(e) {
+    alert('Erreur lors de la suppression : ' + e.message);
+  }
+};
 
 // ─── ENTRÉE CLAVIER ───────────────────────────────────
 document.getElementById('input-pass').addEventListener('keydown', e => { if (e.key === 'Enter') window.doLogin(); });
@@ -6071,6 +6274,7 @@ function confirmDividende() {
 const _origShowPageAnalytique = showPage;
 showPage = function(id) {
   _origShowPageAnalytique(id);
+  if (id === 'profil') loadProfilePage(fbAuth.currentUser);
   if (id === 'base100')     initBase100();
   if (id === 'projections') initProjections();
   if (id === 'bilan')       initBilan();
