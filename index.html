@@ -2061,9 +2061,11 @@ body.sb-collapsed .main { margin-left: 58px; }
 <script>
 // ─── FIREBASE AUTH ────────────────────────────────────
 // ─── FIREBASE (chargement dynamique, compatible sans bundler) ─────
-let fbApp, fbAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+let fbApp, fbAuth, db,
+    createUserWithEmailAndPassword, signInWithEmailAndPassword,
     signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
-    updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser;
+    updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser,
+    getFirestoreDoc, setFirestoreDoc, firestoreDoc, firestoreCollection, deleteFirestoreDoc, getDocs;
 
 (async function initFirebase() {
   const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
@@ -2081,8 +2083,17 @@ let fbApp, fbAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   EmailAuthProvider              = auth.EmailAuthProvider;
   deleteUser                     = auth.deleteUser;
 
+  const firestore = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+  getFirestoreDoc     = firestore.getDoc;
+  setFirestoreDoc     = firestore.setDoc;
+  firestoreDoc        = firestore.doc;
+  firestoreCollection = firestore.collection;
+  deleteFirestoreDoc  = firestore.deleteDoc;
+  getDocs             = firestore.getDocs;
+
   fbApp  = initializeApp(firebaseConfig);
   fbAuth = auth.getAuth(fbApp);
+  db     = firestore.getFirestore(fbApp);
 
   auth.onAuthStateChanged(fbAuth, user => {
     if (user) { startApp(user); } else { stopApp(); }
@@ -2100,6 +2111,60 @@ const firebaseConfig = {
 
 
 let currentUser = null;
+
+// ─── COUCHE DONNÉES FIRESTORE (cache synchrone + sync arrière-plan) ──────
+// Les lectures/écritures sont SYNCHRONES via un cache mémoire.
+// Firestore est chargé au démarrage et écrit en arrière-plan.
+
+const _localCache = {};
+
+// Charge toutes les données depuis Firestore au démarrage
+async function loadAllUserData(uid) {
+  if (!uid || !db) return;
+  const cols = ['portfolio', 'transactions', 'versements', 'watchlist'];
+  await Promise.all(cols.map(async col => {
+    try {
+      const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', col));
+      _localCache[uid + '_' + col] = snap.exists() ? (snap.data().items || []) : [];
+    } catch(e) {
+      _localCache[uid + '_' + col] = [];
+    }
+  }));
+}
+
+// Lecture synchrone depuis le cache
+function getPortfolio(user)    { return _localCache[(user||currentUser) + '_portfolio']    || []; }
+function getTransactions(user) { return _localCache[(user||currentUser) + '_transactions'] || []; }
+function getVersements(user)   { return _localCache[(user||currentUser) + '_versements']   || []; }
+function getWatchlist(user)    { return _localCache[(user||currentUser) + '_watchlist']    || []; }
+
+// Écriture synchrone dans le cache + Firestore en arrière-plan
+function savePortfolio(user, data)    { _fsWrite(user||currentUser, 'portfolio',    data); }
+function saveTransactions(user, data) { _fsWrite(user||currentUser, 'transactions', data); }
+function saveVersements(user, data)   { _fsWrite(user||currentUser, 'versements',   data); }
+function saveWatchlist(user, data)    { _fsWrite(user||currentUser, 'watchlist',    data); }
+
+function _fsWrite(uid, col, data) {
+  _localCache[uid + '_' + col] = data;
+  if (!db) return;
+  setFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', col), { items: data })
+    .catch(e => console.warn('Firestore write error:', col, e));
+}
+
+// Suppression complète des données utilisateur
+async function deleteAllUserData(uid) {
+  const cols = ['portfolio', 'transactions', 'versements', 'watchlist'];
+  await Promise.all(cols.map(col =>
+    deleteFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', col)).catch(() => {})
+  ));
+}
+
+// logTransaction reste synchrone
+function logTransaction(user, tx) {
+  const txs = getTransactions(user);
+  txs.push({ ...tx, id: Date.now() });
+  saveTransactions(user, txs);
+}
 
 // ─── HELPERS ERREURS FIREBASE ─────────────────────────
 function firebaseErrorMsg(code) {
@@ -2192,7 +2257,7 @@ window.doLogout = async function() {
 };
 
 // ─── DÉMARRAGE APP ────────────────────────────────────
-function startApp(user) {
+async function startApp(user) {
   currentUser = user.uid;
   window.currentUser = user.uid;
   const displayName = user.displayName || user.email.split('@')[0];
@@ -2204,6 +2269,8 @@ function startApp(user) {
   const d = new Date();
   document.getElementById('portfolio-date').textContent =
     'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  // Charger toutes les données Firestore avant de rendre
+  await loadAllUserData(user.uid);
   window.renderPortfolio();
   window.fetchAllLogos();
   if (!window.autoRefreshInterval) window.toggleAutoRefresh();
@@ -2331,6 +2398,8 @@ window.confirmDeleteAccount = async function() {
       const cred = EmailAuthProvider.credential(user.email, pass);
       await reauthenticateWithCredential(user, cred);
     }
+    // Supprimer toutes les données Firestore
+    await deleteAllUserData(user.uid);
     await deleteUser(user);
     // onAuthStateChanged → stopApp()
   } catch(e) {
@@ -3851,25 +3920,11 @@ function setPortfolioPeriod(p) {
 // ─── TRANSACTION LOG ─────────────────────────────────
 // Stores all buy/sell events so history can be reconstructed
 // even after positions are fully sold
-function getTransactions(user) {
-  try { return JSON.parse(localStorage.getItem('pea_transactions_' + user)) || []; } catch { return []; }
-}
-function saveTransactions(user, txs) {
-  localStorage.setItem('pea_transactions_' + user, JSON.stringify(txs));
-}
-function logTransaction(user, tx) {
-  const txs = getTransactions(user);
-  txs.push(tx);
-  saveTransactions(user, txs);
-}
+// getTransactions/saveTransactions → Firestore (définis dans couche données)
+
 
 // ─── VERSEMENTS (cash deposits) ─────────────────────
-function getVersements(user) {
-  try { return JSON.parse(localStorage.getItem('pea_versements_' + user)) || []; } catch { return []; }
-}
-function saveVersements(user, data) {
-  localStorage.setItem('pea_versements_' + user, JSON.stringify(data));
-}
+// getVersements/saveVersements → Firestore (définis dans couche données)
 function openVersementModal() {
   document.getElementById('versement-modal-overlay').classList.add('open');
   document.getElementById('versement-amount').value = '';
@@ -5091,12 +5146,7 @@ function onDrop(e, targetIdx) {
 // ═══════════════════════════════════════════════════
 // FEATURE 9: WATCHLIST
 // ═══════════════════════════════════════════════════
-function getWatchlist(user) {
-  try { return JSON.parse(localStorage.getItem('pea_watchlist_' + user)) || []; } catch { return []; }
-}
-function saveWatchlist(user, data) {
-  localStorage.setItem('pea_watchlist_' + user, JSON.stringify(data));
-}
+// getWatchlist/saveWatchlist → Firestore (définis dans couche données)
 
 let wlTimer = null, wlFoundTicker = null, wlFoundName = null, wlFoundPrice = null;
 
