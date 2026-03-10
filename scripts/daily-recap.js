@@ -48,15 +48,19 @@ async function getUserPortfolio(uid) {
 
 // ─── PRIX YAHOO FINANCE ──────────────────────────────────────
 async function fetchPrice(ticker) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`;
+  // Même appel que le dashboard (range=1d) pour avoir les mêmes valeurs
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
   try {
     const res  = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) });
     const json = await res.json();
     const meta = json?.chart?.result?.[0]?.meta;
     if (!meta) return null;
-    const price    = meta.regularMarketPrice;
-    const prev     = meta.chartPreviousClose || meta.previousClose || price;
-    const changePct = prev ? ((price - prev) / prev) * 100 : 0;
+    const price = meta.regularMarketPrice;
+    const prev  = meta.chartPreviousClose || meta.previousClose || price;
+    // Utiliser regularMarketChangePercent si dispo (plus fiable)
+    const changePct = meta.regularMarketChangePercent !== undefined
+      ? meta.regularMarketChangePercent
+      : prev ? ((price - prev) / prev) * 100 : 0;
     return { price, prev, changePct, name: meta.shortName || meta.longName || ticker };
   } catch(e) {
     console.warn(`Prix non disponible pour ${ticker}:`, e.message);
