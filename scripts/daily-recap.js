@@ -34,6 +34,12 @@ async function getAllUsers() {
   }));
 }
 
+// ─── RÉCUPÉRER LES SETTINGS FIRESTORE ───────────────────────
+async function getUserSettings(uid) {
+  const snap = await db.doc(`users/${uid}/data/settings`).get();
+  return snap.exists ? snap.data() : { emailRecap: true };
+}
+
 // ─── RÉCUPÉRER LE PORTFOLIO FIRESTORE ────────────────────────
 async function getUserPortfolio(uid) {
   const snap = await db.doc(`users/${uid}/data/portfolio`).get();
@@ -220,7 +226,8 @@ async function sendEmail({ to, toName, subject, html }) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-  sender: { name: 'PEA Dashboard', email: 'armelpltr14@gmail.com' },      to:      [{ email: to, name: toName }],
+      sender:  { name: 'PEA Dashboard', email: 'noreply@dashboard-pea.fr' },
+      to:      [{ email: to, name: toName }],
       subject,
       htmlContent: html,
     }),
@@ -243,7 +250,14 @@ async function main() {
   for (const user of users) {
     console.log(`\n📊 Traitement de ${user.name} (${user.email})...`);
 
-    // 2. Récupérer le portfolio
+    // 2. Vérifier la préférence de l'utilisateur
+    const settings = await getUserSettings(user.uid);
+    if (settings.emailRecap === false) {
+      console.log(`  🔕 Récap désactivé pour ${user.name}, mail ignoré`);
+      continue;
+    }
+
+    // 3. Récupérer le portfolio
     const portfolio = await getUserPortfolio(user.uid);
     if (!portfolio.length) {
       console.log(`  ⚠️  Portfolio vide, mail ignoré`);
@@ -251,7 +265,7 @@ async function main() {
     }
     console.log(`  📋 ${portfolio.length} ligne(s) détectée(s)`);
 
-    // 3. Récupérer les prix en parallèle
+    // 4. Récupérer les prix en parallèle
     const priceResults = await Promise.all(
       portfolio.map(async row => {
         const data = await fetchPrice(row.ticker);
@@ -259,7 +273,7 @@ async function main() {
       })
     );
 
-    // 4. Construire les lignes enrichies
+    // 5. Construire les lignes enrichies
     const lines = priceResults
       .filter(({ data }) => data !== null)
       .map(({ row, data }) => ({
@@ -279,7 +293,7 @@ async function main() {
       continue;
     }
 
-    // 5. Calculer les totaux
+    // 6. Calculer les totaux
     const totalValue     = lines.reduce((s, l) => s + l.value, 0);
     const totalInvested  = lines.reduce((s, l) => s + l.qty * l.buyPrice, 0);
     const totalPnl       = totalValue - totalInvested;
@@ -290,11 +304,11 @@ async function main() {
 
     console.log(`  💰 Valeur: ${fmt(totalValue)} | Jour: ${fmtp(totalDayPct)}`);
 
-    // 6. Génération commentaire IA
+    // 7. Génération commentaire IA
     console.log(`  🤖 Génération commentaire Mistral...`);
     const aiComment = await generateComment(lines, totalDayPct);
 
-    // 7. Build email
+    // 8. Build email
     const html = buildEmailHtml({
       userName: user.name,
       lines,
@@ -306,7 +320,7 @@ async function main() {
       aiComment,
     });
 
-    // 8. Envoyer
+    // 9. Envoyer
     const daySign   = totalDayPct >= 0 ? '▲' : '▼';
     const subject   = `${daySign} Récap PEA ${today} — ${fmtp(totalDayPct)}`;
     await sendEmail({ to: user.email, toName: user.name, subject, html });
