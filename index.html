@@ -1273,6 +1273,13 @@ body.sb-collapsed .main { margin-left: 58px; }
       <label class="form-label">Confirmer le mot de passe</label>
       <input type="password" class="form-input" id="reg-pass2" placeholder="••••••••" autocomplete="new-password">
     </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:12px 14px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.2);border-radius:10px;cursor:pointer" onclick="document.getElementById('reg-recap').click()">
+      <input type="checkbox" id="reg-recap" checked style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">Récap quotidien par mail</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Recevez chaque soir à 18h un résumé de la performance de votre PEA.</div>
+      </div>
+    </div>
     <button class="btn-login" id="btn-register-submit" onclick="doRegister()">Créer le compte</button>
     <div style="display:flex;align-items:center;gap:10px;margin:16px 0">
       <div style="flex:1;height:1px;background:var(--border2)"></div>
@@ -2128,6 +2135,18 @@ body.sb-collapsed .main { margin-left: 58px; }
       </button>
     </div>
 
+    <!-- Notifications -->
+    <div style="height:1px;background:var(--border);margin:18px 0"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">Récap quotidien par mail</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Résumé de performance envoyé chaque soir à 18h</div>
+      </div>
+      <div class="toggle-wrap" id="toggle-recap" onclick="toggleRecapSetting()" style="flex-shrink:0">
+        <div class="toggle-dot"></div>
+      </div>
+    </div>
+
     <!-- Danger zone -->
     <div style="height:1px;background:rgba(255,77,106,0.15);margin:18px 0"></div>
     <button onclick="confirmDeleteAccount()" style="
@@ -2374,6 +2393,30 @@ async function loadAllUserData(uid) {
       _localCache[uid + '_' + col] = [];
     }
   }));
+  // Charger les settings
+  try {
+    const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'settings'));
+    _localCache[uid + '_settings'] = snap.exists() ? snap.data() : { emailRecap: true };
+  } catch(e) {
+    _localCache[uid + '_settings'] = { emailRecap: true };
+  }
+  // Appliquer préférence en attente (premier compte)
+  if (window._pendingRecapPref !== undefined) {
+    await saveUserSettings(uid, { emailRecap: window._pendingRecapPref });
+    window._pendingRecapPref = undefined;
+  }
+}
+
+function getUserSettings(uid) {
+  return _localCache[(uid||currentUser) + '_settings'] || { emailRecap: true };
+}
+
+async function saveUserSettings(uid, settings) {
+  const current = getUserSettings(uid);
+  const merged  = { ...current, ...settings };
+  _localCache[(uid||currentUser) + '_settings'] = merged;
+  if (!db) return;
+  await setFirestoreDoc(firestoreDoc(db, 'users', uid||currentUser, 'data', 'settings'), merged);
 }
 
 // Lecture synchrone depuis le cache
@@ -2472,9 +2515,12 @@ window.doRegister = async function() {
   if (pass !== pass2) { err.textContent = 'Les mots de passe ne correspondent pas.'; err.style.display = 'block'; return; }
   if (pass.length < 6) { err.textContent = 'Mot de passe trop court (6 caractères min).'; err.style.display = 'block'; return; }
   setLoading('btn-register-submit', true);
+  const wantsRecap = document.getElementById('reg-recap')?.checked !== false;
   try {
     await createUserWithEmailAndPassword(fbAuth, email, pass);
-    // onAuthStateChanged prend le relai
+    // Sauvegarder préférence recap — onAuthStateChanged prend le relai ensuite
+    // On sauvegarde après le login via startApp, mais on stocke en attendant
+    window._pendingRecapPref = wantsRecap;
   } catch(e) {
     err.textContent = firebaseErrorMsg(e.code);
     err.style.display = 'block';
@@ -2542,6 +2588,14 @@ window.closeProfilModal = function() {
   document.getElementById('profil-modal-overlay').classList.remove('open');
 };
 
+window.toggleRecapSetting = async function() {
+  const toggle   = document.getElementById('toggle-recap');
+  const settings = getUserSettings(currentUser);
+  const newVal   = settings.emailRecap === false; // flip
+  toggle.classList.toggle('on', newVal);
+  await saveUserSettings(currentUser, { emailRecap: newVal });
+};
+
 function loadProfilePage(user) {
   if (!user) return;
 
@@ -2577,6 +2631,14 @@ function loadProfilePage(user) {
   // Cacher section MDP si Google
   const passSection = document.getElementById('profil-password-section');
   if (passSection) passSection.style.display = isGoogle ? 'none' : 'block';
+
+  // Toggle récap email
+  const settings    = getUserSettings(user.uid);
+  const toggleRecap = document.getElementById('toggle-recap');
+  if (toggleRecap) {
+    if (settings.emailRecap !== false) toggleRecap.classList.add('on');
+    else toggleRecap.classList.remove('on');
+  }
 }
 
 window.saveDisplayName = async function() {
