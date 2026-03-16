@@ -3667,9 +3667,8 @@ async function fetchAnalyseStock(query) {
 
 // Core: fetch all Yahoo data and populate dashboard
 async function fetchFullAnalyse(ticker, portfolioRow) {
-  document.getElementById('ana-empty').style.display = 'none';
-  document.getElementById('ana-top').style.display = 'flex';
-  document.getElementById('ana-tabs').style.display = 'flex';
+  const emptyEl = document.getElementById('ana-empty');
+  if (emptyEl) emptyEl.style.display = 'none';
 
   // Loading state
   document.getElementById('ana-name').textContent = 'Chargement…';
@@ -3677,7 +3676,7 @@ async function fetchFullAnalyse(ticker, portfolioRow) {
   document.getElementById('ana-price').textContent = '…';
 
   try {
-    // Fetch chart data (5d for price + meta)
+    // ── 1. Cours + meta (v8/chart) ────────────────────────────────────────
     const cRaw = await fetchWithFallback('https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(resolveToYahooTicker(ticker)) + '?interval=1d&range=5d');
     const cd = JSON.parse(cRaw);
     const res = cd.chart && cd.chart.result && cd.chart.result[0];
@@ -3690,7 +3689,60 @@ async function fetchFullAnalyse(ticker, portfolioRow) {
     const high52 = meta.fiftyTwoWeekHigh || 0;
     const low52 = meta.fiftyTwoWeekLow || 0;
 
-    // Build full data object
+    // ── 2. Fondamentaux (quoteSummary) ────────────────────────────────────
+    // modules : financialData + defaultKeyStatistics + summaryDetail
+    let fund = {};
+    try {
+      const modules = 'financialData,defaultKeyStatistics,summaryDetail';
+      const qsUrl = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/' +
+        encodeURIComponent(resolveToYahooTicker(ticker)) + '?modules=' + modules;
+      const qsRaw = await fetchWithFallback(qsUrl);
+      const qs = JSON.parse(qsRaw);
+      const r = qs && qs.quoteSummary && qs.quoteSummary.result && qs.quoteSummary.result[0];
+      if (r) {
+        const fd = r.financialData || {};
+        const ks = r.defaultKeyStatistics || {};
+        const sd = r.summaryDetail || {};
+        fund = {
+          // Valorisation
+          pe:           meta.trailingPE || sd.trailingPE?.raw || null,
+          forwardPe:    meta.forwardPE  || ks.forwardPE?.raw  || null,
+          peg:          ks.pegRatio?.raw || null,
+          pb:           ks.priceToBook?.raw || null,
+          ps:           ks.priceToSalesTrailing12Months?.raw || null,
+          evEbitda:     ks.enterpriseToEbitda?.raw || null,
+          // Qualité
+          roe:          fd.returnOnEquity?.raw || null,
+          roa:          fd.returnOnAssets?.raw || null,
+          profitMargin: fd.profitMargins?.raw  || null,
+          grossMargin:  fd.grossMargins?.raw   || null,
+          opMargin:     fd.operatingMargins?.raw || null,
+          // Croissance
+          revGrowth:    fd.revenueGrowth?.raw  || null,
+          epsGrowth:    fd.earningsGrowth?.raw || null,
+          eps:          ks.trailingEps?.raw    || null,
+          fwdEps:       ks.forwardEps?.raw     || null,
+          // Solidité
+          totalDebt:    fd.totalDebt?.raw      || null,
+          totalCash:    fd.totalCash?.raw      || null,
+          ebitda:       fd.ebitda?.raw         || null,
+          debtToEquity: fd.debtToEquity?.raw   || null,
+          currentRatio: fd.currentRatio?.raw   || null,
+          quickRatio:   fd.quickRatio?.raw     || null,
+          fcf:          fd.freeCashflow?.raw   || null,
+          // Dividende
+          divYieldRaw:  sd.dividendYield?.raw  || null,
+          divRate:      sd.dividendRate?.raw   || meta.trailingAnnualDividendRate || null,
+          payoutRatio:  sd.payoutRatio?.raw    || null,
+          sharesOutstanding: ks.sharesOutstanding?.raw || null,
+          avg5yDivYield: sd.fiveYearAvgDividendYield?.raw || null,
+          // Secteur
+          sector:       portfolioRow?.sector   || null,
+        };
+      }
+    } catch(e2) { console.warn('quoteSummary failed, scoring partiel:', e2.message); }
+
+    // ── 3. Construction de l'objet d ─────────────────────────────────────
     const d = {
       name: portfolioRow ? (portfolioRow.name || ticker) : (meta.shortName || meta.longName || ticker),
       ticker, price,
@@ -3698,18 +3750,23 @@ async function fetchFullAnalyse(ticker, portfolioRow) {
       exchange: meta.exchangeName || '',
       changePct, prev,
       high52, low52,
-      pe: meta.trailingPE || null,
-      forwardPe: meta.forwardPE || null,
-      beta: meta.beta || null,
-      divYield: meta.trailingAnnualDividendRate > 0 ? (meta.trailingAnnualDividendRate / price) : (meta.dividendYield || null),
-      divRate: meta.trailingAnnualDividendRate || null,
-      volume: meta.regularMarketVolume || null,
+      pe:        fund.pe        || meta.trailingPE || null,
+      forwardPe: fund.forwardPe || meta.forwardPE  || null,
+      beta:      meta.beta      || null,
+      divYield:  fund.divYieldRaw || (meta.trailingAnnualDividendRate > 0 ? meta.trailingAnnualDividendRate / price : null),
+      divRate:   fund.divRate   || meta.trailingAnnualDividendRate || null,
+      volume:    meta.regularMarketVolume || null,
       marketCap: meta.marketCap || null,
-      // From portfolio row if available
-      buyPrice: portfolioRow ? portfolioRow.buyPrice : null,
-      qty: portfolioRow ? portfolioRow.qty : null,
+      buyPrice:  portfolioRow ? portfolioRow.buyPrice : null,
+      qty:       portfolioRow ? portfolioRow.qty      : null,
       quoteType: portfolioRow ? portfolioRow.quoteType : (meta.instrumentType || 'EQUITY'),
+      // Fondamentaux enrichis
+      ...fund,
     };
+
+    // ── 4. Score fondamental (algo Python porté en JS) ──────────────────
+    d.fundamentalScore = computeFundamentalScore(d);
+
     currentAnalyseData = d;
     populateHero(d);
     populateTabs(d);
@@ -3741,194 +3798,384 @@ function populateHero(d) {
     document.getElementById('ana-52w-dot').style.left = pctPos + '%';
   }
 
-  // Reset hero score ring to "waiting for Mistral" state
-  resetHeroScore();
-}
-
-// ─── RADAR 5-AXIS SCORING ─────────────────────────────
-// Each axis returns a score 0-10 based on available Yahoo v8 data
-function computeRadarAxes(d) {
-  const axes = [];
-
-  // 1. VALORISATION — based on P/E (lower = better, capped at 10)
-  let valScore = 5; // default neutral
-  const pe = d.pe ? parseFloat(d.pe) : null;
-  if (pe !== null && pe > 0) {
-    if (pe < 10) valScore = 10;
-    else if (pe < 15) valScore = 8;
-    else if (pe < 20) valScore = 7;
-    else if (pe < 25) valScore = 5;
-    else if (pe < 35) valScore = 3;
-    else if (pe < 50) valScore = 2;
-    else valScore = 1;
-  }
-  // Bonus: if close to 52w low, undervalued signal
-  if (d.high52 && d.low52 && d.price) {
-    const range52 = d.high52 - d.low52;
-    const pos52 = range52 > 0 ? (d.price - d.low52) / range52 : 0.5;
-    if (pos52 < 0.25) valScore = Math.min(10, valScore + 1); // near 52w low
-  }
-  axes.push({ label: 'Valorisation', score: valScore });
-
-  // 2. MOMENTUM — position in 52w range + daily change
-  let momScore = 5;
-  if (d.high52 && d.low52 && d.price) {
-    const range52 = d.high52 - d.low52;
-    const pos52 = range52 > 0 ? (d.price - d.low52) / range52 : 0.5;
-    momScore = Math.round(pos52 * 8); // 0-8 based on position in range
-  }
-  const chg = d.changePct || 0;
-  if (chg > 2) momScore = Math.min(10, momScore + 2);
-  else if (chg > 0) momScore = Math.min(10, momScore + 1);
-  else if (chg < -2) momScore = Math.max(0, momScore - 2);
-  else if (chg < 0) momScore = Math.max(0, momScore - 1);
-  axes.push({ label: 'Momentum', score: Math.min(10, Math.max(0, momScore)) });
-
-  // 3. STABILITÉ — inverse of beta (low beta = stable = high score)
-  let stabScore = 5;
-  const beta = d.beta ? parseFloat(d.beta) : null;
-  if (beta !== null && beta >= 0) {
-    if (beta < 0.5) stabScore = 10;
-    else if (beta < 0.8) stabScore = 8;
-    else if (beta < 1.0) stabScore = 7;
-    else if (beta < 1.2) stabScore = 5;
-    else if (beta < 1.5) stabScore = 3;
-    else if (beta < 2.0) stabScore = 2;
-    else stabScore = 1;
-  }
-  axes.push({ label: 'Stabilité', score: stabScore });
-
-  // 4. RENDEMENT — dividend yield
-  let divScore = 0;
-  const dy = d.divYield ? parseFloat(d.divYield) * 100 : 0; // in %
-  if (dy >= 5) divScore = 10;
-  else if (dy >= 3) divScore = 8;
-  else if (dy >= 2) divScore = 6;
-  else if (dy >= 1) divScore = 4;
-  else if (dy > 0) divScore = 2;
-  else divScore = 0;
-  axes.push({ label: 'Rendement', score: divScore });
-
-  // 5. TENDANCE — price vs midpoint of 52w range (above mid = bullish)
-  let trendScore = 5;
-  if (d.high52 && d.low52 && d.price) {
-    const mid52 = (d.high52 + d.low52) / 2;
-    const range52 = d.high52 - d.low52;
-    if (range52 > 0) {
-      const ratio = (d.price - mid52) / (range52 / 2); // -1 to +1
-      trendScore = Math.round((ratio + 1) / 2 * 10); // 0-10
-    }
-  }
-  axes.push({ label: 'Tendance', score: Math.min(10, Math.max(0, trendScore)) });
-
-  return axes;
-}
-
-// Draw radar chart on canvas
-function drawRadarChart(axes) {
-  const canvas = document.getElementById('radar-chart');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
-  const cx = w / 2, cy = h / 2;
-  const maxR = Math.min(cx, cy) - 24;
-  const n = axes.length;
-  const angleStep = (Math.PI * 2) / n;
-  const startAngle = -Math.PI / 2; // top
-
-  ctx.clearRect(0, 0, w, h);
-
-  // Grid rings (at 25%, 50%, 75%, 100%)
-  [0.25, 0.5, 0.75, 1.0].forEach(pct => {
-    ctx.beginPath();
-    for (let i = 0; i <= n; i++) {
-      const a = startAngle + i * angleStep;
-      const x = cx + Math.cos(a) * maxR * pct;
-      const y = cy + Math.sin(a) * maxR * pct;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  });
-
-  // Axis lines + labels
-  const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7c6df5';
-  axes.forEach((a, i) => {
-    const angle = startAngle + i * angleStep;
-    const x = cx + Math.cos(angle) * maxR;
-    const y = cy + Math.sin(angle) * maxR;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(x, y);
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Labels
-    const lx = cx + Math.cos(angle) * (maxR + 16);
-    const ly = cy + Math.sin(angle) * (maxR + 16);
-    ctx.fillStyle = '#8892a8';
-    ctx.font = '9px "JetBrains Mono"';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(a.label, lx, ly);
-
-    // Score value near the data point
-    const dx = cx + Math.cos(angle) * maxR * (a.score / 10);
-    const dy2 = cy + Math.sin(angle) * maxR * (a.score / 10);
-    ctx.fillStyle = accentColor;
-    ctx.font = 'bold 10px "JetBrains Mono"';
-    ctx.fillText(a.score, dx + Math.cos(angle) * 12, dy2 + Math.sin(angle) * 12);
-  });
-
-  // Data polygon fill
-  ctx.beginPath();
-  axes.forEach((a, i) => {
-    const angle = startAngle + i * angleStep;
-    const r = maxR * (a.score / 10);
-    const x = cx + Math.cos(angle) * r;
-    const y = cy + Math.sin(angle) * r;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.closePath();
-  ctx.fillStyle = accentColor.replace(')', ',0.12)').replace('rgb', 'rgba').replace('#', '');
-  // Handle hex color for fill
-  if (accentColor.startsWith('#')) {
-    const r = parseInt(accentColor.slice(1,3), 16);
-    const g = parseInt(accentColor.slice(3,5), 16);
-    const b = parseInt(accentColor.slice(5,7), 16);
-    ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.15)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.7)';
+  // Afficher le score fondamental immédiatement
+  if (d.fundamentalScore) {
+    const fs = d.fundamentalScore;
+    updateHeroScore(fs.score100, fs.verdict);
+    const sublabel = document.getElementById('hero-mistral-sublabel');
+    if (sublabel) sublabel.textContent = '📊 ' + fs.total.toFixed(1) + '/25 · ' + fs.conviction;
   } else {
-    ctx.fillStyle = 'rgba(124,109,245,0.15)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(124,109,245,0.7)';
+    resetHeroScore();
   }
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Data dots
-  axes.forEach((a, i) => {
-    const angle = startAngle + i * angleStep;
-    const r = maxR * (a.score / 10);
-    const x = cx + Math.cos(angle) * r;
-    const y = cy + Math.sin(angle) * r;
-    ctx.beginPath();
-    ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fillStyle = accentColor;
-    ctx.fill();
-  });
 }
 
-// Keep calcScore for backward compat (used in graphiques page intel)
-function calcScore(d) {
-  const axes = computeRadarAxes(d);
-  const score = Math.round(axes.reduce((s, a) => s + a.score, 0) / axes.length * 10);
-  return { score, color: score >= 65 ? 'var(--positive)' : score <= 35 ? 'var(--negative)' : 'var(--gold)', verdict: score >= 65 ? '🟢 ACHETER' : score <= 35 ? '🔴 VENDRE' : '🟡 CONSERVER' };
+// ═══════════════════════════════════════════════════
+// SCORING FONDAMENTAL — porté depuis pea_analyzer.py
+// Score total /25 = 5 dimensions × /5
+// ═══════════════════════════════════════════════════
+
+// Table PE de référence par secteur (médiane historique)
+// ═══════════════════════════════════════════════════
+// SCORING FONDAMENTAL — fidèle à pea_analyzer.py
+// 5 dimensions × /5 = 25 pts → converti /100
+// ═══════════════════════════════════════════════════
+
+// ── Table PE sectorielle (médiane historique) ────
+const SECTOR_PE_REF = {
+  'technology': 28, 'communication services': 22,
+  'consumer cyclical': 22, 'consumer defensive': 20,
+  'healthcare': 22, 'industrials': 19, 'basic materials': 15,
+  'energy': 12, 'utilities': 16, 'real estate': 30,
+  'financial services': 13, 'financial': 13, 'banks': 11,
+};
+
+function getSectorPeRef(sector) {
+  if (!sector) return 18;
+  const s = sector.toLowerCase();
+  for (const [k, v] of Object.entries(SECTOR_PE_REF)) {
+    if (s.includes(k)) return v;
+  }
+  return 18;
 }
+
+function isFinancialSector(sector) {
+  if (!sector) return false;
+  const s = sector.toLowerCase();
+  return s.includes('financial') || s.includes('bank') || s.includes('insurance');
+}
+
+// ── 1. Valorisation /5 ──────────────────────────
+function scoreValorisationF(d) {
+  let score = 0;
+  const details = {};
+  const sectorRef = getSectorPeRef(d.sector);
+
+  const pe  = d.pe        ? parseFloat(d.pe)        : null;
+  const peg = d.peg       ? parseFloat(d.peg)       : null;
+  const pb  = d.pb        ? parseFloat(d.pb)        : null;
+  const fpe = d.forwardPe ? parseFloat(d.forwardPe) : null;
+
+  details['PE (TTM)']        = pe  ? pe.toFixed(1)        : 'N/A';
+  details['PEG Ratio']       = peg ? peg.toFixed(2)       : 'N/A';
+  details['Price/Book']      = pb  ? pb.toFixed(2)        : 'N/A';
+  details['Forward PE']      = fpe ? fpe.toFixed(1)       : 'N/A';
+  details['PE Ref. Secteur'] = sectorRef + 'x';
+
+  if (pe) {
+    const ratio = pe / sectorRef;
+    details['PE vs Secteur'] = ratio.toFixed(2) + 'x (' + (pe < sectorRef ? 'sous-evalué' : 'sur-evalué') + ')';
+    if      (ratio < 0.60) score += 2.0;
+    else if (ratio < 0.80) score += 1.8;
+    else if (ratio < 1.00) score += 1.5;
+    else if (ratio < 1.20) score += 1.2;
+    else if (ratio < 1.50) score += 0.8;
+    else if (ratio < 2.00) score += 0.4;
+    else                   score += 0.1;
+  } else { score += 1.0; }
+
+  if (peg) {
+    if      (peg < 0.8) score += 2.0;
+    else if (peg < 1.0) score += 1.8;
+    else if (peg < 1.5) score += 1.2;
+    else if (peg < 2.0) score += 0.8;
+    else                score += 0.3;
+  } else { score += 1.0; }
+
+  if (pb) {
+    if      (pb < 1.0) score += 1.0;
+    else if (pb < 2.0) score += 0.8;
+    else if (pb < 3.5) score += 0.6;
+    else if (pb < 5.0) score += 0.4;
+    else               score += 0.1;
+  } else { score += 0.5; }
+
+  return { score: Math.min(score, 5.0), details };
+}
+
+// ── 2. Qualité /5 ───────────────────────────────
+function scoreQualiteF(d) {
+  let score = 0;
+  const details = {};
+
+  const roe = d.roe          ? parseFloat(d.roe)          : null;
+  const roa = d.roa          ? parseFloat(d.roa)          : null;
+  const pm  = d.profitMargin ? parseFloat(d.profitMargin) : null;
+  const gm  = d.grossMargin  ? parseFloat(d.grossMargin)  : null;
+  const om  = d.opMargin     ? parseFloat(d.opMargin)     : null;
+
+  details['ROE']          = roe ? (roe * 100).toFixed(1) + '%' : 'N/A';
+  details['ROA']          = roa ? (roa * 100).toFixed(1) + '%' : 'N/A';
+  details['Marge Nette']  = pm  ? (pm  * 100).toFixed(1) + '%' : 'N/A';
+  details['Marge Brute']  = gm  ? (gm  * 100).toFixed(1) + '%' : 'N/A';
+  details['Marge Operat'] = om  ? (om  * 100).toFixed(1) + '%' : 'N/A';
+
+  if (roe) {
+    const rp = roe * 100;
+    if      (rp > 20) score += 2.0;
+    else if (rp > 15) score += 1.8;
+    else if (rp > 10) score += 1.4;
+    else if (rp > 5)  score += 0.8;
+    else              score += 0.3;
+  } else { score += 1.0; }
+
+  if (pm) {
+    const p = pm * 100;
+    if      (p > 20) score += 2.0;
+    else if (p > 12) score += 1.6;
+    else if (p > 7)  score += 1.2;
+    else if (p > 3)  score += 0.8;
+    else if (p > 0)  score += 0.4;
+  } else { score += 1.0; }
+
+  if (gm) {
+    const g = gm * 100;
+    if      (g > 50) score += 1.0;
+    else if (g > 35) score += 0.8;
+    else if (g > 20) score += 0.6;
+    else             score += 0.3;
+  } else { score += 0.5; }
+
+  return { score: Math.min(score, 5.0), details };
+}
+
+// ── 3. Croissance /5 ────────────────────────────
+function scoreCroissanceF(d) {
+  let score = 0;
+  const details = {};
+
+  const revG = d.revGrowth ? parseFloat(d.revGrowth) * 100 : null;
+  const epsG = d.epsGrowth ? parseFloat(d.epsGrowth) * 100 : null;
+  const eps  = d.eps    ? parseFloat(d.eps)    : null;
+  const feps = d.fwdEps ? parseFloat(d.fwdEps) : null;
+
+  details['CAGR CA']       = revG !== null ? revG.toFixed(1) + '%' : 'N/A';
+  details['Croiss. EPS']   = epsG !== null ? epsG.toFixed(1) + '%' : 'N/A';
+  details['EPS (TTM)']     = eps  ? eps.toFixed(2)  : 'N/A';
+  details['EPS (Forward)'] = feps ? feps.toFixed(2) : 'N/A';
+
+  if (revG !== null) {
+    if      (revG > 15) score += 2.5;
+    else if (revG > 10) score += 2.0;
+    else if (revG > 7)  score += 1.5;
+    else if (revG > 3)  score += 1.0;
+    else if (revG > 0)  score += 0.5;
+    // revG <= 0 → 0 pts (comme Python)
+  } else { score += 1.25; }
+
+  if (epsG !== null) {
+    if      (epsG > 15) score += 2.5;
+    else if (epsG > 10) score += 2.0;
+    else if (epsG > 7)  score += 1.5;
+    else if (epsG > 3)  score += 1.0;
+    else if (epsG > 0)  score += 0.5;
+  } else { score += 1.25; }
+
+  return { score: Math.min(score, 5.0), details };
+}
+
+// ── 4. Solidité /5 — avec Piotroski 9 critères ──
+function scoreSoliditeF(d) {
+  let score = 0;
+  const details = {};
+
+  if (isFinancialSector(d.sector)) {
+    details['Note Secteur'] = 'Secteur financier : ratio dette ignore, ROE utilise';
+    const roe = d.roe ? parseFloat(d.roe) : null;
+    details['ROE (solidite)'] = roe ? (roe * 100).toFixed(1) + '%' : 'N/A';
+    if (roe) {
+      const rp = roe * 100;
+      if      (rp > 15) score += 2.5;
+      else if (rp > 12) score += 2.0;
+      else if (rp > 8)  score += 1.5;
+      else if (rp > 4)  score += 0.8;
+      else              score += 0.2;
+    } else { score += 1.0; }
+  } else {
+    const totalDebt = d.totalDebt ? parseFloat(d.totalDebt) : null;
+    const cash      = d.totalCash ? parseFloat(d.totalCash) : null;
+    const ebitda    = d.ebitda    ? parseFloat(d.ebitda)    : null;
+    const netDebt   = (totalDebt !== null && cash !== null) ? totalDebt - cash : null;
+    const ndEbitda  = (netDebt !== null && ebitda && ebitda > 0) ? netDebt / ebitda : null;
+
+    details['Dette Nette/EBITDA'] = ndEbitda !== null ? ndEbitda.toFixed(2) + 'x' : 'N/A';
+    details['Dette Totale'] = totalDebt ? (totalDebt / 1e9).toFixed(2) + ' Md' : 'N/A';
+    details['Tresorerie']   = cash   ? (cash   / 1e9).toFixed(2) + ' Md' : 'N/A';
+    details['EBITDA']       = ebitda ? (ebitda / 1e9).toFixed(2) + ' Md' : 'N/A';
+
+    if (ndEbitda !== null) {
+      if      (ndEbitda < 0) score += 2.5;
+      else if (ndEbitda < 1) score += 2.3;
+      else if (ndEbitda < 2) score += 2.0;
+      else if (ndEbitda < 3) score += 1.4;
+      else if (ndEbitda < 4) score += 0.8;
+      else                   score += 0.2;
+    } else { score += 1.0; }
+  }
+
+  // ── Piotroski F-Score 9 critères (fidèle Python) ─
+  let fscore = 0;
+
+  const roa = d.roa ? parseFloat(d.roa) : null;
+  const f1 = roa && roa > 0;
+  details['F1 ROA > 0']          = f1 ? 'oui' : 'non'; if (f1) fscore++;
+
+  // F2 OCF > 0 — on utilise le FCF comme proxy (ocf non dispo via quoteSummary)
+  const ocf = d.fcf ? parseFloat(d.fcf) : null;
+  const f2 = ocf && ocf > 0;
+  details['F2 OCF > 0']          = f2 ? 'oui' : 'non'; if (f2) fscore++;
+
+  // F3 ΔROA > 0 — on utilise profitMargin > 0 comme proxy
+  const f3 = d.profitMargin && parseFloat(d.profitMargin) > 0;
+  details['F3 dROA > 0']         = f3 ? 'oui' : 'non'; if (f3) fscore++;
+
+  // F4 OCF > Net Income
+  const pm  = d.profitMargin ? parseFloat(d.profitMargin) : null;
+  const f4 = ocf && pm && d.marketCap && (ocf > pm * parseFloat(d.marketCap));
+  details['F4 OCF > Net Inc']    = f4 ? 'oui' : 'non'; if (f4) fscore++;
+
+  // F5 Current Ratio > 1
+  const cr = d.currentRatio ? parseFloat(d.currentRatio) : null;
+  const f5 = cr && cr > 1;
+  details['F5 Current Ratio > 1'] = f5 ? 'oui' : 'non'; if (f5) fscore++;
+
+  // F6 Marge Brute > 0
+  const gm = d.grossMargin ? parseFloat(d.grossMargin) : null;
+  const f6 = gm && gm > 0;
+  details['F6 Marge Brute > 0']  = f6 ? 'oui' : 'non'; if (f6) fscore++;
+
+  // F7 Croissance CA > 0
+  const f7 = d.revGrowth && parseFloat(d.revGrowth) > 0;
+  details['F7 Croiss. CA > 0']   = f7 ? 'oui' : 'non'; if (f7) fscore++;
+
+  // F8 D/E < 100
+  const de = d.debtToEquity ? parseFloat(d.debtToEquity) : null;
+  const f8 = de && de < 100;
+  details['F8 D/E < 100']        = f8 ? 'oui' : 'non'; if (f8) fscore++;
+
+  // F9 Quick Ratio > 1
+  const qr = d.quickRatio ? parseFloat(d.quickRatio) : null;
+  const f9 = qr && qr > 1;
+  details['F9 Quick Ratio > 1']  = f9 ? 'oui' : 'non'; if (f9) fscore++;
+
+  details['F-Score Piotroski'] = fscore + '/9';
+  score += (fscore / 9) * 2.5;
+
+  return { score: Math.min(score, 5.0), details };
+}
+
+// ── 5. Dividende /5 ─────────────────────────────
+function scoreDividendeF(d) {
+  let score = 0;
+  const details = {};
+
+  // Normaliser divYield → décimal (comme _safe_div_yield Python)
+  let divYield = null;
+  if (d.divYieldRaw !== null && d.divYieldRaw !== undefined) {
+    const raw = parseFloat(d.divYieldRaw);
+    if (raw > 0) divYield = raw > 1.0 ? raw / 100 : raw;
+  }
+
+  let payoutRatio = null;
+  if (d.payoutRatio) {
+    const raw = parseFloat(d.payoutRatio);
+    if (raw > 0) payoutRatio = raw > 1.5 ? raw / 100 : raw;
+  }
+
+  const divRate = d.divRate ? parseFloat(d.divRate) : null;
+  const fcf     = d.fcf     ? parseFloat(d.fcf)     : null;
+  const shares  = d.sharesOutstanding ? parseFloat(d.sharesOutstanding) : null;
+
+  details['Rendement Div.']   = divYield    ? (divYield * 100).toFixed(2) + '%'    : 'N/A';
+  details['Dividende/Action'] = divRate     ? divRate.toFixed(2)                   : 'N/A';
+  details['Payout Ratio']     = payoutRatio ? (payoutRatio * 100).toFixed(1) + '%' : 'N/A';
+  details['FCF']              = fcf         ? (fcf / 1e9).toFixed(2) + ' Md'       : 'N/A';
+
+  if (!divYield) {
+    details['Note'] = 'Pas de dividende verse';
+    const revG = d.revGrowth ? parseFloat(d.revGrowth) : 0;
+    score = revG > 0.10 ? 3.0 : 2.0;
+    if (revG > 0.10) details['Bonus Croissance'] = 'Reinvestissement (CA >10%)';
+    return { score: Math.min(score, 5.0), details };
+  }
+
+  // Payout sur FCF (fidèle Python)
+  let fcfPayout = null;
+  if (fcf && fcf > 0 && divRate && shares) {
+    fcfPayout = (divRate * shares / fcf) * 100;
+  }
+  details['Payout/FCF'] = fcfPayout !== null ? fcfPayout.toFixed(1) + '%' : 'N/A';
+
+  if (fcfPayout !== null) {
+    if      (fcfPayout < 30) score += 2.5;
+    else if (fcfPayout < 60) score += 2.0;
+    else if (fcfPayout < 75) score += 1.2;
+    else if (fcfPayout < 90) score += 0.5;
+    else                     score += 0.1;
+  } else if (payoutRatio) {
+    const pr = payoutRatio * 100;
+    if      (pr < 30)  score += 2.5;
+    else if (pr < 60)  score += 2.0;
+    else if (pr < 75)  score += 1.2;
+    else if (pr < 100) score += 0.5;
+  } else { score += 1.25; }
+
+  const dy = divYield * 100;
+  if      (dy >= 2 && dy <= 5) score += 2.5;  // zone optimale
+  else if (dy >= 1 && dy < 2)  score += 1.5;
+  else if (dy > 5  && dy <= 8) score += 1.5;
+  else if (dy > 8)             score += 0.5;  // trop élevé = risque
+  else                         score += 0.5;
+
+  return { score: Math.min(score, 5.0), details };
+}
+
+// ── Score global /25 → verdict + conviction ─────
+function computeFundamentalScore(d) {
+  const valo = scoreValorisationF(d);
+  const qual = scoreQualiteF(d);
+  const croi = scoreCroissanceF(d);
+  const sold = scoreSoliditeF(d);
+  const divd = scoreDividendeF(d);
+
+  const total    = valo.score + qual.score + croi.score + sold.score + divd.score;
+  const score100 = Math.round(total / 25 * 100);
+
+  // Verdicts fidèles au Python (5 niveaux)
+  let verdict, conviction, color;
+  if (total >= 20) {
+    verdict    = 'ACHAT';       conviction = '8/10'; color = 'var(--positive)';
+  } else if (total >= 17) {
+    verdict    = 'ACHAT PROGRESSIF'; conviction = '7/10'; color = 'var(--positive)';
+  } else if (total >= 14) {
+    verdict    = 'CONSERVER';   conviction = '5/10'; color = 'var(--gold)';
+  } else if (total >= 10) {
+    verdict    = 'PRUDENCE';    conviction = '4/10'; color = 'var(--gold)';
+  } else {
+    verdict    = 'ÉVITER';      conviction = '2/10'; color = 'var(--negative)';
+  }
+
+  // Diagnostic automatique (points forts / faibles)
+  const scores = { Valorisation: valo.score, Qualite: qual.score, Croissance: croi.score, Solidite: sold.score, Dividende: divd.score };
+  const strengths  = [];
+  const weaknesses = [];
+  for (const [cat, val] of Object.entries(scores)) {
+    if (val >= 3.5) {
+      const msgs = { Valorisation: 'Valorisation attractive', Qualite: 'Qualite des marges elevee', Croissance: 'Croissance soutenue', Solidite: 'Bilan financier robuste', Dividende: 'Politique de dividende saine' };
+      strengths.push((msgs[cat] || cat) + ' (' + val.toFixed(1) + '/5)');
+    }
+    if (val < 2.5) {
+      const msgs = { Valorisation: 'Valorisation tendue', Qualite: 'Marges sous pression ou ROE insuffisant', Croissance: 'Croissance faible ou en ralentissement', Solidite: 'Endettement eleve ou F-Score degrade', Dividende: 'Dividende absent, eleve ou peu soutenable' };
+      weaknesses.push((msgs[cat] || cat) + ' (' + val.toFixed(1) + '/5)');
+    }
+  }
+
+  return {
+    total, score100, verdict, conviction, color,
+    valo, qual, croi, sold, divd,
+    strengths, weaknesses,
+  };
+}
+
 
 function metricCard(label, value, sub, badge) {
   const badgeHtml = badge ? '<div class="metric-badge ' + badge.cls + '">' + badge.text + '</div>' : '';
@@ -3949,46 +4196,82 @@ function populateTabs(d) {
   const f2 = v => v != null && !isNaN(v) ? parseFloat(v).toFixed(2) : na;
   const f1 = v => v != null && !isNaN(v) ? parseFloat(v).toFixed(1) : na;
   const pct = v => v != null && !isNaN(v) ? (parseFloat(v) * 100).toFixed(2) + '%' : na;
+  const fs = d.fundamentalScore;
 
-  // Valorisation
-  const pe = d.pe ? parseFloat(d.pe) : null;
-  const fpe = d.forwardPe ? parseFloat(d.forwardPe) : null;
-  const dist52 = d.high52 && d.price ? ((d.price / d.high52 - 1) * 100).toFixed(1) + '%' : na;
+  // ── Helper : afficher un score de dimension avec détails ──
+  function scoreBlock(label, scoreObj, color) {
+    const s = scoreObj ? scoreObj.score : null;
+    const c = s === null ? 'var(--text3)' : s >= 3.5 ? 'var(--positive)' : s >= 2.5 ? 'var(--gold)' : 'var(--negative)';
+    const bar = s !== null ? Math.round(s / 5 * 100) : 0;
+    let detailsHtml = '';
+    if (scoreObj && scoreObj.details) {
+      detailsHtml = Object.entries(scoreObj.details).map(([k, v]) =>
+        '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">' +
+        '<span style="color:var(--text2)">' + k + '</span>' +
+        '<span style="font-family:var(--mono);color:var(--text)">' + v + '</span></div>'
+      ).join('');
+    }
+    return '<div class="metric-card" style="grid-column:span 2">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+        '<div class="metric-label">' + label + '</div>' +
+        '<div style="font-family:var(--display);font-size:22px;font-weight:800;color:' + c + '">' + (s !== null ? s.toFixed(1) + '/5' : '—') + '</div>' +
+      '</div>' +
+      '<div style="height:4px;background:var(--s3);border-radius:2px;margin-bottom:12px">' +
+        '<div style="width:' + bar + '%;height:100%;background:' + c + ';border-radius:2px;transition:width .6s ease"></div>' +
+      '</div>' +
+      detailsHtml +
+    '</div>';
+  }
+
+  // ── VALORISATION ──
   document.getElementById('metrics-valuation').innerHTML =
-    metricCard('P/E Ratio', f1(pe), pe ? (pe < 15 ? 'Sous-évalué' : pe < 25 ? 'Raisonnable' : 'Cher') : '', pe ? rateBadge(pe, 0, 15, 15, 25) : null) +
-    metricCard('P/E Forward', f1(fpe), 'Estimé 12 mois', fpe ? rateBadge(fpe, 0, 18, 18, 30) : null) +
-    metricCard('Prix / +haut 52s', dist52, d.high52 ? 'Haut: ' + f2(d.high52) : '', null) +
-    metricCard('Volume', d.volume ? d.volume.toLocaleString('fr-FR') : na, 'Quotidien moyen', null) +
-    (d.buyPrice ? metricCard('Prix d\'achat', f2(d.buyPrice) + ' ' + d.currency, 'PRU portefeuille', null) : '') +
-    (d.qty ? metricCard('Position', d.qty + ' × ' + f2(d.price), 'Valeur: ' + f2(d.qty * d.price) + ' ' + d.currency, null) : '') +
-    (d.buyPrice && d.price ? metricCard('+/- Value unit.', (d.price - d.buyPrice >= 0 ? '+' : '') + f2(d.price - d.buyPrice), ((d.price - d.buyPrice) / d.buyPrice * 100).toFixed(2) + '%', d.price >= d.buyPrice ? { cls: 'good', text: 'Gain' } : { cls: 'bad', text: 'Perte' }) : '') +
-    metricCard('Cap. boursière', d.marketCap ? (d.marketCap > 1e12 ? (d.marketCap/1e12).toFixed(1) + ' T' : d.marketCap > 1e9 ? (d.marketCap/1e9).toFixed(1) + ' Md' : (d.marketCap/1e6).toFixed(0) + ' M') : na, d.currency, null);
+    // Score block
+    (fs ? scoreBlock('Score Valorisation', fs.valo, 'var(--accent)') : '') +
+    // Métriques individuelles
+    metricCard('P/E Ratio', f1(d.pe), d.pe ? (d.pe < 15 ? 'Sous-évalué' : d.pe < 25 ? 'Raisonnable' : 'Cher') : '', d.pe ? rateBadge(d.pe, 0, 15, 15, 25) : null) +
+    metricCard('P/E Forward', f1(d.forwardPe), 'Estimé 12 mois', d.forwardPe ? rateBadge(d.forwardPe, 0, 18, 18, 30) : null) +
+    metricCard('PEG Ratio', f2(d.peg), d.peg ? (d.peg < 1 ? 'Attractif' : d.peg < 2 ? 'Correct' : 'Élevé') : 'N/D', d.peg ? rateBadge(d.peg, 0, 1, 1, 2) : null) +
+    metricCard('Price/Book', f2(d.pb), d.pb ? (d.pb < 1 ? 'Sous VNC' : d.pb < 3 ? 'Correct' : 'Premium') : 'N/D', null) +
+    metricCard('Cap. boursière', d.marketCap ? (d.marketCap > 1e12 ? (d.marketCap/1e12).toFixed(1)+'T' : d.marketCap > 1e9 ? (d.marketCap/1e9).toFixed(1)+'Md' : (d.marketCap/1e6).toFixed(0)+'M') : na, d.currency, null) +
+    (d.buyPrice ? metricCard('PRU portefeuille', f2(d.buyPrice) + ' ' + d.currency, '', null) : '') +
+    (d.buyPrice && d.price ? metricCard('+/- Value unit.', (d.price - d.buyPrice >= 0 ? '+' : '') + f2(d.price - d.buyPrice), ((d.price - d.buyPrice) / d.buyPrice * 100).toFixed(2) + '%', d.price >= d.buyPrice ? { cls: 'good', text: 'Gain' } : { cls: 'bad', text: 'Perte' }) : '');
 
-  // Rentabilité (limité aux données Yahoo v8 disponibles)
+  // ── RENTABILITÉ ──
   document.getElementById('metrics-profit').innerHTML =
-    metricCard('Variation jour', (d.changePct >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%', 'vs clôture veille', d.changePct >= 0 ? { cls: 'good', text: '▲' } : { cls: 'bad', text: '▼' }) +
-    metricCard('Cours actuel', f2(d.price) + ' ' + d.currency, d.exchange, null) +
-    metricCard('Clôture veille', f2(d.prev), '', null) +
-    metricCard('+bas 52 sem', f2(d.low52), d.low52 && d.price ? ((d.price/d.low52-1)*100).toFixed(1) + '% au-dessus' : '', null) +
-    metricCard('+haut 52 sem', f2(d.high52), d.high52 && d.price ? ((d.price/d.high52-1)*100).toFixed(1) + '% en-dessous' : '', null) +
-    '<div class="metric-card" style="grid-column:span 3;background:var(--s2);border-color:var(--border2)"><div class="metric-label">Note</div><div style="font-size:11px;color:var(--text2);line-height:1.5">ROE, marge nette et croissance CA ne sont pas disponibles via l\'API Yahoo v8/chart. Pour ces données, un upgrade vers l\'API Yahoo Financials (quoteSummary) serait nécessaire.</div></div>';
+    (fs ? scoreBlock('Score Qualité', fs.qual, 'var(--accent2)') : '') +
+    (fs ? scoreBlock('Score Croissance', fs.croi, 'var(--positive)') : '') +
+    metricCard('ROE', d.roe ? (d.roe*100).toFixed(1)+'%' : na, 'Retour sur capitaux', d.roe ? rateBadge(d.roe*100, 15, 100, 8, 15) : null) +
+    metricCard('ROA', d.roa ? (d.roa*100).toFixed(1)+'%' : na, 'Retour sur actifs', null) +
+    metricCard('Marge Nette', d.profitMargin ? (d.profitMargin*100).toFixed(1)+'%' : na, '', d.profitMargin ? rateBadge(d.profitMargin*100, 12, 100, 5, 12) : null) +
+    metricCard('Marge Brute',  d.grossMargin  ? (d.grossMargin*100).toFixed(1)+'%'  : na, '', null) +
+    metricCard('Marge Opérat', d.opMargin     ? (d.opMargin*100).toFixed(1)+'%'     : na, '', null) +
+    metricCard('Croiss. CA',   d.revGrowth    ? (d.revGrowth*100).toFixed(1)+'%'    : na, 'YoY', d.revGrowth ? rateBadge(d.revGrowth*100, 10, 100, 3, 10) : null) +
+    metricCard('Croiss. EPS',  d.epsGrowth    ? (d.epsGrowth*100).toFixed(1)+'%'    : na, 'YoY', null) +
+    metricCard('EPS (TTM)',    d.eps    ? f2(d.eps)    + ' ' + d.currency : na, '', null) +
+    metricCard('EPS (Fwd)',    d.fwdEps ? f2(d.fwdEps) + ' ' + d.currency : na, '', null);
 
-  // Dividendes
-  const dyield = d.divYield ? parseFloat(d.divYield) : null;
-  const drate = d.divRate ? parseFloat(d.divRate) : null;
+  // ── DIVIDENDES ──
+  let dyDisplay = d.divYieldRaw ? parseFloat(d.divYieldRaw) : null;
+  if (dyDisplay && dyDisplay > 1.0) dyDisplay = dyDisplay / 100;
   document.getElementById('metrics-dividends').innerHTML =
-    metricCard('Rendement', dyield ? pct(dyield) : na, 'Annuel', dyield ? rateBadge(dyield * 100, 2, 6, 0.5, 2) : null) +
-    metricCard('Dividende / action', drate ? f2(drate) + ' ' + d.currency : na, 'Trailing 12 mois', null) +
-    (d.qty && drate ? metricCard('Revenu annuel estimé', f2(d.qty * drate) + ' ' + d.currency, d.qty + ' actions', { cls: 'good', text: '💰' }) : metricCard('Revenu annuel', na, 'Ajoutez au portefeuille', null)) +
-    metricCard('Statut', dyield && dyield > 0 ? 'Distributeur' : 'Pas de dividende', '', dyield && dyield > 0 ? { cls: 'good', text: 'OUI' } : { cls: 'mid', text: 'NON' });
+    (fs ? scoreBlock('Score Dividende', fs.divd, 'var(--gold)') : '') +
+    metricCard('Rendement', dyDisplay ? (dyDisplay*100).toFixed(2)+'%' : na, 'Annuel', dyDisplay ? rateBadge(dyDisplay*100, 2, 5, 1, 2) : null) +
+    metricCard('Dividende/action', d.divRate ? f2(d.divRate)+' '+d.currency : na, 'Trailing 12 mois', null) +
+    metricCard('Payout Ratio', d.payoutRatio ? (parseFloat(d.payoutRatio) > 1 ? parseFloat(d.payoutRatio).toFixed(1) : (parseFloat(d.payoutRatio)*100).toFixed(1))+'%' : na, '', null) +
+    (d.qty && d.divRate ? metricCard('Revenu annuel estimé', f2(d.qty * parseFloat(d.divRate))+' '+d.currency, d.qty+' actions', { cls:'good', text:'💰' }) : metricCard('Revenu annuel', na, 'Ajoutez au portefeuille', null)) +
+    metricCard('Statut', dyDisplay && dyDisplay > 0 ? 'Distributeur' : 'Pas de dividende', '', dyDisplay && dyDisplay > 0 ? { cls:'good', text:'OUI' } : { cls:'mid', text:'NON' });
 
-  // Risque
+  // ── RISQUE / SOLIDITÉ ──
   const beta = d.beta ? parseFloat(d.beta) : null;
   document.getElementById('metrics-risk').innerHTML =
+    (fs ? scoreBlock('Score Solidité', fs.sold, 'var(--accent)') : '') +
     metricCard('Bêta', beta ? beta.toFixed(2) : na, beta ? (beta < 0.8 ? 'Défensif' : beta > 1.2 ? 'Agressif' : 'Neutre') : '', beta ? rateBadge(beta, 0, 0.8, 0.8, 1.2) : null) +
-    metricCard('Volatilité implicite', na, 'Non disponible (API limitée)', null) +
-    metricCard('Sharpe ratio', na, 'Non disponible (API limitée)', null) +
-    metricCard('52w range', d.high52 && d.low52 ? ((d.high52 - d.low52) / d.low52 * 100).toFixed(1) + '%' : na, 'Amplitude annuelle', null);
+    metricCard('D/E Ratio', d.debtToEquity ? parseFloat(d.debtToEquity).toFixed(1) : na, '', d.debtToEquity ? rateBadge(d.debtToEquity, 0, 50, 50, 100) : null) +
+    metricCard('Current Ratio', d.currentRatio ? parseFloat(d.currentRatio).toFixed(2) : na, d.currentRatio ? (d.currentRatio > 1.5 ? 'Liquide' : d.currentRatio > 1 ? 'Correct' : 'Tendu') : '', null) +
+    metricCard('Quick Ratio', d.quickRatio ? parseFloat(d.quickRatio).toFixed(2) : na, '', null) +
+    metricCard('Dette Totale', d.totalDebt ? (d.totalDebt/1e9).toFixed(2)+'Md' : na, d.currency, null) +
+    metricCard('Trésorerie', d.totalCash ? (d.totalCash/1e9).toFixed(2)+'Md' : na, d.currency, null) +
+    metricCard('52w range', d.high52 && d.low52 ? ((d.high52-d.low52)/d.low52*100).toFixed(1)+'%' : na, 'Amplitude annuelle', null);
 
   // Peers comparison
   loadPeers(d);
@@ -5274,21 +5557,16 @@ function updateHeroScore(score, verdict) {
   const scoreEl   = document.getElementById('ana-score');
   const verdictEl = document.getElementById('ana-verdict');
   const progress  = document.getElementById('hero-ring-progress');
-  const sublabel  = document.getElementById('hero-mistral-sublabel');
-  const ring      = document.getElementById('hero-mistral-ring');
 
-  const color = score >= 65 ? 'var(--positive)' : score <= 35 ? 'var(--negative)' : 'var(--gold)';
-  const emoji = verdict === 'ACHETER' ? '🟢' : verdict === 'VENDRE' ? '🔴' : '🟡';
+  const isPos = verdict === 'ACHAT' || verdict === 'ACHAT PROGRESSIF';
+  const isNeg = verdict === 'ÉVITER' || verdict === 'PRUDENCE';
+  const color  = isPos ? 'var(--positive)' : isNeg ? 'var(--negative)' : 'var(--gold)';
+  const emoji  = isPos ? '🟢' : isNeg ? '🔴' : '🟡';
 
-  // Animate ring (circumference = 2π×40 ≈ 251.2)
   const offset = 251.2 - (score / 100) * 251.2;
-  if (progress) {
-    progress.style.stroke = color;
-    progress.style.strokeDashoffset = offset;
-  }
-  if (scoreEl)   { scoreEl.textContent = score; scoreEl.style.color = color; }
-  if (verdictEl) { verdictEl.textContent = emoji + ' ' + verdict; verdictEl.style.color = color; }
-  if (sublabel)  { sublabel.textContent = '✦ Mistral AI'; }
+  if (progress) { progress.style.stroke = color; progress.style.strokeDashoffset = offset; }
+  if (scoreEl)  { scoreEl.textContent = score; scoreEl.style.color = color; }
+  if (verdictEl){ verdictEl.textContent = emoji + ' ' + verdict; verdictEl.style.color = color; }
 }
 
 
@@ -5424,17 +5702,8 @@ function buildMistralPrompt(d) {
     'INSTRUCTIONS :\n' +
     '1. Analyse ' + d.name + ' avec tes connaissances (resultats, actualites, secteur).\n' +
     '2. Verdict : ACHETER, CONSERVER ou VENDRE.\n' +
-    '3. Score de 0 a 100 selon cette grille OBLIGATOIRE — utilise toute la plage, ne reste pas entre 50 et 70 :\n' +
-    '   0-20  = VENDRE fort (fondamentaux deteriores, surevalorise, tendance baissiere forte)\n' +
-    '   21-35 = VENDRE (plus de risques que dopportunites, momentum negatif)\n' +
-    '   36-49 = CONSERVER avec prudence (incertitudes majeures, pas de catalyseur clair)\n' +
-    '   50    = Strictement neutre\n' +
-    '   51-64 = CONSERVER avec biais positif (solide mais potentiel limite a court terme)\n' +
-    '   65-79 = ACHETER (bons fondamentaux, catalyseurs identifies, valorisation correcte)\n' +
-    '   80-100 = ACHETER fort (opportunite claire, sous-evalue, catalyseurs forts)\n' +
-    '   IMPORTANT : si tu dis ACHETER le score DOIT etre >= 65. Si VENDRE <= 35. Si CONSERVER entre 36 et 64.\n' +
-    '4. 3 raisons cles courtes.\n' +
-    '5. Analyse detaillee structuree.\n' +
+    '3. 3 raisons cles courtes justifiant ton verdict.\n' +
+    '4. Analyse detaillee structuree.\n' +
     instrPerso + '\n\n' +
     'REPONDS UNIQUEMENT avec un JSON valide, sans texte ni markdown. Exemple :\n' +
     jsonTemplate;
@@ -5541,8 +5810,22 @@ function renderMistralVerdict(data) {
       detailHtml + sourcesHtml +
     '</div>';
 
-  // Sync hero ring
-  updateHeroScore(score, v);
+  // Sync hero ring — Mistral confirme ou nuance le score fondamental
+  const fs = _mistralCurrentData && _mistralCurrentData.fundamentalScore;
+  if (fs) {
+    // Afficher les deux : score fondamental reste, on ajoute le verdict Mistral
+    const sublabel = document.getElementById('hero-mistral-sublabel');
+    const verdictEl = document.getElementById('ana-verdict');
+    if (sublabel) sublabel.textContent = '📊 ' + fs.score100 + '/100 · ✦ ' + v;
+    if (verdictEl) {
+      verdictEl.textContent = fs.verdict === v
+        ? (v === 'ACHETER' ? '🟢' : v === 'VENDRE' ? '🔴' : '🟡') + ' ' + v + ' ✓'
+        : '📊 ' + fs.verdict + ' / ✦ ' + v;
+      verdictEl.style.color = scoreColor;
+    }
+  } else {
+    updateHeroScore(score, v);
+  }
 }
 
 window.toggleMistralDetail = function(btn) {
