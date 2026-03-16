@@ -6201,84 +6201,84 @@ function initProjections() {
 let chartBilan = null;
 
 function computeBilanAnnuel() {
-  const txs        = getTransactions(currentUser);   // [{type, ticker, qty, price, date, realizedPnl}]
-  const versements = getVersements(currentUser);      // [{amount, date}]
-  const portfolio  = getPortfolio(currentUser);       // [{ticker, qty, buyPrice, currentPrice, ...}]
+  const txs        = getTransactions(currentUser);
+  const versements = getVersements(currentUser);
+  const portfolio  = getPortfolio(currentUser);
 
-  // Valeur actuelle totale du portefeuille (cours live)
+  // Valeur actuelle totale des titres (cours live)
   const valeurActuelle = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
 
-  // Regrouper par année les transactions d'achat
+  // Montant réellement investi en titres = achats cumulés - ventes cumulées
+  // C'est la vraie base de calcul de la performance
+  const totalAchats = txs.filter(t => t.type === 'buy').reduce((s, t) => s + t.qty * t.price, 0);
+  const totalVentes = txs.filter(t => t.type === 'sell').reduce((s, t) => s + t.qty * t.price, 0);
+  const montantInvesti = Math.max(0, totalAchats - totalVentes);
+
   const years = {};
 
-  // --- Apports par année depuis les versements
+  // Apports par année (pour le suivi des versements et le Livret A)
   versements.forEach(v => {
     if (!v.date) return;
     const y = new Date(v.date + 'T12:00:00').getFullYear();
-    if (!years[y]) years[y] = { apport: 0, frais: 0, dividendes: 0, realizedPnl: 0, txCount: 0 };
+    if (!years[y]) years[y] = { apport: 0, dividendes: 0, realizedPnl: 0, achats: 0, ventes: 0 };
     years[y].apport += v.amount;
   });
 
-  // --- Si pas de versements, reconstruire les apports depuis les achats
+  // Si pas de versements, reconstruire depuis les achats
   if (!versements.length) {
     txs.filter(t => t.type === 'buy').forEach(t => {
       if (!t.date) return;
       const y = new Date(t.date + 'T12:00:00').getFullYear();
-      if (!years[y]) years[y] = { apport: 0, frais: 0, dividendes: 0, realizedPnl: 0, txCount: 0 };
+      if (!years[y]) years[y] = { apport: 0, dividendes: 0, realizedPnl: 0, achats: 0, ventes: 0 };
       years[y].apport += t.qty * t.price;
     });
   }
 
-  // --- Gains réalisés et dividendes par année
+  // Achats/ventes par année pour calcul du montant investi par an
   txs.forEach(t => {
     if (!t.date) return;
     const y = new Date(t.date + 'T12:00:00').getFullYear();
-    if (!years[y]) years[y] = { apport: 0, frais: 0, dividendes: 0, realizedPnl: 0, txCount: 0 };
-    if (t.type === 'sell' && t.realizedPnl != null) years[y].realizedPnl += t.realizedPnl;
+    if (!years[y]) years[y] = { apport: 0, dividendes: 0, realizedPnl: 0, achats: 0, ventes: 0 };
+    if (t.type === 'buy')  years[y].achats += t.qty * t.price;
+    if (t.type === 'sell') { years[y].ventes += t.qty * t.price; if (t.realizedPnl != null) years[y].realizedPnl += t.realizedPnl; }
     if (t.type === 'dividend') years[y].dividendes += t.qty * t.price;
-    years[y].txCount++;
   });
 
-  // Années triées
   const sortedYears = Object.keys(years).map(Number).sort();
   const currentYear = new Date().getFullYear();
 
-  // Apports cumulés au fil du temps + Livret A simulé
   let apportCumul = 0;
   const LIVRET_A_RATE = 0.025;
 
   return sortedYears.map(y => {
-    const d        = years[y];
-    const apport   = d.apport;
-    apportCumul   += apport;
+    const d      = years[y];
+    const apport = d.apport;
+    apportCumul += apport;
 
-    // Livret A : simulation des apports de l'année placés en milieu d'année
-    // Intérêts sur le cumul précédent (année pleine) + apport année en cours (demi-année)
     const apportCumulAvant = apportCumul - apport;
     const livretA = apportCumulAvant * (1 + LIVRET_A_RATE) + apport * (1 + LIVRET_A_RATE / 2);
 
     const isCurrentYear = (y === currentYear);
-
-    // Valeur portefeuille : on affiche la valeur actuelle pour toutes les années
-    // (on n'a pas d'historique de valeur par année clôturée, donc on utilise la valeur live)
     const valeur = valeurActuelle;
 
-    // Plus-value latente = valeur actuelle − apports cumulés à cette date
-    const pv = valeurActuelle - apportCumul;
-    const perfPct = apportCumul > 0 ? pv / apportCumul : null;
+    // Perf = (valeur titres - montant investi en titres) / montant investi
+    // Plus juste que versements bruts qui incluent le cash non investi
+    const pv      = montantInvesti > 0 ? valeurActuelle - montantInvesti : null;
+    const perfPct = montantInvesti > 0 ? (valeurActuelle - montantInvesti) / montantInvesti : null;
 
     return {
-      year:        y,
-      label:       isCurrentYear ? y + ' YTD' : String(y),
-      isYTD:       isCurrentYear,
+      year:         y,
+      label:        isCurrentYear ? y + ' YTD' : String(y),
+      isYTD:        isCurrentYear,
       apport,
-      apportTotal: apportCumul,
+      apportTotal:  apportCumul,
+      montantInvesti,
       valeur,
       pv,
       perfPct,
-      livretA:     parseFloat(livretA.toFixed(2)),
-      realizedPnl: parseFloat(d.realizedPnl.toFixed(2)),
-      dividendes:  parseFloat(d.dividendes.toFixed(2)),
+      livretA:      parseFloat(livretA.toFixed(2)),
+      realizedPnl:  parseFloat(d.realizedPnl.toFixed(2)),
+      dividendes:   parseFloat(d.dividendes.toFixed(2)),
     };
   });
 }
@@ -6299,11 +6299,12 @@ function initBilan() {
       const avPos  = avLA !== null && avLA >= 0;
 
       const rows = [
-        { label: "Apport de l'année",  value: y.apport.toFixed(2) + ' €',      color: 'var(--text)' },
-        { label: 'Apports cumulés',     value: y.apportTotal.toFixed(2) + ' €', color: 'var(--text2)' },
+        { label: "Versements de l'année", value: y.apport.toFixed(2) + ' €',           color: 'var(--text)' },
+        { label: 'Versements cumulés',    value: y.apportTotal.toFixed(2) + ' €',       color: 'var(--text2)' },
+        { label: 'Montant investi (titres)', value: y.montantInvesti.toFixed(2) + ' €', color: 'var(--text2)' },
         y.valeur !== null
-          ? { label: 'Valeur actuelle', value: y.valeur.toFixed(2) + ' €',      color: 'var(--accent)', bold: true }
-          : { label: 'Valeur actuelle', value: '—',                              color: 'var(--text3)' },
+          ? { label: 'Valeur actuelle (titres)', value: y.valeur.toFixed(2) + ' €', color: 'var(--accent)', bold: true }
+          : { label: 'Valeur actuelle', value: '—', color: 'var(--text3)' },
         y.pv !== null
           ? { label: 'Plus-value latente', value: (y.pv >= 0 ? '+' : '') + y.pv.toFixed(2) + ' €', color: y.pv >= 0 ? 'var(--positive)' : 'var(--negative)' }
           : null,
