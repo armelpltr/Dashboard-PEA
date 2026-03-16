@@ -6324,9 +6324,12 @@ function initBilan() {
           : null,
       ].filter(Boolean);
 
+      const perfPastPct = !y.isYTD && y.montantInvesti > 0 ? y.realizedPnl / y.montantInvesti : null;
       const perfBadge = y.isYTD && y.perfPct !== null
         ? `<span style="background:${y.perfPct >= 0 ? 'rgba(0,224,158,0.12)' : 'rgba(255,77,106,0.12)'};color:${y.perfPct >= 0 ? 'var(--positive)' : 'var(--negative)'};border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700;font-family:var(--mono)">${y.perfPct >= 0 ? '+' : ''}${(y.perfPct * 100).toFixed(2)}%</span>`
-        : '<span style="background:var(--s3);color:var(--text3);border-radius:8px;padding:4px 10px;font-size:11px">année clôturée</span>';
+        : perfPastPct !== null
+          ? `<span style="background:${perfPastPct >= 0 ? 'rgba(0,224,158,0.12)' : 'rgba(255,77,106,0.12)'};color:${perfPastPct >= 0 ? 'var(--positive)' : 'var(--negative)'};border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700;font-family:var(--mono)">${perfPastPct >= 0 ? '+' : ''}${(perfPastPct * 100).toFixed(2)}% réalisé</span>`
+          : '<span style="background:var(--s3);color:var(--text3);border-radius:8px;padding:4px 10px;font-size:11px">—</span>';
 
       return `<div class="section-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
