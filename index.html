@@ -6208,15 +6208,9 @@ function computeBilanAnnuel() {
   // Valeur actuelle totale des titres (cours live)
   const valeurActuelle = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
 
-  // Montant réellement investi en titres = achats cumulés - ventes cumulées
-  // C'est la vraie base de calcul de la performance
-  const totalAchats = txs.filter(t => t.type === 'buy').reduce((s, t) => s + t.qty * t.price, 0);
-  const totalVentes = txs.filter(t => t.type === 'sell').reduce((s, t) => s + t.qty * t.price, 0);
-  const montantInvesti = Math.max(0, totalAchats - totalVentes);
-
   const years = {};
 
-  // Apports par année (pour le suivi des versements et le Livret A)
+  // Versements par année
   versements.forEach(v => {
     if (!v.date) return;
     const y = new Date(v.date + 'T12:00:00').getFullYear();
@@ -6234,51 +6228,63 @@ function computeBilanAnnuel() {
     });
   }
 
-  // Achats/ventes par année pour calcul du montant investi par an
+  // Achats, ventes, PnL réalisé, dividendes — par année
   txs.forEach(t => {
     if (!t.date) return;
     const y = new Date(t.date + 'T12:00:00').getFullYear();
     if (!years[y]) years[y] = { apport: 0, dividendes: 0, realizedPnl: 0, achats: 0, ventes: 0 };
     if (t.type === 'buy')  years[y].achats += t.qty * t.price;
-    if (t.type === 'sell') { years[y].ventes += t.qty * t.price; if (t.realizedPnl != null) years[y].realizedPnl += t.realizedPnl; }
+    if (t.type === 'sell') {
+      years[y].ventes += t.qty * t.price;
+      if (t.realizedPnl != null) years[y].realizedPnl += t.realizedPnl;
+    }
     if (t.type === 'dividend') years[y].dividendes += t.qty * t.price;
   });
 
   const sortedYears = Object.keys(years).map(Number).sort();
   const currentYear = new Date().getFullYear();
 
-  let apportCumul = 0;
-  const LIVRET_A_RATE = 0.025;
+  let apportCumul       = 0;
+  let achatsCumul       = 0;
+  let ventesCumul       = 0;
+  const LIVRET_A_RATE   = 0.025;
 
   return sortedYears.map(y => {
     const d      = years[y];
     const apport = d.apport;
     apportCumul += apport;
+    achatsCumul += d.achats;
+    ventesCumul += d.ventes;
+
+    // Montant investi en titres à fin de cette année (cumulatif)
+    const montantInvesti = Math.max(0, achatsCumul - ventesCumul);
 
     const apportCumulAvant = apportCumul - apport;
     const livretA = apportCumulAvant * (1 + LIVRET_A_RATE) + apport * (1 + LIVRET_A_RATE / 2);
 
     const isCurrentYear = (y === currentYear);
-    const valeur = valeurActuelle;
 
-    // Perf = (valeur titres - montant investi en titres) / montant investi
-    // Plus juste que versements bruts qui incluent le cash non investi
+    // PV latente = valeur actuelle - montant investi cumulé jusqu'à cette année
     const pv      = montantInvesti > 0 ? valeurActuelle - montantInvesti : null;
     const perfPct = montantInvesti > 0 ? (valeurActuelle - montantInvesti) / montantInvesti : null;
 
+    // Gains réalisés = uniquement ceux de cette année
+    const realizedPnlAnnee = parseFloat(d.realizedPnl.toFixed(2));
+
     return {
-      year:         y,
-      label:        isCurrentYear ? y + ' YTD' : String(y),
-      isYTD:        isCurrentYear,
-      apport,
-      apportTotal:  apportCumul,
-      montantInvesti,
-      valeur,
-      pv,
+      year:           y,
+      label:          isCurrentYear ? y + ' YTD' : String(y),
+      isYTD:          isCurrentYear,
+      apport,                          // versements de l'année
+      apportTotal:    apportCumul,     // versements cumulés
+      montantInvesti,                  // achats - ventes cumulés jusqu'à cette année
+      achatsAnnee:    d.achats,        // achats de l'année seulement
+      ventesAnnee:    d.ventes,        // ventes de l'année seulement
+      pv,                              // PV latente sur base investie cumulée
       perfPct,
-      livretA:      parseFloat(livretA.toFixed(2)),
-      realizedPnl:  parseFloat(d.realizedPnl.toFixed(2)),
-      dividendes:   parseFloat(d.dividendes.toFixed(2)),
+      livretA:        parseFloat(livretA.toFixed(2)),
+      realizedPnl:    realizedPnlAnnee, // PnL réalisé de l'année uniquement
+      dividendes:     parseFloat(d.dividendes.toFixed(2)),
     };
   });
 }
@@ -6299,20 +6305,23 @@ function initBilan() {
       const avPos  = avLA !== null && avLA >= 0;
 
       const rows = [
-        { label: "Versements de l'année", value: y.apport.toFixed(2) + ' €',           color: 'var(--text)' },
-        { label: 'Versements cumulés',    value: y.apportTotal.toFixed(2) + ' €',       color: 'var(--text2)' },
-        { label: 'Montant investi (titres)', value: y.montantInvesti.toFixed(2) + ' €', color: 'var(--text2)' },
-        y.valeur !== null
-          ? { label: 'Valeur actuelle (titres)', value: y.valeur.toFixed(2) + ' €', color: 'var(--accent)', bold: true }
-          : { label: 'Valeur actuelle', value: '—', color: 'var(--text3)' },
+        { label: "Versements de l'année",    value: y.apport.toFixed(2) + ' €',        color: 'var(--text)' },
+        { label: 'Versements cumulés',        value: y.apportTotal.toFixed(2) + ' €',   color: 'var(--text2)' },
+        y.achatsAnnee > 0
+          ? { label: 'Achats de l\'année',   value: y.achatsAnnee.toFixed(2) + ' €',   color: 'var(--text2)' }
+          : null,
+        y.ventesAnnee > 0
+          ? { label: 'Ventes de l\'année',   value: y.ventesAnnee.toFixed(2) + ' €',   color: 'var(--text2)' }
+          : null,
+        { label: 'Investi en titres (cumul)', value: y.montantInvesti.toFixed(2) + ' €', color: 'var(--text2)' },
         y.pv !== null
-          ? { label: 'Plus-value latente', value: (y.pv >= 0 ? '+' : '') + y.pv.toFixed(2) + ' €', color: y.pv >= 0 ? 'var(--positive)' : 'var(--negative)' }
+          ? { label: 'Plus-value latente (sur investi)', value: (y.pv >= 0 ? '+' : '') + y.pv.toFixed(2) + ' €', color: y.pv >= 0 ? 'var(--positive)' : 'var(--negative)' }
           : null,
         y.realizedPnl !== 0
-          ? { label: 'Gains réalisés', value: (y.realizedPnl >= 0 ? '+' : '') + y.realizedPnl.toFixed(2) + ' €', color: y.realizedPnl >= 0 ? 'var(--positive)' : 'var(--negative)' }
+          ? { label: 'Gains réalisés (' + y.year + ')', value: (y.realizedPnl >= 0 ? '+' : '') + y.realizedPnl.toFixed(2) + ' €', color: y.realizedPnl >= 0 ? 'var(--positive)' : 'var(--negative)' }
           : null,
         y.dividendes > 0
-          ? { label: 'Dividendes reçus', value: y.dividendes.toFixed(2) + ' €', color: 'var(--gold)' }
+          ? { label: 'Dividendes reçus (' + y.year + ')', value: y.dividendes.toFixed(2) + ' €', color: 'var(--gold)' }
           : null,
       ].filter(Boolean);
 
