@@ -6316,9 +6316,7 @@ function initBilan() {
         { label: "Versements de l'année",    value: y.apport.toFixed(2) + ' €',        color: 'var(--text)' },
         { label: 'Versements cumulés',        value: y.apportTotal.toFixed(2) + ' €',   color: 'var(--text2)' },
         { label: 'Investi en titres (cumul)', value: y.montantInvesti.toFixed(2) + ' €', color: 'var(--text2)' },
-        y.isYTD && y.pv !== null
-          ? { label: 'Plus-value latente (en cours)', value: (y.pv >= 0 ? '+' : '') + y.pv.toFixed(2) + ' €', color: y.pv >= 0 ? 'var(--positive)' : 'var(--negative)' }
-          : null,
+        y.isYTD && y.pv !== null ? null : null,
         y.realizedPnl !== 0
           ? { label: 'Gains réalisés (' + y.year + ')', value: (y.realizedPnl >= 0 ? '+' : '') + y.realizedPnl.toFixed(2) + ' €', color: y.realizedPnl >= 0 ? 'var(--positive)' : 'var(--negative)' }
           : null,
