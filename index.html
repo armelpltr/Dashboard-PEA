@@ -5330,74 +5330,78 @@ window.triggerMistralAnalysis = async function() {
 
 // ── Construction du prompt ────────────────────────
 function buildMistralPrompt(d) {
-  const pf = getPortfolio(currentUser);
-  const totalVal = pf.reduce((s, r) => s + r.qty * r.currentPrice, 0);
-  const row = pf.find(r => r.ticker === d.ticker);
+  var pf = getPortfolio(currentUser);
+  var totalVal = pf.reduce(function(s, r) { return s + r.qty * r.currentPrice; }, 0);
+  var row = pf.find(function(r) { return r.ticker === d.ticker; });
 
-  let portfolioContext = '';
+  var portfolioContext = '';
   if (row) {
-    const posVal  = row.qty * row.currentPrice;
-    const posPnl  = (row.currentPrice - row.buyPrice) * row.qty;
-    const posPct  = ((row.currentPrice - row.buyPrice) / row.buyPrice * 100).toFixed(2);
-    const weight  = totalVal > 0 ? (posVal / totalVal * 100).toFixed(1) : 0;
-    portfolioContext = `
-CONTEXTE PORTEFEUILLE DE L'INVESTISSEUR :
-- PRU (prix de revient unitaire) : ${row.buyPrice.toFixed(2)} ${d.currency}
-- Quantité détenue : ${row.qty}
-- Valeur de la position : ${posVal.toFixed(2)} ${d.currency}
-- Plus/moins-value latente : ${posPnl >= 0 ? '+' : ''}${posPnl.toFixed(2)} ${d.currency} (${posPnl >= 0 ? '+' : ''}${posPct}%)
-- Poids dans le portefeuille : ${weight}% du total`;
+    var posVal = row.qty * row.currentPrice;
+    var posPnl = (row.currentPrice - row.buyPrice) * row.qty;
+    var posPct = ((row.currentPrice - row.buyPrice) / row.buyPrice * 100).toFixed(2);
+    var weight = totalVal > 0 ? (posVal / totalVal * 100).toFixed(1) : 0;
+    portfolioContext = '\nCONTEXTE PORTEFEUILLE :\n' +
+      '- PRU : ' + row.buyPrice.toFixed(2) + ' ' + d.currency + '\n' +
+      '- Quantite detenue : ' + row.qty + '\n' +
+      '- Valeur position : ' + posVal.toFixed(2) + ' ' + d.currency + '\n' +
+      '- PV latente : ' + (posPnl >= 0 ? '+' : '') + posPnl.toFixed(2) + ' ' + d.currency + ' (' + (posPnl >= 0 ? '+' : '') + posPct + '%)' + '\n' +
+      '- Poids : ' + weight + '% du portefeuille';
   } else {
-    portfolioContext = '\nCONTEXTE : Action non encore en portefeuille (analyse prospective).';
+    portfolioContext = '\nCONTEXTE : Action non en portefeuille (analyse prospective).';
   }
 
-  const pe52w = d.high52 && d.low52 && d.price
-    ? `Position dans le range 52 semaines : ${(((d.price - d.low52) / (d.high52 - d.low52)) * 100).toFixed(0)}% (bas: ${d.low52.toFixed(2)}, haut: ${d.high52.toFixed(2)})`
-    : '';
+  var pe52w = (d.high52 && d.low52 && d.price)
+    ? 'Position 52 semaines : ' + (((d.price - d.low52) / (d.high52 - d.low52)) * 100).toFixed(0) + '% (bas: ' + d.low52.toFixed(2) + ', haut: ' + d.high52.toFixed(2) + ')'
+    : 'Range 52 semaines : N/D';
 
-  return `Tu es un analyste financier expert. Effectue une analyse complète de l'action suivante en utilisant tes connaissances récentes sur cette société, ses derniers résultats financiers et le contexte de marché actuel.
+  var capStr = d.marketCap
+    ? (d.marketCap > 1e12 ? (d.marketCap/1e12).toFixed(1)+'T' : d.marketCap > 1e9 ? (d.marketCap/1e9).toFixed(1)+'Md' : (d.marketCap/1e6).toFixed(0)+'M') + ' ' + d.currency
+    : 'N/D';
 
-ACTION À ANALYSER :
-- Nom : ${d.name}
-- Ticker : ${d.ticker}
-- Bourse : ${d.exchange || 'N/A'}
-- Cours actuel : ${d.price ? d.price.toFixed(2) + ' ' + d.currency : 'N/A'}
-- Variation du jour : ${d.changePct ? (d.changePct >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%' : 'N/A'}
-- P/E Ratio : ${d.pe ? parseFloat(d.pe).toFixed(1) : 'N/D'}
-- P/E Forward : ${d.forwardPe ? parseFloat(d.forwardPe).toFixed(1) : 'N/D'}
-- Bêta : ${d.beta ? parseFloat(d.beta).toFixed(2) : 'N/D'}
-- Rendement dividende : ${d.divYield ? (parseFloat(d.divYield) * 100).toFixed(2) + '%' : '0%'}
-- Capitalisation boursière : ${d.marketCap ? (d.marketCap > 1e12 ? (d.marketCap/1e12).toFixed(1)+'T' : d.marketCap > 1e9 ? (d.marketCap/1e9).toFixed(1)+'Md' : (d.marketCap/1e6).toFixed(0)+'M') + ' ' + d.currency : 'N/D'}
-- ${pe52w}
-${portfolioContext}
+  var instrPerso = row ? '6. Tiens compte du PRU et de la PV latente pour une recommandation personnalisee.' : '';
 
-INSTRUCTIONS :
-1. Utilise tes connaissances sur "${d.name}" (résultats récents, actualités, secteur, concurrence).
-2. Donne un verdict clair parmi : ACHETER, CONSERVER ou VENDRE.
-3. Donne un score de conviction de 0 à 100 (0 = vendre fortement, 50 = neutre, 100 = acheter fortement).
-4. Identifie 3 raisons clés courtes (1 phrase chacune) justifiant ton verdict.
-5. Rédige une analyse détaillée structurée.
-${row ? '6. Tiens compte du PRU et de la plus-value latente pour une recommandation personnalisée.' : ''}
+  var jsonTemplate = '{\n' +
+    '  "verdict": "ACHETER",\n' +
+    '  "score": 72,\n' +
+    '  "raisons": [\n' +
+    '    {"icon": "\ud83d\udcc8", "titre": "Croissance solide", "texte": "Explication courte."},\n' +
+    '    {"icon": "\ud83d\udca1", "titre": "Valorisation correcte", "texte": "Explication courte."},\n' +
+    '    {"icon": "\u26a0\ufe0f", "titre": "Point de vigilance", "texte": "Explication courte."}\n' +
+    '  ],\n' +
+    '  "analyse": {\n' +
+    '    "situation": "...",\n' +
+    '    "points_forts": "...",\n' +
+    '    "points_vigilance": "...",\n' +
+    '    "catalyseurs": "...",\n' +
+    '    "conclusion": "...",\n' +
+    '    "recommandation_personnalisee": "..."\n' +
+    '  },\n' +
+    '  "sources": ["Mistral AI", "Yahoo Finance"]\n' +
+    '}';
 
-IMPORTANT : Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après, sans balises markdown. Structure exacte :
-{
-  "verdict": "ACHETER",
-  "score": 72,
-  "raisons": [
-    {"icon": "📈", "titre": "Croissance solide", "texte": "Le chiffre d'affaires progresse de X% sur les derniers trimestres."},
-    {"icon": "💡", "titre": "Valorisation raisonnable", "texte": "Le P/E de X est inférieur à la moyenne sectorielle."},
-    {"icon": "⚠️", "titre": "Point de vigilance", "texte": "La dette nette reste élevée suite aux acquisitions récentes."}
-  ],
-  "analyse": {
-    "situation": "Description de la situation actuelle de l'entreprise...",
-    "points_forts": "Les atouts principaux de la société...",
-    "points_vigilance": "Les risques et points négatifs à surveiller...",
-    "catalyseurs": "Les événements ou tendances qui pourraient faire monter le titre...",
-    "conclusion": "Synthèse et recommandation finale...",
-    "recommandation_personnalisee": "Conseil spécifique si l'action est déjà en portefeuille, tenant compte du PRU et de la plus-value latente."
-  },
-  "sources": ["Connaissance interne Mistral", "Données Yahoo Finance"]
-}`;
+  return 'Tu es un analyste financier expert. Analyse cette action.\n\n' +
+    'ACTION :\n' +
+    '- Nom : ' + d.name + '\n' +
+    '- Ticker : ' + d.ticker + '\n' +
+    '- Bourse : ' + (d.exchange || 'N/A') + '\n' +
+    '- Cours : ' + (d.price ? d.price.toFixed(2) + ' ' + d.currency : 'N/A') + '\n' +
+    '- Variation jour : ' + (d.changePct ? (d.changePct >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%' : 'N/A') + '\n' +
+    '- P/E : ' + (d.pe ? parseFloat(d.pe).toFixed(1) : 'N/D') + '\n' +
+    '- P/E Forward : ' + (d.forwardPe ? parseFloat(d.forwardPe).toFixed(1) : 'N/D') + '\n' +
+    '- Beta : ' + (d.beta ? parseFloat(d.beta).toFixed(2) : 'N/D') + '\n' +
+    '- Dividende : ' + (d.divYield ? (parseFloat(d.divYield) * 100).toFixed(2) + '%' : '0%') + '\n' +
+    '- Capitalisation : ' + capStr + '\n' +
+    '- ' + pe52w + '\n' +
+    portfolioContext + '\n\n' +
+    'INSTRUCTIONS :\n' +
+    '1. Analyse ' + d.name + ' avec tes connaissances (resultats, actualites, secteur).\n' +
+    '2. Verdict : ACHETER, CONSERVER ou VENDRE.\n' +
+    '3. Score 0-100 (0=vendre fort, 50=neutre, 100=acheter fort).\n' +
+    '4. 3 raisons cles courtes.\n' +
+    '5. Analyse detaillee structuree.\n' +
+    instrPerso + '\n\n' +
+    'REPONDS UNIQUEMENT avec un JSON valide, sans texte ni markdown. Exemple :\n' +
+    jsonTemplate;
 }
 
 // ── Appel API Mistral ────────────────────────────
@@ -5512,8 +5516,7 @@ window.toggleMistralDetail = function(btn) {
   btn.querySelector('#mistral-toggle-arrow') || (btn.childNodes[0].textContent = _mistralDetailOpen ? '▼' : '▶');
 };
 
-
-  const html = document.documentElement.outerHTML;
+function downloadHTML() {
   const blob = new Blob([html], { type: 'text/html' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
