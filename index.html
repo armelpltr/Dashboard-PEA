@@ -6307,12 +6307,6 @@ function initBilan() {
       const rows = [
         { label: "Versements de l'année",    value: y.apport.toFixed(2) + ' €',        color: 'var(--text)' },
         { label: 'Versements cumulés',        value: y.apportTotal.toFixed(2) + ' €',   color: 'var(--text2)' },
-        y.achatsAnnee > 0
-          ? { label: 'Achats de l\'année',   value: y.achatsAnnee.toFixed(2) + ' €',   color: 'var(--text2)' }
-          : null,
-        y.ventesAnnee > 0
-          ? { label: 'Ventes de l\'année',   value: y.ventesAnnee.toFixed(2) + ' €',   color: 'var(--text2)' }
-          : null,
         { label: 'Investi en titres (cumul)', value: y.montantInvesti.toFixed(2) + ' €', color: 'var(--text2)' },
         y.pv !== null
           ? { label: 'Plus-value latente (sur investi)', value: (y.pv >= 0 ? '+' : '') + y.pv.toFixed(2) + ' €', color: y.pv >= 0 ? 'var(--positive)' : 'var(--negative)' }
