@@ -3671,6 +3671,15 @@ async function fetchFullAnalyse(ticker, portfolioRow) {
     d.fundamentalScore = computeFundamentalScore(d);
 
     currentAnalyseData = d;
+
+    // Révéler le hero + tabs (était géré par setMistralContext)
+    const heroEl   = document.getElementById('ana-hero');
+    const tabsWrap = document.getElementById('ana-tabs-wrap');
+    const emptyEl2 = document.getElementById('ana-empty');
+    if (heroEl)   { heroEl.style.opacity = '1'; heroEl.style.pointerEvents = 'auto'; }
+    if (tabsWrap) tabsWrap.style.display = 'block';
+    if (emptyEl2) emptyEl2.style.display = 'none';
+
     populateHero(d);
     populateTabs(d);
 
