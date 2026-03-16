@@ -2865,7 +2865,7 @@ function showPage(id) {
   document.querySelectorAll('.mobile-nav-item').forEach(b => {
     b.classList.toggle('active', b.dataset.mob === id);
   });
-  if (id === 'analyse')     renderAnalysePortfolio();
+  if (id === 'analyse')     { renderAnalysePortfolio(); }
   if (id === 'graphiques')  initCharts();
 }
 
@@ -2879,7 +2879,7 @@ function showPageMobile(id) {
     const onclick = n.getAttribute('onclick') || '';
     if (onclick.includes("'" + id + "'")) n.classList.add('active');
   });
-  if (id === 'analyse')     renderAnalysePortfolio();
+  if (id === 'analyse')     { renderAnalysePortfolio(); }
   if (id === 'graphiques')  initCharts();
 }
 
@@ -3716,6 +3716,7 @@ async function fetchFullAnalyse(ticker, portfolioRow) {
     currentAnalyseData = d;
     populateHero(d);
     populateTabs(d);
+    setMistralContext(d);
 
   } catch(e) {
     document.getElementById('ana-name').textContent = 'Erreur';
@@ -5237,7 +5238,281 @@ initCharts = function() {
   }
 };
 
-function downloadHTML() {
+// ═══════════════════════════════════════════════════
+// MISTRAL AI — ANALYSE & SCORING
+// ═══════════════════════════════════════════════════
+
+// ── Gestion clé API ──────────────────────────────
+function getMistralKey() {
+  try { return localStorage.getItem('pea_mistral_key') || ''; } catch(e) { return ''; }
+}
+function saveMistralKey(val) {
+  try {
+    localStorage.setItem('pea_mistral_key', val.trim());
+    const st = document.getElementById('mistral-key-status');
+    if (st) {
+      st.textContent = val.trim() ? '✓ Clé enregistrée' : '';
+      st.style.color = 'var(--positive)';
+    }
+  } catch(e) {}
+}
+function toggleMistralKeyVisibility() {
+  const inp = document.getElementById('mistral-key-input');
+  if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+// Restore key on load
+(function(){
+  try {
+    const k = getMistralKey();
+    if (k) {
+      const inp = document.getElementById('mistral-key-input');
+      if (inp) inp.value = k;
+    }
+  } catch(e) {}
+})();
+
+// ── État courant de l'analyse ────────────────────
+let _mistralCurrentData = null; // stocke les données Yahoo de l'action courante
+let _mistralDetailOpen  = false;
+
+// Appelé depuis fetchFullAnalyse après avoir récupéré les données Yahoo
+function setMistralContext(data) {
+  _mistralCurrentData = data;
+  // Afficher la card, reset le body
+  const card = document.getElementById('mistral-verdict-card');
+  const tickerEl = document.getElementById('mistral-card-ticker');
+  if (card)     card.style.display = 'block';
+  if (tickerEl) tickerEl.textContent = (data.name || data.ticker) + ' · ' + data.ticker;
+  // Reset body
+  const body = document.getElementById('mistral-verdict-body');
+  if (body) body.innerHTML = `<div style="text-align:center;color:var(--text3);font-size:13px;padding:20px 0">
+    <div style="font-size:28px;margin-bottom:8px;opacity:.3">✦</div>
+    Cliquez sur <strong>Analyser</strong> pour obtenir l'avis de Mistral AI sur cette action.
+  </div>`;
+}
+
+// ── Déclenchement de l'analyse ───────────────────
+window.triggerMistralAnalysis = async function() {
+  const key = getMistralKey();
+  const body = document.getElementById('mistral-verdict-body');
+  const btn  = document.getElementById('btn-mistral-refresh');
+
+  if (!key) {
+    body.innerHTML = `<div class="mistral-no-key">
+      ⚠️ Clé API Mistral non renseignée.<br>
+      Ajoutez-la dans la sidebar (Settings → Clé Mistral AI).<br>
+      <span style="opacity:.7">Vous pouvez la trouver sur <a href="https://console.mistral.ai" target="_blank" style="color:var(--gold)">console.mistral.ai</a></span>
+    </div>`;
+    return;
+  }
+  if (!_mistralCurrentData) {
+    body.innerHTML = `<div class="mistral-error">Sélectionnez d'abord une action.</div>`;
+    return;
+  }
+
+  // Loading state
+  if (btn) { btn.disabled = true; btn.querySelector('#mistral-btn-icon').textContent = '⏳'; }
+  body.innerHTML = `<div class="mistral-loading">
+    <span class="loading-spinner" style="width:20px;height:20px;border-width:3px"></span>
+    Mistral analyse cette action avec recherche web en cours…
+  </div>`;
+
+  try {
+    const result = await callMistralAnalysis(_mistralCurrentData, key);
+    renderMistralVerdict(result);
+  } catch(err) {
+    body.innerHTML = `<div class="mistral-error">⚠️ Erreur Mistral : ${err.message || 'Réponse invalide'}</div>`;
+    console.error('Mistral error:', err);
+  } finally {
+    if (btn) { btn.disabled = false; btn.querySelector('#mistral-btn-icon').textContent = '✦'; }
+  }
+};
+
+// ── Construction du prompt ────────────────────────
+function buildMistralPrompt(d) {
+  const pf = getPortfolio(currentUser);
+  const totalVal = pf.reduce((s, r) => s + r.qty * r.currentPrice, 0);
+  const row = pf.find(r => r.ticker === d.ticker);
+
+  let portfolioContext = '';
+  if (row) {
+    const posVal  = row.qty * row.currentPrice;
+    const posPnl  = (row.currentPrice - row.buyPrice) * row.qty;
+    const posPct  = ((row.currentPrice - row.buyPrice) / row.buyPrice * 100).toFixed(2);
+    const weight  = totalVal > 0 ? (posVal / totalVal * 100).toFixed(1) : 0;
+    portfolioContext = `
+CONTEXTE PORTEFEUILLE DE L'INVESTISSEUR :
+- PRU (prix de revient unitaire) : ${row.buyPrice.toFixed(2)} ${d.currency}
+- Quantité détenue : ${row.qty}
+- Valeur de la position : ${posVal.toFixed(2)} ${d.currency}
+- Plus/moins-value latente : ${posPnl >= 0 ? '+' : ''}${posPnl.toFixed(2)} ${d.currency} (${posPnl >= 0 ? '+' : ''}${posPct}%)
+- Poids dans le portefeuille : ${weight}% du total`;
+  } else {
+    portfolioContext = '\nCONTEXTE : Action non encore en portefeuille (analyse prospective).';
+  }
+
+  const pe52w = d.high52 && d.low52 && d.price
+    ? `Position dans le range 52 semaines : ${(((d.price - d.low52) / (d.high52 - d.low52)) * 100).toFixed(0)}% (bas: ${d.low52.toFixed(2)}, haut: ${d.high52.toFixed(2)})`
+    : '';
+
+  return `Tu es un analyste financier expert. Effectue une analyse complète de l'action suivante en utilisant tes connaissances récentes sur cette société, ses derniers résultats financiers et le contexte de marché actuel.
+
+ACTION À ANALYSER :
+- Nom : ${d.name}
+- Ticker : ${d.ticker}
+- Bourse : ${d.exchange || 'N/A'}
+- Cours actuel : ${d.price ? d.price.toFixed(2) + ' ' + d.currency : 'N/A'}
+- Variation du jour : ${d.changePct ? (d.changePct >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%' : 'N/A'}
+- P/E Ratio : ${d.pe ? parseFloat(d.pe).toFixed(1) : 'N/D'}
+- P/E Forward : ${d.forwardPe ? parseFloat(d.forwardPe).toFixed(1) : 'N/D'}
+- Bêta : ${d.beta ? parseFloat(d.beta).toFixed(2) : 'N/D'}
+- Rendement dividende : ${d.divYield ? (parseFloat(d.divYield) * 100).toFixed(2) + '%' : '0%'}
+- Capitalisation boursière : ${d.marketCap ? (d.marketCap > 1e12 ? (d.marketCap/1e12).toFixed(1)+'T' : d.marketCap > 1e9 ? (d.marketCap/1e9).toFixed(1)+'Md' : (d.marketCap/1e6).toFixed(0)+'M') + ' ' + d.currency : 'N/D'}
+- ${pe52w}
+${portfolioContext}
+
+INSTRUCTIONS :
+1. Utilise tes connaissances sur "${d.name}" (résultats récents, actualités, secteur, concurrence).
+2. Donne un verdict clair parmi : ACHETER, CONSERVER ou VENDRE.
+3. Donne un score de conviction de 0 à 100 (0 = vendre fortement, 50 = neutre, 100 = acheter fortement).
+4. Identifie 3 raisons clés courtes (1 phrase chacune) justifiant ton verdict.
+5. Rédige une analyse détaillée structurée.
+${row ? '6. Tiens compte du PRU et de la plus-value latente pour une recommandation personnalisée.' : ''}
+
+IMPORTANT : Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après, sans balises markdown. Structure exacte :
+{
+  "verdict": "ACHETER",
+  "score": 72,
+  "raisons": [
+    {"icon": "📈", "titre": "Croissance solide", "texte": "Le chiffre d'affaires progresse de X% sur les derniers trimestres."},
+    {"icon": "💡", "titre": "Valorisation raisonnable", "texte": "Le P/E de X est inférieur à la moyenne sectorielle."},
+    {"icon": "⚠️", "titre": "Point de vigilance", "texte": "La dette nette reste élevée suite aux acquisitions récentes."}
+  ],
+  "analyse": {
+    "situation": "Description de la situation actuelle de l'entreprise...",
+    "points_forts": "Les atouts principaux de la société...",
+    "points_vigilance": "Les risques et points négatifs à surveiller...",
+    "catalyseurs": "Les événements ou tendances qui pourraient faire monter le titre...",
+    "conclusion": "Synthèse et recommandation finale...",
+    "recommandation_personnalisee": "Conseil spécifique si l'action est déjà en portefeuille, tenant compte du PRU et de la plus-value latente."
+  },
+  "sources": ["Connaissance interne Mistral", "Données Yahoo Finance"]
+}`;
+}
+
+// ── Appel API Mistral ────────────────────────────
+async function callMistralAnalysis(data, apiKey) {
+  const prompt = buildMistralPrompt(data);
+
+  // Première tentative : mistral-small-latest avec web_search natif (Le Mistral avec accès web)
+  // On tente d'abord mistral-small-latest en mode simple (JSON forcé dans le prompt)
+  const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+    },
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 2000,
+    }),
+    signal: AbortSignal.timeout(45000),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error((err.message || err.error?.message || `HTTP ${response.status}`) + ' — Vérifiez votre clé API Mistral.');
+  }
+
+  const result = await response.json();
+  let finalContent = result.choices?.[0]?.message?.content || '';
+
+  if (!finalContent) throw new Error('Réponse vide de Mistral');
+
+  // Extraire le JSON (peut être enveloppé dans des backticks)
+  const jsonMatch = finalContent.match(/```json\s*([\s\S]*?)```/) ||
+                    finalContent.match(/```\s*([\s\S]*?)```/) ||
+                    finalContent.match(/(\{[\s\S]*\})/);
+
+  const jsonStr = jsonMatch ? jsonMatch[1] : finalContent;
+
+  try {
+    return JSON.parse(jsonStr.trim());
+  } catch(e) {
+    // Si le JSON est mal formé, on tente un parsing plus permissif
+    throw new Error('Réponse Mistral non parseable. Réessayez.');
+  }
+}
+
+// ── Rendu de la card verdict ─────────────────────
+function renderMistralVerdict(data) {
+  const body = document.getElementById('mistral-verdict-body');
+  if (!body) return;
+
+  const v = (data.verdict || 'CONSERVER').toUpperCase();
+  const cls = v === 'ACHETER' ? 'acheter' : v === 'VENDRE' ? 'vendre' : 'conserver';
+  const emoji = v === 'ACHETER' ? '🟢' : v === 'VENDRE' ? '🔴' : '🟡';
+  const score = Math.min(100, Math.max(0, parseInt(data.score) || 50));
+  const scoreColor = score >= 65 ? 'var(--positive)' : score <= 35 ? 'var(--negative)' : 'var(--gold)';
+
+  const raisons = (data.raisons || []).slice(0, 3).map(r => `
+    <div class="mistral-reason-item">
+      <span class="mistral-reason-icon">${r.icon || '•'}</span>
+      <div class="mistral-reason-text"><strong>${r.titre || ''}</strong>${r.titre ? ' — ' : ''}${r.texte || ''}</div>
+    </div>
+  `).join('');
+
+  // Analyse détaillée
+  const ana = data.analyse || {};
+  const hasPers = ana.recommandation_personnalisee;
+  const sections = [
+    { key: 'situation',    label: '📊 Situation actuelle' },
+    { key: 'points_forts', label: '✅ Points forts' },
+    { key: 'points_vigilance', label: '⚠️ Points de vigilance' },
+    { key: 'catalyseurs',  label: '🚀 Catalyseurs' },
+    { key: 'conclusion',   label: '🎯 Conclusion' },
+    ...(hasPers ? [{ key: 'recommandation_personnalisee', label: '👤 Recommandation personnalisée' }] : []),
+  ];
+  const detailHtml = sections.filter(s => ana[s.key]).map(s => `
+    <h4>${s.label}</h4>
+    <p style="margin:0;color:var(--text2)">${ana[s.key]}</p>
+  `).join('');
+
+  const sourcesHtml = data.sources?.length
+    ? `<div style="margin-top:14px;font-size:10px;color:var(--text3);font-family:var(--mono)">Sources : ${data.sources.join(' · ')}</div>`
+    : '';
+
+  body.innerHTML = `
+    <div class="mistral-verdict-main">
+      <div class="mistral-verdict-box ${cls}">
+        <div class="mistral-score-ring" style="color:${scoreColor}">${score}</div>
+        <div class="mistral-verdict-label ${cls}">${emoji} ${v}</div>
+      </div>
+      <div class="mistral-reasons">${raisons}</div>
+    </div>
+    <button class="mistral-detail-toggle" onclick="toggleMistralDetail(this)">
+      <span id="mistral-toggle-arrow">▶</span> Voir l'analyse complète
+    </button>
+    <div class="mistral-detail-body" id="mistral-detail-body">
+      ${detailHtml}
+      ${sourcesHtml}
+    </div>
+  `;
+}
+
+window.toggleMistralDetail = function(btn) {
+  const detail = document.getElementById('mistral-detail-body');
+  const arrow  = document.getElementById('mistral-toggle-arrow');
+  if (!detail) return;
+  _mistralDetailOpen = !_mistralDetailOpen;
+  detail.classList.toggle('open', _mistralDetailOpen);
+  if (arrow) arrow.textContent = _mistralDetailOpen ? '▼' : '▶';
+  btn.querySelector('#mistral-toggle-arrow') || (btn.childNodes[0].textContent = _mistralDetailOpen ? '▼' : '▶');
+};
+
+
   const html = document.documentElement.outerHTML;
   const blob = new Blob([html], { type: 'text/html' });
   const url  = URL.createObjectURL(blob);
@@ -6786,401 +7061,6 @@ showPageMobile = function(id) {
   if (id === 'trophees')    initTrophees();
   if (id === 'calendrier')  initCalendrier();
   if (id === 'dividendes')  initDividendes();
-};
-
-// ═══════════════════════════════════════════════════
-//  MISTRAL AI — CLÉ API (localStorage)
-// ═══════════════════════════════════════════════════
-function getMistralKey() {
-  try { return localStorage.getItem('pea_mistral_key') || ''; } catch(e) { return ''; }
-}
-window.saveMistralKey = function(val) {
-  try {
-    localStorage.setItem('pea_mistral_key', val.trim());
-    const status = document.getElementById('mistral-key-status');
-    if (status) {
-      if (val.trim().length > 10) {
-        status.textContent = '✓ Clé enregistrée';
-        status.style.color = 'var(--positive)';
-      } else {
-        status.textContent = '';
-      }
-    }
-  } catch(e) {}
-};
-window.toggleMistralKeyVisibility = function() {
-  const inp = document.getElementById('mistral-key-input');
-  if (!inp) return;
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-};
-// Restore key on load
-(function() {
-  try {
-    const k = getMistralKey();
-    if (k) {
-      setTimeout(() => {
-        const inp = document.getElementById('mistral-key-input');
-        const status = document.getElementById('mistral-key-status');
-        if (inp) inp.value = k;
-        if (status && k.length > 10) {
-          status.textContent = '✓ Clé enregistrée';
-          status.style.color = 'var(--positive)';
-        }
-      }, 300);
-    }
-  } catch(e) {}
-})();
-
-// ═══════════════════════════════════════════════════
-//  MISTRAL AI — APPEL API avec web_search
-// ═══════════════════════════════════════════════════
-async function callMistralAnalysis(data) {
-  const key = getMistralKey();
-  if (!key) throw new Error('NO_KEY');
-
-  const portfolioCtx = (data.buyPrice && data.qty)
-    ? `\n\nCONTEXTE PORTEFEUILLE DE L'INVESTISSEUR :
-- Prix de revient unitaire (PRU) : ${data.buyPrice.toFixed(2)} ${data.currency}
-- Quantité détenue : ${data.qty} action(s)
-- Valeur position : ${(data.qty * data.price).toFixed(2)} ${data.currency}
-- Plus-value latente : ${((data.price - data.buyPrice) * data.qty).toFixed(2)} ${data.currency} (${((data.price / data.buyPrice - 1) * 100).toFixed(2)}%)
-`
-    : '';
-
-  // Calcul poids dans le portfolio si données dispo
-  let portfolioWeight = '';
-  if (data.qty && data.price && currentUser) {
-    const pf = getPortfolio(currentUser);
-    const totalVal = pf.reduce((s, r) => s + r.qty * r.currentPrice, 0);
-    const posVal = data.qty * data.price;
-    if (totalVal > 0) {
-      portfolioWeight = `\n- Poids dans le portefeuille : ${(posVal / totalVal * 100).toFixed(1)}%`;
-    }
-  }
-
-  const prompt = `Tu es un analyste financier expert. Analyse l'action ${data.ticker} (${data.name}) et donne une recommandation claire.
-
-DONNÉES FINANCIÈRES (Yahoo Finance, temps réel) :
-- Cours actuel : ${data.price.toFixed(2)} ${data.currency}
-- Variation jour : ${data.changePct >= 0 ? '+' : ''}${data.changePct.toFixed(2)}%
-- Plus haut 52 semaines : ${data.high52 ? data.high52.toFixed(2) : 'N/D'} ${data.currency}
-- Plus bas 52 semaines : ${data.low52 ? data.low52.toFixed(2) : 'N/D'} ${data.currency}
-- Position dans le range 52s : ${data.high52 && data.low52 ? (((data.price - data.low52) / (data.high52 - data.low52)) * 100).toFixed(0) + '%' : 'N/D'}
-- P/E ratio : ${data.pe ? parseFloat(data.pe).toFixed(1) : 'N/D'}
-- P/E forward : ${data.forwardPe ? parseFloat(data.forwardPe).toFixed(1) : 'N/D'}
-- Bêta : ${data.beta ? parseFloat(data.beta).toFixed(2) : 'N/D'}
-- Rendement dividende : ${data.divYield ? (parseFloat(data.divYield) * 100).toFixed(2) + '%' : 'N/D'}
-- Capitalisation boursière : ${data.marketCap ? (data.marketCap > 1e12 ? (data.marketCap/1e12).toFixed(1) + ' T€' : data.marketCap > 1e9 ? (data.marketCap/1e9).toFixed(1) + ' Md€' : (data.marketCap/1e6).toFixed(0) + ' M€') : 'N/D'}
-- Place boursière : ${data.exchange || 'N/D'}${portfolioCtx}${portfolioWeight}
-
-Effectue une recherche web pour obtenir les dernières actualités, résultats financiers, et événements récents concernant ${data.ticker} (${data.name}).
-
-Réponds UNIQUEMENT en JSON valide (aucun texte autour), avec cette structure exacte :
-{
-  "verdict": "ACHETER" | "CONSERVER" | "VENDRE",
-  "score": <nombre entier 0-100>,
-  "confidence": "ÉLEVÉE" | "MOYENNE" | "FAIBLE",
-  "emoji": "🟢" | "🟡" | "🔴",
-  "raisons": [
-    { "icon": "📈", "titre": "...", "texte": "..." },
-    { "icon": "⚠️", "titre": "...", "texte": "..." },
-    { "icon": "💡", "titre": "...", "texte": "..." }
-  ],
-  "analyse": {
-    "valorisation": "...",
-    "momentum": "...",
-    "risques": "...",
-    "catalyseurs": "...",
-    "actualites": "..."
-  },
-  "horizon": "Court terme (< 3 mois)" | "Moyen terme (3-12 mois)" | "Long terme (> 1 an)",
-  "objectif_cours": <nombre ou null>,
-  "stop_loss": <nombre ou null>
-}
-
-Sois concis, factuel et précis. Les "raisons" doivent être des arguments clés courts (max 2 phrases). L'"analyse" contient des paragraphes détaillés (3-5 phrases chacun).`;
-
-  const body = {
-    model: 'mistral-small-latest',
-    max_tokens: 1500,
-    messages: [{ role: 'user', content: prompt }],
-    tools: [{ type: 'web_search_preview' }],
-    tool_choice: 'any',
-    response_format: { type: 'json_object' },
-  };
-
-  const resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + key,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(45000),
-  });
-
-  if (resp.status === 401) throw new Error('CLÉ_INVALIDE');
-  if (resp.status === 429) throw new Error('LIMITE_ATTEINTE');
-  if (!resp.ok) throw new Error('ERREUR_API_' + resp.status);
-
-  const json = await resp.json();
-  // Extraire le contenu texte de la réponse (peut contenir des tool_calls avant)
-  let raw = '';
-  const choices = json.choices || [];
-  for (const choice of choices) {
-    const msg = choice.message || {};
-    if (msg.content) { raw = msg.content; break; }
-    // Si le contenu est dans tool_results, chercher dans les messages suivants
-    if (msg.tool_calls) {
-      // Mistral retourne parfois la réponse finale dans finish_reason=stop
-      if (choice.finish_reason === 'stop' && msg.content) {
-        raw = msg.content; break;
-      }
-    }
-  }
-  if (!raw && json.choices && json.choices[0]) {
-    raw = json.choices[0].message?.content || '';
-  }
-  if (!raw) throw new Error('RÉPONSE_VIDE');
-
-  // Nettoyer les éventuels backticks markdown
-  raw = raw.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-  return JSON.parse(raw);
-}
-
-// ═══════════════════════════════════════════════════
-//  MISTRAL AI — AFFICHAGE DU RÉSULTAT
-// ═══════════════════════════════════════════════════
-function renderMistralResult(res, ticker, name) {
-  const body = document.getElementById('mistral-verdict-body');
-  if (!body) return;
-
-  const verdictCls = res.verdict === 'ACHETER' ? 'acheter' : res.verdict === 'VENDRE' ? 'vendre' : 'conserver';
-  const scoreColor = res.score >= 60 ? 'var(--positive)' : res.score <= 40 ? 'var(--negative)' : 'var(--gold)';
-
-  // Raisons HTML
-  const raisonsHtml = (res.raisons || []).map(r =>
-    `<div class="mistral-reason-item">
-      <span class="mistral-reason-icon">${r.icon || '•'}</span>
-      <div class="mistral-reason-text"><strong>${r.titre || ''}</strong> — ${r.texte || ''}</div>
-    </div>`
-  ).join('');
-
-  // Analyse détaillée HTML
-  const ana = res.analyse || {};
-  const detailHtml = [
-    ana.valorisation ? `<h4>📊 Valorisation</h4><p>${ana.valorisation}</p>` : '',
-    ana.momentum     ? `<h4>📈 Momentum & Technique</h4><p>${ana.momentum}</p>` : '',
-    ana.catalyseurs  ? `<h4>🚀 Catalyseurs</h4><p>${ana.catalyseurs}</p>` : '',
-    ana.risques      ? `<h4>⚠️ Risques</h4><p>${ana.risques}</p>` : '',
-    ana.actualites   ? `<h4>📰 Actualités récentes</h4><p>${ana.actualites}</p>` : '',
-  ].join('');
-
-  // Objectif de cours et stop-loss
-  let targetsHtml = '';
-  if (res.objectif_cours || res.stop_loss) {
-    const data = currentAnalyseData;
-    const cur = data ? data.price : null;
-    targetsHtml = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">`;
-    if (res.objectif_cours && cur) {
-      const upside = ((res.objectif_cours / cur - 1) * 100).toFixed(1);
-      const upsidePos = upside >= 0;
-      targetsHtml += `<div style="flex:1;min-width:120px;background:${upsidePos ? 'rgba(0,224,158,0.08)' : 'rgba(255,77,106,0.08)'};border:1px solid ${upsidePos ? 'rgba(0,224,158,0.3)' : 'rgba(255,77,106,0.3)'};border-radius:9px;padding:10px 14px">
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text3);font-family:var(--mono);margin-bottom:4px">Objectif de cours</div>
-        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:${upsidePos ? 'var(--positive)' : 'var(--negative)'}">${res.objectif_cours.toFixed(2)} ${data.currency}</div>
-        <div style="font-size:11px;color:var(--text2);font-family:var(--mono)">${upsidePos ? '▲' : '▼'} ${Math.abs(upside)}% vs actuel</div>
-      </div>`;
-    }
-    if (res.stop_loss && cur) {
-      const downside = ((res.stop_loss / cur - 1) * 100).toFixed(1);
-      targetsHtml += `<div style="flex:1;min-width:120px;background:rgba(255,77,106,0.06);border:1px solid rgba(255,77,106,0.25);border-radius:9px;padding:10px 14px">
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text3);font-family:var(--mono);margin-bottom:4px">Stop-Loss suggéré</div>
-        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--negative)">${res.stop_loss.toFixed(2)} ${data.currency}</div>
-        <div style="font-size:11px;color:var(--text2);font-family:var(--mono)">▼ ${Math.abs(downside)}% risque max</div>
-      </div>`;
-    }
-    targetsHtml += `</div>`;
-  }
-
-  // Horizon badge
-  const horizonHtml = res.horizon
-    ? `<span style="font-size:10px;background:var(--accent-d);color:var(--accent);border:1px solid rgba(124,109,245,0.2);padding:2px 9px;border-radius:5px;font-family:var(--mono);font-weight:600">${res.horizon}</span>`
-    : '';
-
-  // Confiance badge
-  const confColor = res.confidence === 'ÉLEVÉE' ? 'var(--positive)' : res.confidence === 'FAIBLE' ? 'var(--negative)' : 'var(--gold)';
-  const confBg    = res.confidence === 'ÉLEVÉE' ? 'rgba(0,224,158,0.1)' : res.confidence === 'FAIBLE' ? 'rgba(255,77,106,0.1)' : 'rgba(245,183,49,0.1)';
-  const confHtml  = res.confidence
-    ? `<span style="font-size:10px;background:${confBg};color:${confColor};border:1px solid ${confColor.replace('var(', '').replace(')', '')};padding:2px 9px;border-radius:5px;font-family:var(--mono);font-weight:600">Confiance ${res.confidence}</span>`
-    : '';
-
-  // Timestamp
-  const ts = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-
-  body.innerHTML = `
-    <div class="mistral-verdict-main">
-      <!-- Score + Verdict -->
-      <div class="mistral-verdict-box ${verdictCls}">
-        <div class="mistral-score-ring" style="color:${scoreColor}">${res.score}</div>
-        <div class="mistral-verdict-label ${verdictCls}">${res.emoji || ''} ${res.verdict}</div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:4px">
-          ${horizonHtml}
-          ${confHtml}
-        </div>
-      </div>
-      <!-- 3 Raisons -->
-      <div class="mistral-reasons">${raisonsHtml}</div>
-    </div>
-
-    ${targetsHtml}
-
-    <!-- Toggle détail -->
-    <button class="mistral-detail-toggle" onclick="toggleMistralDetail(this)" aria-expanded="false">
-      <span class="toggle-arrow">▶</span> Voir l'analyse complète
-    </button>
-    <div class="mistral-detail-body" id="mistral-detail-content">
-      ${detailHtml}
-      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:16px;border-top:1px solid var(--border);padding-top:10px">
-        ✦ Analyse Mistral AI · ${name} (${ticker}) · Mis à jour à ${ts} · Données Yahoo Finance + recherche web temps réel
-      </div>
-    </div>
-  `;
-}
-
-window.toggleMistralDetail = function(btn) {
-  const body = document.getElementById('mistral-detail-content');
-  if (!body) return;
-  const isOpen = body.classList.toggle('open');
-  btn.setAttribute('aria-expanded', isOpen);
-  const arrow = btn.querySelector('.toggle-arrow');
-  if (arrow) arrow.textContent = isOpen ? '▼' : '▶';
-  btn.childNodes[1].textContent = isOpen ? ' Masquer l\'analyse complète' : ' Voir l\'analyse complète';
-};
-
-function renderMistralLoading(ticker) {
-  const body = document.getElementById('mistral-verdict-body');
-  if (!body) return;
-  const msgs = [
-    'Recherche des actualités récentes…',
-    'Analyse des fondamentaux…',
-    'Calcul du score de confiance…',
-    'Génération du verdict final…',
-  ];
-  let idx = 0;
-  const msgEl = document.createElement('div');
-  msgEl.className = 'mistral-loading';
-  msgEl.innerHTML = `
-    <div>
-      <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:8px">
-        <span class="loading-spinner" style="width:16px;height:16px;border-width:2.5px"></span>
-        <span style="font-family:var(--mono);font-size:12px;font-weight:600;background:linear-gradient(135deg,#ff7a00,#ff4d6a);-webkit-background-clip:text;-webkit-text-fill-color:transparent">✦ Mistral AI analyse ${ticker}…</span>
-      </div>
-      <div id="mistral-loading-step" style="font-size:11px;color:var(--text3);text-align:center;font-family:var(--mono)">${msgs[0]}</div>
-    </div>`;
-  body.innerHTML = '';
-  body.appendChild(msgEl);
-  const interval = setInterval(() => {
-    idx = (idx + 1) % msgs.length;
-    const el = document.getElementById('mistral-loading-step');
-    if (el) el.textContent = msgs[idx];
-  }, 2500);
-  return interval;
-}
-
-function renderMistralNoKey() {
-  const body = document.getElementById('mistral-verdict-body');
-  if (!body) return;
-  body.innerHTML = `<div class="mistral-no-key">
-    ⚠️ Clé API Mistral manquante.<br>
-    Ajoutez votre clé dans <strong>Paramètres → Clé Mistral AI</strong> (panneau gauche) pour activer l'analyse IA.
-    <br><a href="https://console.mistral.ai/api-keys" target="_blank" style="color:var(--gold);text-decoration:underline;font-size:11px">→ Obtenir une clé gratuite sur console.mistral.ai</a>
-  </div>`;
-}
-
-function renderMistralError(err) {
-  const body = document.getElementById('mistral-verdict-body');
-  if (!body) return;
-  let msg = 'Erreur lors de l\'analyse. Réessayez.';
-  if (err.message === 'CLÉ_INVALIDE') msg = '❌ Clé API invalide. Vérifiez votre clé Mistral dans les paramètres.';
-  else if (err.message === 'LIMITE_ATTEINTE') msg = '⏳ Limite de requêtes atteinte. Attendez quelques secondes puis réessayez.';
-  else if (err.message === 'RÉPONSE_VIDE') msg = '⚠️ Mistral n\'a pas retourné de réponse. Réessayez.';
-  else if (err.message) msg = '⚠️ ' + err.message;
-  body.innerHTML = `<div class="mistral-error">${msg}</div>`;
-}
-
-// ═══════════════════════════════════════════════════
-//  MISTRAL AI — DÉCLENCHEUR
-// ═══════════════════════════════════════════════════
-window.triggerMistralAnalysis = async function() {
-  if (!currentAnalyseData) return;
-  const key = getMistralKey();
-  const card = document.getElementById('mistral-verdict-card');
-  const btn  = document.getElementById('btn-mistral-refresh');
-  const icon = document.getElementById('mistral-btn-icon');
-  const tickerEl = document.getElementById('mistral-card-ticker');
-
-  if (!card) return;
-  card.style.display = 'block';
-
-  if (tickerEl) tickerEl.textContent = currentAnalyseData.ticker + ' · ' + currentAnalyseData.name;
-
-  if (!key) { renderMistralNoKey(); return; }
-
-  // Disable button during analysis
-  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
-  if (icon) icon.textContent = '⏳';
-
-  const loadingInterval = renderMistralLoading(currentAnalyseData.ticker);
-
-  try {
-    const result = await callMistralAnalysis(currentAnalyseData);
-    clearInterval(loadingInterval);
-    renderMistralResult(result, currentAnalyseData.ticker, currentAnalyseData.name);
-  } catch(e) {
-    clearInterval(loadingInterval);
-    if (e.message === 'NO_KEY') { renderMistralNoKey(); }
-    else { renderMistralError(e); }
-    console.error('Mistral error:', e);
-  } finally {
-    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
-    if (icon) icon.textContent = '✦';
-  }
-};
-
-// ═══════════════════════════════════════════════════
-//  PATCH fetchFullAnalyse — auto-lancer Mistral
-// ═══════════════════════════════════════════════════
-const _origFetchFullAnalyse = fetchFullAnalyse;
-fetchFullAnalyse = async function(ticker, portfolioRow) {
-  // Afficher la carte Mistral en état "prêt" avant le chargement Yahoo
-  const card    = document.getElementById('mistral-verdict-card');
-  const tickerEl = document.getElementById('mistral-card-ticker');
-  if (card) {
-    card.style.display = 'block';
-    if (tickerEl) tickerEl.textContent = ticker + ' · chargement…';
-    const body = document.getElementById('mistral-verdict-body');
-    if (body) body.innerHTML = `<div style="text-align:center;color:var(--text3);font-size:12px;padding:20px 0">
-      <span class="loading-spinner" style="vertical-align:middle;margin-right:6px"></span> Récupération des données Yahoo Finance…
-    </div>`;
-  }
-
-  // Appel original Yahoo Finance
-  await _origFetchFullAnalyse(ticker, portfolioRow);
-
-  // Lancer automatiquement Mistral si clé disponible
-  if (getMistralKey() && currentAnalyseData) {
-    await window.triggerMistralAnalysis();
-  } else if (card) {
-    // Pas de clé → afficher le prompt
-    const body = document.getElementById('mistral-verdict-body');
-    const tEl  = document.getElementById('mistral-card-ticker');
-    if (tEl && currentAnalyseData) tEl.textContent = currentAnalyseData.ticker + ' · ' + currentAnalyseData.name;
-    if (body && !getMistralKey()) renderMistralNoKey();
-    else if (body) body.innerHTML = `<div style="text-align:center;color:var(--text3);font-size:13px;padding:20px 0">
-      <div style="font-size:28px;margin-bottom:8px;opacity:.3">✦</div>
-      Cliquez sur <strong>Analyser</strong> pour obtenir l'avis de Mistral AI sur cette action.
-    </div>`;
-  }
 };
 </script>
 </body>
