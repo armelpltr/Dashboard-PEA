@@ -6301,8 +6301,9 @@ function initBilan() {
   // ── Cards ────────────────────────────────────────
   if (cards) {
     cards.innerHTML = data.map(y => {
-      const avLA   = y.valeur !== null ? (y.valeur - y.livretA) : null;
-      const avPos  = avLA !== null && avLA >= 0;
+      const valeurPourLA = y.isYTD && y.pv !== null ? y.montantInvesti + y.pv : null;
+      const avLA  = valeurPourLA !== null ? (valeurPourLA - y.livretA) : null;
+      const avPos = avLA !== null && avLA >= 0;
 
       const rows = [
         { label: "Versements de l'année",    value: y.apport.toFixed(2) + ' €',        color: 'var(--text)' },
@@ -6363,7 +6364,7 @@ function initBilan() {
       datasets: [
         {
           label: 'Portefeuille',
-          data: data.map(y => y.valeur),
+          data: data.map(y => y.isYTD && y.pv !== null ? y.montantInvesti + y.pv : null),
           backgroundColor: 'rgba(124,109,245,0.75)',
           borderColor: '#7c6df5',
           borderWidth: 1, borderRadius: 4,
