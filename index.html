@@ -5426,7 +5426,15 @@ function buildMistralPrompt(d) {
     'INSTRUCTIONS :\n' +
     '1. Analyse ' + d.name + ' avec tes connaissances (resultats, actualites, secteur).\n' +
     '2. Verdict : ACHETER, CONSERVER ou VENDRE.\n' +
-    '3. Score 0-100 (0=vendre fort, 50=neutre, 100=acheter fort).\n' +
+    '3. Score de 0 a 100 selon cette grille OBLIGATOIRE — utilise toute la plage, ne reste pas entre 50 et 70 :\n' +
+    '   0-20  = VENDRE fort (fondamentaux deteriores, surevalorise, tendance baissiere forte)\n' +
+    '   21-35 = VENDRE (plus de risques que dopportunites, momentum negatif)\n' +
+    '   36-49 = CONSERVER avec prudence (incertitudes majeures, pas de catalyseur clair)\n' +
+    '   50    = Strictement neutre\n' +
+    '   51-64 = CONSERVER avec biais positif (solide mais potentiel limite a court terme)\n' +
+    '   65-79 = ACHETER (bons fondamentaux, catalyseurs identifies, valorisation correcte)\n' +
+    '   80-100 = ACHETER fort (opportunite claire, sous-evalue, catalyseurs forts)\n' +
+    '   IMPORTANT : si tu dis ACHETER le score DOIT etre >= 65. Si VENDRE <= 35. Si CONSERVER entre 36 et 64.\n' +
     '4. 3 raisons cles courtes.\n' +
     '5. Analyse detaillee structuree.\n' +
     instrPerso + '\n\n' +
