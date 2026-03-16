@@ -1689,118 +1689,107 @@ body.sb-collapsed .main { margin-left: 58px; }
         </div>
       </div>
 
-      <!-- Empty state -->
-      <div class="ana-empty-state" id="ana-empty">
-        <div class="ana-empty-icon">🔍</div>
-        Sélectionnez une action dans votre portefeuille<br>ou recherchez un ticker pour commencer l'analyse.
-      </div>
+      <!-- CARTE UNIQUE — picker + hero + Mistral + tabs -->
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:18px">
 
-      <!-- Mistral AI Verdict Card — fusionnée avec le hero -->
-      <div id="mistral-verdict-card" style="display:none;margin-bottom:18px">
-        <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-          <!-- Header -->
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border)">
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#ff7a00,#ff4d6a);display:grid;place-items:center;font-size:12px;flex-shrink:0">✦</div>
-              <div>
-                <div style="font-family:var(--display);font-size:13px;font-weight:700">Analyse Mistral AI</div>
-                <div id="mistral-card-ticker" style="font-size:10px;color:var(--text2);font-family:var(--mono)">—</div>
+        <!-- ── LIGNE 1 : Picker + Hero + Score ── -->
+        <div style="display:flex;align-items:stretch;border-bottom:1px solid var(--border)">
+
+          <!-- Picker gauche -->
+          <div style="width:240px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column" id="ana-picker-wrap">
+            <div style="padding:10px 12px;border-bottom:1px solid var(--border)">
+              <input class="form-input" id="analyse-search-input" placeholder="🔍 Ticker…" oninput="onAnalyseInput()" style="font-size:12px;padding:8px 10px;width:100%">
+              <div id="analyse-search-status" style="margin-top:4px"></div>
+            </div>
+            <div class="ana-picker-list" id="analyse-portfolio-list" style="max-height:220px;overflow-y:auto;flex:1">
+              <!-- Empty state inside picker -->
+              <div id="ana-empty" style="color:var(--text3);font-size:12px;text-align:center;padding:32px 14px;line-height:1.6">
+                <div style="font-size:28px;margin-bottom:8px;opacity:.2">🔍</div>
+                Sélectionnez une action ou recherchez un ticker
               </div>
             </div>
-            <button onclick="triggerMistralAnalysis()" id="btn-mistral-refresh" style="display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,#ff7a00,#ff4d6a);border:none;color:#fff;border-radius:7px;padding:6px 13px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--sans)" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          </div>
+
+          <!-- Hero centre -->
+          <div class="ana-hero" id="ana-hero" style="flex:1;opacity:0;transition:opacity .3s;pointer-events:none">
+            <div class="ana-hero-left">
+              <div class="ana-hero-name" id="ana-name">—</div>
+              <div class="ana-hero-ticker" id="ana-ticker">—</div>
+              <div style="margin-top:10px">
+                <span class="ana-hero-price" id="ana-price">—</span>
+                <span class="ana-hero-change" id="ana-change">—</span>
+              </div>
+              <div class="ana-hero-52w" id="ana-52w">52 sem : — — —</div>
+              <div class="ana-hero-52w-bar" id="ana-52w-bar" style="width:200px">
+                <div class="ana-hero-52w-fill" id="ana-52w-fill" style="width:0"></div>
+                <div class="ana-hero-52w-dot" id="ana-52w-dot" style="left:0"></div>
+              </div>
+            </div>
+            <!-- Score ring droite -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;min-width:140px">
+              <div style="position:relative;width:84px;height:84px">
+                <svg viewBox="0 0 90 90" style="position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)">
+                  <circle cx="45" cy="45" r="40" fill="none" stroke="var(--border)" stroke-width="5"/>
+                  <circle id="hero-ring-progress" cx="45" cy="45" r="40" fill="none" stroke="var(--text3)" stroke-width="5" stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease,stroke .4s"/>
+                </svg>
+                <div style="position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-size:22px;font-weight:800">
+                  <span id="ana-score" style="color:var(--text3)">—</span>
+                </div>
+              </div>
+              <div style="text-align:center">
+                <div id="ana-verdict" style="font-size:12px;font-weight:700;color:var(--text3)">—</div>
+                <div id="hero-mistral-sublabel" style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:2px">✦ Mistral AI</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── LIGNE 2 : Mistral verdict ── -->
+        <div id="mistral-verdict-card" style="display:none;border-bottom:1px solid var(--border)">
+          <!-- Header Mistral -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);background:rgba(255,122,0,0.04)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#ff7a00,#ff4d6a);display:grid;place-items:center;font-size:11px;flex-shrink:0">✦</div>
+              <div style="font-family:var(--display);font-size:13px;font-weight:700">Analyse Mistral AI</div>
+              <div id="mistral-card-ticker" style="font-size:10px;color:var(--text2);font-family:var(--mono)">—</div>
+            </div>
+            <button onclick="triggerMistralAnalysis()" id="btn-mistral-refresh" style="display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,#ff7a00,#ff4d6a);border:none;color:#fff;border-radius:7px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--sans)" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
               <span id="mistral-btn-icon">✦</span> Analyser
             </button>
           </div>
           <!-- Verdict body -->
-          <div id="mistral-verdict-body" style="padding:16px 20px">
-            <div style="text-align:center;color:var(--text3);font-size:12px;padding:12px 0">
-              <span style="opacity:.4">✦</span> Cliquez sur <strong>Analyser</strong> pour l'avis de Mistral AI sur cette action.
+          <div id="mistral-verdict-body" style="padding:14px 18px">
+            <div style="text-align:center;color:var(--text3);font-size:12px;padding:10px 0">
+              <span style="opacity:.4">✦</span> Cliquez sur <strong>Analyser</strong> pour l'avis de Mistral AI.
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Top: Picker + Hero -->
-      <div class="ana-top" id="ana-top" style="display:none">
-        <div class="ana-picker">
-          <div class="ana-picker-search">
-            <input class="form-input" id="analyse-search-input" placeholder="🔍 Rechercher un ticker…" oninput="onAnalyseInput()" style="font-size:12px;padding:9px 12px">
-            <div id="analyse-search-status" style="margin-top:4px"></div>
+        <!-- ── LIGNE 3 : Tabs + contenu ── -->
+        <div id="ana-tabs-wrap" style="display:none">
+          <div class="ana-tabs" id="ana-tabs" style="margin:0;border-radius:0;border:none;border-bottom:1px solid var(--border);padding:6px 12px 0">
+            <button class="ana-tab active" onclick="setAnaTab('valuation')">Valorisation</button>
+            <button class="ana-tab" onclick="setAnaTab('profit')">Rentabilité</button>
+            <button class="ana-tab" onclick="setAnaTab('dividends')">Dividendes</button>
+            <button class="ana-tab" onclick="setAnaTab('risk')">Risque</button>
+            <button class="ana-tab" onclick="setAnaTab('peers')">Comparaison</button>
           </div>
-          <div class="ana-picker-list" id="analyse-portfolio-list"></div>
-        </div>
-        <div class="ana-hero" id="ana-hero">
-          <div class="ana-hero-left">
-            <div class="ana-hero-name" id="ana-name">—</div>
-            <div class="ana-hero-ticker" id="ana-ticker">—</div>
-            <div style="margin-top:10px">
-              <span class="ana-hero-price" id="ana-price">—</span>
-              <span class="ana-hero-change" id="ana-change">—</span>
-            </div>
-            <div class="ana-hero-52w" id="ana-52w">52 sem : — — —</div>
-            <div class="ana-hero-52w-bar" id="ana-52w-bar" style="width:200px">
-              <div class="ana-hero-52w-fill" id="ana-52w-fill" style="width:0"></div>
-              <div class="ana-hero-52w-dot" id="ana-52w-dot" style="left:0"></div>
-            </div>
-          </div>
-          <div class="ana-hero-right" style="min-width:160px;display:flex;flex-direction:column;align-items:center;gap:10px">
-            <div id="hero-mistral-ring-wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px">
-              <div id="hero-mistral-ring" style="width:90px;height:90px;border-radius:50%;display:grid;place-items:center;border:3px solid var(--border2);font-family:var(--display);font-size:28px;font-weight:800;color:var(--text3);position:relative;">
-                <svg id="hero-ring-svg" viewBox="0 0 90 90" style="position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)">
-                  <circle cx="45" cy="45" r="40" fill="none" stroke="var(--border)" stroke-width="5"/>
-                  <circle id="hero-ring-progress" cx="45" cy="45" r="40" fill="none" stroke="var(--text3)" stroke-width="5" stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease,stroke .4s"/>
-                </svg>
-                <span id="ana-score" style="position:relative;z-index:1">—</span>
-              </div>
-              <div style="text-align:center">
-                <div id="ana-verdict" style="font-size:13px;font-weight:700">—</div>
-                <div id="hero-mistral-sublabel" style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:2px">✦ Mistral AI</div>
+          <div style="padding:16px 18px">
+            <div class="ana-section active" id="ana-valuation"><div class="metric-grid" id="metrics-valuation"></div></div>
+            <div class="ana-section" id="ana-profit"><div class="metric-grid" id="metrics-profit"></div></div>
+            <div class="ana-section" id="ana-dividends"><div class="metric-grid" id="metrics-dividends"></div></div>
+            <div class="ana-section" id="ana-risk"><div class="metric-grid" id="metrics-risk"></div></div>
+            <div class="ana-section" id="ana-peers">
+              <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+                <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-family:var(--display);font-size:13px;font-weight:700">Comparaison sectorielle</div>
+                <div id="peers-content" style="overflow-x:auto">
+                  <div style="color:var(--text3);font-size:12px;text-align:center;padding:28px 0">Sélectionnez une action</div>
+                </div>
               </div>
             </div>
-            <button onclick="triggerMistralAnalysis()" id="hero-btn-analyse" style="font-size:10px;font-weight:700;font-family:var(--sans);background:linear-gradient(135deg,#ff7a00,#ff4d6a);border:none;color:#fff;border-radius:7px;padding:6px 14px;cursor:pointer;transition:opacity .2s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">✦ Analyser</button>
           </div>
         </div>
-      </div>
 
-      <!-- Tabs -->
-      <div class="ana-tabs" id="ana-tabs" style="display:none">
-        <button class="ana-tab active" onclick="setAnaTab('valuation')">Valorisation</button>
-        <button class="ana-tab" onclick="setAnaTab('profit')">Rentabilité</button>
-        <button class="ana-tab" onclick="setAnaTab('dividends')">Dividendes</button>
-        <button class="ana-tab" onclick="setAnaTab('risk')">Risque</button>
-        <button class="ana-tab" onclick="setAnaTab('peers')">Comparaison</button>
-      </div>
-
-      <!-- Tab: Valorisation -->
-      <div class="ana-section active" id="ana-valuation">
-        <div class="metric-grid" id="metrics-valuation"></div>
-      </div>
-
-      <!-- Tab: Rentabilité -->
-      <div class="ana-section" id="ana-profit">
-        <div class="metric-grid" id="metrics-profit"></div>
-      </div>
-
-      <!-- Tab: Dividendes -->
-      <div class="ana-section" id="ana-dividends">
-        <div class="metric-grid" id="metrics-dividends"></div>
-      </div>
-
-      <!-- Tab: Risque -->
-      <div class="ana-section" id="ana-risk">
-        <div class="metric-grid" id="metrics-risk"></div>
-      </div>
-
-      <!-- Tab: Peers -->
-      <div class="ana-section" id="ana-peers">
-        <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-          <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-family:var(--display);font-size:14px;font-weight:700">
-            Comparaison sectorielle
-          </div>
-          <div id="peers-content" style="overflow-x:auto">
-            <div style="color:var(--text3);font-size:12px;text-align:center;padding:32px 0">Sélectionnez une action</div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -3608,10 +3597,14 @@ function renderAnalysePortfolio() {
   const list = document.getElementById('analyse-portfolio-list');
   if (!list) return;
   const data = getPortfolio(currentUser);
+  const emptyEl = document.getElementById('ana-empty');
+
   if (!data.length) {
-    list.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:24px 14px">Portefeuille vide</div>';
+    if (emptyEl) emptyEl.style.display = 'block';
     return;
   }
+  if (emptyEl) emptyEl.style.display = 'none';
+
   list.innerHTML = data.map((row, i) => {
     const pct = row.currentPrice && row.buyPrice ? ((row.currentPrice - row.buyPrice) / row.buyPrice * 100) : 0;
     const isPos = pct >= 0;
@@ -3627,9 +3620,6 @@ function renderAnalysePortfolio() {
           (isPos ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(2) + '%</div>' +
       '</div></div>';
   }).join('');
-  // Show top + tabs
-  document.getElementById('ana-top').style.display = 'flex';
-  document.getElementById('ana-tabs').style.display = 'flex';
 }
 
 function selectAnalyseStock(i) {
@@ -5308,17 +5298,25 @@ let _mistralDetailOpen  = false;
 // Appelé depuis fetchFullAnalyse après avoir récupéré les données Yahoo
 function setMistralContext(data) {
   _mistralCurrentData = data;
-  // Afficher la card, reset le body
+  // Révéler le hero
+  const hero = document.getElementById('ana-hero');
+  if (hero) { hero.style.opacity = '1'; hero.style.pointerEvents = 'auto'; }
+  // Afficher la section Mistral et les tabs
   const card = document.getElementById('mistral-verdict-card');
-  const tickerEl = document.getElementById('mistral-card-ticker');
+  const tabsWrap = document.getElementById('ana-tabs-wrap');
   if (card)     card.style.display = 'block';
+  if (tabsWrap) tabsWrap.style.display = 'block';
+  // Masquer empty state
+  const emptyEl = document.getElementById('ana-empty');
+  if (emptyEl) emptyEl.style.display = 'none';
+  // Mettre à jour le ticker dans le header Mistral
+  const tickerEl = document.getElementById('mistral-card-ticker');
   if (tickerEl) tickerEl.textContent = (data.name || data.ticker) + ' · ' + data.ticker;
-  // Reset body
+  // Reset verdict body
   const body = document.getElementById('mistral-verdict-body');
-  if (body) body.innerHTML = `<div style="text-align:center;color:var(--text3);font-size:13px;padding:20px 0">
-    <div style="font-size:28px;margin-bottom:8px;opacity:.3">✦</div>
-    Cliquez sur <strong>Analyser</strong> pour obtenir l'avis de Mistral AI sur cette action.
-  </div>`;
+  if (body) body.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:12px;padding:10px 0"><span style="opacity:.4">✦</span> Cliquez sur <strong>Analyser</strong> pour l\'avis de Mistral AI.</div>';
+  // Reset score ring
+  resetHeroScore();
 }
 
 // ── Déclenchement de l'analyse ───────────────────
