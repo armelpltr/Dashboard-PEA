@@ -3690,6 +3690,30 @@ async function fetchFullAnalyse(ticker, portfolioRow) {
   }
 }
 
+// ── Hero score ring ──────────────────────────────
+function resetHeroScore() {
+  const scoreEl   = document.getElementById('ana-score');
+  const verdictEl = document.getElementById('ana-verdict');
+  const progress  = document.getElementById('hero-ring-progress');
+  if (scoreEl)   { scoreEl.textContent = '—'; scoreEl.style.color = 'var(--text3)'; }
+  if (verdictEl) { verdictEl.textContent = '—'; verdictEl.style.color = 'var(--text3)'; }
+  if (progress)  { progress.style.strokeDashoffset = '251.2'; progress.style.stroke = 'var(--border2)'; }
+}
+
+function updateHeroScore(score, verdict) {
+  const scoreEl   = document.getElementById('ana-score');
+  const verdictEl = document.getElementById('ana-verdict');
+  const progress  = document.getElementById('hero-ring-progress');
+  const isPos = verdict === 'ACHAT' || verdict === 'ACHAT PROGRESSIF';
+  const isNeg = verdict === 'ÉVITER' || verdict === 'PRUDENCE';
+  const color = isPos ? 'var(--positive)' : isNeg ? 'var(--negative)' : 'var(--gold)';
+  const emoji = isPos ? '🟢' : isNeg ? '🔴' : '🟡';
+  const offset = 251.2 - (score / 100) * 251.2;
+  if (progress) { progress.style.stroke = color; progress.style.strokeDashoffset = offset; }
+  if (scoreEl)  { scoreEl.textContent = score; scoreEl.style.color = color; }
+  if (verdictEl){ verdictEl.textContent = emoji + ' ' + verdict; verdictEl.style.color = color; }
+}
+
 function populateHero(d) {
   document.getElementById('ana-name').textContent = d.name;
   document.getElementById('ana-ticker').textContent = d.ticker + (d.exchange ? ' · ' + d.exchange : '');
