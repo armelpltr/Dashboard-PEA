@@ -1329,9 +1329,6 @@ body.sb-collapsed .main { margin-left: 58px; }
       <button class="mobile-nav-item" data-mob="watchlist" onclick="showPageMobile('watchlist')">
         <span>👁</span>Watch
       </button>
-      <button class="mobile-nav-item" data-mob="graphiques" onclick="showPageMobile('graphiques')">
-        <span>📊</span>Charts
-      </button>
       <button class="mobile-nav-item" data-mob="dividendes" onclick="showPageMobile('dividendes')">
         <span>💰</span>Divid.
       </button>
@@ -1362,17 +1359,11 @@ body.sb-collapsed .main { margin-left: 58px; }
       <div class="mobile-drawer-item" onclick="showPageMobile('projections');closeMobileDrawer()" data-mob="projections">
         <span class="mobile-drawer-icon">🔭</span>Projections
       </div>
-      <div class="mobile-drawer-item" onclick="showPageMobile('bilan');closeMobileDrawer()" data-mob="bilan">
-        <span class="mobile-drawer-icon">📅</span>Bilan annuel
-      </div>
       <div class="mobile-drawer-item" onclick="showPageMobile('trophees');closeMobileDrawer()" data-mob="trophees">
         <span class="mobile-drawer-icon">🏆</span>Trophées
       </div>
       <div class="mobile-drawer-item" onclick="showPageMobile('calendrier');closeMobileDrawer()" data-mob="calendrier">
         <span class="mobile-drawer-icon">📆</span>Calendrier
-      </div>
-      <div class="mobile-drawer-item" onclick="showPageMobile('graphiques');closeMobileDrawer()" data-mob="graphiques">
-        <span class="mobile-drawer-icon">📊</span>Graphiques
       </div>
       <div class="mobile-drawer-item" onclick="showPageMobile('dividendes');closeMobileDrawer()" data-mob="dividendes">
         <span class="mobile-drawer-icon">💰</span>Dividendes
@@ -1405,9 +1396,6 @@ body.sb-collapsed .main { margin-left: 58px; }
       <div class="nav-item" onclick="showPage('analyse')">
         <span class="nav-icon">🔍</span> Analyse
       </div>
-      <div class="nav-item" onclick="showPage('graphiques')">
-        <span class="nav-icon">📊</span> Graphiques
-      </div>
       <div class="nav-item" onclick="showPage('watchlist')">
         <span class="nav-icon">👁</span> Watchlist
       </div>
@@ -1417,9 +1405,6 @@ body.sb-collapsed .main { margin-left: 58px; }
       </div>
       <div class="nav-item" onclick="showPage('projections')">
         <span class="nav-icon">🔭</span> Projections
-      </div>
-      <div class="nav-item" onclick="showPage('bilan')">
-        <span class="nav-icon">📅</span> Bilan annuel
       </div>
       <div class="nav-item" onclick="showPage('trophees')">
         <span class="nav-icon">🏆</span> Trophées
@@ -1696,132 +1681,6 @@ body.sb-collapsed .main { margin-left: 58px; }
       </div>
     </div>
 
-    <!-- GRAPHIQUES PAGE -->
-    <div class="page" id="page-graphiques">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Graphiques</div>
-          <div class="page-subtitle">Visualisez la performance de votre portefeuille</div>
-        </div>
-      </div>
-
-      <div id="charts-empty" class="chart-empty" style="display:none">
-        <div style="font-size:32px;margin-bottom:10px;opacity:.25">📊</div>
-        Ajoutez des actions à votre portefeuille pour voir les graphiques.
-      </div>
-
-      <div id="charts-content">
-        <!-- Portfolio Intelligence -->
-        <div class="intel-grid" id="intel-grid">
-          <div class="intel-card">
-            <div class="intel-label">Beta portefeuille</div>
-            <div class="intel-value" id="intel-beta">—</div>
-            <div class="intel-sub" id="intel-beta-sub">Sensibilité au marché</div>
-          </div>
-          <div class="intel-card">
-            <div class="intel-label">Volatilité 30j</div>
-            <div class="intel-value" id="intel-vol">—</div>
-            <div class="intel-sub">Écart-type annualisé</div>
-          </div>
-          <div class="intel-card">
-            <div class="intel-label">Rendement dividendes</div>
-            <div class="intel-value" id="intel-div-yield">—</div>
-            <div class="intel-sub" id="intel-div-sub">Annuel estimé</div>
-          </div>
-          <div class="intel-card">
-            <div class="intel-label">Dividendes annuels</div>
-            <div class="intel-value" id="intel-div-total">—</div>
-            <div class="intel-sub">Montant estimé</div>
-          </div>
-        </div>
-
-        <div class="charts-grid">
-          <!-- Donut répartition -->
-          <div class="chart-card">
-            <div class="chart-title">Répartition du portefeuille</div>
-            <div class="chart-sub">Par valeur de marché</div>
-            <div class="chart-wrap" style="max-height:260px">
-              <canvas id="chart-donut"></canvas>
-            </div>
-          </div>
-
-          <!-- Donut sectorielle -->
-          <div class="chart-card">
-            <div class="chart-title">Répartition sectorielle</div>
-            <div class="chart-sub">Par secteur d'activité</div>
-            <div class="chart-wrap" style="max-height:260px">
-              <canvas id="chart-sector"></canvas>
-            </div>
-          </div>
-
-          <!-- Barres performance -->
-          <div class="chart-card">
-            <div class="chart-title">Performance par position</div>
-            <div class="chart-sub">+/- value depuis l'achat</div>
-            <div class="chart-wrap">
-              <canvas id="chart-perf"></canvas>
-            </div>
-          </div>
-
-          <!-- Dividendes par position -->
-          <div class="chart-card">
-            <div class="chart-title">Dividendes estimés</div>
-            <div class="chart-sub">Rendement annuel par position</div>
-            <div class="div-grid" id="div-grid">
-              <div style="color:var(--text3);font-size:12px;grid-column:1/-1;text-align:center;padding:24px 0">Chargement…</div>
-            </div>
-          </div>
-
-          <!-- Benchmark overlay (pleine largeur) -->
-          <div class="chart-card full">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <div class="chart-title">Portefeuille vs Benchmark</div>
-              <select class="chart-select" id="benchmark-select" onchange="renderBenchmarkChart()" style="margin-bottom:0">
-                <option value="^GSPC">S&P 500</option>
-                <option value="^FCHI">CAC 40</option>
-                <option value="^STOXX50E">Euro Stoxx 50</option>
-              </select>
-            </div>
-            <div class="chart-sub" id="benchmark-sub">Performance comparée sur 1 an</div>
-            <div class="chart-wrap"><canvas id="chart-benchmark"></canvas></div>
-          </div>
-
-          <!-- Corrélation (pleine largeur) -->
-          <div class="chart-card full">
-            <div class="chart-title">Matrice de corrélation</div>
-            <div class="chart-sub">Corrélation des rendements quotidiens sur 3 mois</div>
-            <div id="corr-matrix-wrap" style="overflow-x:auto">
-              <div style="color:var(--text3);font-size:12px;text-align:center;padding:32px 0">Chargement…</div>
-            </div>
-          </div>
-
-          <!-- Historique cours -->
-          <div class="chart-card full">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <div class="chart-title">Historique de cours</div>
-              <select class="chart-select" id="chart-hist-select" onchange="renderHistChart()" style="margin-bottom:0"></select>
-            </div>
-            <div class="chart-sub" id="hist-sub">Sélectionnez une action</div>
-            <div class="period-bar" id="period-bar">
-              <button class="period-btn" onclick="setPeriod('1d')"  data-p="1d">1J</button>
-              <button class="period-btn" onclick="setPeriod('5d')"  data-p="5d">5J</button>
-              <button class="period-btn" onclick="setPeriod('1mo')" data-p="1mo">1M</button>
-              <button class="period-btn" onclick="setPeriod('3mo')" data-p="3mo">3M</button>
-              <button class="period-btn" onclick="setPeriod('6mo')" data-p="6mo">6M</button>
-              <button class="period-btn active" onclick="setPeriod('1y')" data-p="1y">1A</button>
-              <button class="period-btn" onclick="setPeriod('3y')"  data-p="3y">3A</button>
-              <button class="period-btn" onclick="setPeriod('5y')"  data-p="5y">5A</button>
-              <button class="period-btn" onclick="setPeriod('10y')" data-p="10y">10A</button>
-              <button class="period-btn" onclick="setPeriod('max')" data-p="max">Max</button>
-            </div>
-            <div class="chart-wrap">
-              <canvas id="chart-hist"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- WATCHLIST PAGE -->
     <div class="page" id="page-watchlist">
       <div class="page-header">
@@ -1944,20 +1803,6 @@ body.sb-collapsed .main { margin-left: 58px; }
           <tbody id="proj-tbody"></tbody>
         </table>
       </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════════
-         BILAN ANNUEL PAGE
-         ══════════════════════════════════════════════ -->
-    <div class="page" id="page-bilan">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Bilan annuel</div>
-          <div class="page-subtitle">Performance année par année comparée au Livret A</div>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:18px" id="bilan-cards"></div>
     </div>
 
     <!-- ══════════════════════════════════════════════
@@ -6283,143 +6128,14 @@ function computeBilanAnnuel() {
   });
 }
 
-async function initBilan() {
-  const cards = document.getElementById('bilan-cards');
-  if (cards) cards.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center"><span class="loading-spinner"></span> Calcul des performances…</div>';
-
+function initBilan() {
+  const cards       = document.getElementById('bilan-cards');
   const data        = computeBilanAnnuel();
-  const portfolio   = getPortfolio(currentUser);
-  const txs         = getTransactions(currentUser);
-  const versements  = getVersements(currentUser);
   const currentYear = new Date().getFullYear();
 
   if (!data.length) {
-    if (cards) cards.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center">Aucune donnée.</div>';
+    if (cards) cards.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center">Aucune donnée — ajoutez des transactions ou des versements.</div>';
     return;
-  }
-
-  const yearsNeeded = data.map(y => y.year);
-
-  // ── Helper : cours de clôture à une date donnée ──────────────────────────
-  async function fetchCloseAtDate(ticker, dateStr) {
-    const d  = new Date(dateStr + 'T18:00:00Z');
-    const p1 = Math.floor(new Date(d.getTime() - 8*86400000).getTime() / 1000);
-    const p2 = Math.floor(new Date(d.getTime() + 1*86400000).getTime() / 1000);
-    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
-      encodeURIComponent(resolveToYahooTicker(ticker)) +
-      '?interval=1d&period1=' + p1 + '&period2=' + p2;
-    const raw = await fetchWithFallback(url);
-    const res = JSON.parse(raw).chart?.result?.[0];
-    if (!res) return null;
-    const ts     = res.timestamp;
-    const closes = res.indicators.quote[0].close;
-    const target = d.getTime() / 1000;
-    let best = null, bestDiff = Infinity;
-    ts.forEach((t, i) => {
-      if (t <= target && closes[i] != null && (target - t) < bestDiff) {
-        bestDiff = target - t; best = closes[i];
-      }
-    });
-    return best;
-  }
-
-  // ── TWR pour l'année courante ─────────────────────────────────────────────
-  // On découpe l'année en sous-périodes séparées par chaque versement/achat
-  // Pour chaque sous-période : perf_sp = (valeur_fin / valeur_debut) - 1
-  // TWR = produit de (1 + perf_sp)
-
-  const perfAnnuelle = {};
-
-  if (yearsNeeded.includes(currentYear)) {
-    const startOfYear = currentYear + '-01-01';
-
-    // Tous les tickers du portefeuille actuel
-    const allTickers = [...new Set(portfolio.map(r => r.ticker))];
-
-    // Récupérer le cours au 31/12/année-1 pour chaque ticker
-    const closesStartYear = {};
-    await Promise.all(allTickers.map(async ticker => {
-      try {
-        closesStartYear[ticker] = await fetchCloseAtDate(ticker, (currentYear-1) + '-12-31');
-      } catch(e) { closesStartYear[ticker] = null; }
-    }));
-
-    // Construire la liste des "événements de flux" en 2026 : versements + achats
-    // triés par date
-    const cashFlows = [];
-
-    // Versements de l'année courante
-    versements.forEach(v => {
-      if (!v.date) return;
-      const y = new Date(v.date+'T12:00:00').getFullYear();
-      if (y === currentYear) cashFlows.push({ date: v.date, type: 'versement', amount: v.amount });
-    });
-
-    // Achats de l'année courante
-    txs.filter(t => t.type === 'buy' && t.date && new Date(t.date+'T12:00:00').getFullYear() === currentYear)
-      .forEach(t => cashFlows.push({ date: t.date, type: 'achat', ticker: t.ticker, qty: t.qty, price: t.price }));
-
-    // Ventes de l'année courante
-    txs.filter(t => t.type === 'sell' && t.date && new Date(t.date+'T12:00:00').getFullYear() === currentYear)
-      .forEach(t => cashFlows.push({ date: t.date, type: 'vente', ticker: t.ticker, qty: t.qty, price: t.price }));
-
-    cashFlows.sort((a, b) => a.date.localeCompare(b.date));
-
-    // Reconstruire le portefeuille au 01/01/currentYear depuis les transactions
-    const invBefore = {}; // { ticker: qty } avant le 01/01/currentYear
-    txs.forEach(t => {
-      if (!t.date) return;
-      const y = new Date(t.date+'T12:00:00').getFullYear();
-      if (y < currentYear) {
-        if (t.type === 'buy')  invBefore[t.ticker] = (invBefore[t.ticker] || 0) + t.qty;
-        if (t.type === 'sell') invBefore[t.ticker] = (invBefore[t.ticker] || 0) - t.qty;
-      }
-    });
-
-    // Valeur du portefeuille au 01/01 (cours de clôture 31/12 × qty)
-    function valAtStart(inv) {
-      return Object.entries(inv).reduce((s, [ticker, qty]) => {
-        if (qty <= 0.0001) return s;
-        const price = closesStartYear[ticker] || portfolio.find(r => r.ticker === ticker)?.buyPrice || 0;
-        return s + qty * price;
-      }, 0);
-    }
-
-    // Valeur actuelle du portefeuille
-    const valNow = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
-
-    // Si pas de flux en cours d'année : perf simple
-    if (!cashFlows.length) {
-      const vStart = valAtStart(invBefore);
-      perfAnnuelle[currentYear] = vStart > 0 ? (valNow - vStart) / vStart : null;
-    } else {
-      // TWR : calculer la perf entre chaque flux
-      // On simplifie : perf globale = (valeur actuelle - valeur début) / valeur début
-      // en ajustant pour les flux (méthode Modified Dietz simplifiée)
-      const vStart = valAtStart(invBefore);
-
-      // Flux de l'année : achats = sorties de cash, versements = entrées
-      let fluxPonderes = 0;
-      const startTs = new Date(currentYear + '-01-01T00:00:00').getTime();
-      const endTs   = Date.now();
-      const totalDays = (endTs - startTs) / 86400000;
-
-      cashFlows.forEach(f => {
-        const fTs   = new Date(f.date + 'T12:00:00').getTime();
-        const weight = Math.max(0, (endTs - fTs) / (endTs - startTs));
-        if (f.type === 'achat') fluxPonderes += f.qty * f.price * weight;
-      });
-
-      // Modified Dietz : perf = (valNow - vStart - flux) / (vStart + fluxPonderes)
-      const totalFlux = cashFlows
-        .filter(f => f.type === 'achat')
-        .reduce((s, f) => s + f.qty * f.price, 0);
-
-      const denom = vStart + fluxPonderes;
-      if (denom > 0) {
-        perfAnnuelle[currentYear] = (valNow - vStart - totalFlux) / denom;
-      }
-    }
   }
 
   // ── Cards ────────────────────────────────────────
@@ -6446,18 +6162,9 @@ async function initBilan() {
           : null,
       ].filter(Boolean);
 
-      const perf    = perfAnnuelle[y.year];
-      const perfPastPct = !y.isYTD && y.montantInvesti > 0 ? y.realizedPnl / y.montantInvesti : null;
-      const perfBadge = perf !== null && perf !== undefined
-        ? `<span style="background:${perf >= 0 ? 'rgba(0,224,158,0.12)' : 'rgba(255,77,106,0.12)'};color:${perf >= 0 ? 'var(--positive)' : 'var(--negative)'};border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700;font-family:var(--mono)">${perf >= 0 ? '+' : ''}${(perf * 100).toFixed(2)}%</span>`
-        : perfPastPct !== null
-          ? `<span style="background:${perfPastPct >= 0 ? 'rgba(0,224,158,0.12)' : 'rgba(255,77,106,0.12)'};color:${perfPastPct >= 0 ? 'var(--positive)' : 'var(--negative)'};border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700;font-family:var(--mono)">${perfPastPct >= 0 ? '+' : ''}${(perfPastPct * 100).toFixed(2)}% réalisé</span>`
-          : '<span style="background:var(--s3);color:var(--text3);border-radius:8px;padding:4px 10px;font-size:11px">—</span>';
-
       return `<div class="section-card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div style="margin-bottom:14px">
           <div style="font-family:var(--display);font-size:20px;font-weight:700">${y.label}</div>
-          ${perfBadge}
         </div>
         <div style="display:flex;flex-direction:column;gap:0">
           ${rows.map(row => `
