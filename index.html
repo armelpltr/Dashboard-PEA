@@ -1744,13 +1744,38 @@ body.sb-collapsed .main { margin-left: 58px; }
               <div class="ana-hero-52w-dot" id="ana-52w-dot" style="left:0"></div>
             </div>
           </div>
-          <div class="ana-hero-right" style="min-width:200px">
-            <canvas id="radar-chart" width="180" height="180" style="max-width:180px"></canvas>
-            <div style="text-align:center;margin-top:4px">
-              <div id="ana-score" style="font-family:var(--display);font-size:28px;font-weight:800">—</div>
-              <div id="ana-verdict" style="font-size:11px;font-weight:600">—</div>
-              <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:3px">Score Yahoo Finance</div>
+          <div class="ana-hero-right" style="min-width:180px;display:flex;flex-direction:column;align-items:center;gap:10px">
+            <!-- Score Mistral (remplace le radar Yahoo) -->
+            <div id="hero-mistral-ring-wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px">
+              <div id="hero-mistral-ring" style="
+                width:90px;height:90px;border-radius:50%;
+                display:grid;place-items:center;
+                border:3px solid var(--border2);
+                font-family:var(--display);font-size:28px;font-weight:800;
+                color:var(--text3);position:relative;
+              ">
+                <svg id="hero-ring-svg" viewBox="0 0 90 90" style="position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)">
+                  <circle cx="45" cy="45" r="40" fill="none" stroke="var(--border)" stroke-width="5"/>
+                  <circle id="hero-ring-progress" cx="45" cy="45" r="40" fill="none" stroke="var(--text3)" stroke-width="5"
+                    stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round"
+                    style="transition:stroke-dashoffset 1s ease,stroke .4s"/>
+                </svg>
+                <span id="ana-score" style="position:relative;z-index:1">—</span>
+              </div>
+              <div style="text-align:center">
+                <div id="ana-verdict" style="font-size:13px;font-weight:700">—</div>
+                <div id="hero-mistral-sublabel" style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:2px">✦ Mistral AI</div>
+              </div>
             </div>
+            <button onclick="triggerMistralAnalysis()" id="hero-btn-analyse" style="
+              font-size:10px;font-weight:700;font-family:var(--sans);
+              background:linear-gradient(135deg,#ff7a00,#ff4d6a);
+              border:none;color:#fff;border-radius:7px;padding:6px 14px;
+              cursor:pointer;letter-spacing:.3px;
+              transition:opacity .2s;
+            " onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+              ✦ Analyser
+            </button>
           </div>
         </div>
       </div>
@@ -3744,18 +3769,8 @@ function populateHero(d) {
     document.getElementById('ana-52w-dot').style.left = pctPos + '%';
   }
 
-  // Radar scoring
-  const axes = computeRadarAxes(d);
-  const globalScore = Math.round(axes.reduce((s, a) => s + a.score, 0) / axes.length * 10);
-  const color = globalScore >= 65 ? 'var(--positive)' : globalScore <= 35 ? 'var(--negative)' : 'var(--gold)';
-  const verdict = globalScore >= 65 ? '🟢 ACHETER' : globalScore <= 35 ? '🔴 VENDRE' : '🟡 CONSERVER';
-
-  document.getElementById('ana-score').textContent = globalScore + '/100';
-  document.getElementById('ana-score').style.color = color;
-  document.getElementById('ana-verdict').textContent = verdict;
-  document.getElementById('ana-verdict').style.color = color;
-
-  drawRadarAnimated(axes, 900);
+  // Reset hero score ring to "waiting for Mistral" state
+  resetHeroScore();
 }
 
 // ─── RADAR 5-AXIS SCORING ─────────────────────────────
@@ -5271,7 +5286,40 @@ function toggleMistralKeyVisibility() {
   } catch(e) {}
 })();
 
-// ── État courant de l'analyse ────────────────────
+// ── Hero score ring helpers ──────────────────────
+function resetHeroScore() {
+  const scoreEl   = document.getElementById('ana-score');
+  const verdictEl = document.getElementById('ana-verdict');
+  const progress  = document.getElementById('hero-ring-progress');
+  const sublabel  = document.getElementById('hero-mistral-sublabel');
+  if (scoreEl)   { scoreEl.textContent = '—'; scoreEl.style.color = 'var(--text3)'; }
+  if (verdictEl) { verdictEl.textContent = '—'; verdictEl.style.color = 'var(--text3)'; }
+  if (progress)  { progress.style.strokeDashoffset = '251.2'; progress.style.stroke = 'var(--border2)'; }
+  if (sublabel)  { sublabel.textContent = '✦ Cliquez Analyser'; }
+}
+
+function updateHeroScore(score, verdict) {
+  const scoreEl   = document.getElementById('ana-score');
+  const verdictEl = document.getElementById('ana-verdict');
+  const progress  = document.getElementById('hero-ring-progress');
+  const sublabel  = document.getElementById('hero-mistral-sublabel');
+  const ring      = document.getElementById('hero-mistral-ring');
+
+  const color = score >= 65 ? 'var(--positive)' : score <= 35 ? 'var(--negative)' : 'var(--gold)';
+  const emoji = verdict === 'ACHETER' ? '🟢' : verdict === 'VENDRE' ? '🔴' : '🟡';
+
+  // Animate ring (circumference = 2π×40 ≈ 251.2)
+  const offset = 251.2 - (score / 100) * 251.2;
+  if (progress) {
+    progress.style.stroke = color;
+    progress.style.strokeDashoffset = offset;
+  }
+  if (scoreEl)   { scoreEl.textContent = score; scoreEl.style.color = color; }
+  if (verdictEl) { verdictEl.textContent = emoji + ' ' + verdict; verdictEl.style.color = color; }
+  if (sublabel)  { sublabel.textContent = '✦ Mistral AI'; }
+}
+
+
 let _mistralCurrentData = null; // stocke les données Yahoo de l'action courante
 let _mistralDetailOpen  = false;
 
@@ -5504,6 +5552,9 @@ function renderMistralVerdict(data) {
       ${sourcesHtml}
     </div>
   `;
+
+  // Sync hero ring with Mistral score
+  updateHeroScore(score, v);
 }
 
 window.toggleMistralDetail = function(btn) {
