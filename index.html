@@ -6287,91 +6287,140 @@ async function initBilan() {
   const cards = document.getElementById('bilan-cards');
   if (cards) cards.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center"><span class="loading-spinner"></span> Calcul des performances…</div>';
 
-  const data = computeBilanAnnuel();
+  const data        = computeBilanAnnuel();
+  const portfolio   = getPortfolio(currentUser);
+  const txs         = getTransactions(currentUser);
+  const versements  = getVersements(currentUser);
+  const currentYear = new Date().getFullYear();
 
   if (!data.length) {
-    if (cards) cards.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center">Aucune donnée — ajoutez des transactions ou des versements.</div>';
+    if (cards) cards.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center">Aucune donnée.</div>';
     return;
   }
 
-  const portfolio = getPortfolio(currentUser);
-  const txs       = getTransactions(currentUser);
-  const currentYear = new Date().getFullYear();
-
-  // ── Récupérer le cours au 31/12 de chaque année pour calculer la perf YoY ──
-  // Pour chaque année on a besoin du cours de clôture au dernier jour de bourse
-  // On utilise Yahoo Finance : range=5d autour du 31/12 pour avoir la clôture annuelle
   const yearsNeeded = data.map(y => y.year);
 
-  // ── Calculer la perf annuelle pour l'année en cours ─────────────────────
-  // Méthode : valeur ref = valeur du portefeuille au 31/12 de l'année précédente
-  // On reconstitue cette valeur depuis les cours Yahoo au 31/12
-  // Pour les lignes achetées avant le 01/01/currentYear : qty × cours_31dec
-  // Pour les lignes achetées en currentYear : qty × buyPrice (base d'achat)
-
+  // ── Helper : cours de clôture à une date donnée ──────────────────────────
   async function fetchCloseAtDate(ticker, dateStr) {
-    // dateStr = 'YYYY-MM-DD', on prend la clôture la plus proche (5 jours avant/après)
-    const d    = new Date(dateStr + 'T12:00:00Z');
-    const p1   = Math.floor(new Date(d.getTime() - 7*86400000).getTime() / 1000);
-    const p2   = Math.floor(new Date(d.getTime() + 2*86400000).getTime() / 1000);
-    const url  = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
+    const d  = new Date(dateStr + 'T18:00:00Z');
+    const p1 = Math.floor(new Date(d.getTime() - 8*86400000).getTime() / 1000);
+    const p2 = Math.floor(new Date(d.getTime() + 1*86400000).getTime() / 1000);
+    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
       encodeURIComponent(resolveToYahooTicker(ticker)) +
       '?interval=1d&period1=' + p1 + '&period2=' + p2;
-    const raw  = await fetchWithFallback(url);
-    const res  = JSON.parse(raw).chart?.result?.[0];
+    const raw = await fetchWithFallback(url);
+    const res = JSON.parse(raw).chart?.result?.[0];
     if (!res) return null;
-    const ts      = res.timestamp;
-    const closes  = res.indicators.quote[0].close;
-    // Trouver la clôture la plus proche AVANT dateStr
-    const target  = d.getTime() / 1000;
+    const ts     = res.timestamp;
+    const closes = res.indicators.quote[0].close;
+    const target = d.getTime() / 1000;
     let best = null, bestDiff = Infinity;
     ts.forEach((t, i) => {
-      if (t <= target && closes[i] != null) {
-        const diff = target - t;
-        if (diff < bestDiff) { bestDiff = diff; best = closes[i]; }
+      if (t <= target && closes[i] != null && (target - t) < bestDiff) {
+        bestDiff = target - t; best = closes[i];
       }
     });
     return best;
   }
 
-  // Récupérer les cours au 31/12/année-1 pour les lignes détenues avant currentYear
-  const refDateStr = (currentYear - 1) + '-12-31';
-  const refCloses  = {};
-  const tickersBeforeYear = [...new Set(
-    portfolio
-      .filter(row => {
-        const by = row.buyDate ? new Date(row.buyDate+'T12:00:00').getFullYear() : currentYear;
-        return by < currentYear;
-      })
-      .map(r => r.ticker)
-  )];
-
-  await Promise.all(tickersBeforeYear.map(async ticker => {
-    try {
-      refCloses[ticker] = await fetchCloseAtDate(ticker, refDateStr);
-    } catch(e) { refCloses[ticker] = null; }
-  }));
-
-  // Calculer valeur ref et valeur actuelle
-  let valRef = 0, valNow = 0;
-  portfolio.forEach(row => {
-    const buyYear = row.buyDate ? new Date(row.buyDate+'T12:00:00').getFullYear() : currentYear;
-    valNow += row.qty * row.currentPrice;
-    if (buyYear < currentYear) {
-      const ref = refCloses[row.ticker] || row.buyPrice; // fallback PRU
-      valRef += row.qty * ref;
-    } else {
-      valRef += row.qty * row.buyPrice; // achetée cette année → base = prix d'achat
-    }
-  });
+  // ── TWR pour l'année courante ─────────────────────────────────────────────
+  // On découpe l'année en sous-périodes séparées par chaque versement/achat
+  // Pour chaque sous-période : perf_sp = (valeur_fin / valeur_debut) - 1
+  // TWR = produit de (1 + perf_sp)
 
   const perfAnnuelle = {};
-  yearsNeeded.forEach(year => {
-    if (year === currentYear && valRef > 0) {
-      perfAnnuelle[year] = (valNow - valRef) / valRef;
+
+  if (yearsNeeded.includes(currentYear)) {
+    const startOfYear = currentYear + '-01-01';
+
+    // Tous les tickers du portefeuille actuel
+    const allTickers = [...new Set(portfolio.map(r => r.ticker))];
+
+    // Récupérer le cours au 31/12/année-1 pour chaque ticker
+    const closesStartYear = {};
+    await Promise.all(allTickers.map(async ticker => {
+      try {
+        closesStartYear[ticker] = await fetchCloseAtDate(ticker, (currentYear-1) + '-12-31');
+      } catch(e) { closesStartYear[ticker] = null; }
+    }));
+
+    // Construire la liste des "événements de flux" en 2026 : versements + achats
+    // triés par date
+    const cashFlows = [];
+
+    // Versements de l'année courante
+    versements.forEach(v => {
+      if (!v.date) return;
+      const y = new Date(v.date+'T12:00:00').getFullYear();
+      if (y === currentYear) cashFlows.push({ date: v.date, type: 'versement', amount: v.amount });
+    });
+
+    // Achats de l'année courante
+    txs.filter(t => t.type === 'buy' && t.date && new Date(t.date+'T12:00:00').getFullYear() === currentYear)
+      .forEach(t => cashFlows.push({ date: t.date, type: 'achat', ticker: t.ticker, qty: t.qty, price: t.price }));
+
+    // Ventes de l'année courante
+    txs.filter(t => t.type === 'sell' && t.date && new Date(t.date+'T12:00:00').getFullYear() === currentYear)
+      .forEach(t => cashFlows.push({ date: t.date, type: 'vente', ticker: t.ticker, qty: t.qty, price: t.price }));
+
+    cashFlows.sort((a, b) => a.date.localeCompare(b.date));
+
+    // Reconstruire le portefeuille au 01/01/currentYear depuis les transactions
+    const invBefore = {}; // { ticker: qty } avant le 01/01/currentYear
+    txs.forEach(t => {
+      if (!t.date) return;
+      const y = new Date(t.date+'T12:00:00').getFullYear();
+      if (y < currentYear) {
+        if (t.type === 'buy')  invBefore[t.ticker] = (invBefore[t.ticker] || 0) + t.qty;
+        if (t.type === 'sell') invBefore[t.ticker] = (invBefore[t.ticker] || 0) - t.qty;
+      }
+    });
+
+    // Valeur du portefeuille au 01/01 (cours de clôture 31/12 × qty)
+    function valAtStart(inv) {
+      return Object.entries(inv).reduce((s, [ticker, qty]) => {
+        if (qty <= 0.0001) return s;
+        const price = closesStartYear[ticker] || portfolio.find(r => r.ticker === ticker)?.buyPrice || 0;
+        return s + qty * price;
+      }, 0);
     }
-    // années passées : pas calculable sans historique de cours
-  });
+
+    // Valeur actuelle du portefeuille
+    const valNow = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
+
+    // Si pas de flux en cours d'année : perf simple
+    if (!cashFlows.length) {
+      const vStart = valAtStart(invBefore);
+      perfAnnuelle[currentYear] = vStart > 0 ? (valNow - vStart) / vStart : null;
+    } else {
+      // TWR : calculer la perf entre chaque flux
+      // On simplifie : perf globale = (valeur actuelle - valeur début) / valeur début
+      // en ajustant pour les flux (méthode Modified Dietz simplifiée)
+      const vStart = valAtStart(invBefore);
+
+      // Flux de l'année : achats = sorties de cash, versements = entrées
+      let fluxPonderes = 0;
+      const startTs = new Date(currentYear + '-01-01T00:00:00').getTime();
+      const endTs   = Date.now();
+      const totalDays = (endTs - startTs) / 86400000;
+
+      cashFlows.forEach(f => {
+        const fTs   = new Date(f.date + 'T12:00:00').getTime();
+        const weight = Math.max(0, (endTs - fTs) / (endTs - startTs));
+        if (f.type === 'achat') fluxPonderes += f.qty * f.price * weight;
+      });
+
+      // Modified Dietz : perf = (valNow - vStart - flux) / (vStart + fluxPonderes)
+      const totalFlux = cashFlows
+        .filter(f => f.type === 'achat')
+        .reduce((s, f) => s + f.qty * f.price, 0);
+
+      const denom = vStart + fluxPonderes;
+      if (denom > 0) {
+        perfAnnuelle[currentYear] = (valNow - vStart - totalFlux) / denom;
+      }
+    }
+  }
 
   // ── Cards ────────────────────────────────────────
   if (cards) {
