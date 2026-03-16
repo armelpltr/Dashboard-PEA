@@ -1695,27 +1695,26 @@ body.sb-collapsed .main { margin-left: 58px; }
         Sélectionnez une action dans votre portefeuille<br>ou recherchez un ticker pour commencer l'analyse.
       </div>
 
-      <!-- Mistral AI Verdict Card -->
+      <!-- Mistral AI Verdict Card — fusionnée avec le hero -->
       <div id="mistral-verdict-card" style="display:none;margin-bottom:18px">
         <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
           <!-- Header -->
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#ff7a00,#ff4d6a);display:grid;place-items:center;font-size:14px">✦</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#ff7a00,#ff4d6a);display:grid;place-items:center;font-size:12px;flex-shrink:0">✦</div>
               <div>
-                <div style="font-family:var(--display);font-size:14px;font-weight:700">Analyse Mistral AI</div>
+                <div style="font-family:var(--display);font-size:13px;font-weight:700">Analyse Mistral AI</div>
                 <div id="mistral-card-ticker" style="font-size:10px;color:var(--text2);font-family:var(--mono)">—</div>
               </div>
             </div>
-            <button onclick="triggerMistralAnalysis()" id="btn-mistral-refresh" style="display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,#ff7a00,#ff4d6a);border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--sans);transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+            <button onclick="triggerMistralAnalysis()" id="btn-mistral-refresh" style="display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,#ff7a00,#ff4d6a);border:none;color:#fff;border-radius:7px;padding:6px 13px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--sans)" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
               <span id="mistral-btn-icon">✦</span> Analyser
             </button>
           </div>
-          <!-- Verdict zone -->
-          <div id="mistral-verdict-body" style="padding:20px">
-            <div style="text-align:center;color:var(--text3);font-size:13px;padding:20px 0">
-              <div style="font-size:28px;margin-bottom:8px;opacity:.3">✦</div>
-              Cliquez sur <strong>Analyser</strong> pour obtenir l'avis de Mistral AI sur cette action.
+          <!-- Verdict body -->
+          <div id="mistral-verdict-body" style="padding:16px 20px">
+            <div style="text-align:center;color:var(--text3);font-size:12px;padding:12px 0">
+              <span style="opacity:.4">✦</span> Cliquez sur <strong>Analyser</strong> pour l'avis de Mistral AI sur cette action.
             </div>
           </div>
         </div>
@@ -1744,21 +1743,12 @@ body.sb-collapsed .main { margin-left: 58px; }
               <div class="ana-hero-52w-dot" id="ana-52w-dot" style="left:0"></div>
             </div>
           </div>
-          <div class="ana-hero-right" style="min-width:180px;display:flex;flex-direction:column;align-items:center;gap:10px">
-            <!-- Score Mistral (remplace le radar Yahoo) -->
+          <div class="ana-hero-right" style="min-width:160px;display:flex;flex-direction:column;align-items:center;gap:10px">
             <div id="hero-mistral-ring-wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px">
-              <div id="hero-mistral-ring" style="
-                width:90px;height:90px;border-radius:50%;
-                display:grid;place-items:center;
-                border:3px solid var(--border2);
-                font-family:var(--display);font-size:28px;font-weight:800;
-                color:var(--text3);position:relative;
-              ">
+              <div id="hero-mistral-ring" style="width:90px;height:90px;border-radius:50%;display:grid;place-items:center;border:3px solid var(--border2);font-family:var(--display);font-size:28px;font-weight:800;color:var(--text3);position:relative;">
                 <svg id="hero-ring-svg" viewBox="0 0 90 90" style="position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)">
                   <circle cx="45" cy="45" r="40" fill="none" stroke="var(--border)" stroke-width="5"/>
-                  <circle id="hero-ring-progress" cx="45" cy="45" r="40" fill="none" stroke="var(--text3)" stroke-width="5"
-                    stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round"
-                    style="transition:stroke-dashoffset 1s ease,stroke .4s"/>
+                  <circle id="hero-ring-progress" cx="45" cy="45" r="40" fill="none" stroke="var(--text3)" stroke-width="5" stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease,stroke .4s"/>
                 </svg>
                 <span id="ana-score" style="position:relative;z-index:1">—</span>
               </div>
@@ -1767,15 +1757,7 @@ body.sb-collapsed .main { margin-left: 58px; }
                 <div id="hero-mistral-sublabel" style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:2px">✦ Mistral AI</div>
               </div>
             </div>
-            <button onclick="triggerMistralAnalysis()" id="hero-btn-analyse" style="
-              font-size:10px;font-weight:700;font-family:var(--sans);
-              background:linear-gradient(135deg,#ff7a00,#ff4d6a);
-              border:none;color:#fff;border-radius:7px;padding:6px 14px;
-              cursor:pointer;letter-spacing:.3px;
-              transition:opacity .2s;
-            " onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
-              ✦ Analyser
-            </button>
+            <button onclick="triggerMistralAnalysis()" id="hero-btn-analyse" style="font-size:10px;font-weight:700;font-family:var(--sans);background:linear-gradient(135deg,#ff7a00,#ff4d6a);border:none;color:#fff;border-radius:7px;padding:6px 14px;cursor:pointer;transition:opacity .2s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">✦ Analyser</button>
           </div>
         </div>
       </div>
@@ -5509,62 +5491,61 @@ function renderMistralVerdict(data) {
   const score = Math.min(100, Math.max(0, parseInt(data.score) || 50));
   const scoreColor = score >= 65 ? 'var(--positive)' : score <= 35 ? 'var(--negative)' : 'var(--gold)';
 
-  const raisons = (data.raisons || []).slice(0, 3).map(r => `
-    <div class="mistral-reason-item">
-      <span class="mistral-reason-icon">${r.icon || '•'}</span>
-      <div class="mistral-reason-text"><strong>${r.titre || ''}</strong>${r.titre ? ' — ' : ''}${r.texte || ''}</div>
-    </div>
-  `).join('');
+  const raisons = (data.raisons || []).slice(0, 3).map(r =>
+    '<div class="mistral-reason-item">' +
+      '<span class="mistral-reason-icon">' + (r.icon || '•') + '</span>' +
+      '<div class="mistral-reason-text"><strong>' + (r.titre || '') + '</strong>' + (r.titre ? ' — ' : '') + (r.texte || '') + '</div>' +
+    '</div>'
+  ).join('');
 
-  // Analyse détaillée
   const ana = data.analyse || {};
-  const hasPers = ana.recommandation_personnalisee;
   const sections = [
     { key: 'situation',    label: '📊 Situation actuelle' },
     { key: 'points_forts', label: '✅ Points forts' },
     { key: 'points_vigilance', label: '⚠️ Points de vigilance' },
     { key: 'catalyseurs',  label: '🚀 Catalyseurs' },
     { key: 'conclusion',   label: '🎯 Conclusion' },
-    ...(hasPers ? [{ key: 'recommandation_personnalisee', label: '👤 Recommandation personnalisée' }] : []),
+    { key: 'recommandation_personnalisee', label: '👤 Recommandation personnalisée' },
   ];
-  const detailHtml = sections.filter(s => ana[s.key]).map(s => `
-    <h4>${s.label}</h4>
-    <p style="margin:0;color:var(--text2)">${ana[s.key]}</p>
-  `).join('');
+  const detailHtml = sections.filter(s => ana[s.key]).map(s =>
+    '<h4>' + s.label + '</h4><p style="margin:0;color:var(--text2)">' + ana[s.key] + '</p>'
+  ).join('');
 
-  const sourcesHtml = data.sources?.length
-    ? `<div style="margin-top:14px;font-size:10px;color:var(--text3);font-family:var(--mono)">Sources : ${data.sources.join(' · ')}</div>`
+  const sourcesHtml = data.sources && data.sources.length
+    ? '<div style="margin-top:14px;font-size:10px;color:var(--text3);font-family:var(--mono)">Sources : ' + data.sources.join(' · ') + '</div>'
     : '';
 
-  body.innerHTML = `
-    <div class="mistral-verdict-main">
-      <div class="mistral-verdict-box ${cls}">
-        <div class="mistral-score-ring" style="color:${scoreColor}">${score}</div>
-        <div class="mistral-verdict-label ${cls}">${emoji} ${v}</div>
-      </div>
-      <div class="mistral-reasons">${raisons}</div>
-    </div>
-    <button class="mistral-detail-toggle" onclick="toggleMistralDetail(this)">
-      <span id="mistral-toggle-arrow">▶</span> Voir l'analyse complète
-    </button>
-    <div class="mistral-detail-body" id="mistral-detail-body">
-      ${detailHtml}
-      ${sourcesHtml}
-    </div>
-  `;
+  // Layout unifié : score à gauche, raisons à droite, toggle analyse complète en bas
+  body.innerHTML =
+    '<div style="display:flex;gap:16px;align-items:stretch;flex-wrap:wrap">' +
+      // Bloc score/verdict
+      '<div class="mistral-verdict-box ' + cls + '" style="flex:0 0 140px;min-width:120px">' +
+        '<div class="mistral-score-ring" style="color:' + scoreColor + ';width:56px;height:56px;font-size:20px">' + score + '</div>' +
+        '<div class="mistral-verdict-label ' + cls + '" style="font-size:17px">' + emoji + ' ' + v + '</div>' +
+        '<div style="font-size:9px;color:' + scoreColor + ';font-family:var(--mono);opacity:.7;margin-top:2px">Score /100</div>' +
+      '</div>' +
+      // Raisons
+      '<div class="mistral-reasons" style="flex:1;min-width:220px">' + raisons + '</div>' +
+    '</div>' +
+    // Toggle analyse complète
+    '<button class="mistral-detail-toggle" onclick="toggleMistralDetail(this)">' +
+      '<span class="mtoggle-arrow">▶</span> Voir l\'analyse complète' +
+    '</button>' +
+    '<div class="mistral-detail-body" id="mistral-detail-body">' +
+      detailHtml + sourcesHtml +
+    '</div>';
 
-  // Sync hero ring with Mistral score
+  // Sync hero ring
   updateHeroScore(score, v);
 }
 
 window.toggleMistralDetail = function(btn) {
   const detail = document.getElementById('mistral-detail-body');
-  const arrow  = document.getElementById('mistral-toggle-arrow');
   if (!detail) return;
   _mistralDetailOpen = !_mistralDetailOpen;
   detail.classList.toggle('open', _mistralDetailOpen);
+  const arrow = btn.querySelector('.mtoggle-arrow');
   if (arrow) arrow.textContent = _mistralDetailOpen ? '▼' : '▶';
-  btn.querySelector('#mistral-toggle-arrow') || (btn.childNodes[0].textContent = _mistralDetailOpen ? '▼' : '▶');
 };
 
 function downloadHTML() {
