@@ -1483,9 +1483,9 @@ body.sb-collapsed .main { margin-left: 58px; }
           <canvas class="stat-sparkline" id="spark-pnl"></canvas>
         </div>
         <div class="stat-card">
-          <div class="stat-label">P&L réalisé</div>
-          <div class="stat-value" id="stat-realized">— €</div>
-          <div class="stat-change" id="stat-realized-sub">Gains/pertes clôturés</div>
+          <div class="stat-label">Valeur enveloppe PEA</div>
+          <div class="stat-value" id="stat-envelope">— €</div>
+          <div class="stat-change" id="stat-envelope-sub">Titres + Espèces disponibles</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Cumul versements</div>
@@ -1500,11 +1500,7 @@ body.sb-collapsed .main { margin-left: 58px; }
             <button class="btn-add" onclick="openVersementModal()" style="font-size:10px;padding:5px 10px">＋ Versement</button>
           </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Investi (titres)</div>
-          <div class="stat-value" id="stat-invested">— €</div>
-          <canvas class="stat-sparkline" id="spark-invested"></canvas>
-        </div>
+
       </div>
 
       <!-- Graphique évolution portefeuille -->
@@ -1639,53 +1635,56 @@ body.sb-collapsed .main { margin-left: 58px; }
               <div class="ana-hero-52w-dot" id="ana-52w-dot" style="left:0"></div>
             </div>
           </div>
-          <div class="ana-hero-right" style="min-width:200px">
-            <canvas id="radar-chart" width="180" height="180" style="max-width:180px"></canvas>
-            <div style="text-align:center;margin-top:4px">
-              <div id="ana-score" style="font-family:var(--display);font-size:28px;font-weight:800">—</div>
-              <div id="ana-verdict" style="font-size:11px;font-weight:600">—</div>
+          <div class="ana-hero-right" style="min-width:220px;display:flex;flex-direction:column;align-items:center;gap:10px">
+            <div id="ai-score-ring" style="position:relative;width:110px;height:110px">
+              <svg width="110" height="110" viewBox="0 0 110 110" style="transform:rotate(-90deg)">
+                <circle cx="55" cy="55" r="46" fill="none" stroke="var(--border2)" stroke-width="8"/>
+                <circle id="ai-score-arc" cx="55" cy="55" r="46" fill="none" stroke="var(--accent)" stroke-width="8"
+                  stroke-dasharray="289" stroke-dashoffset="289" stroke-linecap="round"
+                  style="transition:stroke-dashoffset 1.2s cubic-bezier(0.16,1,0.3,1),stroke 0.4s"/>
+              </svg>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <div id="ana-score" style="font-family:var(--display);font-size:26px;font-weight:800;line-height:1">—</div>
+                <div style="font-size:9px;color:var(--text3);font-family:var(--mono);letter-spacing:1px">/100</div>
+              </div>
             </div>
+            <div id="ana-verdict" style="font-size:12px;font-weight:700;text-align:center;padding:5px 14px;border-radius:20px;background:var(--s3);border:1px solid var(--border2)">—</div>
+            <button id="btn-mistral-analyse" onclick="triggerMistralAnalyse()"
+              style="display:none;width:100%;padding:8px 12px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+              border:none;border-radius:9px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;
+              font-family:var(--sans);letter-spacing:0.3px;transition:all 0.2s">
+              ✦ Analyser avec l'IA
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Tabs -->
-      <div class="ana-tabs" id="ana-tabs" style="display:none">
-        <button class="ana-tab active" onclick="setAnaTab('valuation')">Valorisation</button>
-        <button class="ana-tab" onclick="setAnaTab('profit')">Rentabilité</button>
-        <button class="ana-tab" onclick="setAnaTab('dividends')">Dividendes</button>
-        <button class="ana-tab" onclick="setAnaTab('risk')">Risque</button>
-        <button class="ana-tab" onclick="setAnaTab('peers')">Comparaison</button>
-      </div>
+      <!-- No tabs needed — single IA analysis panel -->
+      <div id="ana-tabs" style="display:none"></div>
 
-      <!-- Tab: Valorisation -->
-      <div class="ana-section active" id="ana-valuation">
-        <div class="metric-grid" id="metrics-valuation"></div>
-      </div>
 
-      <!-- Tab: Rentabilité -->
-      <div class="ana-section" id="ana-profit">
-        <div class="metric-grid" id="metrics-profit"></div>
-      </div>
 
-      <!-- Tab: Dividendes -->
-      <div class="ana-section" id="ana-dividends">
-        <div class="metric-grid" id="metrics-dividends"></div>
-      </div>
-
-      <!-- Tab: Risque -->
-      <div class="ana-section" id="ana-risk">
-        <div class="metric-grid" id="metrics-risk"></div>
-      </div>
-
-      <!-- Tab: Peers -->
-      <div class="ana-section" id="ana-peers">
-        <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
-          <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-family:var(--display);font-size:14px;font-weight:700">
-            Comparaison sectorielle
+      <!-- Tab: Analyse IA -->
+      <div class="ana-section" id="ana-ai">
+        <div style="background:var(--s1);border:1px solid rgba(124,109,245,0.2);border-radius:var(--radius-lg);overflow:hidden">
+          <!-- Header -->
+          <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(124,109,245,0.06),rgba(91,141,238,0.04))">
+            <div>
+              <div style="font-family:var(--display);font-size:15px;font-weight:700">✦ Analyse Claude AI</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px">Analyse fondamentale · Forces / Faiblesses · Recommandation personnalisée PEA</div>
+            </div>
+            <button onclick="triggerMistralAnalyse()" id="btn-mistral-refresh"
+              style="display:none;padding:7px 14px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.25);
+              color:var(--accent);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans)">
+              ↻ Relancer l'analyse
+            </button>
           </div>
-          <div id="peers-content" style="overflow-x:auto">
-            <div style="color:var(--text3);font-size:12px;text-align:center;padding:32px 0">Sélectionnez une action</div>
+          <!-- Content -->
+          <div id="ai-analysis-content" style="padding:28px 24px">
+            <div id="ai-loading-state" style="text-align:center;color:var(--text3);padding:48px 0">
+              <div style="font-size:36px;margin-bottom:12px;opacity:0.15">✦</div>
+              <div style="font-size:13px">Sélectionnez une action dans la liste<br>pour lancer l'analyse automatiquement</div>
+            </div>
           </div>
         </div>
       </div>
@@ -2854,7 +2853,7 @@ function renderPortfolio() {
   document.getElementById('stat-pnl-pct').style.color = totalPnl >= 0 ? 'var(--positive)' : 'var(--negative)';
   document.getElementById('stat-pnl-pct').className = '';
 
-  // Calculate realized P&L from transaction history
+  // Calculate realized P&L from transaction history (kept for internal use)
   const txs = getTransactions(currentUser);
   let realizedTotal = 0;
   txs.forEach(tx => {
@@ -2862,16 +2861,10 @@ function renderPortfolio() {
       realizedTotal += tx.realizedPnl;
     }
   });
-  const realEl = document.getElementById('stat-realized');
-  realEl.textContent = (realizedTotal >= 0 ? '+' : '') + fmt(realizedTotal);
-  realEl.style.color = realizedTotal >= 0 ? 'var(--positive)' : 'var(--negative)';
-  document.getElementById('stat-realized-sub').textContent = realizedTotal >= 0 ? 'Gains clôturés' : 'Pertes clôturées';
-  document.getElementById('stat-realized-sub').className = 'stat-change ' + (realizedTotal >= 0 ? 'pos' : 'neg');
 
   // Versements & cash
   const versements = getVersements(currentUser);
   const totalVersements = versements.reduce((s, v) => s + v.amount, 0);
-  document.getElementById('stat-versements').textContent = fmt(totalVersements);
 
   // Cash = versements - total achats + total ventes (from tx log)
   let totalAchats = 0, totalVentes = 0;
@@ -2880,6 +2873,18 @@ function renderPortfolio() {
     if (tx.type === 'sell') totalVentes += tx.qty * tx.price;
   });
   const cash = totalVersements - totalAchats + totalVentes;
+
+  // Enveloppe PEA = titres + espèces
+  const envelopeTotal = totalVal + cash;
+  const envelopeEl = document.getElementById('stat-envelope');
+  envelopeEl.textContent = data.length ? fmt(envelopeTotal) : '— €';
+  document.getElementById('stat-envelope-sub').textContent =
+    data.length
+      ? 'Titres ' + fmt(totalVal) + ' + Espèces ' + fmt(Math.max(0, cash))
+      : 'Titres + Espèces disponibles';
+
+  // Versements & cash cards
+  document.getElementById('stat-versements').textContent = fmt(totalVersements);
   const cashEl = document.getElementById('stat-cash');
   cashEl.textContent = fmt(cash);
   cashEl.style.color = cash >= 0 ? 'var(--positive)' : 'var(--negative)';
@@ -3640,15 +3645,22 @@ function populateHero(d) {
   // Radar scoring
   const axes = computeRadarAxes(d);
   const globalScore = Math.round(axes.reduce((s, a) => s + a.score, 0) / axes.length * 10);
-  const color = globalScore >= 65 ? 'var(--positive)' : globalScore <= 35 ? 'var(--negative)' : 'var(--gold)';
-  const verdict = globalScore >= 65 ? '🟢 ACHETER' : globalScore <= 35 ? '🔴 VENDRE' : '🟡 CONSERVER';
+  // Show refresh button
+  var btnR = document.getElementById('btn-mistral-refresh');
+  if (btnR) btnR.style.display = 'block';
+  // Hide the manual trigger button — analysis is now automatic
+  var btn = document.getElementById('btn-mistral-analyse');
+  if (btn) btn.style.display = 'none';
 
-  document.getElementById('ana-score').textContent = globalScore + '/100';
-  document.getElementById('ana-score').style.color = color;
-  document.getElementById('ana-verdict').textContent = verdict;
-  document.getElementById('ana-verdict').style.color = color;
+  // Show the IA panel directly (no tabs needed)
+  document.getElementById('ana-tabs').style.display = 'none';
+  var aiSection = document.getElementById('ana-ai');
+  if (aiSection) { aiSection.style.display = 'block'; aiSection.classList.add('active'); }
 
-  drawRadarAnimated(axes, 900);
+  // Reset score ring and auto-launch analysis
+  setScoreRing(null, '—', 'Chargement…');
+  // Auto-trigger after Yahoo data is ready (slight delay so currentAnalyseData is set)
+  setTimeout(function() { triggerMistralAnalyse(); }, 100);
 }
 
 // ─── RADAR 5-AXIS SCORING ─────────────────────────────
@@ -3851,54 +3863,13 @@ function rateBadge(val, goodMin, goodMax, midMin, midMax) {
 }
 
 function populateTabs(d) {
-  const na = '—';
-  const f2 = v => v != null && !isNaN(v) ? parseFloat(v).toFixed(2) : na;
-  const f1 = v => v != null && !isNaN(v) ? parseFloat(v).toFixed(1) : na;
-  const pct = v => v != null && !isNaN(v) ? (parseFloat(v) * 100).toFixed(2) + '%' : na;
-
-  // Valorisation
-  const pe = d.pe ? parseFloat(d.pe) : null;
-  const fpe = d.forwardPe ? parseFloat(d.forwardPe) : null;
-  const dist52 = d.high52 && d.price ? ((d.price / d.high52 - 1) * 100).toFixed(1) + '%' : na;
-  document.getElementById('metrics-valuation').innerHTML =
-    metricCard('P/E Ratio', f1(pe), pe ? (pe < 15 ? 'Sous-évalué' : pe < 25 ? 'Raisonnable' : 'Cher') : '', pe ? rateBadge(pe, 0, 15, 15, 25) : null) +
-    metricCard('P/E Forward', f1(fpe), 'Estimé 12 mois', fpe ? rateBadge(fpe, 0, 18, 18, 30) : null) +
-    metricCard('Prix / +haut 52s', dist52, d.high52 ? 'Haut: ' + f2(d.high52) : '', null) +
-    metricCard('Volume', d.volume ? d.volume.toLocaleString('fr-FR') : na, 'Quotidien moyen', null) +
-    (d.buyPrice ? metricCard('Prix d\'achat', f2(d.buyPrice) + ' ' + d.currency, 'PRU portefeuille', null) : '') +
-    (d.qty ? metricCard('Position', d.qty + ' × ' + f2(d.price), 'Valeur: ' + f2(d.qty * d.price) + ' ' + d.currency, null) : '') +
-    (d.buyPrice && d.price ? metricCard('+/- Value unit.', (d.price - d.buyPrice >= 0 ? '+' : '') + f2(d.price - d.buyPrice), ((d.price - d.buyPrice) / d.buyPrice * 100).toFixed(2) + '%', d.price >= d.buyPrice ? { cls: 'good', text: 'Gain' } : { cls: 'bad', text: 'Perte' }) : '') +
-    metricCard('Cap. boursière', d.marketCap ? (d.marketCap > 1e12 ? (d.marketCap/1e12).toFixed(1) + ' T' : d.marketCap > 1e9 ? (d.marketCap/1e9).toFixed(1) + ' Md' : (d.marketCap/1e6).toFixed(0) + ' M') : na, d.currency, null);
-
-  // Rentabilité (limité aux données Yahoo v8 disponibles)
-  document.getElementById('metrics-profit').innerHTML =
-    metricCard('Variation jour', (d.changePct >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%', 'vs clôture veille', d.changePct >= 0 ? { cls: 'good', text: '▲' } : { cls: 'bad', text: '▼' }) +
-    metricCard('Cours actuel', f2(d.price) + ' ' + d.currency, d.exchange, null) +
-    metricCard('Clôture veille', f2(d.prev), '', null) +
-    metricCard('+bas 52 sem', f2(d.low52), d.low52 && d.price ? ((d.price/d.low52-1)*100).toFixed(1) + '% au-dessus' : '', null) +
-    metricCard('+haut 52 sem', f2(d.high52), d.high52 && d.price ? ((d.price/d.high52-1)*100).toFixed(1) + '% en-dessous' : '', null) +
-    '<div class="metric-card" style="grid-column:span 3;background:var(--s2);border-color:var(--border2)"><div class="metric-label">Note</div><div style="font-size:11px;color:var(--text2);line-height:1.5">ROE, marge nette et croissance CA ne sont pas disponibles via l\'API Yahoo v8/chart. Pour ces données, un upgrade vers l\'API Yahoo Financials (quoteSummary) serait nécessaire.</div></div>';
-
-  // Dividendes
-  const dyield = d.divYield ? parseFloat(d.divYield) : null;
-  const drate = d.divRate ? parseFloat(d.divRate) : null;
-  document.getElementById('metrics-dividends').innerHTML =
-    metricCard('Rendement', dyield ? pct(dyield) : na, 'Annuel', dyield ? rateBadge(dyield * 100, 2, 6, 0.5, 2) : null) +
-    metricCard('Dividende / action', drate ? f2(drate) + ' ' + d.currency : na, 'Trailing 12 mois', null) +
-    (d.qty && drate ? metricCard('Revenu annuel estimé', f2(d.qty * drate) + ' ' + d.currency, d.qty + ' actions', { cls: 'good', text: '💰' }) : metricCard('Revenu annuel', na, 'Ajoutez au portefeuille', null)) +
-    metricCard('Statut', dyield && dyield > 0 ? 'Distributeur' : 'Pas de dividende', '', dyield && dyield > 0 ? { cls: 'good', text: 'OUI' } : { cls: 'mid', text: 'NON' });
-
-  // Risque
-  const beta = d.beta ? parseFloat(d.beta) : null;
-  document.getElementById('metrics-risk').innerHTML =
-    metricCard('Bêta', beta ? beta.toFixed(2) : na, beta ? (beta < 0.8 ? 'Défensif' : beta > 1.2 ? 'Agressif' : 'Neutre') : '', beta ? rateBadge(beta, 0, 0.8, 0.8, 1.2) : null) +
-    metricCard('Volatilité implicite', na, 'Non disponible (API limitée)', null) +
-    metricCard('Sharpe ratio', na, 'Non disponible (API limitée)', null) +
-    metricCard('52w range', d.high52 && d.low52 ? ((d.high52 - d.low52) / d.low52 * 100).toFixed(1) + '%' : na, 'Amplitude annuelle', null);
-
-  // Peers comparison
-  loadPeers(d);
+  // Replaced by Claude AI analysis — triggerMistralAnalyse() handles everything
 }
+
+// Legacy stubs (kept to avoid reference errors)
+function metricCard() { return ''; }
+function rateBadge() { return null; }
+
 
 // Peers: fetch a few tickers from same sector and compare
 async function loadPeers(d) {
@@ -3944,6 +3915,230 @@ async function loadPeers(d) {
   html += '</tbody></table>';
   wrap.innerHTML = html;
 }
+
+
+
+// ═══════════════════════════════════════════════════
+// FEATURE: MISTRAL AI ANALYSE
+// ═══════════════════════════════════════════════════
+
+let _mistralCurrentData = null;
+
+function setScoreRing(score, label, verdict) {
+  const arc = document.getElementById('ai-score-arc');
+  const scoreEl = document.getElementById('ana-score');
+  const verdictEl = document.getElementById('ana-verdict');
+  const circumference = 289;
+
+  if (score === null) {
+    if (arc) { arc.style.strokeDashoffset = circumference; arc.style.stroke = 'var(--accent)'; }
+    if (scoreEl) { scoreEl.textContent = label || '—'; scoreEl.style.color = 'var(--text)'; }
+    if (verdictEl) {
+      verdictEl.textContent = verdict || '—';
+      verdictEl.style.color = 'var(--text2)';
+      verdictEl.style.background = 'var(--s3)';
+      verdictEl.style.borderColor = 'var(--border2)';
+    }
+    return;
+  }
+
+  var color = score >= 70 ? '#00e09e' : score >= 45 ? '#f5b731' : '#ff4d6a';
+  var offset = circumference - (score / 100) * circumference;
+
+  if (arc) { arc.style.strokeDashoffset = offset; arc.style.stroke = color; }
+  if (scoreEl) { scoreEl.textContent = score; scoreEl.style.color = color; }
+  if (verdictEl) {
+    verdictEl.textContent = verdict;
+    verdictEl.style.color = color;
+    var bg     = score >= 70 ? 'rgba(0,224,158,0.1)' : score >= 45 ? 'rgba(245,183,49,0.1)' : 'rgba(255,77,106,0.1)';
+    var border = score >= 70 ? 'rgba(0,224,158,0.3)' : score >= 45 ? 'rgba(245,183,49,0.3)' : 'rgba(255,77,106,0.3)';
+    verdictEl.style.background  = bg;
+    verdictEl.style.borderColor = border;
+  }
+}
+
+function aiListHtml(items, color) {
+  if (!items || !items.length) return '';
+  return items.map(function(i) {
+    return '<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">' +
+      '<span style="color:' + color + ';flex-shrink:0;margin-top:1px">▸</span>' +
+      '<span style="font-size:12px;color:var(--text2);line-height:1.5">' + i + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+function renderMistralResult(ai, d) {
+  var content = document.getElementById('ai-analysis-content');
+  var verdictColors = {
+    'ACHETER':   { bg: 'rgba(0,224,158,0.1)',  border: 'rgba(0,224,158,0.3)',  text: '#00e09e' },
+    'RENFORCER': { bg: 'rgba(91,141,238,0.1)', border: 'rgba(91,141,238,0.3)', text: '#5b8dee' },
+    'CONSERVER': { bg: 'rgba(245,183,49,0.1)', border: 'rgba(245,183,49,0.3)', text: '#f5b731' },
+    'ALLÉGER':   { bg: 'rgba(255,140,0,0.1)',  border: 'rgba(255,140,0,0.3)',  text: '#ff8c00' },
+    'VENDRE':    { bg: 'rgba(255,77,106,0.1)', border: 'rgba(255,77,106,0.3)', text: '#ff4d6a' }
+  };
+  var verdictEmojis = { 'ACHETER':'🟢', 'RENFORCER':'🔵', 'CONSERVER':'🟡', 'ALLÉGER':'🟠', 'VENDRE':'🔴' };
+  var vc = verdictColors[ai.verdict] || { bg: 'var(--s3)', border: 'var(--border2)', text: 'var(--text)' };
+  var emoji = verdictEmojis[ai.verdict] || '⚪';
+
+  var catalyseurBlock = '';
+  if (ai.catalyseurs && ai.catalyseurs.length) {
+    catalyseurBlock =
+      '<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-family:var(--mono)">✦ Catalyseurs à surveiller</div>' +
+        aiListHtml(ai.catalyseurs, 'var(--accent)') +
+      '</div>';
+  }
+
+  var conseilBlock = '';
+  if (ai.conseil_portefeuille) {
+    conseilBlock =
+      '<div style="background:linear-gradient(135deg,rgba(124,109,245,0.08),rgba(91,141,238,0.06));border:1px solid rgba(124,109,245,0.2);border-radius:10px;padding:14px 16px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-family:var(--mono)">✦ Conseil pour votre PEA</div>' +
+        '<div style="font-size:13px;color:var(--text);line-height:1.6">' + ai.conseil_portefeuille + '</div>' +
+      '</div>';
+  }
+
+  var today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+
+  content.innerHTML =
+    '<div style="background:' + vc.bg + ';border:1px solid ' + vc.border + ';border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px">' +
+      '<div style="font-size:36px;line-height:1">' + emoji + '</div>' +
+      '<div style="flex:1">' +
+        '<div style="font-family:var(--display);font-size:20px;font-weight:800;color:' + vc.text + '">' + ai.verdict + '</div>' +
+        '<div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.5">' + (ai.resume || '') + '</div>' +
+      '</div>' +
+      '<div style="text-align:right;flex-shrink:0">' +
+        '<div style="font-family:var(--mono);font-size:11px;color:var(--text3)">Confiance</div>' +
+        '<div style="font-size:13px;font-weight:600;color:' + vc.text + '">' + (ai.niveau_confiance || '—') + '</div>' +
+        '<div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:4px">Horizon</div>' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text2)">' + (ai.horizon || '—') + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
+      '<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--positive);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-family:var(--mono)">✦ Forces</div>' +
+        aiListHtml(ai.forces, 'var(--positive)') +
+      '</div>' +
+      '<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--negative);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-family:var(--mono)">✦ Faiblesses</div>' +
+        aiListHtml(ai.faiblesses, 'var(--negative)') +
+      '</div>' +
+      '<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-family:var(--mono)">✦ Opportunités</div>' +
+        aiListHtml(ai.opportunites, 'var(--accent2)') +
+      '</div>' +
+      '<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px">' +
+        '<div style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-family:var(--mono)">✦ Risques</div>' +
+        aiListHtml(ai.risques, 'var(--gold)') +
+      '</div>' +
+    '</div>' +
+    catalyseurBlock +
+    conseilBlock +
+    '<div style="margin-top:14px;text-align:right;font-size:10px;color:var(--text3);font-family:var(--mono)">' +
+      '✦ Analyse générée par Claude AI · ' + today + ' · À titre informatif uniquement' +
+    '</div>';
+}
+
+async function triggerMistralAnalyse() {
+  var d = currentAnalyseData;
+  if (!d) return;
+  _mistralCurrentData = d;
+
+  // Make sure the AI panel is visible
+  var aiSection = document.getElementById('ana-ai');
+  if (aiSection) { aiSection.style.display = 'block'; aiSection.classList.add('active'); }
+
+  // Loading state
+  var contentEl = document.getElementById('ai-analysis-content');
+  contentEl.innerHTML =
+    '<div style="text-align:center;padding:48px 0">' +
+      '<div style="display:inline-flex;align-items:center;gap:12px;color:var(--accent)">' +
+        '<span class="loading-spinner" style="width:18px;height:18px;border-width:3px;border-top-color:var(--accent)"></span>' +
+        '<span style="font-size:14px;font-weight:600">Analyse de ' + d.name + ' en cours…</span>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--text3);margin-top:12px;font-family:var(--mono)">Mistral AI analyse les fondamentaux</div>' +
+    '</div>';
+
+  setScoreRing(null, '…', 'Analyse en cours…');
+
+  var portfolioContext = d.buyPrice
+    ? "L'utilisateur détient cette action dans son PEA : prix d'achat " + d.buyPrice.toFixed(2) + ' ' + d.currency + ', quantite ' + d.qty + ', performance ' + ((d.price - d.buyPrice) / d.buyPrice * 100).toFixed(2) + '%.'
+    : "L'utilisateur n'a pas cette action en portefeuille (recherche libre).";
+
+  var pos52 = (d.high52 && d.low52 && d.high52 !== d.low52)
+    ? Math.round((d.price - d.low52) / (d.high52 - d.low52) * 100) + '%'
+    : 'N/A';
+
+  var mcap = d.marketCap
+    ? (d.marketCap > 1e12 ? (d.marketCap/1e12).toFixed(1)+' T' : d.marketCap > 1e9 ? (d.marketCap/1e9).toFixed(1)+' Md' : (d.marketCap/1e6).toFixed(0)+' M') + ' ' + d.currency
+    : 'N/A';
+
+  var prompt =
+    'Tu es un analyste financier expert. Analyse cette action et donne une recommandation precise.\n\n' +
+    'ACTION : ' + d.name + ' (' + d.ticker + ')\n' +
+    'Bourse : ' + (d.exchange || 'N/A') + '\n\n' +
+    'DONNEES DE MARCHE :\n' +
+    '- Prix actuel : ' + d.price.toFixed(2) + ' ' + d.currency + '\n' +
+    '- Variation du jour : ' + (d.changePct >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%\n' +
+    '- Plus haut 52 semaines : ' + (d.high52 ? d.high52.toFixed(2) : 'N/A') + '\n' +
+    '- Plus bas 52 semaines : ' + (d.low52 ? d.low52.toFixed(2) : 'N/A') + '\n' +
+    '- Position dans le range 52s : ' + pos52 + '\n' +
+    '- P/E ratio : ' + (d.pe ? parseFloat(d.pe).toFixed(1) : 'N/A') + '\n' +
+    '- P/E forward : ' + (d.forwardPe ? parseFloat(d.forwardPe).toFixed(1) : 'N/A') + '\n' +
+    '- Beta : ' + (d.beta ? parseFloat(d.beta).toFixed(2) : 'N/A') + '\n' +
+    '- Rendement dividende : ' + (d.divYield ? (d.divYield * 100).toFixed(2) + '%' : 'Aucun') + '\n' +
+    '- Capitalisation : ' + mcap + '\n\n' +
+    'CONTEXTE PEA :\n' + portfolioContext + '\n\n' +
+    'Reponds UNIQUEMENT avec un JSON valide, sans markdown, sans texte avant ou apres :\n' +
+    '{\n' +
+    '  "score": 72,\n' +
+    '  "verdict": "ACHETER",\n' +
+    '  "resume": "Resume en 2 phrases sur la situation.",\n' +
+    '  "forces": ["Force 1", "Force 2", "Force 3"],\n' +
+    '  "faiblesses": ["Faiblesse 1", "Faiblesse 2"],\n' +
+    '  "opportunites": ["Opportunite 1", "Opportunite 2"],\n' +
+    '  "risques": ["Risque 1", "Risque 2"],\n' +
+    '  "conseil_portefeuille": "Conseil personnalise pour le PEA en 1-2 phrases.",\n' +
+    '  "horizon": "Court terme / Moyen terme / Long terme",\n' +
+    '  "niveau_confiance": "Eleve / Modere / Faible",\n' +
+    '  "catalyseurs": ["Catalyseur 1", "Catalyseur 2"]\n' +
+    '}\n\n' +
+    'Score de 0 (vendre immediatement) a 100 (acheter fortement).\n' +
+    'Verdict exactement : "ACHETER", "RENFORCER", "CONSERVER", "ALLEGEE" ou "VENDRE".';
+
+  try {
+    var response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    var data = await response.json();
+    var raw = data.content.map(function(i) { return i.text || ''; }).join('');
+    var clean = raw.replace(/```json|```/g, '').trim();
+    var ai = JSON.parse(clean);
+
+    var verdictEmojis2 = { 'ACHETER':'🟢', 'RENFORCER':'🔵', 'CONSERVER':'🟡', 'ALLEGEE':'🟠', 'VENDRE':'🔴' };
+    var em2 = verdictEmojis2[ai.verdict] || '⚪';
+    setScoreRing(ai.score, ai.score, em2 + ' ' + ai.verdict);
+    renderMistralResult(ai, d);
+
+  } catch(e) {
+    console.error('Analyse IA error:', e);
+    var errEl = document.getElementById('ai-analysis-content');
+    errEl.innerHTML =
+      '<div style="text-align:center;padding:40px;color:var(--negative)">' +
+        '<div style="font-size:24px;margin-bottom:8px">⚠️</div>' +
+        '<div style="font-size:13px">Erreur lors de l\'analyse : ' + e.message + '</div>' +
+      '</div>';
+    setScoreRing(null, '!', 'Erreur');
+  }
+}
+
 
 function setAnaTab(tab) {
   document.querySelectorAll('.ana-tab').forEach(t => t.classList.remove('active'));
@@ -5167,9 +5362,10 @@ function countUp(el, target, duration, prefix, suffix) {
 
 // Apply countUp to stat cards after render
 function animateStatCards() {
-  const totalEl = document.getElementById('stat-total');
-  const invEl = document.getElementById('stat-invested');
-  const pnlEl = document.getElementById('stat-pnl');
+  const totalEl    = document.getElementById('stat-total');
+  const invEl      = document.getElementById('stat-invested');
+  const pnlEl      = document.getElementById('stat-pnl');
+  const envelopeEl = document.getElementById('stat-envelope');
 
   const data = getPortfolio(currentUser);
   if (!data.length) return;
@@ -5178,9 +5374,19 @@ function animateStatCards() {
   data.forEach(r => { totalVal += r.qty * r.currentPrice; totalInv += r.qty * r.buyPrice; });
   const pnl = totalVal - totalInv;
 
+  // Cash pour l'enveloppe
+  const txs2 = getTransactions(currentUser);
+  const vers2 = getVersements(currentUser);
+  const totalVers2 = vers2.reduce((s, v) => s + v.amount, 0);
+  let ach2 = 0, ven2 = 0;
+  txs2.forEach(tx => { if (tx.type==='buy') ach2 += tx.qty*tx.price; if (tx.type==='sell') ven2 += tx.qty*tx.price; });
+  const cash2 = totalVers2 - ach2 + ven2;
+  const envelope = totalVal + cash2;
+
   countUp(totalEl, totalVal, 800, '', ' €');
   countUp(invEl, totalInv, 800, '', ' €');
   countUp(pnlEl, Math.abs(pnl), 800, pnl >= 0 ? '+' : '-', ' €');
+  if (envelopeEl) countUp(envelopeEl, envelope, 800, '', ' €');
 }
 
 // ═══════════════════════════════════════════════════
