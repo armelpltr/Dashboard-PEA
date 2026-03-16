@@ -1483,9 +1483,9 @@ body.sb-collapsed .main { margin-left: 58px; }
           <canvas class="stat-sparkline" id="spark-pnl"></canvas>
         </div>
         <div class="stat-card">
-          <div class="stat-label">P&L réalisé</div>
-          <div class="stat-value" id="stat-realized">— €</div>
-          <div class="stat-change" id="stat-realized-sub">Gains/pertes clôturés</div>
+          <div class="stat-label">Valeur enveloppe PEA</div>
+          <div class="stat-value" id="stat-envelope">— €</div>
+          <div class="stat-change" id="stat-envelope-sub">Titres + Espèces disponibles</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Cumul versements</div>
@@ -2854,7 +2854,7 @@ function renderPortfolio() {
   document.getElementById('stat-pnl-pct').style.color = totalPnl >= 0 ? 'var(--positive)' : 'var(--negative)';
   document.getElementById('stat-pnl-pct').className = '';
 
-  // Calculate realized P&L from transaction history
+  // Calculate realized P&L from transaction history (kept for internal use)
   const txs = getTransactions(currentUser);
   let realizedTotal = 0;
   txs.forEach(tx => {
@@ -2862,16 +2862,10 @@ function renderPortfolio() {
       realizedTotal += tx.realizedPnl;
     }
   });
-  const realEl = document.getElementById('stat-realized');
-  realEl.textContent = (realizedTotal >= 0 ? '+' : '') + fmt(realizedTotal);
-  realEl.style.color = realizedTotal >= 0 ? 'var(--positive)' : 'var(--negative)';
-  document.getElementById('stat-realized-sub').textContent = realizedTotal >= 0 ? 'Gains clôturés' : 'Pertes clôturées';
-  document.getElementById('stat-realized-sub').className = 'stat-change ' + (realizedTotal >= 0 ? 'pos' : 'neg');
 
   // Versements & cash
   const versements = getVersements(currentUser);
   const totalVersements = versements.reduce((s, v) => s + v.amount, 0);
-  document.getElementById('stat-versements').textContent = fmt(totalVersements);
 
   // Cash = versements - total achats + total ventes (from tx log)
   let totalAchats = 0, totalVentes = 0;
@@ -2880,6 +2874,18 @@ function renderPortfolio() {
     if (tx.type === 'sell') totalVentes += tx.qty * tx.price;
   });
   const cash = totalVersements - totalAchats + totalVentes;
+
+  // Enveloppe PEA = titres + espèces
+  const envelopeTotal = totalVal + cash;
+  const envelopeEl = document.getElementById('stat-envelope');
+  envelopeEl.textContent = data.length ? fmt(envelopeTotal) : '— €';
+  document.getElementById('stat-envelope-sub').textContent =
+    data.length
+      ? 'Titres ' + fmt(totalVal) + ' + Espèces ' + fmt(Math.max(0, cash))
+      : 'Titres + Espèces disponibles';
+
+  // Versements & cash cards
+  document.getElementById('stat-versements').textContent = fmt(totalVersements);
   const cashEl = document.getElementById('stat-cash');
   cashEl.textContent = fmt(cash);
   cashEl.style.color = cash >= 0 ? 'var(--positive)' : 'var(--negative)';
@@ -5167,9 +5173,10 @@ function countUp(el, target, duration, prefix, suffix) {
 
 // Apply countUp to stat cards after render
 function animateStatCards() {
-  const totalEl = document.getElementById('stat-total');
-  const invEl = document.getElementById('stat-invested');
-  const pnlEl = document.getElementById('stat-pnl');
+  const totalEl    = document.getElementById('stat-total');
+  const invEl      = document.getElementById('stat-invested');
+  const pnlEl      = document.getElementById('stat-pnl');
+  const envelopeEl = document.getElementById('stat-envelope');
 
   const data = getPortfolio(currentUser);
   if (!data.length) return;
@@ -5178,9 +5185,19 @@ function animateStatCards() {
   data.forEach(r => { totalVal += r.qty * r.currentPrice; totalInv += r.qty * r.buyPrice; });
   const pnl = totalVal - totalInv;
 
+  // Cash pour l'enveloppe
+  const txs2 = getTransactions(currentUser);
+  const vers2 = getVersements(currentUser);
+  const totalVers2 = vers2.reduce((s, v) => s + v.amount, 0);
+  let ach2 = 0, ven2 = 0;
+  txs2.forEach(tx => { if (tx.type==='buy') ach2 += tx.qty*tx.price; if (tx.type==='sell') ven2 += tx.qty*tx.price; });
+  const cash2 = totalVers2 - ach2 + ven2;
+  const envelope = totalVal + cash2;
+
   countUp(totalEl, totalVal, 800, '', ' €');
   countUp(invEl, totalInv, 800, '', ' €');
   countUp(pnlEl, Math.abs(pnl), 800, pnl >= 0 ? '+' : '-', ' €');
+  if (envelopeEl) countUp(envelopeEl, envelope, 800, '', ' €');
 }
 
 // ═══════════════════════════════════════════════════
