@@ -6342,21 +6342,29 @@ function initBilan() {
         </div>
         <div style="margin-top:12px;background:var(--s3);border-radius:10px;padding:10px 14px;border:1px solid var(--border)">
           <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px">📊 vs Livret A 2,5%</div>
-          ${avLA !== null ? `
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-            <span style="color:var(--text2);font-size:12px">Ma plus-value</span>
-            <span style="font-family:var(--mono);font-size:13px;font-weight:700;color:${y.pv >= 0 ? 'var(--positive)' : 'var(--negative)'}">${y.pv >= 0 ? '+' : ''}${y.pv.toFixed(2)} €</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-            <span style="color:var(--text2);font-size:12px">PV Livret A équivalent</span>
-            <span style="font-family:var(--mono);font-size:12px;color:var(--text2)">+${(y.livretA - y.montantInvesti).toFixed(2)} €</span>
-          </div>
-          <div style="height:1px;background:var(--border);margin:6px 0"></div>
-          <div style="display:flex;justify-content:space-between">
-            <span style="color:var(--text2);font-size:12px">Avantage portefeuille</span>
-            <span style="font-family:var(--mono);font-size:13px;font-weight:700;color:${avPos ? 'var(--positive)' : 'var(--negative)'}">${avPos ? '+' : ''}${avLA.toFixed(2)} €</span>
-          </div>` : `
-          <div style="color:var(--text3);font-size:11px">Disponible uniquement pour l'année en cours</div>`}
+          ${(() => {
+            // PV portefeuille : latente (YTD) ou réalisée (années passées)
+            const pvPortefeuille = y.isYTD && y.pv !== null ? y.pv : y.realizedPnl;
+            const pvLabel        = y.isYTD ? 'Ma plus-value (latente)' : 'Gains réalisés (' + y.year + ')';
+            const pvColor        = pvPortefeuille >= 0 ? 'var(--positive)' : 'var(--negative)';
+            // PV Livret A = ce qu'on aurait gagné en intérêts
+            const pvLivret       = y.livretA - y.montantInvesti;
+            const avantage       = pvPortefeuille - pvLivret;
+            const avantagePos    = avantage >= 0;
+            return '<div style="display:flex;justify-content:space-between;margin-bottom:6px">' +
+              '<span style="color:var(--text2);font-size:12px">' + pvLabel + '</span>' +
+              '<span style="font-family:var(--mono);font-size:13px;font-weight:700;color:' + pvColor + '">' + (pvPortefeuille >= 0 ? '+' : '') + pvPortefeuille.toFixed(2) + ' €</span>' +
+            '</div>' +
+            '<div style="display:flex;justify-content:space-between;margin-bottom:6px">' +
+              '<span style="color:var(--text2);font-size:12px">PV Livret A équivalent</span>' +
+              '<span style="font-family:var(--mono);font-size:12px;color:var(--text2)">+' + pvLivret.toFixed(2) + ' €</span>' +
+            '</div>' +
+            '<div style="height:1px;background:var(--border);margin:6px 0"></div>' +
+            '<div style="display:flex;justify-content:space-between">' +
+              '<span style="color:var(--text2);font-size:12px">Avantage portefeuille</span>' +
+              '<span style="font-family:var(--mono);font-size:13px;font-weight:700;color:' + (avantagePos ? 'var(--positive)' : 'var(--negative)') + '">' + (avantagePos ? '+' : '') + avantage.toFixed(2) + ' €</span>' +
+            '</div>';
+          })()}
         </div>
       </div>`;
     }).join('');
