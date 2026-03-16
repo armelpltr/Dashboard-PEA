@@ -6301,7 +6301,11 @@ function initBilan() {
   // ── Cards ────────────────────────────────────────
   if (cards) {
     cards.innerHTML = data.map(y => {
-      const valeurPourLA = y.isYTD && y.pv !== null ? y.montantInvesti + y.pv : null;
+      // Pour l'année en cours : valeur réelle vs Livret A
+      // Pour les années passées : on compare les versements cumulés vs ce qu'aurait donné le Livret A
+      const valeurPourLA = y.isYTD && y.pv !== null
+        ? y.montantInvesti + y.pv   // valeur réelle du portefeuille
+        : null;                      // pas de valeur historique disponible
       const avLA  = valeurPourLA !== null ? (valeurPourLA - y.livretA) : null;
       const avPos = avLA !== null && avLA >= 0;
 
@@ -6346,7 +6350,11 @@ function initBilan() {
           <div style="display:flex;justify-content:space-between;margin-top:4px">
             <span style="color:var(--text2);font-size:12px">Avantage portefeuille</span>
             <span style="font-family:var(--mono);font-size:13px;font-weight:700;color:${avPos ? 'var(--positive)' : 'var(--negative)'}">${avPos ? '+' : ''}${avLA.toFixed(2)} €</span>
-          </div>` : ''}
+          </div>` : `
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span style="color:var(--text2);font-size:12px">Avantage portefeuille</span>
+            <span style="font-size:11px;color:var(--text3)">calculable en YTD uniquement</span>
+          </div>`}
         </div>
       </div>`;
     }).join('');
