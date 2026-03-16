@@ -6259,10 +6259,8 @@ function computeBilanAnnuel() {
 
     // PV latente = valeur actuelle - montant investi cumulé jusqu'à cette année
     const pv      = montantInvesti > 0 ? valeurActuelle - montantInvesti : null;
-    // Perf globale = (PV latente + gains réalisés) / montant investi
-    // Comme Bourso : inclut les ventes avec gain/perte réalisé
-    const realizedCumul = txs.filter(t => t.type === 'sell' && t.realizedPnl != null && t.date && new Date(t.date+'T12:00:00').getFullYear() <= y).reduce((s, t) => s + t.realizedPnl, 0);
-    const perfPct = montantInvesti > 0 && pv !== null ? (pv + realizedCumul) / montantInvesti : null;
+    // Perf = PV latente / montant investi (comme Bourso)
+    const perfPct = montantInvesti > 0 && pv !== null ? pv / montantInvesti : null;
 
     // Gains réalisés = uniquement ceux de cette année
     const realizedPnlAnnee = parseFloat(d.realizedPnl.toFixed(2));
