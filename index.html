@@ -6302,68 +6302,75 @@ async function initBilan() {
   // Pour chaque année on a besoin du cours de clôture au dernier jour de bourse
   // On utilise Yahoo Finance : range=5d autour du 31/12 pour avoir la clôture annuelle
   const yearsNeeded = data.map(y => y.year);
-  const refPrices = {}; // { year: { ticker: price } }
 
-  await Promise.all(yearsNeeded.map(async year => {
-    if (year === currentYear) return; // pour l'année en cours on utilise le cours live
-    refPrices[year] = {};
+  // ── Calculer la perf annuelle pour l'année en cours ─────────────────────
+  // Méthode : valeur ref = valeur du portefeuille au 31/12 de l'année précédente
+  // On reconstitue cette valeur depuis les cours Yahoo au 31/12
+  // Pour les lignes achetées avant le 01/01/currentYear : qty × cours_31dec
+  // Pour les lignes achetées en currentYear : qty × buyPrice (base d'achat)
 
-    // Trouver les tickers détenus à fin d'année
-    const tickers = [...new Set(txs
-      .filter(t => t.type === 'buy' && t.date && new Date(t.date+'T12:00:00').getFullYear() <= year)
-      .map(t => t.ticker)
-    )];
+  async function fetchCloseAtDate(ticker, dateStr) {
+    // dateStr = 'YYYY-MM-DD', on prend la clôture la plus proche (5 jours avant/après)
+    const d    = new Date(dateStr + 'T12:00:00Z');
+    const p1   = Math.floor(new Date(d.getTime() - 7*86400000).getTime() / 1000);
+    const p2   = Math.floor(new Date(d.getTime() + 2*86400000).getTime() / 1000);
+    const url  = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
+      encodeURIComponent(resolveToYahooTicker(ticker)) +
+      '?interval=1d&period1=' + p1 + '&period2=' + p2;
+    const raw  = await fetchWithFallback(url);
+    const res  = JSON.parse(raw).chart?.result?.[0];
+    if (!res) return null;
+    const ts      = res.timestamp;
+    const closes  = res.indicators.quote[0].close;
+    // Trouver la clôture la plus proche AVANT dateStr
+    const target  = d.getTime() / 1000;
+    let best = null, bestDiff = Infinity;
+    ts.forEach((t, i) => {
+      if (t <= target && closes[i] != null) {
+        const diff = target - t;
+        if (diff < bestDiff) { bestDiff = diff; best = closes[i]; }
+      }
+    });
+    return best;
+  }
 
-    await Promise.all(tickers.map(async ticker => {
-      try {
-        // On prend le cours autour du 31/12 de l'année
-        const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
-          encodeURIComponent(resolveToYahooTicker(ticker)) +
-          '?interval=1d&period1=' + Math.floor(new Date(year+'-12-25').getTime()/1000) +
-          '&period2=' + Math.floor(new Date((year+1)+'-01-05').getTime()/1000);
-        const raw = await fetchWithFallback(url);
-        const d   = JSON.parse(raw);
-        const res = d.chart?.result?.[0];
-        if (!res) return;
-        const closes = res.indicators.quote[0].close.filter(v => v != null);
-        if (closes.length) refPrices[year][ticker] = closes[closes.length - 1]; // dernière clôture = ~31/12
-      } catch(e) {}
-    }));
+  // Récupérer les cours au 31/12/année-1 pour les lignes détenues avant currentYear
+  const refDateStr = (currentYear - 1) + '-12-31';
+  const refCloses  = {};
+  const tickersBeforeYear = [...new Set(
+    portfolio
+      .filter(row => {
+        const by = row.buyDate ? new Date(row.buyDate+'T12:00:00').getFullYear() : currentYear;
+        return by < currentYear;
+      })
+      .map(r => r.ticker)
+  )];
+
+  await Promise.all(tickersBeforeYear.map(async ticker => {
+    try {
+      refCloses[ticker] = await fetchCloseAtDate(ticker, refDateStr);
+    } catch(e) { refCloses[ticker] = null; }
   }));
 
-  // ── Calculer la perf annuelle pour chaque année ──────────────────────────
-  // Perf = (valeur fin d'année - valeur début d'année) / valeur début d'année
-  // En tenant compte des achats/ventes intra-année (comme TWR simplifiée)
-  function getPerfAnnuelle(year) {
-    if (year === currentYear) {
-      // YTD : cours de référence = cours au 01/01 (= cours de clôture 31/12/année-1)
-      const refYear = year - 1;
-      const refPricesYear = refPrices[refYear] || {};
-      let valRef = 0;
-      let valNow = 0;
-
-      // Lignes achetées AVANT 2026 → cours de référence 31/12/2025
-      portfolio.forEach(row => {
-        const buyYear = row.buyDate ? new Date(row.buyDate+'T12:00:00').getFullYear() : year;
-        if (buyYear < year) {
-          const pRef = refPricesYear[row.ticker];
-          if (pRef) valRef += row.qty * pRef;
-          else      valRef += row.qty * row.buyPrice; // fallback PRU
-        } else if (buyYear === year) {
-          // Achetées en 2026 → base = prix d'achat
-          valRef += row.qty * row.buyPrice;
-        }
-        valNow += row.qty * row.currentPrice;
-      });
-
-      return valRef > 0 ? (valNow - valRef) / valRef : null;
+  // Calculer valeur ref et valeur actuelle
+  let valRef = 0, valNow = 0;
+  portfolio.forEach(row => {
+    const buyYear = row.buyDate ? new Date(row.buyDate+'T12:00:00').getFullYear() : currentYear;
+    valNow += row.qty * row.currentPrice;
+    if (buyYear < currentYear) {
+      const ref = refCloses[row.ticker] || row.buyPrice; // fallback PRU
+      valRef += row.qty * ref;
+    } else {
+      valRef += row.qty * row.buyPrice; // achetée cette année → base = prix d'achat
     }
-    return null; // années passées : pas de cours historique intra-année
-  }
+  });
 
   const perfAnnuelle = {};
   yearsNeeded.forEach(year => {
-    perfAnnuelle[year] = getPerfAnnuelle(year);
+    if (year === currentYear && valRef > 0) {
+      perfAnnuelle[year] = (valNow - valRef) / valRef;
+    }
+    // années passées : pas calculable sans historique de cours
   });
 
   // ── Cards ────────────────────────────────────────
