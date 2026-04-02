@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PEA Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-bg"></div>
+  <div class="login-grid"></div>
+
+  <!-- VUE CONNEXION -->
+  <div class="login-card" id="login-view">
+    <div class="login-logo">
+      <div class="logo-icon">📈</div>
+      <div class="login-title">PEA Dashboard</div>
+      <div class="login-subtitle">Suivi de portefeuille</div>
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="input-email" placeholder="vous@exemple.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input type="password" class="form-input" id="input-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="btn-login-submit" onclick="doLogin()">Connexion</button>
+    <div style="display:flex;align-items:center;gap:10px;margin:16px 0">
+      <div style="flex:1;height:1px;background:var(--border2)"></div>
+      <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">ou</span>
+      <div style="flex:1;height:1px;background:var(--border2)"></div>
+    </div>
+    <button onclick="doLoginGoogle()" style="
+      width:100%;padding:11px;border-radius:10px;border:1px solid var(--border2);
+      background:var(--s2);color:var(--text);font-family:var(--sans);font-size:14px;
+      font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+      transition:all 0.2s ease;">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.58-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+      Continuer avec Google
+    </button>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
+      Pas encore de compte ?
+      <span onclick="showRegisterView()" style="color:var(--accent);cursor:pointer;font-weight:600;margin-left:4px">Créer un compte</span>
+    </div>
+  </div>
+
+  <!-- VUE INSCRIPTION -->
+  <div class="login-card" id="register-view" style="display:none">
+    <div class="login-logo">
+      <div class="logo-icon">📈</div>
+      <div class="login-title">Créer un compte</div>
+      <div class="login-subtitle">PEA Dashboard</div>
+    </div>
+    <div class="login-error" id="register-error"></div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="reg-email" placeholder="vous@exemple.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input type="password" class="form-input" id="reg-pass" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirmer le mot de passe</label>
+      <input type="password" class="form-input" id="reg-pass2" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:12px 14px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.2);border-radius:10px;cursor:pointer" onclick="document.getElementById('reg-recap').click()">
+      <input type="checkbox" id="reg-recap" checked style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">Récap quotidien par mail</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Recevez chaque soir à 18h un résumé de la performance de votre PEA.</div>
+      </div>
+    </div>
+    <button class="btn-login" id="btn-register-submit" onclick="doRegister()">Créer le compte</button>
+    <div style="display:flex;align-items:center;gap:10px;margin:16px 0">
+      <div style="flex:1;height:1px;background:var(--border2)"></div>
+      <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">ou</span>
+      <div style="flex:1;height:1px;background:var(--border2)"></div>
+    </div>
+    <button onclick="doLoginGoogle()" style="
+      width:100%;padding:11px;border-radius:10px;border:1px solid var(--border2);
+      background:var(--s2);color:var(--text);font-family:var(--sans);font-size:14px;
+      font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+      transition:all 0.2s ease;">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.58-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+      Continuer avec Google
+    </button>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
+      Déjà un compte ?
+      <span onclick="showLoginView()" style="color:var(--accent);cursor:pointer;font-weight:600;margin-left:4px">Se connecter</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ APP ═════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ─── MOBILE HEADER ───────────────────────────── -->
+  <header class="mobile-header" id="mobile-header">
+    <div class="mobile-header-logo">
+      <div class="mobile-header-icon">📈</div>
+      <div class="mobile-header-title">PEA Dashboard</div>
+    </div>
+    <div class="mobile-header-actions">
+      <div class="mobile-header-btn" onclick="openMobileDrawer()" title="Plus">☰</div>
+      <div class="mobile-header-btn" onclick="openProfilModal()" id="mobile-avatar-btn" title="Profil">
+        <span id="mobile-avatar-letter" style="font-size:13px;font-weight:700;font-family:var(--display)">?</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ─── MOBILE BOTTOM NAV ───────────────────────── -->
+  <nav class="mobile-nav">
+    <div class="mobile-nav-inner">
+      <button class="mobile-nav-item active" data-mob="portfolio" onclick="showPageMobile('portfolio')">
+        <span>💼</span>PEA
+      </button>
+      <button class="mobile-nav-item" data-mob="watchlist" onclick="showPageMobile('watchlist')">
+        <span>👁</span>Watch
+      </button>
+      <button class="mobile-nav-item" data-mob="dividendes" onclick="showPageMobile('dividendes')">
+        <span>💰</span>Divid.
+      </button>
+      <button class="mobile-nav-item" onclick="openMobileDrawer()">
+        <span>⋯</span>Plus
+      </button>
+    </div>
+  </nav>
+
+  <!-- ─── MOBILE DRAWER ───────────────────────────── -->
+  <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" onclick="if(event.target===this)closeMobileDrawer()">
+    <div class="mobile-drawer">
+      <div class="mobile-drawer-handle"></div>
+      <div class="mobile-drawer-section">Navigation</div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('portfolio');closeMobileDrawer()" data-mob="portfolio">
+        <span class="mobile-drawer-icon">💼</span>Portefeuille
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('analyse');closeMobileDrawer()" data-mob="analyse">
+        <span class="mobile-drawer-icon">🔍</span>Analyse
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('watchlist');closeMobileDrawer()" data-mob="watchlist">
+        <span class="mobile-drawer-icon">👁</span>Watchlist
+      </div>
+      <div class="mobile-drawer-section">Analytique</div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('base100');closeMobileDrawer()" data-mob="base100">
+        <span class="mobile-drawer-icon">📐</span>Base 100
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('projections');closeMobileDrawer()" data-mob="projections">
+        <span class="mobile-drawer-icon">🔭</span>Projections
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('trophees');closeMobileDrawer()" data-mob="trophees">
+        <span class="mobile-drawer-icon">🏆</span>Trophées
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('calendrier');closeMobileDrawer()" data-mob="calendrier">
+        <span class="mobile-drawer-icon">📆</span>Calendrier
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('dividendes');closeMobileDrawer()" data-mob="dividendes">
+        <span class="mobile-drawer-icon">💰</span>Dividendes
+      </div>
+      <div class="mobile-drawer-section">Compte</div>
+      <div class="mobile-drawer-item" onclick="openProfilModal();closeMobileDrawer()">
+        <span class="mobile-drawer-icon">👤</span>Mon profil
+      </div>
+      <div style="height:1px;background:var(--border);margin:8px 20px"></div>
+      <div class="mobile-drawer-item" onclick="doLogout()" style="color:var(--negative)">
+        <span class="mobile-drawer-icon">⏻</span>Déconnexion
+      </div>
+    </div>
+  </div>
+
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">◀</button>
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📈</div>
+      <div>
+        <div class="sidebar-logo-title">PEA Dashboard</div>
+        <div class="sidebar-logo-sub">v2.0</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <div class="nav-item active" onclick="showPage('portfolio')">
+        <span class="nav-icon">💼</span> Portefeuille
+      </div>
+      <div class="nav-item" onclick="showPage('analyse')">
+        <span class="nav-icon">🔍</span> Analyse
+      </div>
+      <div class="nav-item" onclick="showPage('watchlist')">
+        <span class="nav-icon">👁</span> Watchlist
+      </div>
+      <div class="nav-section-label" style="margin-top:10px">Analytique</div>
+      <div class="nav-item" onclick="showPage('base100')">
+        <span class="nav-icon">📐</span> Base 100
+      </div>
+      <div class="nav-item" onclick="showPage('projections')">
+        <span class="nav-icon">🔭</span> Projections
+      </div>
+      <div class="nav-item" onclick="showPage('trophees')">
+        <span class="nav-icon">🏆</span> Trophées
+      </div>
+      <div class="nav-item" onclick="showPage('calendrier')">
+        <span class="nav-icon">📆</span> Calendrier
+      </div>
+      <div class="nav-item" onclick="showPage('dividendes')">
+        <span class="nav-icon">💰</span> Dividendes
+      </div>
+    </nav>
+    <div class="sidebar-settings">
+      <div class="setting-row">
+        <span class="setting-label">Mode clair</span>
+        <div class="toggle-wrap" id="toggle-theme" onclick="toggleTheme()">
+          <div class="toggle-dot"></div>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Couleur</span>
+        <div class="color-dots">
+          <div class="color-dot active" data-c="violet" onclick="setColorTheme('violet')"></div>
+          <div class="color-dot" data-c="green" onclick="setColorTheme('green')"></div>
+          <div class="color-dot" data-c="blue" onclick="setColorTheme('blue')"></div>
+          <div class="color-dot" data-c="orange" onclick="setColorTheme('orange')"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-card" onclick="openProfilModal()" style="cursor:pointer" title="Mon profil">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <span class="user-name" id="user-name-display">—</span>
+        <button class="btn-logout" onclick="event.stopPropagation();doLogout()" title="Déconnexion">⏻</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- PORTFOLIO PAGE -->
+    <div class="page active" id="page-portfolio">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Portefeuille</div>
+          <div class="page-subtitle" id="portfolio-date">Mis à jour aujourd'hui</div>
+        </div>
+      </div>
+
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card">
+          <div class="stat-label">Évaluation des titres</div>
+          <div class="stat-value" id="stat-total">— €</div>
+          <div class="stat-change" id="stat-total-change">—</div>
+          <canvas class="stat-sparkline" id="spark-total"></canvas>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">+/- Value latente</div>
+          <div style="display:flex;align-items:baseline;gap:10px">
+            <div class="stat-value" id="stat-pnl">— €</div>
+            <div class="stat-value" id="stat-pnl-pct" style="font-size:16px">—</div>
+          </div>
+          <div class="stat-change neg">Latente sur titres en portefeuille</div>
+          <canvas class="stat-sparkline" id="spark-pnl"></canvas>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">P&L réalisé</div>
+          <div class="stat-value" id="stat-realized">— €</div>
+          <div class="stat-change" id="stat-realized-sub">Gains/pertes clôturés</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Cumul versements</div>
+          <div class="stat-value" id="stat-versements">— €</div>
+          <div class="stat-change pos" id="stat-versements-sub">Total versé sur le PEA</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Solde espèces</div>
+          <div class="stat-value" id="stat-cash">— €</div>
+          <div class="stat-change" id="stat-cash-sub">Disponible</div>
+          <div style="margin-top:8px">
+            <button class="btn-add" onclick="openVersementModal()" style="font-size:10px;padding:5px 10px">＋ Versement</button>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Investi (titres)</div>
+          <div class="stat-value" id="stat-invested">— €</div>
+          <canvas class="stat-sparkline" id="spark-invested"></canvas>
+        </div>
+      </div>
+
+      <!-- Graphique évolution portefeuille -->
+      <div class="section-card" id="portfolio-chart-card" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+          <div class="section-title" style="margin-bottom:0">Évolution du portefeuille</div>
+          <div class="period-bar" id="portfolio-period-bar" style="margin-bottom:0">
+            <button class="period-btn" onclick="setPortfolioPeriod('1d')" data-pp="1d">1J</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('5d')" data-pp="5d">5J</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('1mo')" data-pp="1mo">1M</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('3mo')" data-pp="3mo">3M</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('6mo')" data-pp="6mo">6M</button>
+            <button class="period-btn active" onclick="setPortfolioPeriod('1y')" data-pp="1y">1A</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('3y')" data-pp="3y">3A</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('5y')" data-pp="5y">5A</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('max')" data-pp="max">Max</button>
+          </div>
+        </div>
+        <div id="portfolio-chart-sub" style="font-size:11px;color:var(--text2);margin-bottom:14px">Valeur totale dans le temps</div>
+        <div class="chart-wrap"><canvas id="chart-portfolio" height="60"></canvas></div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header">
+          <span class="table-title">Mes actions</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span class="refresh-badge" id="refresh-badge" style="display:none"><span class="refresh-dot"></span> Auto 60s</span>
+            <button class="btn-add" onclick="document.getElementById('csv-import-input').click()" style="background:rgba(245,183,49,0.08);border-color:rgba(245,183,49,0.2);color:var(--gold)">📥 Importer CSV</button>
+            <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importCSV(event)">
+            <button class="btn-add" onclick="openModal()">＋ Ajouter une ligne</button>
+          </div>
+        </div>
+        <div class="toolbar" id="portfolio-toolbar">
+          <input class="toolbar-input" id="table-search" placeholder="🔍 Filtrer…" oninput="filterTable()">
+          <select class="toolbar-select" id="table-sort" onchange="sortTable()">
+            <option value="">Tri : ordre ajout</option>
+            <option value="name-asc">Nom A→Z</option>
+            <option value="name-desc">Nom Z→A</option>
+            <option value="val-desc">Valeur ↓</option>
+            <option value="val-asc">Valeur ↑</option>
+            <option value="perf-desc">Perf ↓</option>
+            <option value="perf-asc">Perf ↑</option>
+          </select>
+          <button class="toolbar-btn" onclick="exportCSV()">📄 CSV</button>
+          <button class="toolbar-btn" onclick="toggleAutoRefresh()" id="btn-auto-refresh">⟳ Auto-refresh</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Qté</th>
+              <th class="hide-mobile">Prix achat</th>
+              <th>Prix actuel</th>
+              <th>Valeur</th>
+              <th>+/- Value</th>
+              <th>Perf. jour</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="portfolio-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-text">Aucune action dans le portefeuille.<br>Ajoutez votre première ligne.</div>
+        </div>
+      </div>
+
+      <!-- Transaction History -->
+      <div class="table-container" style="margin-top:18px" id="tx-history-card">
+        <div class="table-header">
+          <span class="table-title">📜 Historique des transactions</span>
+          <span style="font-size:11px;color:var(--text3);font-family:var(--mono)" id="tx-count">0 opérations</span>
+        </div>
+        <div style="max-height:400px;overflow-y:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Opération</th>
+              <th>Action</th>
+              <th>Qté</th>
+              <th>Prix unit.</th>
+              <th>Montant</th>
+              <th>P&L réalisé</th>
+            </tr>
+          </thead>
+          <tbody id="tx-history-tbody"></tbody>
+        </table>
+        </div>
+        <div class="empty-state" id="tx-empty" style="display:none">
+          <div class="empty-icon">📜</div>
+          <div class="empty-text">Aucune transaction enregistrée.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYSE PAGE — DASHBOARD -->
+    <div class="page" id="page-analyse">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Analyse</div>
+          <div class="page-subtitle">Dashboard détaillé par action · <span style="color:var(--accent);font-family:var(--mono);font-size:11px">📊 Scoring fondamental</span></div>
+        </div>
+      </div>
+
+      <!-- CARTE UNIQUE — picker + hero + Mistral + tabs -->
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:18px">
+
+        <!-- ── LIGNE 1 : Picker + Hero + Score ── -->
+        <div style="display:flex;align-items:stretch;border-bottom:1px solid var(--border)">
+
+          <!-- Picker gauche -->
+          <div style="width:240px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column" id="ana-picker-wrap">
+            <div style="padding:10px 12px;border-bottom:1px solid var(--border)">
+              <input class="form-input" id="analyse-search-input" placeholder="🔍 Ticker…" oninput="onAnalyseInput()" style="font-size:12px;padding:8px 10px;width:100%">
+              <div id="analyse-search-status" style="margin-top:4px"></div>
+            </div>
+            <div class="ana-picker-list" id="analyse-portfolio-list" style="max-height:220px;overflow-y:auto;flex:1">
+              <!-- Empty state inside picker -->
+              <div id="ana-empty" style="color:var(--text3);font-size:12px;text-align:center;padding:32px 14px;line-height:1.6">
+                <div style="font-size:28px;margin-bottom:8px;opacity:.2">🔍</div>
+                Sélectionnez une action ou recherchez un ticker
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero centre -->
+          <div class="ana-hero" id="ana-hero" style="flex:1;opacity:0;transition:opacity .3s;pointer-events:none">
+            <div class="ana-hero-left">
+              <div class="ana-hero-name" id="ana-name">—</div>
+              <div class="ana-hero-ticker" id="ana-ticker">—</div>
+              <div style="margin-top:10px">
+                <span class="ana-hero-price" id="ana-price">—</span>
+                <span class="ana-hero-change" id="ana-change">—</span>
+              </div>
+              <div class="ana-hero-52w" id="ana-52w">52 sem : — — —</div>
+              <div class="ana-hero-52w-bar" id="ana-52w-bar" style="width:200px">
+                <div class="ana-hero-52w-fill" id="ana-52w-fill" style="width:0"></div>
+                <div class="ana-hero-52w-dot" id="ana-52w-dot" style="left:0"></div>
+              </div>
+            </div>
+            <!-- Score ring droite -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;min-width:140px">
+              <div style="position:relative;width:84px;height:84px">
+                <svg viewBox="0 0 90 90" style="position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)">
+                  <circle cx="45" cy="45" r="40" fill="none" stroke="var(--border)" stroke-width="5"/>
+                  <circle id="hero-ring-progress" cx="45" cy="45" r="40" fill="none" stroke="var(--text3)" stroke-width="5" stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease,stroke .4s"/>
+                </svg>
+                <div style="position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-size:22px;font-weight:800">
+                  <span id="ana-score" style="color:var(--text3)">—</span>
+                </div>
+              </div>
+              <div style="text-align:center">
+                <div id="ana-verdict" style="font-size:12px;font-weight:700;color:var(--text3)">—</div>
+                <div id="hero-mistral-sublabel" style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:2px">📊 Score fondamental</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- ── LIGNE 3 : Tabs + contenu ── -->
+        <div id="ana-tabs-wrap" style="display:none">
+          <div class="ana-tabs" id="ana-tabs" style="margin:0;border-radius:0;border:none;border-bottom:1px solid var(--border);padding:6px 12px 0">
+            <button class="ana-tab active" onclick="setAnaTab('valuation')">Valorisation</button>
+            <button class="ana-tab" onclick="setAnaTab('profit')">Rentabilité</button>
+            <button class="ana-tab" onclick="setAnaTab('dividends')">Dividendes</button>
+            <button class="ana-tab" onclick="setAnaTab('risk')">Risque</button>
+            <button class="ana-tab" onclick="setAnaTab('peers')">Comparaison</button>
+          </div>
+          <div style="padding:16px 18px">
+            <div class="ana-section active" id="ana-valuation"><div class="metric-grid" id="metrics-valuation"></div></div>
+            <div class="ana-section" id="ana-profit"><div class="metric-grid" id="metrics-profit"></div></div>
+            <div class="ana-section" id="ana-dividends"><div class="metric-grid" id="metrics-dividends"></div></div>
+            <div class="ana-section" id="ana-risk"><div class="metric-grid" id="metrics-risk"></div></div>
+            <div class="ana-section" id="ana-peers">
+              <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+                <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-family:var(--display);font-size:13px;font-weight:700">Comparaison sectorielle</div>
+                <div id="peers-content" style="overflow-x:auto">
+                  <div style="color:var(--text3);font-size:12px;text-align:center;padding:28px 0">Sélectionnez une action</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- WATCHLIST PAGE -->
+    <div class="page" id="page-watchlist">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Watchlist</div>
+          <div class="page-subtitle">Suivez des actions sans les acheter</div>
+        </div>
+      </div>
+      <div class="table-container">
+        <div class="table-header">
+          <span class="table-title">Actions suivies</span>
+          <button class="btn-add" onclick="openWatchlistModal()">＋ Ajouter</button>
+        </div>
+        <table>
+          <thead><tr><th>Action</th><th>Prix actuel</th><th>Variation</th><th></th></tr></thead>
+          <tbody id="watchlist-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="watchlist-empty">
+          <div class="empty-icon">👁</div>
+          <div class="empty-text">Aucune action dans la watchlist.<br>Ajoutez-en pour suivre leur cours.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         BASE 100 PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-base100">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Base 100</div>
+          <div class="page-subtitle">Performance relative depuis le premier achat de chaque actif</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div id="b100-legend" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12px"></div>
+        </div>
+      </div>
+
+      <div class="section-card" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div class="section-title">Performance normalisée — chaque ligne démarre à 100</div>
+          <div style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--text3)">
+            <svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--text2)" stroke-width="1.5" stroke-dasharray="4 3"/></svg>
+            Référence 100
+            <svg width="22" height="10" style="margin-left:6px"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--text3)" stroke-width="1.5" stroke-dasharray="3 2"/></svg>
+            Livret A 2,5%
+          </div>
+        </div>
+        <div style="position:relative;height:380px">
+          <canvas id="chart-base100"></canvas>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header">
+          <span class="table-title">Performances actuelles vs base 100</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Actif</th>
+            <th>1er prix connu</th>
+            <th>Prix actuel</th>
+            <th>Base 100 → ?</th>
+            <th>Performance</th>
+            <th>vs Livret A</th>
+          </tr></thead>
+          <tbody id="b100-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         PROJECTIONS PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-projections">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Projections</div>
+          <div class="page-subtitle">Simulation patrimoniale long terme avec intérêts composés</div>
+        </div>
+      </div>
+
+      <div class="section-card" style="margin-bottom:18px">
+        <div class="section-title" style="margin-bottom:16px">Paramètres de simulation</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px">
+          <div>
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Valeur actuelle (€)</label>
+            <input type="number" id="proj-base" value="0" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Apport mensuel (€)</label>
+            <input type="number" id="proj-monthly" value="" placeholder="0" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Rendement estimé (%)</label>
+            <input type="number" id="proj-cagr" value="" placeholder="0" step="0.5" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+          </div>
+          <div style="background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;justify-content:center">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">Livret A benchmark</div>
+            <div style="font-size:18px;font-weight:700;color:var(--text2);font-family:var(--mono);margin-top:3px">2,5 % / an</div>
+          </div>
+        </div>
+        <div style="position:relative;height:320px">
+          <canvas id="chart-projections"></canvas>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header"><span class="table-title">Tableau des projections</span></div>
+        <table>
+          <thead><tr>
+            <th>Horizon</th>
+            <th>Patrimoine total</th>
+            <th>Apports cumulés</th>
+            <th>Plus-values</th>
+            <th>Ratio PV / Apports</th>
+            <th>Livret A équiv.</th>
+            <th>Avantage vs LA</th>
+          </tr></thead>
+          <tbody id="proj-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         TROPHÉES PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-trophees">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Trophées</div>
+          <div class="page-subtitle">Les paliers se valident automatiquement selon les valeurs réelles du portefeuille</div>
+        </div>
+      </div>
+
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px" id="trophy-summary"></div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px" id="trophy-categories"></div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         CALENDRIER PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-calendrier">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Calendrier</div>
+          <div class="page-subtitle">Achats, versements et dividendes dans le temps</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <!-- Légende -->
+          <div style="display:flex;gap:12px;align-items:center;font-size:11px;color:var(--text2)">
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:50%;background:#7c6df5;display:inline-block"></span>Achat</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:50%;background:#00e09e;display:inline-block"></span>Versement</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:50%;background:#f5b731;display:inline-block"></span>Dividende</span>
+          </div>
+          <!-- Navigation mois -->
+          <div style="display:flex;align-items:center;gap:6px;margin-left:16px">
+            <button onclick="calPrevMonth()" style="background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:7px;padding:5px 11px;cursor:pointer;font-size:14px">‹</button>
+            <span id="cal-month-label" style="font-family:var(--display);font-size:14px;font-weight:700;min-width:130px;text-align:center"></span>
+            <button onclick="calNextMonth()" style="background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:7px;padding:5px 11px;cursor:pointer;font-size:14px">›</button>
+            <button onclick="calGoToday()" style="background:var(--s3);border:1px solid var(--border2);color:var(--text2);border-radius:7px;padding:5px 10px;cursor:pointer;font-size:11px">Auj.</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vue mensuelle -->
+      <div class="section-card" style="margin-bottom:18px">
+        <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
+      </div>
+
+      <!-- Vue liste chronologique -->
+      <div class="section-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div class="section-title" style="margin:0">Événements du mois</div>
+          <span id="cal-event-count" style="font-size:11px;color:var(--text3)"></span>
+        </div>
+        <div id="cal-event-list"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         DIVIDENDES PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-dividendes">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dividendes</div>
+          <div class="page-subtitle">Historique des versements par action détenue</div>
+        </div>
+      </div>
+
+      <!-- KPI row -->
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px" id="div-kpis"></div>
+
+      <!-- Tableau par action -->
+      <div class="section-card" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div class="section-title" style="margin:0">Suivi par action</div>
+          <span style="font-size:11px;color:var(--text3)">Dividendes versés pendant et avant la période de détention</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th style="text-align:left">Action</th>
+              <th>Détenu depuis</th>
+              <th>Quantité</th>
+              <th>Total reçu</th>
+              <th>Dernier div./action</th>
+              <th>Prochain estimé</th>
+              <th>Pendant détention</th>
+            </tr></thead>
+            <tbody id="div-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Historique complet -->
+      <div class="section-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div class="section-title" style="margin:0">Historique complet</div>
+          <button onclick="openDivModal()"
+            style="background:var(--accent);border:none;color:#fff;border-radius:8px;padding:6px 13px;cursor:pointer;font-size:12px;font-weight:600">
+            + Saisir un dividende reçu
+          </button>
+        </div>
+        <div id="div-history"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+
+<!-- ═══ MODAL PROFIL ════════════════════════════════ -->
+<div class="modal-overlay" id="profil-modal-overlay" onclick="if(event.target===this)closeProfilModal()" style="z-index:1100">
+  <div class="modal" style="width:440px;max-height:85vh;overflow-y:auto">
+
+    <!-- Header avec avatar -->
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
+      <div id="profil-avatar-big" style="
+        width:60px;height:60px;border-radius:16px;flex-shrink:0;
+        background:linear-gradient(135deg,var(--accent),var(--accent2));
+        display:grid;place-items:center;font-size:24px;font-weight:700;color:#fff;
+        font-family:var(--display);box-shadow:0 6px 20px rgba(124,109,245,0.3);
+        overflow:hidden;position:relative;">
+        <span id="profil-avatar-letter">?</span>
+        <img id="profil-avatar-img" src="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />
+      </div>
+      <div style="flex:1">
+        <div id="profil-display-name" style="font-family:var(--display);font-size:18px;font-weight:700">—</div>
+        <div id="profil-email" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:3px">—</div>
+        <div id="profil-provider-badge" style="margin-top:6px"></div>
+      </div>
+      <button onclick="closeProfilModal()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:4px;border-radius:6px;line-height:1" title="Fermer">✕</button>
+    </div>
+
+    <!-- Nom d'affichage -->
+    <div class="form-group">
+      <label class="form-label">Nom d'affichage</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" class="form-input" id="profil-name-input" placeholder="Votre prénom ou pseudo" style="flex:1">
+        <button onclick="saveDisplayName()" style="
+          padding:0 16px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.25);
+          color:var(--accent);border-radius:10px;font-size:12px;font-weight:600;
+          cursor:pointer;white-space:nowrap;font-family:var(--sans);">
+          Sauvegarder
+        </button>
+      </div>
+      <div id="profil-name-status" style="font-size:11px;font-family:var(--mono);margin-top:6px;min-height:16px"></div>
+    </div>
+
+    <!-- Séparateur MDP (masqué si Google) -->
+    <div id="profil-password-section">
+      <div style="height:1px;background:var(--border);margin:4px 0 18px"></div>
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">🔒 Changer le mot de passe</div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe actuel</label>
+        <input type="password" class="form-input" id="profil-old-pass" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nouveau mot de passe</label>
+        <input type="password" class="form-input" id="profil-new-pass" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirmer</label>
+        <input type="password" class="form-input" id="profil-new-pass2" placeholder="••••••••">
+      </div>
+      <div id="profil-pass-status" style="font-size:11px;font-family:var(--mono);margin-bottom:10px;min-height:16px"></div>
+      <button onclick="saveNewPassword()" style="
+        padding:9px 18px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.25);
+        color:var(--accent);border-radius:10px;font-size:12px;font-weight:600;
+        cursor:pointer;font-family:var(--sans);">
+        Mettre à jour le mot de passe
+      </button>
+    </div>
+
+    <!-- Notifications -->
+    <div style="height:1px;background:var(--border);margin:18px 0"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">Récap quotidien par mail</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Résumé de performance envoyé chaque soir à 18h</div>
+      </div>
+      <div class="toggle-wrap" id="toggle-recap" onclick="toggleRecapSetting()" style="flex-shrink:0">
+        <div class="toggle-dot"></div>
+      </div>
+    </div>
+
+    <!-- Danger zone -->
+    <div style="height:1px;background:rgba(255,77,106,0.15);margin:18px 0"></div>
+    <button onclick="confirmDeleteAccount()" style="
+      width:100%;padding:9px;background:var(--negative-d);border:1px solid rgba(255,77,106,0.2);
+      color:var(--negative);border-radius:10px;font-size:12px;font-weight:600;
+      cursor:pointer;font-family:var(--sans);">
+      ⚠️ Supprimer mon compte
+    </button>
+
+  </div>
+</div>
+
+<!-- ═══ MODAL DIVIDENDE ═════════════════════════════ -->
+<div class="modal-overlay" id="div-modal-overlay" onclick="closeDivModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">Saisir un dividende reçu</div>
+    <div class="modal-sub">Enregistrez un dividende perçu sur une de vos actions.</div>
+    <div class="form-group">
+      <label class="form-label">Action</label>
+      <select class="form-input" id="div-modal-ticker"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Montant reçu (€)</label>
+      <input type="number" step="0.01" class="form-input" id="div-modal-amount" placeholder="ex: 12.50">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date de versement</label>
+      <input type="date" class="form-input" id="div-modal-date">
+    </div>
+    <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:6px">
+      <button onclick="closeDivModal()" style="background:var(--s3);border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px">Annuler</button>
+      <button onclick="confirmDividende()" style="background:var(--gold);border:none;color:#000;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:13px">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL AJOUT ════════════════════════════════ -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">Ajouter une action</div>
+    <div class="modal-sub">Entrez le nom ou le ticker pour trouver le cours actuel.</div>
+
+    <div class="form-group">
+      <label class="form-label">Nom ou ticker <span class="price-tag">auto prix</span></label>
+      <input type="text" class="form-input" id="modal-ticker" placeholder="ex: LVMH, Apple, TotalEnergies…" oninput="onTickerInput()">
+      <div id="search-status"></div>
+      <div class="search-result" id="search-result">
+        <div class="search-result-name" id="res-name">—</div>
+        <div class="search-result-price" id="res-price">—</div>
+        <div class="search-result-info" id="res-info">—</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Quantité</label>
+      <input type="number" class="form-input" id="modal-qty" placeholder="10" min="0.001" step="any">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Prix d'achat (€)</label>
+      <input type="number" class="form-input" id="modal-buy-price" placeholder="150.00" min="0" step="any">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Date d'achat</label>
+      <input type="date" class="form-input" id="modal-buy-date" style="color-scheme:dark">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn-primary" id="btn-confirm" onclick="confirmAdd()" disabled>Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL EDITION ══════════════════════════════ -->
+<div class="modal-overlay" id="edit-modal-overlay" onclick="closeEditModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title" id="edit-modal-title">Modifier</div>
+    <div class="modal-sub" id="edit-modal-sub">—</div>
+    <div class="edit-tabs">
+      <button class="edit-tab active-buy" id="tab-buy"  onclick="setEditTab('buy')">+ Acheter</button>
+      <button class="edit-tab"            id="tab-sell" onclick="setEditTab('sell')">- Vendre</button>
+    </div>
+    <div class="edit-info">
+      <div class="edit-info-item"><label>Position</label><span id="edit-cur-qty">-</span></div>
+      <div class="edit-info-item"><label>PRU</label><span id="edit-cur-pru">-</span></div>
+      <div class="edit-info-item"><label>Prix actuel</label><span id="edit-cur-price">-</span></div>
+      <div class="edit-info-item"><label>+/- Value</label><span id="edit-cur-pnl">-</span></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" id="edit-qty-label">Quantite a acheter</label>
+      <input type="number" class="form-input" id="edit-qty" placeholder="10" min="0.001" step="any">
+    </div>
+    <div class="form-group" id="edit-price-group">
+      <label class="form-label">Prix (EUR)</label>
+      <input type="number" class="form-input" id="edit-price" placeholder="150.00" min="0" step="any">
+    </div>
+    <div class="form-group" id="edit-date-group">
+      <label class="form-label">Date de l'opération</label>
+      <input type="date" class="form-input" id="edit-date" style="color-scheme:dark">
+    </div>
+    <div class="form-group" id="edit-sell-price-group" style="display:none">
+      <label class="form-label">Prix de vente (EUR)</label>
+      <input type="number" class="form-input" id="edit-sell-price" placeholder="150.00" min="0" step="any">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeEditModal()">Annuler</button>
+      <button class="btn-primary" id="btn-edit-confirm" onclick="confirmEdit()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL WATCHLIST ════════════════════════════ -->
+<div class="modal-overlay" id="watchlist-modal-overlay" onclick="if(event.target===this)closeWatchlistModal()">
+  <div class="modal">
+    <div class="modal-title">Ajouter à la watchlist</div>
+    <div class="modal-sub">Recherchez une action à suivre.</div>
+    <div class="form-group">
+      <label class="form-label">Nom ou ticker</label>
+      <input type="text" class="form-input" id="wl-ticker" placeholder="ex: AAPL, LVMH…" oninput="onWlInput()">
+      <div id="wl-status"></div>
+      <div class="search-result" id="wl-result">
+        <div class="search-result-name" id="wl-res-name">—</div>
+        <div class="search-result-price" id="wl-res-price">—</div>
+        <div class="search-result-info" id="wl-res-info">—</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeWatchlistModal()">Annuler</button>
+      <button class="btn-primary" id="btn-wl-confirm" onclick="confirmWatchlistAdd()" disabled>Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL VERSEMENT ════════════════════════════ -->
+<div class="modal-overlay" id="versement-modal-overlay" onclick="if(event.target===this)closeVersementModal()">
+  <div class="modal">
+    <div class="modal-title">Ajouter un versement</div>
+    <div class="modal-sub">Enregistrez un virement vers votre PEA.</div>
+    <div class="form-group">
+      <label class="form-label">Montant (€)</label>
+      <input type="number" class="form-input" id="versement-amount" placeholder="100.00" min="0" step="any">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input type="date" class="form-input" id="versement-date" style="color-scheme:dark">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeVersementModal()">Annuler</button>
+      <button class="btn-primary" onclick="confirmVersement()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL IMPORT CSV ═══════════════════════════ -->
+<div class="modal-overlay" id="csv-import-modal" onclick="if(event.target===this)closeImportModal()">
+  <div class="modal" style="width:560px">
+    <div class="modal-title">📥 Importer des transactions</div>
+    <div class="modal-sub">Vérifiez les opérations détectées puis confirmez l'import.</div>
+    <div style="max-height:350px;overflow-y:auto;margin:14px 0">
+      <table style="width:100%">
+        <thead><tr><th style="font-size:8px">Date</th><th style="font-size:8px">Type</th><th style="font-size:8px">Ticker</th><th style="font-size:8px">Nom</th><th style="font-size:8px">Qté</th><th style="font-size:8px">Prix</th></tr></thead>
+        <tbody id="csv-preview-tbody"></tbody>
+      </table>
+    </div>
+    <div id="csv-import-status" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-bottom:8px"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeImportModal()">Annuler</button>
+      <button class="btn-primary" id="btn-csv-confirm" onclick="confirmImport()">Importer tout</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
