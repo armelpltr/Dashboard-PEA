@@ -102,8 +102,8 @@ function getVersements(user)   { return _localCache[(user||currentUser) + '_vers
 function getWatchlist(user)    { return _localCache[(user||currentUser) + '_watchlist']    || []; }
 
 // Écriture synchrone dans le cache + Firestore en arrière-plan
-function savePortfolio(user, data)    { _fsWrite(user||currentUser, 'portfolio',    data); }
-function saveTransactions(user, data) { _fsWrite(user||currentUser, 'transactions', data); }
+function savePortfolio(user, data)    { _perfCache = null; _fsWrite(user||currentUser, 'portfolio',    data); }
+function saveTransactions(user, data) { _perfCache = null; _fsWrite(user||currentUser, 'transactions', data); }
 function saveVersements(user, data)   { _fsWrite(user||currentUser, 'versements',   data); }
 function saveWatchlist(user, data)    { _fsWrite(user||currentUser, 'watchlist',    data); }
 
@@ -4705,43 +4705,170 @@ showPageMobile = function(id) {
 
 // ─── PERFORMANCE PAGE ─────────────────────────────────
 let perfAnnualChart = null;
+let _perfCache = null; // évite de refetch à chaque clic
 
-function initPerformance() {
+async function initPerformance() {
   const portfolio = getPortfolio(currentUser);
   const txs       = getTransactions(currentUser);
+  const kpiEl     = document.getElementById('perf-kpis');
+  const tbodyEl   = document.getElementById('perf-tbody');
 
   if (!portfolio.length && !txs.length) {
-    document.getElementById('perf-kpis').innerHTML = '';
-    document.getElementById('perf-tbody').innerHTML =
+    kpiEl.innerHTML = '';
+    tbodyEl.innerHTML =
       '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">Aucune donnée disponible.</td></tr>';
     return;
   }
 
-  const years = {};
+  // Afficher un état de chargement
+  kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Chargement…</div></div>';
+  tbodyEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Récupération des prix historiques…</td></tr>';
+
+  try {
+    const result = _perfCache || await computeAnnualPerformance(portfolio, txs);
+    _perfCache = result;
+    renderPerformancePage(result, portfolio, txs);
+  } catch (e) {
+    console.error('Performance page error:', e);
+    kpiEl.innerHTML = '';
+    tbodyEl.innerHTML =
+      '<tr><td colspan="6" style="text-align:center;color:var(--negative);padding:32px">Erreur lors du chargement des données.</td></tr>';
+  }
+}
+
+async function computeAnnualPerformance(portfolio, txs) {
+  // 1. Collecter tous les tickers historiques
+  const allTickers = new Set(portfolio.map(r => r.ticker));
+  txs.forEach(tx => { if (tx.ticker) allTickers.add(tx.ticker); });
+  const tickers = [...allTickers].filter(Boolean);
+
+  if (!tickers.length) return { years: [], priceMap: {} };
+
+  // 2. Fetch prix mensuels Yahoo (range=max, interval=1mo) pour chaque ticker
+  const priceMap = {};
+  await Promise.all(tickers.map(async ticker => {
+    try {
+      const yahooTicker = resolveToYahooTicker(ticker);
+      const raw = await fetchWithFallback(
+        'https://query1.finance.yahoo.com/v8/finance/chart/'
+        + encodeURIComponent(yahooTicker)
+        + '?interval=1mo&range=max'
+      );
+      const d   = JSON.parse(raw);
+      const res = d.chart && d.chart.result && d.chart.result[0];
+      if (!res || !res.timestamp) { priceMap[ticker] = []; return; }
+      const ts     = res.timestamp;
+      const closes = res.indicators.quote[0].close;
+      priceMap[ticker] = ts.map((t, i) => ({ ts: t, close: closes[i] }))
+                           .filter(p => p.close != null);
+    } catch(e) { priceMap[ticker] = []; }
+  }));
+
+  // Helper: trouver le prix le plus proche <= date donnée
+  function getClose(ticker, targetTs) {
+    const prices = priceMap[ticker] || [];
+    let last = null;
+    for (const p of prices) {
+      if (p.ts <= targetTs + 86400) last = p.close;
+      else break;
+    }
+    return last;
+  }
+
+  // Helper: valoriser un inventaire à une date
+  function valorize(inventory, ts, fallbackPortfolio) {
+    let total = 0;
+    for (const [ticker, qty] of Object.entries(inventory)) {
+      if (qty <= 0) continue;
+      let price = getClose(ticker, ts);
+      // Fallback: prix actuel du portefeuille si pas de donnée historique
+      if (price == null && fallbackPortfolio) {
+        const row = fallbackPortfolio.find(r => r.ticker === ticker);
+        if (row) price = row.currentPrice;
+      }
+      if (price != null) total += qty * price;
+    }
+    return total;
+  }
+
+  // 3. Déterminer les années couvertes
+  const allDates = txs.filter(t => t.date).map(t => t.date);
+  portfolio.forEach(r => { if (r.buyDate) allDates.push(r.buyDate); });
+  if (!allDates.length) return { years: [], priceMap };
+
+  allDates.sort();
+  const firstYear = new Date(allDates[0] + 'T12:00:00').getFullYear();
   const currentYear = new Date().getFullYear();
 
-  // Achats et ventes par année
-  txs.forEach(t => {
-    if (!t.date) return;
-    const y = new Date(t.date + 'T12:00:00').getFullYear();
-    if (!years[y]) years[y] = { achats: 0, ventes: 0, realizedPnl: 0 };
-    if (t.type === 'buy')  years[y].achats += t.qty * t.price;
-    if (t.type === 'sell') {
-      years[y].ventes += t.qty * t.price;
-      if (t.realizedPnl != null) years[y].realizedPnl += t.realizedPnl;
-    }
-  });
+  const yearResults = [];
 
-  // Valeur actuelle du portefeuille (PV latente globale)
-  const totalInvested  = portfolio.reduce((s, r) => s + r.qty * r.buyPrice, 0);
-  const totalValue     = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
-  const latentPnl      = totalValue - totalInvested;
-  const totalRealized  = txs.filter(t => t.type === 'sell' && t.realizedPnl != null)
-                             .reduce((s, t) => s + t.realizedPnl, 0);
-  const totalPerfEur   = totalRealized + latentPnl;
-  const totalPerfPct   = totalInvested > 0 ? (totalPerfEur / totalInvested * 100) : 0;
+  for (let y = firstYear; y <= currentYear; y++) {
+    const isYTD       = (y === currentYear);
+    const startDateStr = y + '-01-01';
+    const endDateStr   = isYTD ? new Date().toISOString().slice(0, 10) : y + '-12-31';
+    const startTs     = Math.floor(new Date(startDateStr + 'T12:00:00').getTime() / 1000);
+    const endTs       = Math.floor(new Date(endDateStr + 'T18:00:00').getTime() / 1000);
 
-  // KPIs
+    // Inventaire au 1er janvier et au 31 décembre (ou aujourd'hui)
+    const invStart = inventoryAtDate(currentUser, startDateStr);
+    const invEnd   = inventoryAtDate(currentUser, endDateStr);
+
+    // Valorisation
+    const valStart = valorize(invStart, startTs, null);
+    const valEnd   = isYTD
+      ? portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0)  // prix live pour YTD
+      : valorize(invEnd, endTs, portfolio);
+
+    // Flux nets de l'année (achats - ventes en montant)
+    let achats = 0, ventes = 0, realizedPnl = 0;
+    txs.forEach(t => {
+      if (!t.date) return;
+      const ty = new Date(t.date + 'T12:00:00').getFullYear();
+      if (ty !== y) return;
+      if (t.type === 'buy')  achats += t.qty * t.price;
+      if (t.type === 'sell') {
+        ventes += t.qty * t.price;
+        if (t.realizedPnl != null) realizedPnl += t.realizedPnl;
+      }
+    });
+
+    const fluxNets = achats - ventes; // argent injecté net dans le portefeuille
+
+    // Performance brute = (valeur fin - valeur début - flux nets) / valeur début
+    // Si valeur début = 0, on prend les flux nets comme base
+    const base = valStart > 0 ? valStart : (fluxNets > 0 ? fluxNets : 0);
+    const gain = valEnd - valStart - fluxNets;
+    const perfPct = base > 0 ? (gain / base * 100) : (gain !== 0 ? null : 0);
+
+    yearResults.push({
+      year: y,
+      isYTD,
+      valStart: +valStart.toFixed(2),
+      valEnd:   +valEnd.toFixed(2),
+      achats:   +achats.toFixed(2),
+      ventes:   +ventes.toFixed(2),
+      realizedPnl: +realizedPnl.toFixed(2),
+      fluxNets: +fluxNets.toFixed(2),
+      gain:     +gain.toFixed(2),
+      perfPct:  perfPct != null ? +perfPct.toFixed(2) : null,
+    });
+  }
+
+  return { years: yearResults, priceMap };
+}
+
+function renderPerformancePage(result, portfolio, txs) {
+  const rows = result.years;
+
+  // KPIs globaux
+  const totalInvested = portfolio.reduce((s, r) => s + r.qty * r.buyPrice, 0);
+  const totalValue    = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
+  const latentPnl     = totalValue - totalInvested;
+  const totalRealized = txs.filter(t => t.type === 'sell' && t.realizedPnl != null)
+                            .reduce((s, t) => s + t.realizedPnl, 0);
+  const totalPerfEur  = totalRealized + latentPnl;
+  const totalPerfPct  = totalInvested > 0 ? (totalPerfEur / totalInvested * 100) : 0;
+
   const kpiHtml = `
     <div class="stat-card">
       <div class="stat-label">PERF GLOBALE</div>
@@ -4767,36 +4894,21 @@ function initPerformance() {
   `;
   document.getElementById('perf-kpis').innerHTML = kpiHtml;
 
-  // Tableau + données graphique
-  const sortedYears = Object.keys(years).map(Number).sort();
-  let achatsCumul = 0, ventesCumul = 0;
-
-  const rows = sortedYears.map(y => {
-    const d = years[y];
-    achatsCumul += d.achats;
-    ventesCumul += d.ventes;
-    const isYTD = (y === currentYear);
-
-    // PV latente : on l'attribue uniquement à l'année en cours
-    const pvLatente = isYTD ? latentPnl : 0;
-    const perfBrute = d.realizedPnl + pvLatente;
-    const base = d.achats > 0 ? d.achats : 1;
-    const perfPct = (perfBrute / base * 100);
-
-    return { year: y, isYTD, achats: d.achats, ventes: d.ventes, realizedPnl: d.realizedPnl, pvLatente, perfBrute, perfPct };
-  });
-
+  // Tableau
   const tbody = document.getElementById('perf-tbody');
   tbody.innerHTML = rows.map(r => {
-    const sign = v => v >= 0 ? '+' : '';
+    const sign  = v => v >= 0 ? '+' : '';
     const color = v => v >= 0 ? 'var(--positive)' : 'var(--negative)';
+    const perfStr = r.perfPct != null
+      ? `<span style="font-weight:600;color:${color(r.perfPct)}">${sign(r.perfPct)}${r.perfPct.toFixed(2)} %</span>`
+      : '<span style="color:var(--text3)">—</span>';
     return `<tr>
       <td style="font-weight:600">${r.isYTD ? r.year + ' <span style="font-size:10px;color:var(--text3)">YTD</span>' : r.year}</td>
-      <td class="mono" style="text-align:right">${fmt(r.achats)}</td>
-      <td class="mono" style="text-align:right">${fmt(r.ventes)}</td>
+      <td class="mono" style="text-align:right">${fmt(r.valStart)}</td>
+      <td class="mono" style="text-align:right">${fmt(r.valEnd)}</td>
       <td class="mono" style="text-align:right;color:${color(r.realizedPnl)}">${sign(r.realizedPnl)}${fmt(r.realizedPnl)}</td>
-      <td class="mono" style="text-align:right;color:${color(r.pvLatente)}">${r.isYTD ? sign(r.pvLatente) + fmt(r.pvLatente) : '—'}</td>
-      <td class="mono" style="text-align:right;font-weight:600;color:${color(r.perfBrute)}">${sign(r.perfBrute)}${fmt(r.perfBrute)} <span style="font-size:11px;opacity:0.7">(${sign(r.perfPct)}${r.perfPct.toFixed(1)}%)</span></td>
+      <td class="mono" style="text-align:right;color:${color(r.gain)}">${sign(r.gain)}${fmt(r.gain)}</td>
+      <td class="mono" style="text-align:right">${perfStr}</td>
     </tr>`;
   }).join('');
 
@@ -4809,36 +4921,28 @@ function initPerformance() {
     type: 'bar',
     data: {
       labels: rows.map(r => r.isYTD ? r.year + ' YTD' : String(r.year)),
-      datasets: [
-        {
-          label: 'PnL réalisé',
-          data: rows.map(r => +r.realizedPnl.toFixed(2)),
-          backgroundColor: rows.map(r => r.realizedPnl >= 0 ? 'rgba(0,224,158,0.7)' : 'rgba(255,77,106,0.7)'),
-          borderRadius: 4,
-        },
-        {
-          label: 'PV latente',
-          data: rows.map(r => +r.pvLatente.toFixed(2)),
-          backgroundColor: rows.map(r => r.pvLatente >= 0 ? 'rgba(0,224,158,0.25)' : 'rgba(255,77,106,0.25)'),
-          borderRadius: 4,
-        }
-      ]
+      datasets: [{
+        label: 'Performance',
+        data: rows.map(r => r.perfPct != null ? r.perfPct : 0),
+        backgroundColor: rows.map(r => (r.perfPct || 0) >= 0 ? 'rgba(0,224,158,0.7)' : 'rgba(255,77,106,0.7)'),
+        borderRadius: 6,
+      }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: '#8892a8', font: { size: 11 } } },
+        legend: { display: false },
         tooltip: {
           callbacks: {
-            label: ctx => ctx.dataset.label + ': ' + (ctx.raw >= 0 ? '+' : '') + ctx.raw.toFixed(2) + ' €'
+            label: c => (c.raw >= 0 ? '+' : '') + c.raw.toFixed(2) + ' %'
           }
         }
       },
       scales: {
         x: { ticks: { color: '#8892a8' }, grid: { color: 'rgba(255,255,255,0.04)' } },
         y: {
-          ticks: { color: '#8892a8', callback: v => v + ' €' },
+          ticks: { color: '#8892a8', callback: v => v + ' %' },
           grid: { color: 'rgba(255,255,255,0.04)' }
         }
       }
