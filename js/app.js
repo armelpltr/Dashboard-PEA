@@ -4683,20 +4683,165 @@ function confirmDividende() {
 const _origShowPageAnalytique = showPage;
 showPage = function(id) {
   _origShowPageAnalytique(id);
-  if (id === 'base100')     initBase100();
-  if (id === 'projections') initProjections();
-  if (id === 'bilan')       initBilan();
-  if (id === 'trophees')    initTrophees();
-  if (id === 'calendrier')  initCalendrier();
-  if (id === 'dividendes')  initDividendes();
+  if (id === 'base100')      initBase100();
+  if (id === 'projections')  initProjections();
+  if (id === 'bilan')        initBilan();
+  if (id === 'trophees')     initTrophees();
+  if (id === 'calendrier')   initCalendrier();
+  if (id === 'dividendes')   initDividendes();
+  if (id === 'performance')  initPerformance();
 };
 const _origShowPageMobileAnalytique = showPageMobile;
 showPageMobile = function(id) {
   _origShowPageMobileAnalytique(id);
-  if (id === 'base100')     initBase100();
-  if (id === 'projections') initProjections();
-  if (id === 'bilan')       initBilan();
-  if (id === 'trophees')    initTrophees();
-  if (id === 'calendrier')  initCalendrier();
-  if (id === 'dividendes')  initDividendes();
+  if (id === 'base100')      initBase100();
+  if (id === 'projections')  initProjections();
+  if (id === 'bilan')        initBilan();
+  if (id === 'trophees')     initTrophees();
+  if (id === 'calendrier')   initCalendrier();
+  if (id === 'dividendes')   initDividendes();
+  if (id === 'performance')  initPerformance();
 };
+
+// ─── PERFORMANCE PAGE ─────────────────────────────────
+let perfAnnualChart = null;
+
+function initPerformance() {
+  const portfolio = getPortfolio(currentUser);
+  const txs       = getTransactions(currentUser);
+
+  if (!portfolio.length && !txs.length) {
+    document.getElementById('perf-kpis').innerHTML = '';
+    document.getElementById('perf-tbody').innerHTML =
+      '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">Aucune donnée disponible.</td></tr>';
+    return;
+  }
+
+  const years = {};
+  const currentYear = new Date().getFullYear();
+
+  // Achats et ventes par année
+  txs.forEach(t => {
+    if (!t.date) return;
+    const y = new Date(t.date + 'T12:00:00').getFullYear();
+    if (!years[y]) years[y] = { achats: 0, ventes: 0, realizedPnl: 0 };
+    if (t.type === 'buy')  years[y].achats += t.qty * t.price;
+    if (t.type === 'sell') {
+      years[y].ventes += t.qty * t.price;
+      if (t.realizedPnl != null) years[y].realizedPnl += t.realizedPnl;
+    }
+  });
+
+  // Valeur actuelle du portefeuille (PV latente globale)
+  const totalInvested  = portfolio.reduce((s, r) => s + r.qty * r.buyPrice, 0);
+  const totalValue     = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
+  const latentPnl      = totalValue - totalInvested;
+  const totalRealized  = txs.filter(t => t.type === 'sell' && t.realizedPnl != null)
+                             .reduce((s, t) => s + t.realizedPnl, 0);
+  const totalPerfEur   = totalRealized + latentPnl;
+  const totalPerfPct   = totalInvested > 0 ? (totalPerfEur / totalInvested * 100) : 0;
+
+  // KPIs
+  const kpiHtml = `
+    <div class="stat-card">
+      <div class="stat-label">PERF GLOBALE</div>
+      <div class="stat-value" style="color:${totalPerfEur >= 0 ? 'var(--positive)' : 'var(--negative)'}">
+        ${totalPerfEur >= 0 ? '+' : ''}${fmt(totalPerfEur)}
+      </div>
+      <div class="stat-sub">${totalPerfPct >= 0 ? '+' : ''}${totalPerfPct.toFixed(2)} %</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">PNL RÉALISÉ TOTAL</div>
+      <div class="stat-value" style="color:${totalRealized >= 0 ? 'var(--positive)' : 'var(--negative)'}">
+        ${totalRealized >= 0 ? '+' : ''}${fmt(totalRealized)}
+      </div>
+      <div class="stat-sub">Plus-values encaissées</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">PV LATENTE</div>
+      <div class="stat-value" style="color:${latentPnl >= 0 ? 'var(--positive)' : 'var(--negative)'}">
+        ${latentPnl >= 0 ? '+' : ''}${fmt(latentPnl)}
+      </div>
+      <div class="stat-sub">Non encaissée</div>
+    </div>
+  `;
+  document.getElementById('perf-kpis').innerHTML = kpiHtml;
+
+  // Tableau + données graphique
+  const sortedYears = Object.keys(years).map(Number).sort();
+  let achatsCumul = 0, ventesCumul = 0;
+
+  const rows = sortedYears.map(y => {
+    const d = years[y];
+    achatsCumul += d.achats;
+    ventesCumul += d.ventes;
+    const isYTD = (y === currentYear);
+
+    // PV latente : on l'attribue uniquement à l'année en cours
+    const pvLatente = isYTD ? latentPnl : 0;
+    const perfBrute = d.realizedPnl + pvLatente;
+    const base = d.achats > 0 ? d.achats : 1;
+    const perfPct = (perfBrute / base * 100);
+
+    return { year: y, isYTD, achats: d.achats, ventes: d.ventes, realizedPnl: d.realizedPnl, pvLatente, perfBrute, perfPct };
+  });
+
+  const tbody = document.getElementById('perf-tbody');
+  tbody.innerHTML = rows.map(r => {
+    const sign = v => v >= 0 ? '+' : '';
+    const color = v => v >= 0 ? 'var(--positive)' : 'var(--negative)';
+    return `<tr>
+      <td style="font-weight:600">${r.isYTD ? r.year + ' <span style="font-size:10px;color:var(--text3)">YTD</span>' : r.year}</td>
+      <td class="mono" style="text-align:right">${fmt(r.achats)}</td>
+      <td class="mono" style="text-align:right">${fmt(r.ventes)}</td>
+      <td class="mono" style="text-align:right;color:${color(r.realizedPnl)}">${sign(r.realizedPnl)}${fmt(r.realizedPnl)}</td>
+      <td class="mono" style="text-align:right;color:${color(r.pvLatente)}">${r.isYTD ? sign(r.pvLatente) + fmt(r.pvLatente) : '—'}</td>
+      <td class="mono" style="text-align:right;font-weight:600;color:${color(r.perfBrute)}">${sign(r.perfBrute)}${fmt(r.perfBrute)} <span style="font-size:11px;opacity:0.7">(${sign(r.perfPct)}${r.perfPct.toFixed(1)}%)</span></td>
+    </tr>`;
+  }).join('');
+
+  // Graphique barres
+  const ctx = document.getElementById('chart-perf-annual');
+  if (!ctx) return;
+  if (perfAnnualChart) perfAnnualChart.destroy();
+
+  perfAnnualChart = new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.isYTD ? r.year + ' YTD' : String(r.year)),
+      datasets: [
+        {
+          label: 'PnL réalisé',
+          data: rows.map(r => +r.realizedPnl.toFixed(2)),
+          backgroundColor: rows.map(r => r.realizedPnl >= 0 ? 'rgba(0,224,158,0.7)' : 'rgba(255,77,106,0.7)'),
+          borderRadius: 4,
+        },
+        {
+          label: 'PV latente',
+          data: rows.map(r => +r.pvLatente.toFixed(2)),
+          backgroundColor: rows.map(r => r.pvLatente >= 0 ? 'rgba(0,224,158,0.25)' : 'rgba(255,77,106,0.25)'),
+          borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#8892a8', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + (ctx.raw >= 0 ? '+' : '') + ctx.raw.toFixed(2) + ' €'
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#8892a8' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: {
+          ticks: { color: '#8892a8', callback: v => v + ' €' },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+}
