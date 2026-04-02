@@ -4708,10 +4708,11 @@ let perfAnnualChart = null;
 let _perfCache = null; // évite de refetch à chaque clic
 
 async function initPerformance() {
-  const portfolio = getPortfolio(currentUser);
-  const txs       = getTransactions(currentUser);
-  const kpiEl     = document.getElementById('perf-kpis');
-  const tbodyEl   = document.getElementById('perf-tbody');
+  const portfolio   = getPortfolio(currentUser);
+  const txs         = getTransactions(currentUser);
+  const versements  = getVersements(currentUser);
+  const kpiEl       = document.getElementById('perf-kpis');
+  const tbodyEl     = document.getElementById('perf-tbody');
 
   if (!portfolio.length && !txs.length) {
     kpiEl.innerHTML = '';
@@ -4720,12 +4721,11 @@ async function initPerformance() {
     return;
   }
 
-  // Afficher un état de chargement
   kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Chargement…</div></div>';
   tbodyEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Récupération des prix historiques…</td></tr>';
 
   try {
-    const result = _perfCache || await computeAnnualPerformance(portfolio, txs);
+    const result = _perfCache || await computeAnnualPerformance(portfolio, txs, versements);
     _perfCache = result;
     renderPerformancePage(result, portfolio, txs);
   } catch (e) {
@@ -4736,83 +4736,167 @@ async function initPerformance() {
   }
 }
 
-async function computeAnnualPerformance(portfolio, txs) {
-  const currentYear = new Date().getFullYear();
+async function computeAnnualPerformance(portfolio, txs, versements) {
+  // ── 1. Collecter tous les tickers et fetch prix mensuels Yahoo ──
+  const allTickers = new Set(portfolio.map(r => r.ticker));
+  txs.forEach(tx => { if (tx.ticker) allTickers.add(tx.ticker); });
+  const tickers = [...allTickers].filter(Boolean);
 
-  // Trouver les années couvertes
+  const priceMap = {};
+  if (tickers.length) {
+    await Promise.all(tickers.map(async ticker => {
+      try {
+        const yahooTicker = resolveToYahooTicker(ticker);
+        const raw = await fetchWithFallback(
+          'https://query1.finance.yahoo.com/v8/finance/chart/'
+          + encodeURIComponent(yahooTicker)
+          + '?interval=1mo&range=max'
+        );
+        const d   = JSON.parse(raw);
+        const res = d.chart && d.chart.result && d.chart.result[0];
+        if (!res || !res.timestamp) { priceMap[ticker] = []; return; }
+        const ts     = res.timestamp;
+        const closes = res.indicators.quote[0].close;
+        priceMap[ticker] = ts.map((t, i) => ({ ts: t, close: closes[i] }))
+                             .filter(p => p.close != null);
+      } catch(e) { priceMap[ticker] = []; }
+    }));
+  }
+
+  function getClose(ticker, targetTs) {
+    const prices = priceMap[ticker] || [];
+    let last = null;
+    for (const p of prices) {
+      if (p.ts <= targetTs + 86400) last = p.close;
+      else break;
+    }
+    return last;
+  }
+
+  // ── 2. Déterminer les années couvertes ──
   const allDates = txs.filter(t => t.date).map(t => t.date);
+  versements.forEach(v => { if (v.date) allDates.push(v.date); });
   portfolio.forEach(r => { if (r.buyDate) allDates.push(r.buyDate); });
   if (!allDates.length) return { years: [] };
 
   allDates.sort();
   const firstYear = new Date(allDates[0] + 'T12:00:00').getFullYear();
+  const currentYear = new Date().getFullYear();
 
+  // ── 3. Helper: inventaire à une date ──
+  function inventoryAtDateLocal(dateStr) {
+    const inv = {};
+    for (const tx of txs) {
+      if (!tx.date || tx.date > dateStr) continue;
+      if (tx.type === 'buy') {
+        inv[tx.ticker] = (inv[tx.ticker] || 0) + tx.qty;
+      } else if (tx.type === 'sell') {
+        inv[tx.ticker] = (inv[tx.ticker] || 0) - tx.qty;
+        if (inv[tx.ticker] <= 0.0001) delete inv[tx.ticker];
+      }
+    }
+    return inv;
+  }
+
+  // ── 4. Helper: valoriser un inventaire ──
+  function valorize(inv, ts) {
+    let total = 0;
+    for (const [ticker, qty] of Object.entries(inv)) {
+      if (qty <= 0) continue;
+      const price = getClose(ticker, ts);
+      if (price != null) total += qty * price;
+    }
+    return total;
+  }
+
+  // ── 5. Helper: espèces à une date ──
+  function cashAtDate(dateStr) {
+    let cash = 0;
+    versements.forEach(v => {
+      if (v.date && v.date <= dateStr) cash += v.amount;
+    });
+    txs.forEach(t => {
+      if (!t.date || t.date > dateStr) return;
+      if (t.type === 'buy')  cash -= t.qty * t.price;
+      if (t.type === 'sell') cash += t.qty * t.price;
+    });
+    return cash;
+  }
+
+  // ── 6. Calcul Modified Dietz par année ──
   const yearResults = [];
 
   for (let y = firstYear; y <= currentYear; y++) {
     const isYTD = (y === currentYear);
+    const startDateStr = (y - 1) + '-12-31';
+    const endDateStr   = isYTD ? new Date().toISOString().slice(0, 10) : y + '-12-31';
+    const startTs      = Math.floor(new Date(startDateStr + 'T18:00:00').getTime() / 1000);
+    const endTs        = Math.floor(new Date(endDateStr + 'T18:00:00').getTime() / 1000);
 
-    // Total acheté et vendu dans l'année
-    let totalBought = 0, totalSold = 0, realizedPnl = 0;
+    const dateStart = new Date(y, 0, 1);  // 1er janvier
+    const dateEnd   = isYTD ? new Date() : new Date(y, 11, 31);
+    const T = Math.max(1, Math.round((dateEnd - dateStart) / 86400000)); // jours dans la période
+
+    // Actif début = titres au 31/12 précédent + espèces
+    const invStart      = inventoryAtDateLocal(startDateStr);
+    const titresStart   = valorize(invStart, startTs);
+    const especesStart  = cashAtDate(startDateStr);
+    const actifStart    = titresStart + Math.max(0, especesStart);
+
+    // Actif fin
+    let actifEnd;
+    if (isYTD) {
+      const titresEnd = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
+      const especesEnd = cashAtDate(endDateStr);
+      actifEnd = titresEnd + Math.max(0, especesEnd);
+    } else {
+      const invEnd     = inventoryAtDateLocal(endDateStr);
+      const titresEnd  = valorize(invEnd, endTs);
+      const especesEnd = cashAtDate(endDateStr);
+      actifEnd = titresEnd + Math.max(0, especesEnd);
+    }
+
+    // Versements de l'année (flux entrants)
+    const yearVersements = versements.filter(v => {
+      if (!v.date) return false;
+      const vy = new Date(v.date + 'T12:00:00').getFullYear();
+      return vy === y;
+    });
+
+    const totalFlux = yearVersements.reduce((s, v) => s + v.amount, 0);
+
+    // Somme pondérée des flux (Modified Dietz)
+    let fluxPondere = 0;
+    yearVersements.forEach(v => {
+      const vDate = new Date(v.date + 'T12:00:00');
+      const ti = Math.round((vDate - dateStart) / 86400000); // jours depuis le 1er janvier
+      const Wi = Math.max(0, (T - ti) / T);
+      fluxPondere += v.amount * Wi;
+    });
+
+    // Modified Dietz
+    const gain = actifEnd - actifStart - totalFlux;
+    const base = actifStart + fluxPondere;
+    const perfPct = base > 0 ? (gain / base * 100) : (gain !== 0 ? null : 0);
+
+    // PnL réalisé de l'année (pour info)
+    let realizedPnl = 0;
     txs.forEach(t => {
       if (!t.date) return;
       const ty = new Date(t.date + 'T12:00:00').getFullYear();
       if (ty !== y) return;
-      if (t.type === 'buy')  totalBought += t.qty * t.price;
-      if (t.type === 'sell') {
-        totalSold += t.qty * t.price;
-        if (t.realizedPnl != null) realizedPnl += t.realizedPnl;
-      }
+      if (t.type === 'sell' && t.realizedPnl != null) realizedPnl += t.realizedPnl;
     });
-
-    // Valeur actuelle des lignes achetées cette année-là (et encore en portefeuille)
-    // Pour YTD : prix live. Pour années passées : on utilise le PnL réalisé + la PV latente à fin d'année.
-
-    // PV latente des lignes encore détenues qui ont été achetées cette année
-    let latentPnl = 0;
-    if (isYTD) {
-      // Pour l'année en cours, PV latente = valeur live - coût d'achat des lignes actuelles
-      portfolio.forEach(r => {
-        latentPnl += r.qty * (r.currentPrice - r.buyPrice);
-      });
-    }
-    // Pour les années passées, toute la perf est dans le realizedPnl + la PV latente
-    // qu'on ne peut plus mesurer → on utilise seulement le PnL réalisé
-
-    // Gain de l'année
-    let gain, base;
-    if (isYTD) {
-      // Gain = PnL réalisé cette année + PV latente actuelle totale
-      // Mais on veut la perf DEPUIS LE 1er JANVIER
-      // = variation de PV latente + PnL réalisé
-      // On a besoin de la PV latente au 31/12 de l'année précédente
-
-      // PV latente actuelle totale
-      const currentLatent = portfolio.reduce((s, r) => s + r.qty * (r.currentPrice - r.buyPrice), 0);
-
-      // PV latente au 31/12 précédent : on la calcule depuis les lignes qui existaient
-      // Pour simplifier : on la déduit. Les KPIs la montrent déjà.
-      // Perf Bourso = gain total / capital investi total
-      const totalInvested = portfolio.reduce((s, r) => s + r.qty * r.buyPrice, 0);
-      const totalValue    = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
-      gain = totalValue - totalInvested + realizedPnl;
-      base = totalInvested > 0 ? totalInvested : 1;
-    } else {
-      // Années passées : seul le PnL réalisé est fiable
-      gain = realizedPnl;
-      base = totalBought > 0 ? totalBought : 1;
-    }
-
-    const perfPct = base > 0 ? (gain / base * 100) : 0;
 
     yearResults.push({
       year: y,
       isYTD,
-      totalBought: +totalBought.toFixed(2),
-      totalSold:   +totalSold.toFixed(2),
+      actifStart:  +actifStart.toFixed(2),
+      actifEnd:    +actifEnd.toFixed(2),
+      versements:  +totalFlux.toFixed(2),
       realizedPnl: +realizedPnl.toFixed(2),
       gain:        +gain.toFixed(2),
-      perfPct:     +perfPct.toFixed(2),
+      perfPct:     perfPct != null ? +perfPct.toFixed(2) : null,
     });
   }
 
@@ -4865,9 +4949,9 @@ function renderPerformancePage(result, portfolio, txs) {
       : '<span style="color:var(--text3)">—</span>';
     return `<tr>
       <td style="font-weight:600">${r.isYTD ? r.year + ' <span style="font-size:10px;color:var(--text3)">YTD</span>' : r.year}</td>
-      <td class="mono" style="text-align:right">${fmt(r.totalBought)}</td>
-      <td class="mono" style="text-align:right">${fmt(r.totalSold)}</td>
-      <td class="mono" style="text-align:right;color:${color(r.realizedPnl)}">${sign(r.realizedPnl)}${fmt(r.realizedPnl)}</td>
+      <td class="mono" style="text-align:right">${fmt(r.actifStart)}</td>
+      <td class="mono" style="text-align:right">${fmt(r.actifEnd)}</td>
+      <td class="mono" style="text-align:right">${fmt(r.versements)}</td>
       <td class="mono" style="text-align:right;color:${color(r.gain)}">${sign(r.gain)}${fmt(r.gain)}</td>
       <td class="mono" style="text-align:right">${perfStr}</td>
     </tr>`;
