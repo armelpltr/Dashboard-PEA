@@ -1,11 +1,1 @@
-# Dashboard-PEA
 
-- Dans l'ajout d'une action : mettre un choix par clic en plus de taper le ticker
-- Revoir la recherche d'action
-- Integrer Recherche et analyse etf
-- Ajouter logo action
-- Ajouter pp par défaut
-- Bouton modifier mes action dans portefeuille
-- Bouton ajouter un achat sur action dans portefeuille
-- Ajouter grapgique dans portefeuille
-- Integrer une db ?
