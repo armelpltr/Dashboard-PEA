@@ -213,6 +213,9 @@
       <div class="nav-item" onclick="showPage('dividendes')">
         <span class="nav-icon">💰</span> Dividendes
       </div>
+      <div class="nav-item" onclick="showPage('performance')">
+        <span class="nav-icon">📊</span> Performance
+      </div>
     </nav>
     <div class="sidebar-settings">
       <div class="setting-row">
@@ -706,6 +709,49 @@
           </button>
         </div>
         <div id="div-history"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         PERFORMANCE PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-performance">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Performance</div>
+          <div class="page-subtitle">Rendement brut annuel de vos lignes (hors versements)</div>
+        </div>
+      </div>
+
+      <!-- KPI résumé -->
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px" id="perf-kpis"></div>
+
+      <!-- Graphique barres -->
+      <div class="section-card" style="margin-bottom:18px">
+        <div class="section-title">Performance par année</div>
+        <div style="position:relative;height:320px">
+          <canvas id="chart-perf-annual"></canvas>
+        </div>
+      </div>
+
+      <!-- Tableau détaillé -->
+      <div class="section-card">
+        <div class="section-title">Détail annuel</div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align:left">Année</th>
+                <th>Investi (achats)</th>
+                <th>Vendu</th>
+                <th>PnL réalisé</th>
+                <th>PV latente</th>
+                <th>Perf brute</th>
+              </tr>
+            </thead>
+            <tbody id="perf-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
