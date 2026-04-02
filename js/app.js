@@ -4762,7 +4762,7 @@ function initPerformance() {
       <div class="stat-value" style="color:${latentPnl >= 0 ? 'var(--positive)' : 'var(--negative)'}">
         ${latentPnl >= 0 ? '+' : ''}${fmt(latentPnl)}
       </div>
-      <div class="stat-sub">Non encaissée</div>
+      <div class="stat-sub">${totalInvested > 0 ? (latentPnl >= 0 ? '+' : '') + (latentPnl / totalInvested * 100).toFixed(2) + ' %' : '—'} · Non encaissée</div>
     </div>
   `;
   document.getElementById('perf-kpis').innerHTML = kpiHtml;
