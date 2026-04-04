@@ -902,11 +902,11 @@ function isETF(ticker) { return ETF_TICKERS_GLOBAL.has(ticker) || /\.[A-Z]{2}$/.
 const TICKER_TO_ISIN = Object.fromEntries(Object.entries(ISIN_MAP).map(([k,v]) => [v, k]));
 
 // Resolve an ISIN or ticker to a Yahoo Finance ticker for API calls
+const TICKER_ALIASES = { 'CV9.PA': 'VAL.PA' };
 function resolveToYahooTicker(ticker) {
   if (!ticker) return ticker;
-  // If it's an ISIN in our map, return Yahoo ticker
+  if (TICKER_ALIASES[ticker]) return TICKER_ALIASES[ticker];
   if (ISIN_MAP[ticker]) return ISIN_MAP[ticker];
-  // If it's already a Yahoo ticker, return as-is
   return ticker;
 }
 
