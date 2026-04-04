@@ -279,18 +279,16 @@
           <div class="stat-label">Cumul versements</div>
           <div class="stat-value" id="stat-versements">— €</div>
           <div class="stat-change pos" id="stat-versements-sub">Total versé sur le PEA</div>
-          <div style="margin-top:6px">
-            <button onclick="toggleVersementsList()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;font-family:var(--sans);text-decoration:underline">Voir / modifier</button>
-          </div>
-          <div id="versements-list" style="display:none;margin-top:8px;max-height:200px;overflow-y:auto"></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Solde espèces</div>
           <div class="stat-value" id="stat-cash">— €</div>
           <div class="stat-change" id="stat-cash-sub">Disponible</div>
-          <div style="margin-top:8px">
+          <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
             <button class="btn-add" onclick="openVersementModal()" style="font-size:10px;padding:5px 10px">＋ Versement</button>
+            <button onclick="toggleVersementsList()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;font-family:var(--sans);text-decoration:underline">Voir / modifier</button>
           </div>
+          <div id="versements-list" style="display:none;margin-top:8px;max-height:200px;overflow-y:auto"></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Investi (titres)</div>
