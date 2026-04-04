@@ -2261,6 +2261,42 @@ function confirmVersement() {
   renderPortfolio();
 }
 
+function toggleVersementsList() {
+  const el = document.getElementById('versements-list');
+  if (el.style.display === 'none') {
+    renderVersementsList();
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function renderVersementsList() {
+  const v = getVersements(currentUser);
+  const el = document.getElementById('versements-list');
+  if (!v.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:11px">Aucun versement.</div>';
+    return;
+  }
+  const sorted = v.map((x, i) => ({ ...x, _i: i })).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  el.innerHTML = sorted.map(x =>
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px">' +
+      '<span style="color:var(--text2)">' + (x.date || '?') + '</span>' +
+      '<span style="font-family:var(--mono);color:var(--text)">' + x.amount.toFixed(2) + ' €</span>' +
+      '<button onclick="deleteVersement(' + x._i + ')" style="background:none;border:none;color:var(--negative);cursor:pointer;font-size:13px;padding:2px 6px" title="Supprimer">✕</button>' +
+    '</div>'
+  ).join('');
+}
+
+function deleteVersement(index) {
+  if (!confirm('Supprimer ce versement ?')) return;
+  const v = getVersements(currentUser);
+  v.splice(index, 1);
+  saveVersements(currentUser, v);
+  renderVersementsList();
+  renderPortfolio();
+}
+
 // ─── CSV IMPORT ─────────────────────────────────────
 let pendingImportRows = [];
 
