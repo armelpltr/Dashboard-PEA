@@ -4737,10 +4737,28 @@ async function initPerformance() {
 }
 
 async function computeAnnualPerformance(portfolio, txs, versements) {
-  // ── 1. Collecter tous les tickers et fetch prix mensuels Yahoo ──
+  // ── 1. Déterminer les années couvertes ──
+  const allDates = [];
+  txs.forEach(t => { if (t.date) allDates.push(t.date); });
+  versements.forEach(v => { if (v.date) allDates.push(v.date); });
+  portfolio.forEach(r => { if (r.buyDate) allDates.push(r.buyDate); });
+  if (!allDates.length) return { years: [] };
+
+  allDates.sort();
+  const firstYear = new Date(allDates[0] + 'T12:00:00').getFullYear();
+  const currentYear = new Date().getFullYear();
+
+  // ── 2. Collecter tous les tickers ayant existé dans le portefeuille ──
   const allTickers = new Set(portfolio.map(r => r.ticker));
   txs.forEach(tx => { if (tx.ticker) allTickers.add(tx.ticker); });
   const tickers = [...allTickers].filter(Boolean);
+
+  // ── 3. Fetch prix DAILY pour les périodes autour du 31/12 de chaque année ──
+  // On a besoin du prix de clôture le plus proche du 31/12 pour chaque année passée
+  // Stratégie: fetch range=max interval=1d → on aura tous les prix quotidiens
+  // C'est plus lourd mais précis. Alternative: fetch par période courte.
+  // On utilise range qui couvre toute la période d'investissement avec interval=1wk
+  // (plus léger que 1d, et assez précis pour le 31/12)
 
   const priceMap = {};
   if (tickers.length) {
@@ -4750,7 +4768,7 @@ async function computeAnnualPerformance(portfolio, txs, versements) {
         const raw = await fetchWithFallback(
           'https://query1.finance.yahoo.com/v8/finance/chart/'
           + encodeURIComponent(yahooTicker)
-          + '?interval=1mo&range=max'
+          + '?interval=1wk&range=5y'
         );
         const d   = JSON.parse(raw);
         const res = d.chart && d.chart.result && d.chart.result[0];
@@ -4763,6 +4781,7 @@ async function computeAnnualPerformance(portfolio, txs, versements) {
     }));
   }
 
+  // Helper: prix le plus proche AVANT ou EGAL à une date
   function getClose(ticker, targetTs) {
     const prices = priceMap[ticker] || [];
     let last = null;
@@ -4773,17 +4792,7 @@ async function computeAnnualPerformance(portfolio, txs, versements) {
     return last;
   }
 
-  // ── 2. Déterminer les années couvertes ──
-  const allDates = txs.filter(t => t.date).map(t => t.date);
-  versements.forEach(v => { if (v.date) allDates.push(v.date); });
-  portfolio.forEach(r => { if (r.buyDate) allDates.push(r.buyDate); });
-  if (!allDates.length) return { years: [] };
-
-  allDates.sort();
-  const firstYear = new Date(allDates[0] + 'T12:00:00').getFullYear();
-  const currentYear = new Date().getFullYear();
-
-  // ── 3. Helper: inventaire à une date ──
+  // ── 4. Helper: inventaire à une date ──
   function inventoryAtDateLocal(dateStr) {
     const inv = {};
     for (const tx of txs) {
@@ -4798,17 +4807,6 @@ async function computeAnnualPerformance(portfolio, txs, versements) {
     return inv;
   }
 
-  // ── 4. Helper: valoriser un inventaire ──
-  function valorize(inv, ts) {
-    let total = 0;
-    for (const [ticker, qty] of Object.entries(inv)) {
-      if (qty <= 0) continue;
-      const price = getClose(ticker, ts);
-      if (price != null) total += qty * price;
-    }
-    return total;
-  }
-
   // ── 5. Helper: espèces à une date ──
   function cashAtDate(dateStr) {
     let cash = 0;
@@ -4820,73 +4818,82 @@ async function computeAnnualPerformance(portfolio, txs, versements) {
       if (t.type === 'buy')  cash -= t.qty * t.price;
       if (t.type === 'sell') cash += t.qty * t.price;
     });
-    return cash;
+    return Math.max(0, cash);
   }
 
-  // ── 6. Calcul Modified Dietz par année ──
+  // ── 6. Helper: valoriser un inventaire via Yahoo ──
+  function valorize(inv, ts) {
+    let total = 0;
+    for (const [ticker, qty] of Object.entries(inv)) {
+      if (qty <= 0) continue;
+      const price = getClose(ticker, ts);
+      if (price != null) total += qty * price;
+    }
+    return total;
+  }
+
+  // ── 7. Calcul Modified Dietz par année ──
   const yearResults = [];
 
   for (let y = firstYear; y <= currentYear; y++) {
     const isYTD = (y === currentYear);
+
+    // Bornes de la période
     const startDateStr = (y - 1) + '-12-31';
     const endDateStr   = isYTD ? new Date().toISOString().slice(0, 10) : y + '-12-31';
     const startTs      = Math.floor(new Date(startDateStr + 'T18:00:00').getTime() / 1000);
     const endTs        = Math.floor(new Date(endDateStr + 'T18:00:00').getTime() / 1000);
 
-    const dateStart = new Date(y, 0, 1);  // 1er janvier
+    const dateStart = new Date(y, 0, 1);
     const dateEnd   = isYTD ? new Date() : new Date(y, 11, 31);
-    const T = Math.max(1, Math.round((dateEnd - dateStart) / 86400000)); // jours dans la période
+    const T = Math.max(1, Math.round((dateEnd - dateStart) / 86400000));
 
-    // Actif début = titres au 31/12 précédent + espèces
-    const invStart      = inventoryAtDateLocal(startDateStr);
-    const titresStart   = valorize(invStart, startTs);
-    const especesStart  = cashAtDate(startDateStr);
-    const actifStart    = titresStart + Math.max(0, especesStart);
-
-    // Actif fin
-    let actifEnd;
-    if (isYTD) {
-      const titresEnd = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
-      const especesEnd = cashAtDate(endDateStr);
-      actifEnd = titresEnd + Math.max(0, especesEnd);
+    // ── Actif début de période ──
+    let actifStart;
+    if (y === firstYear) {
+      // Première année: actif = 0 (rien avant le PEA)
+      actifStart = 0;
     } else {
-      const invEnd     = inventoryAtDateLocal(endDateStr);
-      const titresEnd  = valorize(invEnd, endTs);
-      const especesEnd = cashAtDate(endDateStr);
-      actifEnd = titresEnd + Math.max(0, especesEnd);
+      const invStart    = inventoryAtDateLocal(startDateStr);
+      const titresStart = valorize(invStart, startTs);
+      const cashStart   = cashAtDate(startDateStr);
+      actifStart = titresStart + cashStart;
     }
 
-    // Versements de l'année (flux entrants)
+    // ── Actif fin de période ──
+    let actifEnd;
+    if (isYTD) {
+      // Prix live pour l'année en cours
+      const titresEnd = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
+      const cashEnd   = cashAtDate(endDateStr);
+      actifEnd = titresEnd + cashEnd;
+    } else {
+      const invEnd    = inventoryAtDateLocal(endDateStr);
+      const titresEnd = valorize(invEnd, endTs);
+      const cashEnd   = cashAtDate(endDateStr);
+      actifEnd = titresEnd + cashEnd;
+    }
+
+    // ── Versements de l'année ──
     const yearVersements = versements.filter(v => {
       if (!v.date) return false;
-      const vy = new Date(v.date + 'T12:00:00').getFullYear();
-      return vy === y;
+      return new Date(v.date + 'T12:00:00').getFullYear() === y;
     });
-
     const totalFlux = yearVersements.reduce((s, v) => s + v.amount, 0);
 
-    // Somme pondérée des flux (Modified Dietz)
+    // ── Somme pondérée Modified Dietz ──
     let fluxPondere = 0;
     yearVersements.forEach(v => {
       const vDate = new Date(v.date + 'T12:00:00');
-      const ti = Math.round((vDate - dateStart) / 86400000); // jours depuis le 1er janvier
+      const ti = Math.max(0, Math.round((vDate - dateStart) / 86400000));
       const Wi = Math.max(0, (T - ti) / T);
       fluxPondere += v.amount * Wi;
     });
 
-    // Modified Dietz
+    // ── Modified Dietz ──
     const gain = actifEnd - actifStart - totalFlux;
     const base = actifStart + fluxPondere;
     const perfPct = base > 0 ? (gain / base * 100) : (gain !== 0 ? null : 0);
-
-    // PnL réalisé de l'année (pour info)
-    let realizedPnl = 0;
-    txs.forEach(t => {
-      if (!t.date) return;
-      const ty = new Date(t.date + 'T12:00:00').getFullYear();
-      if (ty !== y) return;
-      if (t.type === 'sell' && t.realizedPnl != null) realizedPnl += t.realizedPnl;
-    });
 
     yearResults.push({
       year: y,
@@ -4894,7 +4901,6 @@ async function computeAnnualPerformance(portfolio, txs, versements) {
       actifStart:  +actifStart.toFixed(2),
       actifEnd:    +actifEnd.toFixed(2),
       versements:  +totalFlux.toFixed(2),
-      realizedPnl: +realizedPnl.toFixed(2),
       gain:        +gain.toFixed(2),
       perfPct:     perfPct != null ? +perfPct.toFixed(2) : null,
     });
