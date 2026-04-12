@@ -4744,10 +4744,10 @@ let perfAnnualChart = null;
 let _perfCache = null; // évite de refetch à chaque clic
 
 async function initPerformance() {
-  const portfolio  = getPortfolio(currentUser);
-  const txs        = getTransactions(currentUser);
-  const kpiEl      = document.getElementById('perf-kpis');
-  const tbodyEl    = document.getElementById('perf-tbody');
+  const portfolio = getPortfolio(currentUser);
+  const txs = getTransactions(currentUser);
+  const kpiEl = document.getElementById('perf-kpis');
+  const tbodyEl = document.getElementById('perf-tbody');
 
   if (!portfolio.length && !txs.length) {
     kpiEl.innerHTML = '';
@@ -4771,51 +4771,31 @@ async function initPerformance() {
   }
 }
 
-// ─── CALCUL DE PERFORMANCE BRUTE (variation de prix uniquement) ───────────
-// Règles :
-//   - On ignore totalement les versements (cash entrant sur le PEA).
-//   - On ignore le cash non investi.
-//   - On mesure uniquement : combien valent les actions achetées vs leur PRU
-//     (ou leur prix au 31/12 de l'année précédente pour les lignes anciennes).
-//
-// Pour chaque année Y :
-//   Lignes "anciennes" (détenues au 31/12 Y-1) :
-//     gain_i = qty_i × (prix_fin_Y − prix_31dec_Y-1)
-//   Lignes "nouvelles" (achetées pendant Y) :
-//     gain_i = qty_i × (prix_fin_Y − PRU_i)
-//     si vendue la même année : gain_i = realizedPnl de la vente
-//   base_Y = Σ(qty_i × prix_31dec_Y-1) pour anciennes
-//           + Σ(qty_i × PRU_i)         pour nouvelles
-//   perf_Y = gain_Y / base_Y × 100
-//
-// "prix_fin_Y" = currentPrice (depuis portfolio) pour l'année en cours (YTD),
-//               sinon prix de clôture au 31/12/Y depuis Yahoo Finance.
 async function computeAnnualPerformance(portfolio, txs) {
   // ── 1. Déterminer les années couvertes ──
-  const buyTxs = txs.filter(t => t.type === 'buy' && t.date);
-  if (!buyTxs.length && !portfolio.length) return { years: [] };
+  const allDates = [];
+  txs.forEach(t => { if (t.date) allDates.push(t.date); });
+  portfolio.forEach(r => { if (r.buyDate) allDates.push(r.buyDate); });
+  if (!allDates.length) return { years: [] };
 
-  const allDates = [...buyTxs.map(t => t.date), ...portfolio.map(r => r.buyDate).filter(Boolean)];
   allDates.sort();
-  const firstYear  = new Date(allDates[0] + 'T12:00:00').getFullYear();
+  const firstYear = new Date(allDates[0] + 'T12:00:00').getFullYear();
   const currentYear = new Date().getFullYear();
 
-  // ── 2. Collecter tous les tickers impliqués ──
-  const allTickers = new Set();
-  txs.forEach(t => { if (t.ticker) allTickers.add(t.ticker); });
-  portfolio.forEach(r => { if (r.ticker) allTickers.add(r.ticker); });
+  // ── 2. Collecter tous les tickers (portfolio actuel + transactions passées) ──
+  const allTickers = new Set(portfolio.map(r => r.ticker));
+  txs.forEach(tx => { if (tx.ticker) allTickers.add(tx.ticker); });
   const tickers = [...allTickers].filter(Boolean);
 
-  // ── 3. Fetch prix de clôture au 31/12 de chaque année passée ──
-  // On construit priceAtYearEnd[ticker][year] = prix clôture au plus proche du 31/12
-  // On fetche une seule plage large par ticker pour couvrir toutes les années
-  const priceAtYearEnd = {}; // priceAtYearEnd[ticker][year]
-  const pastYears = [];
-  for (let y = firstYear - 1; y < currentYear; y++) pastYears.push(y);
+  // ── 3. Fetch prix au 31/12 de chaque année passée ──
+  const priceAtYearEnd = {}; // { ticker: { year: close } }
+  const yearsToFetch = [];
+  for (let y = firstYear - 1; y < currentYear; y++) yearsToFetch.push(y);
 
-  if (tickers.length && pastYears.length) {
-    const p1 = Math.floor(new Date((firstYear - 1) + '-12-01T00:00:00Z').getTime() / 1000);
-    const p2 = Math.floor(new Date(currentYear   + '-01-10T00:00:00Z').getTime() / 1000);
+  if (tickers.length && yearsToFetch.length) {
+    // On fetch tout d'un bloc : du 1er décembre de (firstYear-1) au 10 janvier de currentYear
+    const p1 = Math.floor(new Date((firstYear - 1) + '-12-01T00:00:00').getTime() / 1000);
+    const p2 = Math.floor(new Date(currentYear + '-01-10T00:00:00').getTime() / 1000);
 
     await Promise.all(tickers.map(async ticker => {
       priceAtYearEnd[ticker] = {};
@@ -4830,243 +4810,252 @@ async function computeAnnualPerformance(portfolio, txs) {
         const res = d.chart && d.chart.result && d.chart.result[0];
         if (!res || !res.timestamp) return;
         const timestamps = res.timestamp;
-        const closes     = res.indicators.quote[0].close;
-        for (const y of pastYears) {
-          const endOfYear = new Date(y + '-12-31T23:59:59Z').getTime() / 1000;
+        const closes = res.indicators.quote[0].close;
+        for (const y of yearsToFetch) {
+          const endOfYear = new Date(y + '-12-31T23:59:59').getTime() / 1000;
           let lastClose = null;
           for (let i = 0; i < timestamps.length; i++) {
             if (timestamps[i] <= endOfYear && closes[i] != null) lastClose = closes[i];
           }
           if (lastClose != null) priceAtYearEnd[ticker][y] = lastClose;
         }
-      } catch(e) { /* prix non disponible pour ce ticker */ }
+      } catch (e) { /* skip ticker */ }
     }));
   }
 
-  // ── 4. Helper : inventaire (qty par ticker) à la fin d'une date donnée ──
-  function inventoryAt(dateStr) {
-    // dateStr au format 'YYYY-MM-DD', on inclut toutes les txs <= dateStr
+  // ── 4. Construire un map des prix live depuis le portfolio ──
+  const livePrice = {};
+  portfolio.forEach(r => { livePrice[r.ticker] = r.currentPrice; });
+
+  // ── 5. Helper : inventaire (ticker → qty) à une date donnée ──
+  function inventoryAtDate(dateStr) {
     const inv = {};
     for (const tx of txs) {
       if (!tx.date || tx.date > dateStr) continue;
-      if (tx.type === 'buy') {
-        inv[tx.ticker] = (inv[tx.ticker] || 0) + tx.qty;
-      } else if (tx.type === 'sell') {
+      if (tx.type === 'buy') inv[tx.ticker] = (inv[tx.ticker] || 0) + tx.qty;
+      else if (tx.type === 'sell') {
         inv[tx.ticker] = (inv[tx.ticker] || 0) - tx.qty;
         if (inv[tx.ticker] <= 0.0001) delete inv[tx.ticker];
       }
     }
-    return inv; // { ticker: qty }
+    return inv;
   }
 
-  // ── 5. Calcul par année ──
+  // ── 6. Helper : PRU moyen d'un ticker à une date (FIFO simplifié = coût moyen) ──
+  function pruAtDate(ticker, dateStr) {
+    let totalQty = 0, totalCost = 0;
+    for (const tx of txs) {
+      if (!tx.date || tx.date > dateStr) continue;
+      if (tx.ticker !== ticker) continue;
+      if (tx.type === 'buy') {
+        totalCost += tx.qty * tx.price;
+        totalQty += tx.qty;
+      } else if (tx.type === 'sell') {
+        if (totalQty > 0) totalCost -= tx.qty * (totalCost / totalQty);
+        totalQty -= tx.qty;
+        if (totalQty <= 0.0001) { totalQty = 0; totalCost = 0; }
+      }
+    }
+    return totalQty > 0 ? totalCost / totalQty : 0;
+  }
+
+  // ── 7. Helper : prix de fin de période pour un ticker ──
+  function endPrice(ticker, year, isYTD) {
+    if (isYTD) return livePrice[ticker] || null;
+    return (priceAtYearEnd[ticker] && priceAtYearEnd[ticker][year]) || null;
+  }
+
+  // ── 8. Calcul par année ──
   const yearResults = [];
 
   for (let y = firstYear; y <= currentYear; y++) {
-    const isYTD   = (y === currentYear);
-    const prevEnd = (y - 1) + '-12-31';
-    const yearEnd =  y      + '-12-31';
+    const isYTD = (y === currentYear);
+    const prevYearStr = (y - 1) + '-12-31';
+    const yearEndStr = y + '-12-31';
 
-    // Inventaire au 31/12 de l'année précédente (= lignes "anciennes" pour l'année Y)
-    const invStart = inventoryAt(prevEnd);
+    // Inventaire au 31/12 de Y-1
+    const invStart = (y === firstYear) ? {} : inventoryAtDate(prevYearStr);
 
-    // Transactions d'achat et de vente de l'année Y
-    const buysThisYear  = txs.filter(t => t.type === 'buy'  && t.date && t.date.startsWith(String(y)));
-    const sellsThisYear = txs.filter(t => t.type === 'sell' && t.date && t.date.startsWith(String(y)));
+    // Transactions de l'année Y
+    const yearTxs = txs.filter(t => {
+      if (!t.date) return false;
+      return new Date(t.date + 'T12:00:00').getFullYear() === y;
+    });
 
-    // Map ticker → current price (pour YTD uniquement)
-    const currentPriceMap = {};
-    portfolio.forEach(r => { if (r.ticker) currentPriceMap[r.ticker] = r.currentPrice; });
+    // Identifier les tickers "anciens" (présents au 31/12 Y-1) et "nouveaux" (achetés en Y)
+    const oldTickers = new Set(Object.keys(invStart));
+    const newTickerBuys = {}; // ticker → { qty, cost }
 
-    // Fonction : prix de fin pour une ligne à la fin de l'année Y
-    // Pour YTD → prix live du portfolio
-    // Pour une année passée → prix Yahoo au 31/12/Y
-    // Si vendue dans l'année → le gain sera calculé via realizedPnl
-    function endPrice(ticker) {
-      if (isYTD) return currentPriceMap[ticker] ?? null;
-      return (priceAtYearEnd[ticker] && priceAtYearEnd[ticker][y]) ?? null;
+    // Traiter les achats de l'année pour identifier les nouvelles lignes
+    for (const tx of yearTxs) {
+      if (tx.type === 'buy' && !oldTickers.has(tx.ticker)) {
+        if (!newTickerBuys[tx.ticker]) newTickerBuys[tx.ticker] = { qty: 0, cost: 0 };
+        newTickerBuys[tx.ticker].qty += tx.qty;
+        newTickerBuys[tx.ticker].cost += tx.qty * tx.price;
+      }
     }
 
-    let gainTotal = 0;
-    let baseTotal = 0;
+    // Inventaire en fin d'année (pour savoir si une ligne a été vendue en cours d'année)
+    const invEnd = isYTD ? inventoryAtDate(new Date().toISOString().slice(0, 10)) : inventoryAtDate(yearEndStr);
 
-    // ── A. Lignes "anciennes" : détenues au 31/12/Y-1 ──
+    let totalGain = 0;
+    let totalBase = 0;
+
+    // ── Lignes anciennes (détenues au 31/12 Y-1) ──
     for (const [ticker, qtyStart] of Object.entries(invStart)) {
-      if (qtyStart <= 0) continue;
+      const priceStart = priceAtYearEnd[ticker] && priceAtYearEnd[ticker][y - 1];
+      if (priceStart == null) continue; // pas de prix de référence → skip
 
-      const pStart = (priceAtYearEnd[ticker] && priceAtYearEnd[ticker][y - 1]) ?? null;
-      if (pStart == null) continue; // prix de départ inconnu → impossible à calculer
+      const baseVal = qtyStart * priceStart;
+      totalBase += baseVal;
 
-      // Qté vendue de ce ticker pendant l'année Y
-      const qtySold = sellsThisYear
-        .filter(t => t.ticker === ticker)
-        .reduce((s, t) => s + t.qty, 0);
-      // Qté encore en portefeuille à fin d'année
-      const qtyRemaining = Math.max(0, qtyStart - qtySold);
+      // Déterminer le prix de fin pour cette ligne
+      const qtyEnd = invEnd[ticker] || 0;
 
-      // Gain sur la partie conservée
-      if (qtyRemaining > 0) {
-        const pEnd = endPrice(ticker);
-        if (pEnd != null) {
-          gainTotal += qtyRemaining * (pEnd - pStart);
-          baseTotal += qtyRemaining * pStart;
+      if (qtyEnd >= qtyStart - 0.0001) {
+        // Ligne toujours détenue (qty identique ou augmentée via achat complémentaire)
+        const pEnd = endPrice(ticker, y, isYTD);
+        if (pEnd != null) totalGain += qtyStart * (pEnd - priceStart);
+      } else if (qtyEnd <= 0.0001) {
+        // Ligne entièrement vendue en cours d'année → utiliser PnL réalisé des ventes
+        const sells = yearTxs.filter(t => t.type === 'sell' && t.ticker === ticker);
+        // Gain = somme des (prix de vente - prix début) × qty vendue
+        let soldQty = 0;
+        for (const s of sells) {
+          const sellQty = Math.min(s.qty, qtyStart - soldQty);
+          totalGain += sellQty * (s.price - priceStart);
+          soldQty += sellQty;
+          if (soldQty >= qtyStart - 0.0001) break;
+        }
+      } else {
+        // Vente partielle : gain sur la partie encore détenue + gain sur la partie vendue
+        const pEnd = endPrice(ticker, y, isYTD);
+        if (pEnd != null) totalGain += qtyEnd * (pEnd - priceStart);
+        const soldQty = qtyStart - qtyEnd;
+        const sells = yearTxs.filter(t => t.type === 'sell' && t.ticker === ticker);
+        let accSold = 0;
+        for (const s of sells) {
+          const sq = Math.min(s.qty, soldQty - accSold);
+          totalGain += sq * (s.price - priceStart);
+          accSold += sq;
+          if (accSold >= soldQty - 0.0001) break;
         }
       }
+    }
 
-      // Gain sur la partie vendue (via realizedPnl si disponible, sinon reconstitué)
-      if (qtySold > 0) {
-        const soldTxs = sellsThisYear.filter(t => t.ticker === ticker);
-        for (const st of soldTxs) {
-          if (st.realizedPnl != null) {
-            // realizedPnl = gain total depuis le PRU d'origine
-            // Mais ici l'ancien prix de référence est pStart (prix 31/12 Y-1), pas le PRU
-            // On reconstitue : gain depuis pStart = prix_vente×qty - pStart×qty
-            gainTotal += st.qty * (st.price - pStart);
+    // ── Lignes nouvelles (achetées pendant l'année Y, pas dans invStart) ──
+    for (const [ticker, info] of Object.entries(newTickerBuys)) {
+      const pru = info.cost / info.qty;
+      totalBase += info.cost;
+
+      const qtyEnd = invEnd[ticker] || 0;
+
+      if (qtyEnd >= info.qty - 0.0001) {
+        // Toujours détenue
+        const pEnd = endPrice(ticker, y, isYTD);
+        if (pEnd != null) totalGain += info.qty * (pEnd - pru);
+      } else if (qtyEnd <= 0.0001) {
+        // Vendue la même année → utiliser le PnL réalisé des ventes
+        const sells = yearTxs.filter(t => t.type === 'sell' && t.ticker === ticker);
+        for (const s of sells) {
+          if (s.realizedPnl != null) {
+            totalGain += s.realizedPnl;
           } else {
-            gainTotal += st.qty * (st.price - pStart);
+            totalGain += s.qty * (s.price - pru);
           }
-          baseTotal += st.qty * pStart;
         }
-      }
-    }
-
-    // ── B. Lignes "nouvelles" : achetées pendant l'année Y ──
-    // Regrouper les achats par ticker pour calculer le PRU moyen
-    const newBuysByTicker = {};
-    for (const bt of buysThisYear) {
-      if (!newBuysByTicker[bt.ticker]) newBuysByTicker[bt.ticker] = { totalQty: 0, totalCost: 0 };
-      newBuysByTicker[bt.ticker].totalQty  += bt.qty;
-      newBuysByTicker[bt.ticker].totalCost += bt.qty * bt.price;
-    }
-
-    for (const [ticker, info] of Object.entries(newBuysByTicker)) {
-      // Ignorer si ce ticker était déjà en portefeuille au 31/12/Y-1
-      // (ces achats sont des renforcements : on les traite ici séparément
-      //  mais la position de départ couvre déjà la qty initiale via bloc A)
-      const qtyAlreadyHeld = invStart[ticker] || 0;
-      const pru = info.totalCost / info.totalQty; // PRU moyen des achats de l'année
-
-      // Qté vendue parmi les achats de cette année
-      const qtySoldNew = sellsThisYear
-        .filter(t => t.ticker === ticker)
-        .reduce((s, t) => s + Math.max(0, t.qty - qtyAlreadyHeld), 0);
-        // approximation FIFO simplifiée : les ventes viennent d'abord des achats récents
-      const qtyRemainingNew = Math.max(0, info.totalQty - qtySoldNew);
-
-      if (qtyRemainingNew > 0) {
-        const pEnd = endPrice(ticker);
-        if (pEnd != null) {
-          gainTotal += qtyRemainingNew * (pEnd - pru);
-          baseTotal += qtyRemainingNew * pru;
-        }
-      }
-
-      // Partie vendue dans la même année
-      if (qtySoldNew > 0) {
-        // Utiliser le realizedPnl des ventes correspondantes (gain depuis PRU d'achat)
-        const soldTxsNew = sellsThisYear.filter(t => t.ticker === ticker);
-        let coveredQty = 0;
-        for (const st of soldTxsNew) {
-          const qtyFromNew = Math.min(st.qty, qtySoldNew - coveredQty);
-          if (qtyFromNew <= 0) break;
-          if (st.realizedPnl != null) {
-            // realizedPnl est le gain total de cette vente (prix_vente - PRU) × qty
-            // Si l'achat et la vente sont dans la même année, c'est exact vs notre PRU moyen
-            gainTotal += st.realizedPnl;
+      } else {
+        // Vente partielle
+        const pEnd = endPrice(ticker, y, isYTD);
+        if (pEnd != null) totalGain += qtyEnd * (pEnd - pru);
+        const sells = yearTxs.filter(t => t.type === 'sell' && t.ticker === ticker);
+        for (const s of sells) {
+          if (s.realizedPnl != null) {
+            totalGain += s.realizedPnl;
           } else {
-            gainTotal += qtyFromNew * (st.price - pru);
+            totalGain += s.qty * (s.price - pru);
           }
-          baseTotal += qtyFromNew * pru;
-          coveredQty += qtyFromNew;
         }
       }
     }
 
-    const perfPct = baseTotal > 0 ? +(gainTotal / baseTotal * 100).toFixed(2) : null;
+    // Achats complémentaires sur lignes anciennes (augmentation de position)
+    for (const tx of yearTxs) {
+      if (tx.type !== 'buy') continue;
+      if (!oldTickers.has(tx.ticker)) continue; // déjà traité dans newTickerBuys
+      // C'est un achat complémentaire sur une ligne ancienne
+      const addCost = tx.qty * tx.price;
+      totalBase += addCost;
+      const pEnd = endPrice(tx.ticker, y, isYTD);
+      if (pEnd != null) totalGain += tx.qty * (pEnd - tx.price);
+    }
+
+    const perfPct = totalBase > 0 ? (totalGain / totalBase * 100) : (totalGain !== 0 ? null : 0);
 
     yearResults.push({
-      year:     y,
+      year: y,
       isYTD,
-      base:     +baseTotal.toFixed(2),
-      gain:     +gainTotal.toFixed(2),
-      perfPct,
+      base: +totalBase.toFixed(2),
+      gain: +totalGain.toFixed(2),
+      perfPct: perfPct != null ? +perfPct.toFixed(2) : null,
     });
   }
 
-  // Filtrer les années sans données (base = 0 ET gain = 0)
-  const filtered = yearResults.filter(r => r.base !== 0 || r.gain !== 0);
-
-  return { years: filtered };
+  return { years: yearResults };
 }
 
 function renderPerformancePage(result, portfolio, txs) {
   const rows = result.years;
 
   // ── KPIs globaux ──
-  // 1. Perf globale = (latent + réalisé) / total investi (PRU × qty actuels + coût des vendus)
   const totalInvested = portfolio.reduce((s, r) => s + r.qty * r.buyPrice, 0);
-  const totalValue    = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
-  const latentPnl     = totalValue - totalInvested;
-  const totalRealized = txs
-    .filter(t => t.type === 'sell' && t.realizedPnl != null)
-    .reduce((s, t) => s + t.realizedPnl, 0);
-  const totalPerfEur  = latentPnl + totalRealized;
-  // Base = investissement actuel + coût des positions vendues (reconstitué via txs)
-  const costSold = txs
-    .filter(t => t.type === 'sell')
-    .reduce((s, t) => s + t.qty * t.price - (t.realizedPnl || 0), 0);
-  const totalBase = totalInvested + costSold;
-  const totalPerfPct = totalBase > 0 ? (totalPerfEur / totalBase * 100) : 0;
-
-  const sign  = v => v >= 0 ? '+' : '';
-  const color = v => v >= 0 ? 'var(--positive)' : 'var(--negative)';
+  const totalValue = portfolio.reduce((s, r) => s + r.qty * r.currentPrice, 0);
+  const latentPnl = totalValue - totalInvested;
+  const totalRealized = txs.filter(t => t.type === 'sell' && t.realizedPnl != null)
+                            .reduce((s, t) => s + t.realizedPnl, 0);
+  const totalPerfEur = totalRealized + latentPnl;
+  const totalPerfPct = totalInvested > 0 ? (totalPerfEur / totalInvested * 100) : 0;
 
   const kpiHtml = `
     <div class="stat-card">
       <div class="stat-label">PERF GLOBALE</div>
-      <div class="stat-value" style="color:${color(totalPerfEur)}">
-        ${sign(totalPerfEur)}${fmt(totalPerfEur)}
+      <div class="stat-value" style="color:${totalPerfEur >= 0 ? 'var(--positive)' : 'var(--negative)'}">
+        ${totalPerfEur >= 0 ? '+' : ''}${fmt(totalPerfEur)}
       </div>
-      <div class="stat-sub">${sign(totalPerfPct)}${totalPerfPct.toFixed(2)} %</div>
+      <div class="stat-sub">${totalPerfPct >= 0 ? '+' : ''}${totalPerfPct.toFixed(2)} %</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">PNL RÉALISÉ TOTAL</div>
-      <div class="stat-value" style="color:${color(totalRealized)}">
-        ${sign(totalRealized)}${fmt(totalRealized)}
+      <div class="stat-value" style="color:${totalRealized >= 0 ? 'var(--positive)' : 'var(--negative)'}">
+        ${totalRealized >= 0 ? '+' : ''}${fmt(totalRealized)}
       </div>
       <div class="stat-sub">Plus-values encaissées</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">PV LATENTE</div>
-      <div class="stat-value" style="color:${color(latentPnl)}">
-        ${sign(latentPnl)}${fmt(latentPnl)}
+      <div class="stat-value" style="color:${latentPnl >= 0 ? 'var(--positive)' : 'var(--negative)'}">
+        ${latentPnl >= 0 ? '+' : ''}${fmt(latentPnl)}
       </div>
-      <div class="stat-sub">${totalInvested > 0
-        ? sign(latentPnl / totalInvested * 100) + (latentPnl / totalInvested * 100).toFixed(2) + ' %'
-        : '—'} · Non encaissée</div>
+      <div class="stat-sub">${totalInvested > 0 ? (latentPnl >= 0 ? '+' : '') + (latentPnl / totalInvested * 100).toFixed(2) + ' %' : '—'} · Non encaissée</div>
     </div>
   `;
   document.getElementById('perf-kpis').innerHTML = kpiHtml;
 
   // ── Tableau ──
   const tbody = document.getElementById('perf-tbody');
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">Aucune donnée calculable.</td></tr>';
-  } else {
-    tbody.innerHTML = rows.map(r => {
-      const perfStr = r.perfPct != null
-        ? `<span style="font-weight:600;color:${color(r.perfPct)}">${sign(r.perfPct)}${r.perfPct.toFixed(2)} %</span>`
-        : '<span style="color:var(--text3)">—</span>';
-      return `<tr>
-        <td style="font-weight:600">${r.isYTD
-          ? r.year + ' <span style="font-size:10px;color:var(--text3)">YTD</span>'
-          : r.year}</td>
-        <td class="mono" style="text-align:right">${fmt(r.base)}</td>
-        <td class="mono" style="text-align:right;color:${color(r.gain)}">${sign(r.gain)}${fmt(r.gain)}</td>
-        <td class="mono" style="text-align:right">${perfStr}</td>
-      </tr>`;
-    }).join('');
-  }
+  tbody.innerHTML = rows.map(r => {
+    const sign = v => v >= 0 ? '+' : '';
+    const color = v => v >= 0 ? 'var(--positive)' : 'var(--negative)';
+    const perfStr = r.perfPct != null
+      ? `<span style="font-weight:600;color:${color(r.perfPct)}">${sign(r.perfPct)}${r.perfPct.toFixed(2)} %</span>`
+      : '<span style="color:var(--text3)">—</span>';
+    return `<tr>
+      <td style="font-weight:600">${r.isYTD ? r.year + ' <span style="font-size:10px;color:var(--text3)">YTD</span>' : r.year}</td>
+      <td class="mono" style="text-align:right">${fmt(r.base)}</td>
+      <td class="mono" style="text-align:right;color:${color(r.gain)}">${sign(r.gain)}${fmt(r.gain)}</td>
+      <td class="mono" style="text-align:right">${perfStr}</td>
+    </tr>`;
+  }).join('');
 
   // ── Graphique barres ──
   const ctx = document.getElementById('chart-perf-annual');
