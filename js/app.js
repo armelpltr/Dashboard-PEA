@@ -4897,11 +4897,24 @@ async function computeAnnualPerformance(portfolio, txs, versements) {
     });
     const totalFlux = yearVersements.reduce((s, v) => s + v.amount, 0);
 
+    // Modified Dietz: pondérer chaque versement par le temps restant
+    const dateStart = new Date(y, 0, 1);
+    const dateEnd   = isYTD ? new Date() : new Date(y, 11, 31);
+    const T = Math.max(1, Math.round((dateEnd - dateStart) / 86400000));
+
+    let fluxPondere = 0;
+    yearVersements.forEach(v => {
+      const vDate = new Date(v.date + 'T12:00:00');
+      const ti = Math.max(0, Math.round((vDate - dateStart) / 86400000));
+      const Wi = Math.max(0, (T - ti) / T);
+      fluxPondere += v.amount * Wi;
+    });
+
     // Gain = actif fin - actif début - versements
     const gain = actifEnd - actifStart - totalFlux;
 
-    // Base = capital moyen = (actif début + actif fin) / 2
-    const base = (actifStart + actifEnd) / 2;
+    // Base Modified Dietz = actif début + versements pondérés
+    const base = actifStart + fluxPondere;
     const perfPct = base > 0 ? (gain / base * 100) : (gain !== 0 ? null : 0);
 
     yearResults.push({
