@@ -4744,10 +4744,10 @@ let perfAnnualChart = null;
 let _perfCache = null; // évite de refetch à chaque clic
 
 async function initPerformance() {
-  const portfolio = getPortfolio(currentUser);
-  const txs = getTransactions(currentUser);
-  const kpiEl = document.getElementById('perf-kpis');
-  const tbodyEl = document.getElementById('perf-tbody');
+  const portfolio   = getPortfolio(currentUser);
+  const txs         = getTransactions(currentUser);
+  const kpiEl       = document.getElementById('perf-kpis');
+  const tbodyEl     = document.getElementById('perf-tbody');
 
   if (!portfolio.length && !txs.length) {
     kpiEl.innerHTML = '';
@@ -4772,9 +4772,12 @@ async function initPerformance() {
 }
 
 async function computeAnnualPerformance(portfolio, txs) {
-  // ── 1. Déterminer les années couvertes ──
+  const versements = getVersements(currentUser);
+
+  // ── 1. Déterminer la plage de dates ──
   const allDates = [];
   txs.forEach(t => { if (t.date) allDates.push(t.date); });
+  versements.forEach(v => { if (v.date) allDates.push(v.date); });
   portfolio.forEach(r => { if (r.buyDate) allDates.push(r.buyDate); });
   if (!allDates.length) return { years: [] };
 
@@ -4782,23 +4785,20 @@ async function computeAnnualPerformance(portfolio, txs) {
   const firstYear = new Date(allDates[0] + 'T12:00:00').getFullYear();
   const currentYear = new Date().getFullYear();
 
-  // ── 2. Collecter tous les tickers (portfolio actuel + transactions passées) ──
+  // ── 2. Collecter tous les tickers ──
   const allTickers = new Set(portfolio.map(r => r.ticker));
   txs.forEach(tx => { if (tx.ticker) allTickers.add(tx.ticker); });
   const tickers = [...allTickers].filter(Boolean);
 
-  // ── 3. Fetch prix au 31/12 de chaque année passée ──
-  const priceAtYearEnd = {}; // { ticker: { year: close } }
-  const yearsToFetch = [];
-  for (let y = firstYear - 1; y < currentYear; y++) yearsToFetch.push(y);
+  // ── 3. Fetch prix DAILY pour tous les tickers sur toute la période ──
+  const dailyPrices = {}; // { ticker: { 'YYYY-MM-DD': close } }
 
-  if (tickers.length && yearsToFetch.length) {
-    // On fetch tout d'un bloc : du 1er décembre de (firstYear-1) au 10 janvier de currentYear
-    const p1 = Math.floor(new Date((firstYear - 1) + '-12-01T00:00:00').getTime() / 1000);
-    const p2 = Math.floor(new Date(currentYear + '-01-10T00:00:00').getTime() / 1000);
+  if (tickers.length) {
+    const p1 = Math.floor(new Date(firstYear + '-01-01T00:00:00').getTime() / 1000);
+    const p2 = Math.floor(Date.now() / 1000) + 86400;
 
     await Promise.all(tickers.map(async ticker => {
-      priceAtYearEnd[ticker] = {};
+      dailyPrices[ticker] = {};
       try {
         const yahooTicker = resolveToYahooTicker(ticker);
         const raw = await fetchWithFallback(
@@ -4811,23 +4811,32 @@ async function computeAnnualPerformance(portfolio, txs) {
         if (!res || !res.timestamp) return;
         const timestamps = res.timestamp;
         const closes = res.indicators.quote[0].close;
-        for (const y of yearsToFetch) {
-          const endOfYear = new Date(y + '-12-31T23:59:59').getTime() / 1000;
-          let lastClose = null;
-          for (let i = 0; i < timestamps.length; i++) {
-            if (timestamps[i] <= endOfYear && closes[i] != null) lastClose = closes[i];
-          }
-          if (lastClose != null) priceAtYearEnd[ticker][y] = lastClose;
+        for (let i = 0; i < timestamps.length; i++) {
+          if (closes[i] == null) continue;
+          const key = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
+          dailyPrices[ticker][key] = closes[i];
         }
-      } catch (e) { /* skip ticker */ }
+      } catch (e) { /* skip */ }
     }));
   }
 
-  // ── 4. Construire un map des prix live depuis le portfolio ──
+  // ── 4. Prix live ──
   const livePrice = {};
   portfolio.forEach(r => { livePrice[r.ticker] = r.currentPrice; });
 
-  // ── 5. Helper : inventaire (ticker → qty) à une date donnée ──
+  // ── 5. Helpers ──
+  function getPriceAt(ticker, dateStr) {
+    if (dailyPrices[ticker] && dailyPrices[ticker][dateStr]) return dailyPrices[ticker][dateStr];
+    if (!dailyPrices[ticker]) return null;
+    const keys = Object.keys(dailyPrices[ticker]).sort();
+    let last = null;
+    for (const k of keys) {
+      if (k > dateStr) break;
+      last = dailyPrices[ticker][k];
+    }
+    return last;
+  }
+
   function inventoryAtDate(dateStr) {
     const inv = {};
     for (const tx of txs) {
@@ -4841,93 +4850,107 @@ async function computeAnnualPerformance(portfolio, txs) {
     return inv;
   }
 
-  // ── 6. Helper : PRU moyen d'un ticker à une date (FIFO simplifié = coût moyen) ──
-  function pruAtDate(ticker, dateStr) {
-    let totalQty = 0, totalCost = 0;
-    for (const tx of txs) {
-      if (!tx.date || tx.date > dateStr) continue;
-      if (tx.ticker !== ticker) continue;
-      if (tx.type === 'buy') {
-        totalCost += tx.qty * tx.price;
-        totalQty += tx.qty;
-      } else if (tx.type === 'sell') {
-        if (totalQty > 0) totalCost -= tx.qty * (totalCost / totalQty);
-        totalQty -= tx.qty;
-        if (totalQty <= 0.0001) { totalQty = 0; totalCost = 0; }
-      }
+  function cashAtDate(dateStr) {
+    let cash = 0;
+    versements.forEach(v => { if (v.date && v.date <= dateStr) cash += v.amount; });
+    txs.forEach(t => {
+      if (!t.date || t.date > dateStr) return;
+      if (t.type === 'buy') cash -= t.qty * t.price;
+      if (t.type === 'sell') cash += t.qty * t.price;
+    });
+    return Math.max(0, cash);
+  }
+
+  // Valeur totale (titres + cash) à une date
+  function totalValueAt(dateStr, useLive) {
+    const inv = inventoryAtDate(dateStr);
+    let val = cashAtDate(dateStr);
+    for (const [ticker, qty] of Object.entries(inv)) {
+      if (qty <= 0.0001) continue;
+      const p = useLive ? (livePrice[ticker] || getPriceAt(ticker, dateStr)) : getPriceAt(ticker, dateStr);
+      if (p != null) val += qty * p;
     }
-    return totalQty > 0 ? totalCost / totalQty : 0;
+    return val;
   }
 
-  // ── 7. Helper : prix de fin de période pour un ticker ──
-  function endPrice(ticker, year, isYTD) {
-    if (isYTD) return livePrice[ticker] || null;
-    return (priceAtYearEnd[ticker] && priceAtYearEnd[ticker][year]) || null;
-  }
-
-  // ── 8. Calcul par année ──
+  // ── 6. Calcul TWR par année ──
+  // À chaque versement on coupe une sous-période.
+  // Les achats/ventes d'actions sont des mouvements internes (cash ↔ titres)
+  // et ne créent PAS de sous-période.
   const yearResults = [];
 
   for (let y = firstYear; y <= currentYear; y++) {
     const isYTD = (y === currentYear);
-    const prevYearStr = (y - 1) + '-12-31';
-    const yearEndStr = y + '-12-31';
 
-    // Inventaire au 31/12 de Y-1
-    const invStart = (y === firstYear) ? {} : inventoryAtDate(prevYearStr);
+    // Versements de l'année, triés par date
+    const yearVers = versements.filter(v => {
+      if (!v.date) return false;
+      return new Date(v.date + 'T12:00:00').getFullYear() === y;
+    }).sort((a, b) => a.date.localeCompare(b.date));
 
-    // Transactions de l'année Y
-    const yearTxs = txs.filter(t => {
-      if (!t.date) return false;
-      return new Date(t.date + 'T12:00:00').getFullYear() === y;
-    });
-
-    // Identifier les tickers "anciens" (présents au 31/12 Y-1) et "nouveaux" (achetés en Y)
-    const oldTickers = new Set(Object.keys(invStart));
-
-    // Inventaire en fin d'année
-    const invEnd = isYTD ? inventoryAtDate(new Date().toISOString().slice(0, 10)) : inventoryAtDate(yearEndStr);
-
-    // ── Valeur des titres en début d'année (31/12 Y-1) ──
-    let valueStart = 0;
-    for (const [ticker, qty] of Object.entries(invStart)) {
-      const p = priceAtYearEnd[ticker] && priceAtYearEnd[ticker][y - 1];
-      if (p != null) valueStart += qty * p;
+    // Valeur totale (titres + cash) en début d'année
+    let periodStartValue;
+    if (y === firstYear) {
+      periodStartValue = 0;
+    } else {
+      periodStartValue = totalValueAt((y - 1) + '-12-31', false);
     }
 
-    // ── Valeur des titres en fin d'année (31/12 Y ou prix live si YTD) ──
-    let valueEnd = 0;
-    for (const [ticker, qty] of Object.entries(invEnd)) {
-      if (qty <= 0.0001) continue;
-      const p = endPrice(ticker, y, isYTD);
-      if (p != null) valueEnd += qty * p;
+    // Chaîner les rendements aux dates de versement
+    let twrProduct = 1;
+    let hasCapital = false;
+
+    // Grouper les versements par date
+    const versByDate = {};
+    for (const v of yearVers) {
+      if (!versByDate[v.date]) versByDate[v.date] = 0;
+      versByDate[v.date] += v.amount;
+    }
+    const versDates = Object.keys(versByDate).sort();
+
+    for (const vDate of versDates) {
+      const versAmount = versByDate[vDate];
+
+      // Valeur AVANT le versement du jour
+      // = valeur totale incluant ce versement − le versement
+      const valueWithVers = totalValueAt(vDate, false);
+      const valueBeforeFlow = valueWithVers - versAmount;
+
+      if (periodStartValue > 0.01) {
+        hasCapital = true;
+        twrProduct *= (valueBeforeFlow / periodStartValue);
+      }
+
+      // Nouvelle base de départ = valeur après le versement
+      periodStartValue = valueWithVers;
     }
 
-    // ── Flux nets de l'année = somme des achats - somme des ventes (en €) ──
-    // C'est le capital frais injecté dans les titres (positif = on a mis de l'argent,
-    // négatif = on a retiré de l'argent). Les rotations (vendre A pour acheter B)
-    // s'annulent naturellement.
-    let netFlows = 0;
-    for (const tx of yearTxs) {
-      if (tx.type === 'buy')  netFlows += tx.qty * tx.price;
-      if (tx.type === 'sell') netFlows -= tx.qty * tx.price;
+    // Dernière sous-période → fin d'année (ou aujourd'hui)
+    let valueEnd;
+    if (isYTD) {
+      valueEnd = totalValueAt(new Date().toISOString().slice(0, 10), true);
+    } else {
+      valueEnd = totalValueAt(y + '-12-31', false);
     }
 
-    // ── Gain = variation de valeur - capital frais injecté ──
-    const totalGain = valueEnd - valueStart - netFlows;
+    if (periodStartValue > 0.01) {
+      hasCapital = true;
+      twrProduct *= (valueEnd / periodStartValue);
+    }
 
-    // ── Base = capital exposé au risque ──
-    // = valeur début + capital frais injecté (si positif, sinon juste valeur début)
-    const totalBase = valueStart + Math.max(0, netFlows);
+    const perfPct = hasCapital ? (twrProduct - 1) * 100 : 0;
 
-    const perfPct = totalBase > 0 ? (totalGain / totalBase * 100) : (totalGain !== 0 ? null : 0);
+    // Gain en € (pour affichage)
+    const valueYearStart = (y === firstYear) ? 0 : totalValueAt((y - 1) + '-12-31', false);
+    const totalVersYear = yearVers.reduce((s, v) => s + v.amount, 0);
+    const totalGain = valueEnd - valueYearStart - totalVersYear;
 
     yearResults.push({
       year: y,
       isYTD,
-      base: +totalBase.toFixed(2),
+      base: +(valueYearStart + totalVersYear).toFixed(2),
       gain: +totalGain.toFixed(2),
-      perfPct: perfPct != null ? +perfPct.toFixed(2) : null,
+      perfPct: +perfPct.toFixed(2),
     });
   }
 
@@ -4976,9 +4999,7 @@ function renderPerformancePage(result, portfolio, txs) {
   tbody.innerHTML = rows.map(r => {
     const sign = v => v >= 0 ? '+' : '';
     const color = v => v >= 0 ? 'var(--positive)' : 'var(--negative)';
-    const perfStr = r.perfPct != null
-      ? `<span style="font-weight:600;color:${color(r.perfPct)}">${sign(r.perfPct)}${r.perfPct.toFixed(2)} %</span>`
-      : '<span style="color:var(--text3)">—</span>';
+    const perfStr = `<span style="font-weight:600;color:${color(r.perfPct)}">${sign(r.perfPct)}${r.perfPct.toFixed(2)} %</span>`;
     return `<tr>
       <td style="font-weight:600">${r.isYTD ? r.year + ' <span style="font-size:10px;color:var(--text3)">YTD</span>' : r.year}</td>
       <td class="mono" style="text-align:right">${fmt(r.base)}</td>
@@ -4998,8 +5019,8 @@ function renderPerformancePage(result, portfolio, txs) {
       labels: rows.map(r => r.isYTD ? r.year + ' YTD' : String(r.year)),
       datasets: [{
         label: 'Performance',
-        data: rows.map(r => r.perfPct != null ? r.perfPct : 0),
-        backgroundColor: rows.map(r => (r.perfPct || 0) >= 0 ? 'rgba(0,224,158,0.7)' : 'rgba(255,77,106,0.7)'),
+        data: rows.map(r => r.perfPct),
+        backgroundColor: rows.map(r => r.perfPct >= 0 ? 'rgba(0,224,158,0.7)' : 'rgba(255,77,106,0.7)'),
         borderRadius: 6,
       }]
     },
