@@ -4888,89 +4888,37 @@ async function computeAnnualPerformance(portfolio, txs) {
     // Inventaire en fin d'année
     const invEnd = isYTD ? inventoryAtDate(new Date().toISOString().slice(0, 10)) : inventoryAtDate(yearEndStr);
 
-    let totalGain = 0;
-    let totalBase = 0;
-
-    // ── Lignes anciennes (détenues au 31/12 Y-1) ──
-    for (const [ticker, qtyStart] of Object.entries(invStart)) {
-      const priceStart = priceAtYearEnd[ticker] && priceAtYearEnd[ticker][y - 1];
-      if (priceStart == null) continue;
-
-      const baseVal = qtyStart * priceStart;
-      totalBase += baseVal;
-
-      const qtyEnd = invEnd[ticker] || 0;
-
-      if (qtyEnd >= qtyStart - 0.0001) {
-        // Ligne toujours détenue (qty identique ou augmentée)
-        const pEnd = endPrice(ticker, y, isYTD);
-        if (pEnd != null) totalGain += qtyStart * (pEnd - priceStart);
-      } else if (qtyEnd <= 0.0001) {
-        // Ligne entièrement vendue en cours d'année
-        const sells = yearTxs.filter(t => t.type === 'sell' && t.ticker === ticker);
-        let soldQty = 0;
-        for (const s of sells) {
-          const sellQty = Math.min(s.qty, qtyStart - soldQty);
-          totalGain += sellQty * (s.price - priceStart);
-          soldQty += sellQty;
-          if (soldQty >= qtyStart - 0.0001) break;
-        }
-      } else {
-        // Vente partielle
-        const pEnd = endPrice(ticker, y, isYTD);
-        if (pEnd != null) totalGain += qtyEnd * (pEnd - priceStart);
-        const soldQty = qtyStart - qtyEnd;
-        const sells = yearTxs.filter(t => t.type === 'sell' && t.ticker === ticker);
-        let accSold = 0;
-        for (const s of sells) {
-          const sq = Math.min(s.qty, soldQty - accSold);
-          totalGain += sq * (s.price - priceStart);
-          accSold += sq;
-          if (accSold >= soldQty - 0.0001) break;
-        }
-      }
+    // ── Valeur des titres en début d'année (31/12 Y-1) ──
+    let valueStart = 0;
+    for (const [ticker, qty] of Object.entries(invStart)) {
+      const p = priceAtYearEnd[ticker] && priceAtYearEnd[ticker][y - 1];
+      if (p != null) valueStart += qty * p;
     }
 
-    // ── Lignes nouvelles (achetées pendant l'année Y, pas dans invStart) ──
-    // On ne regarde que la qty NETTE détenue en fin d'année pour la base.
-    // Les allers-retours intra-année ne comptent que via leur PnL réalisé.
-    const newTickers = new Set();
+    // ── Valeur des titres en fin d'année (31/12 Y ou prix live si YTD) ──
+    let valueEnd = 0;
+    for (const [ticker, qty] of Object.entries(invEnd)) {
+      if (qty <= 0.0001) continue;
+      const p = endPrice(ticker, y, isYTD);
+      if (p != null) valueEnd += qty * p;
+    }
+
+    // ── Flux nets de l'année = somme des achats - somme des ventes (en €) ──
+    // C'est le capital frais injecté dans les titres (positif = on a mis de l'argent,
+    // négatif = on a retiré de l'argent). Les rotations (vendre A pour acheter B)
+    // s'annulent naturellement.
+    let netFlows = 0;
     for (const tx of yearTxs) {
-      if (tx.type === 'buy' && !oldTickers.has(tx.ticker)) newTickers.add(tx.ticker);
+      if (tx.type === 'buy')  netFlows += tx.qty * tx.price;
+      if (tx.type === 'sell') netFlows -= tx.qty * tx.price;
     }
 
-    for (const ticker of newTickers) {
-      const qtyEnd = invEnd[ticker] || 0;
+    // ── Gain = variation de valeur - capital frais injecté ──
+    const totalGain = valueEnd - valueStart - netFlows;
 
-      // PnL réalisé des ventes intra-année sur ce ticker
-      const sells = yearTxs.filter(t => t.type === 'sell' && t.ticker === ticker);
-      let realizedGain = 0;
-      for (const s of sells) {
-        realizedGain += (s.realizedPnl != null) ? s.realizedPnl : 0;
-      }
-      totalGain += realizedGain;
-
-      // Pour la qty encore détenue en fin d'année : base = qty × PRU, gain = qty × (prix fin - PRU)
-      if (qtyEnd > 0.0001) {
-        // PRU à la date de fin d'année (ou aujourd'hui pour YTD)
-        const pruDate = isYTD ? new Date().toISOString().slice(0, 10) : yearEndStr;
-        const pru = pruAtDate(ticker, pruDate);
-
-        totalBase += qtyEnd * pru;
-        const pEnd = endPrice(ticker, y, isYTD);
-        if (pEnd != null) totalGain += qtyEnd * (pEnd - pru);
-      }
-    }
-
-    // ── Achats complémentaires sur lignes anciennes (augmentation de position) ──
-    for (const tx of yearTxs) {
-      if (tx.type !== 'buy') continue;
-      if (!oldTickers.has(tx.ticker)) continue;
-      const addCost = tx.qty * tx.price;
-      totalBase += addCost;
-      const pEnd = endPrice(tx.ticker, y, isYTD);
-      if (pEnd != null) totalGain += tx.qty * (pEnd - tx.price);
-    }
+    // ── Base = capital exposé au risque ──
+    // = valeur début + capital frais injecté (si positif, sinon juste valeur début)
+    const totalBase = valueStart + Math.max(0, netFlows);
 
     const perfPct = totalBase > 0 ? (totalGain / totalBase * 100) : (totalGain !== 0 ? null : 0);
 
