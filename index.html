@@ -724,7 +724,12 @@
       <div class="page-header">
         <div>
           <div class="page-title">Performance</div>
-          <div class="page-subtitle">Rendement brut annuel de vos lignes (hors versements)</div>
+          <div class="page-subtitle">Rendement TWR annuel (méthode Boursorama)</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="exportVersementsCSV()" class="btn-outline" style="font-size:11px;padding:6px 12px">⬇ Versements CSV</button>
+          <button onclick="exportTransactionsCSV()" class="btn-outline" style="font-size:11px;padding:6px 12px">⬇ Transactions CSV</button>
+          <button onclick="exportDebugData()" class="btn-outline" style="font-size:11px;padding:6px 12px">⬇ Debug JSON</button>
         </div>
       </div>
 
