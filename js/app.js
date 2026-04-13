@@ -4910,10 +4910,34 @@ async function computeAnnualPerformance(portfolio, txs) {
     return val;
   }
 
-  // ── 6. Calcul TWR par année ──
-  // À chaque versement on coupe une sous-période.
-  // Les achats/ventes d'actions sont des mouvements internes (cash ↔ titres)
-  // et ne créent PAS de sous-période.
+  // ── 6. Construire la liste triée de toutes les dates de trading ──
+  const allTradingDatesSet = new Set();
+  for (const ticker of tickers) {
+    if (dailyPrices[ticker]) {
+      for (const d of Object.keys(dailyPrices[ticker])) allTradingDatesSet.add(d);
+    }
+  }
+  const allTradingDates = [...allTradingDatesSet].sort();
+
+  // Helper : trouver la date de trading juste avant une date donnée
+  function prevTradingDay(dateStr) {
+    let prev = null;
+    for (const d of allTradingDates) {
+      if (d >= dateStr) break;
+      prev = d;
+    }
+    return prev;
+  }
+
+  // ── 7. Calcul TWR par année (méthode Boursorama) ──
+  // Formule quotidienne Bourso :
+  //   perf_jour = (V_jour - V_veille - versement_jour) / (V_veille + versement_jour)
+  //   → équivalent à : (1 + perf) = V_jour / (V_veille + versement_jour)
+  // Perf annuelle = produit des (1 + perf_jour) pour chaque jour de trading
+  //
+  // On optimise en ne coupant qu'aux versements :
+  //   sous_période = (V_veille_du_versement / V_après_dernier_versement)  ← marché entre 2 versements
+  //               × (V_jour_versement / (V_veille_versement + versement))  ← jour du versement
   const yearResults = [];
 
   for (let y = firstYear; y <= currentYear; y++) {
@@ -4925,7 +4949,7 @@ async function computeAnnualPerformance(portfolio, txs) {
       return new Date(v.date + 'T12:00:00').getFullYear() === y;
     }).sort((a, b) => a.date.localeCompare(b.date));
 
-    // Valeur totale (titres + cash) en début d'année
+    // Valeur totale en début d'année
     let periodStartValue;
     if (y === firstYear) {
       periodStartValue = 0;
@@ -4933,7 +4957,6 @@ async function computeAnnualPerformance(portfolio, txs) {
       periodStartValue = totalValueAt((y - 1) + '-12-31', false);
     }
 
-    // Chaîner les rendements aux dates de versement
     let twrProduct = 1;
     let hasCapital = false;
 
@@ -4947,19 +4970,31 @@ async function computeAnnualPerformance(portfolio, txs) {
 
     for (const vDate of versDates) {
       const versAmount = versByDate[vDate];
+      const valAtDate = totalValueAt(vDate, false);
 
-      // Valeur AVANT le versement du jour
-      // = valeur totale incluant ce versement − le versement
-      const valueWithVers = totalValueAt(vDate, false);
-      const valueBeforeFlow = valueWithVers - versAmount;
+      // Trouver la valeur de la veille (dernier jour de trading avant le versement)
+      const prevDay = prevTradingDay(vDate);
+      const valPrevDay = prevDay ? totalValueAt(prevDay, false) : 0;
 
       if (periodStartValue > 0.01) {
         hasCapital = true;
-        twrProduct *= (valueBeforeFlow / periodStartValue);
+        // Rendement du marché entre la dernière sous-période et la veille
+        const marketRet = valPrevDay / periodStartValue;
+        // Rendement du jour du versement (formule Bourso)
+        const denom = valPrevDay + versAmount;
+        const versDayRet = denom > 0.01 ? valAtDate / denom : 1;
+        twrProduct *= (marketRet * versDayRet);
+      } else {
+        // Premier versement : pas encore de capital → juste initialiser
+        // Si valPrevDay > 0 (ne devrait pas arriver), on gère quand même
+        const denom = valPrevDay + versAmount;
+        if (denom > 0.01) {
+          twrProduct *= (valAtDate / denom);
+          hasCapital = true;
+        }
       }
 
-      // Nouvelle base de départ = valeur après le versement
-      periodStartValue = valueWithVers;
+      periodStartValue = valAtDate;
     }
 
     // Dernière sous-période → fin d'année (ou aujourd'hui)
