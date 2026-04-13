@@ -3410,6 +3410,43 @@ function exportCSV() {
   a.click(); URL.revokeObjectURL(url);
 }
 
+function exportDebugData() {
+  const portfolio = getPortfolio(currentUser);
+  const txs = getTransactions(currentUser);
+  const versements = getVersements(currentUser);
+  const data = { portfolio, transactions: txs, versements };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'debug_pea_' + currentUser + '.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function exportVersementsCSV() {
+  const versements = getVersements(currentUser);
+  if (!versements.length) { alert('Aucun versement.'); return; }
+  const header = 'Date,Montant\n';
+  const rows = versements.sort((a,b) => (a.date||'').localeCompare(b.date||'')).map(v => v.date + ',' + v.amount.toFixed(2)).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'versements_' + currentUser + '.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+function exportTransactionsCSV() {
+  const txs = getTransactions(currentUser);
+  if (!txs.length) { alert('Aucune transaction.'); return; }
+  const header = 'Date,Type,Ticker,Nom,Quantité,Prix,Montant,PnL Réalisé\n';
+  const rows = txs.sort((a,b) => (a.date||'').localeCompare(b.date||'')).map(t => {
+    const montant = (t.qty * t.price).toFixed(2);
+    const pnl = t.realizedPnl != null ? t.realizedPnl.toFixed(2) : '';
+    return [t.date, t.type, t.ticker, (t.name||'').replace(/,/g,' '), t.qty, t.price.toFixed(2), montant, pnl].join(',');
+  }).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'transactions_' + currentUser + '.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
 // ═══════════════════════════════════════════════════
 // FEATURE 7: AUTO-REFRESH (60s)
 // ═══════════════════════════════════════════════════
