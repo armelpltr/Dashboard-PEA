@@ -4919,98 +4919,105 @@ async function computeAnnualPerformance(portfolio, txs) {
   }
   const allTradingDates = [...allTradingDatesSet].sort();
 
-  // Helper : trouver la date de trading juste avant une date donnée
-  function prevTradingDay(dateStr) {
-    let prev = null;
-    for (const d of allTradingDates) {
-      if (d >= dateStr) break;
-      prev = d;
-    }
-    return prev;
+  // Grouper tous les versements par date
+  const allVersByDate = {};
+  for (const v of versements) {
+    if (!v.date) continue;
+    if (!allVersByDate[v.date]) allVersByDate[v.date] = 0;
+    allVersByDate[v.date] += v.amount;
   }
 
-  // ── 7. Calcul TWR par année (méthode Boursorama) ──
-  // Formule quotidienne Bourso :
+  // ── 7. Calcul TWR par année (méthode Boursorama — chaînage quotidien) ──
+  // Formule Bourso pour chaque jour :
   //   perf_jour = (V_jour - V_veille - versement_jour) / (V_veille + versement_jour)
-  //   → équivalent à : (1 + perf) = V_jour / (V_veille + versement_jour)
-  // Perf annuelle = produit des (1 + perf_jour) pour chaque jour de trading
-  //
-  // On optimise en ne coupant qu'aux versements :
-  //   sous_période = (V_veille_du_versement / V_après_dernier_versement)  ← marché entre 2 versements
-  //               × (V_jour_versement / (V_veille_versement + versement))  ← jour du versement
+  //   (1 + perf_jour) = V_jour / (V_veille + versement_jour)
+  // Perf annuelle = ∏(1 + perf_jour) - 1
   const yearResults = [];
 
   for (let y = firstYear; y <= currentYear; y++) {
     const isYTD = (y === currentYear);
 
-    // Versements de l'année, triés par date
+    // Versements de l'année
     const yearVers = versements.filter(v => {
       if (!v.date) return false;
       return new Date(v.date + 'T12:00:00').getFullYear() === y;
-    }).sort((a, b) => a.date.localeCompare(b.date));
+    });
 
-    // Valeur totale en début d'année
-    let periodStartValue;
+    // Valeur en début d'année (= valeur au 31/12 Y-1)
+    let prevValue;
     if (y === firstYear) {
-      periodStartValue = 0;
+      prevValue = 0;
     } else {
-      periodStartValue = totalValueAt((y - 1) + '-12-31', false);
+      prevValue = totalValueAt((y - 1) + '-12-31', false);
     }
+
+    // Filtrer les dates de trading de cette année
+    const yearStart = y + '-01-01';
+    const yearEnd = y + '-12-31';
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    // Collecter toutes les dates à traiter :
+    // dates de trading Yahoo + dates de versement (même si pas jour de trading)
+    const yearDatesSet = new Set();
+    for (const d of allTradingDates) {
+      if (d >= yearStart && (isYTD ? d <= todayStr : d <= yearEnd)) yearDatesSet.add(d);
+    }
+    // Ajouter les dates de versement (elles ont une valo même sans prix Yahoo ce jour-là)
+    for (const v of yearVers) {
+      if (v.date >= yearStart && (isYTD ? v.date <= todayStr : v.date <= yearEnd)) yearDatesSet.add(v.date);
+    }
+    const yearDates = [...yearDatesSet].sort();
 
     let twrProduct = 1;
     let hasCapital = false;
 
-    // Grouper les versements par date
-    const versByDate = {};
-    for (const v of yearVers) {
-      if (!versByDate[v.date]) versByDate[v.date] = 0;
-      versByDate[v.date] += v.amount;
-    }
-    const versDates = Object.keys(versByDate).sort();
+    for (const d of yearDates) {
+      const versToday = allVersByDate[d] || 0;
+      const valToday = totalValueAt(d, false);
+      const denom = prevValue + versToday;
 
-    for (const vDate of versDates) {
-      const versAmount = versByDate[vDate];
-      const valAtDate = totalValueAt(vDate, false);
-
-      // Trouver la valeur de la veille (dernier jour de trading avant le versement)
-      const prevDay = prevTradingDay(vDate);
-      const valPrevDay = prevDay ? totalValueAt(prevDay, false) : 0;
-
-      if (periodStartValue > 0.01) {
+      if (denom > 0.01) {
         hasCapital = true;
-        // Rendement du marché entre la dernière sous-période et la veille
-        const marketRet = valPrevDay / periodStartValue;
-        // Rendement du jour du versement (formule Bourso)
-        const denom = valPrevDay + versAmount;
-        const versDayRet = denom > 0.01 ? valAtDate / denom : 1;
-        twrProduct *= (marketRet * versDayRet);
-      } else {
-        // Premier versement : pas encore de capital → juste initialiser
-        // Si valPrevDay > 0 (ne devrait pas arriver), on gère quand même
-        const denom = valPrevDay + versAmount;
-        if (denom > 0.01) {
-          twrProduct *= (valAtDate / denom);
-          hasCapital = true;
-        }
+        const dailyRet = valToday / denom;
+        twrProduct *= dailyRet;
       }
 
-      periodStartValue = valAtDate;
+      prevValue = valToday;
     }
 
-    // Dernière sous-période → fin d'année (ou aujourd'hui)
-    let valueEnd;
+    // Dernière étape : si YTD, ajuster avec les prix live d'aujourd'hui
+    // (les prix Yahoo du jour peuvent ne pas être encore dispo)
     if (isYTD) {
-      valueEnd = totalValueAt(new Date().toISOString().slice(0, 10), true);
-    } else {
-      valueEnd = totalValueAt(y + '-12-31', false);
-    }
-
-    if (periodStartValue > 0.01) {
-      hasCapital = true;
-      twrProduct *= (valueEnd / periodStartValue);
+      const valueEndLive = totalValueAt(todayStr, true);
+      const versToday = allVersByDate[todayStr] || 0;
+      // Si on a déjà traité aujourd'hui dans la boucle, on corrige
+      // en remplaçant le dernier rendement par celui avec prix live
+      if (yearDates.length && yearDates[yearDates.length - 1] === todayStr) {
+        // Annuler le dernier rendement (calculé avec prix Yahoo)
+        const valYahoo = totalValueAt(todayStr, false);
+        const prevVal = yearDates.length >= 2
+          ? totalValueAt(yearDates[yearDates.length - 2], false)
+          : (y === firstYear ? 0 : totalValueAt((y - 1) + '-12-31', false));
+        const denomPrev = prevVal + versToday;
+        if (denomPrev > 0.01 && valYahoo > 0.01) {
+          twrProduct /= (valYahoo / denomPrev);
+          twrProduct *= (valueEndLive / denomPrev);
+        }
+        prevValue = valueEndLive;
+      } else {
+        // Aujourd'hui n'était pas dans les dates de trading → ajouter une dernière sous-période
+        const versToday2 = allVersByDate[todayStr] || 0;
+        const denom2 = prevValue + versToday2;
+        if (denom2 > 0.01) {
+          hasCapital = true;
+          twrProduct *= (valueEndLive / denom2);
+        }
+        prevValue = valueEndLive;
+      }
     }
 
     const perfPct = hasCapital ? (twrProduct - 1) * 100 : 0;
+    const valueEnd = prevValue;
 
     // Gain en € (pour affichage)
     const valueYearStart = (y === firstYear) ? 0 : totalValueAt((y - 1) + '-12-31', false);
