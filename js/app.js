@@ -4958,13 +4958,20 @@ async function computeAnnualPerformance(portfolio, txs) {
 
     // Collecter toutes les dates à traiter :
     // dates de trading Yahoo + dates de versement (même si pas jour de trading)
+    // Pour le YTD : exclure aujourd'hui de la boucle (on utilise les prix live après)
     const yearDatesSet = new Set();
     for (const d of allTradingDates) {
-      if (d >= yearStart && (isYTD ? d <= todayStr : d <= yearEnd)) yearDatesSet.add(d);
+      if (d >= yearStart && d <= yearEnd) {
+        if (isYTD && d >= todayStr) continue; // exclure aujourd'hui et après
+        yearDatesSet.add(d);
+      }
     }
-    // Ajouter les dates de versement (elles ont une valo même sans prix Yahoo ce jour-là)
+    // Ajouter les dates de versement (sauf aujourd'hui si YTD)
     for (const v of yearVers) {
-      if (v.date >= yearStart && (isYTD ? v.date <= todayStr : v.date <= yearEnd)) yearDatesSet.add(v.date);
+      if (v.date >= yearStart && v.date <= yearEnd) {
+        if (isYTD && v.date >= todayStr) continue;
+        yearDatesSet.add(v.date);
+      }
     }
     const yearDates = [...yearDatesSet].sort();
 
@@ -4985,39 +4992,34 @@ async function computeAnnualPerformance(portfolio, txs) {
       prevValue = valToday;
     }
 
-    // Dernière étape : si YTD, ajuster avec les prix live d'aujourd'hui
-    // (les prix Yahoo du jour peuvent ne pas être encore dispo)
+    // Dernière étape : valeur de fin
+    let valueEnd;
     if (isYTD) {
-      const valueEndLive = totalValueAt(todayStr, true);
+      // Ajouter le rendement d'aujourd'hui avec les prix LIVE
+      valueEnd = totalValueAt(todayStr, true);
       const versToday = allVersByDate[todayStr] || 0;
-      // Si on a déjà traité aujourd'hui dans la boucle, on corrige
-      // en remplaçant le dernier rendement par celui avec prix live
-      if (yearDates.length && yearDates[yearDates.length - 1] === todayStr) {
-        // Annuler le dernier rendement (calculé avec prix Yahoo)
-        const valYahoo = totalValueAt(todayStr, false);
-        const prevVal = yearDates.length >= 2
-          ? totalValueAt(yearDates[yearDates.length - 2], false)
-          : (y === firstYear ? 0 : totalValueAt((y - 1) + '-12-31', false));
-        const denomPrev = prevVal + versToday;
-        if (denomPrev > 0.01 && valYahoo > 0.01) {
-          twrProduct /= (valYahoo / denomPrev);
-          twrProduct *= (valueEndLive / denomPrev);
+      const denom = prevValue + versToday;
+      if (denom > 0.01) {
+        hasCapital = true;
+        twrProduct *= (valueEnd / denom);
+      }
+    } else {
+      valueEnd = totalValueAt(yearEnd, false);
+      if (prevValue > 0.01) {
+        // Il peut rester des jours entre la dernière date de trading et le 31/12
+        // (normalement non, mais au cas où)
+        const lastDate = yearDates.length ? yearDates[yearDates.length - 1] : null;
+        if (lastDate && lastDate < yearEnd) {
+          const denom = prevValue;
+          if (denom > 0.01) {
+            hasCapital = true;
+            twrProduct *= (valueEnd / denom);
+          }
         }
-        prevValue = valueEndLive;
-      } else {
-        // Aujourd'hui n'était pas dans les dates de trading → ajouter une dernière sous-période
-        const versToday2 = allVersByDate[todayStr] || 0;
-        const denom2 = prevValue + versToday2;
-        if (denom2 > 0.01) {
-          hasCapital = true;
-          twrProduct *= (valueEndLive / denom2);
-        }
-        prevValue = valueEndLive;
       }
     }
 
     const perfPct = hasCapital ? (twrProduct - 1) * 100 : 0;
-    const valueEnd = prevValue;
 
     // Gain en € (pour affichage)
     const valueYearStart = (y === firstYear) ? 0 : totalValueAt((y - 1) + '-12-31', false);
