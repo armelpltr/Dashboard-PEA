@@ -4964,9 +4964,23 @@ function computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio) {
     if (v > 0) liveValue = v;
   }
 
-  // Cash actuel (si le portefeuille n'inclut pas le cash, on ne le connait pas
-  // précisément ; on se contente de la valeur titres = la dernière dailyValue
-  // pour aujourd'hui sinon)
+  // Cash résiduel : versements totaux − (achats − ventes)
+  // Permet d'aligner la valeur live sur la valeur broker (qui inclut le cash).
+  // Sans ça on perd ~les centimes de cash → quelques bps d'écart sur la perf.
+  const txs = getTransactions(currentUser);
+  let cashResidual = 0;
+  for (const v of versements) {
+    if (v && typeof v.amount === 'number') cashResidual += v.amount;
+  }
+  for (const t of txs) {
+    if (!t || !t.qty || !t.price) continue;
+    if (t.type === 'buy')  cashResidual -= t.qty * t.price;
+    if (t.type === 'sell') cashResidual += t.qty * t.price;
+  }
+  if (cashResidual > 0.001 && liveValue != null) {
+    liveValue += cashResidual;
+  }
+
   const todayStr = new Date().toISOString().slice(0, 10);
 
   const firstDate = sortedDates[0];
