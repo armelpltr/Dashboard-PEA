@@ -3720,6 +3720,320 @@ function getMonths(from, to) {
   return months;
 }
 
+// ─────────────────────────────────────────────────────────────────
+//  BENCHMARK PAGE
+//  Compare le portefeuille réel (dailyValues broker) à un DCA fictif
+//  sur un indice, en utilisant les mêmes dates et montants de versement.
+// ─────────────────────────────────────────────────────────────────
+let benchmarkChart = null;
+let _benchCache = {}; // { ticker: { dailyPrices, liveQuote } }
+
+async function fetchIndexDaily(ticker, period1) {
+  if (_benchCache[ticker]) return _benchCache[ticker];
+  const p1 = Math.floor(new Date(period1 + 'T00:00:00').getTime() / 1000);
+  const p2 = Math.floor(Date.now() / 1000) + 86400;
+  const raw = await fetchWithFallback(
+    'https://query1.finance.yahoo.com/v8/finance/chart/'
+    + encodeURIComponent(ticker)
+    + '?interval=1d&period1=' + p1 + '&period2=' + p2
+  );
+  const d = JSON.parse(raw);
+  const res = d.chart && d.chart.result && d.chart.result[0];
+  if (!res || !res.timestamp) throw new Error('Pas de données Yahoo pour ' + ticker);
+  const ts = res.timestamp;
+  const closes = res.indicators.quote[0].close;
+  const adjcloses = (res.indicators.adjclose && res.indicators.adjclose[0].adjclose) || closes;
+  const prices = {};
+  for (let i = 0; i < ts.length; i++) {
+    if (closes[i] == null) continue;
+    const key = new Date(ts[i] * 1000).toISOString().slice(0, 10);
+    // Utilise adjclose (dividendes réinvestis) pour une comparaison équitable
+    // (le PEA bénéficie des dividendes en cash via les versements du broker)
+    prices[key] = adjcloses[i] != null ? adjcloses[i] : closes[i];
+  }
+  const liveQuote = res.meta && res.meta.regularMarketPrice;
+  const data = { prices, liveQuote };
+  _benchCache[ticker] = data;
+  return data;
+}
+
+function getIndexPriceAt(prices, dateStr) {
+  if (prices[dateStr] != null) return prices[dateStr];
+  const keys = Object.keys(prices).sort();
+  let last = null;
+  for (const k of keys) {
+    if (k > dateStr) break;
+    last = prices[k];
+  }
+  return last;
+}
+
+async function initBenchmark() {
+  const selectEl  = document.getElementById('bench-select');
+  const kpiEl     = document.getElementById('bench-kpis');
+  const tbodyEl   = document.getElementById('bench-tbody');
+  const statusEl  = document.getElementById('bench-status');
+  const ticker    = selectEl ? selectEl.value : '^GSPC';
+  const labelMap  = {
+    '^GSPC':     'S&P 500',
+    '^FCHI':     'CAC 40',
+    'URTH':      'MSCI World',
+    '^STOXX50E': 'Euro Stoxx 50',
+    '^NDX':      'Nasdaq 100',
+  };
+  const indexName = labelMap[ticker] || ticker;
+
+  const versements = getVersements(currentUser);
+  const dailyValues = getDailyValues(currentUser);
+  const portfolio  = getPortfolio(currentUser);
+  const txs        = getTransactions(currentUser);
+
+  if (!versements.length) {
+    kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Aucun versement</div><div class="stat-sub">Ajoutez au moins un versement pour comparer</div></div>';
+    tbodyEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">—</td></tr>';
+    return;
+  }
+
+  kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Chargement…</div></div>';
+  tbodyEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Récupération des cours ' + indexName + '…</td></tr>';
+
+  // Période : du 1er versement à aujourd'hui
+  const sortedVers = [...versements].filter(v => v.date).sort((a,b) => a.date.localeCompare(b.date));
+  const firstDate = sortedVers[0].date;
+
+  let indexData;
+  try {
+    indexData = await fetchIndexDaily(ticker, firstDate);
+  } catch (e) {
+    kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label" style="color:var(--negative)">Erreur Yahoo</div><div class="stat-sub">' + (e.message || 'Indisponible') + '</div></div>';
+    tbodyEl.innerHTML = '';
+    return;
+  }
+
+  // ── 1. Valeur réelle du portefeuille ──
+  // On utilise dailyValues broker si dispo (exact), sinon on retombe sur live.
+  let portfolioCurrentValue = 0;
+  if (portfolio && portfolio.length) {
+    for (const r of portfolio) if (r.qty && r.currentPrice) portfolioCurrentValue += r.qty * r.currentPrice;
+  }
+  // Ajouter le cash résiduel pour matcher la valeur broker
+  let cashResidual = 0;
+  for (const v of versements) if (typeof v.amount === 'number') cashResidual += v.amount;
+  for (const t of txs) {
+    if (!t.qty || !t.price) continue;
+    if (t.type === 'buy')  cashResidual -= t.qty * t.price;
+    if (t.type === 'sell') cashResidual += t.qty * t.price;
+  }
+  if (cashResidual > 0.001) portfolioCurrentValue += cashResidual;
+
+  // Si on a les dailyValues broker, on privilégie leur dernière valeur (+ live si récent)
+  if (dailyValues && dailyValues.length) {
+    const last = dailyValues[dailyValues.length - 1];
+    const todayStr = new Date().toISOString().slice(0, 10);
+    // Si dailyValues à jour au jour J, on prend. Sinon on garde le live.
+    if (last.date === todayStr) portfolioCurrentValue = last.value;
+  }
+
+  const totalVers = versements.reduce((s, v) => s + (v.amount || 0), 0);
+
+  // ── 2. Simulation DCA sur l'indice ──
+  // Chaque versement "achète" des parts de l'indice au prix du jour
+  // Valeur fictive actuelle = total_parts × prix_actuel_indice
+  const liveIdxPrice = indexData.liveQuote || (function(){
+    const keys = Object.keys(indexData.prices).sort();
+    return indexData.prices[keys[keys.length - 1]];
+  })();
+
+  let totalIndexUnits = 0;
+  const txRows = []; // pour le tableau
+
+  for (const v of sortedVers) {
+    const px = getIndexPriceAt(indexData.prices, v.date);
+    if (px == null) {
+      txRows.push({ date: v.date, amount: v.amount, price: null, units: 0, currentValue: 0, perf: null });
+      continue;
+    }
+    const units = v.amount / px;
+    totalIndexUnits += units;
+    const currentValue = units * liveIdxPrice;
+    const perf = ((liveIdxPrice / px) - 1) * 100;
+    txRows.push({ date: v.date, amount: v.amount, price: px, units, currentValue, perf });
+  }
+
+  const indexSimValue = totalIndexUnits * liveIdxPrice;
+  const indexGain     = indexSimValue - totalVers;
+  const indexPerfPct  = totalVers > 0 ? (indexGain / totalVers * 100) : 0;
+
+  const portfolioGain    = portfolioCurrentValue - totalVers;
+  const portfolioPerfPct = totalVers > 0 ? (portfolioGain / totalVers * 100) : 0;
+
+  const deltaEur = portfolioCurrentValue - indexSimValue;
+  const deltaPct = portfolioPerfPct - indexPerfPct;
+
+  // ── 3. KPIs ──
+  const col = v => v >= 0 ? 'var(--positive)' : 'var(--negative)';
+  const sgn = v => v >= 0 ? '+' : '';
+
+  kpiEl.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">MON PEA</div>
+      <div class="stat-value" style="color:${col(portfolioGain)}">${fmt(portfolioCurrentValue)}</div>
+      <div class="stat-sub">${sgn(portfolioGain)}${fmt(portfolioGain)} · ${sgn(portfolioPerfPct)}${portfolioPerfPct.toFixed(2)} %</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">DCA FICTIF ${indexName.toUpperCase()}</div>
+      <div class="stat-value" style="color:${col(indexGain)}">${fmt(indexSimValue)}</div>
+      <div class="stat-sub">${sgn(indexGain)}${fmt(indexGain)} · ${sgn(indexPerfPct)}${indexPerfPct.toFixed(2)} %</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">ÉCART</div>
+      <div class="stat-value" style="color:${col(deltaEur)}">${sgn(deltaEur)}${fmt(deltaEur)}</div>
+      <div class="stat-sub">${deltaEur >= 0 ? 'Vous battez ' : 'Vous êtes battu par '}l'indice de ${Math.abs(deltaPct).toFixed(2)} pts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">INVESTI TOTAL</div>
+      <div class="stat-value">${fmt(totalVers)}</div>
+      <div class="stat-sub">${versements.length} versement${versements.length > 1 ? 's' : ''}</div>
+    </div>
+  `;
+
+  // ── 4. Tableau ──
+  tbodyEl.innerHTML = txRows.map(r => {
+    if (r.price == null) {
+      return `<tr><td>${r.date}</td><td class="mono" style="text-align:right">${fmt(r.amount)}</td><td colspan="4" style="text-align:center;color:var(--text3)">—</td></tr>`;
+    }
+    return `<tr>
+      <td style="font-weight:500">${r.date}</td>
+      <td class="mono" style="text-align:right">${fmt(r.amount)}</td>
+      <td class="mono" style="text-align:right">${r.price.toFixed(2)}</td>
+      <td class="mono" style="text-align:right">${r.units.toFixed(4)}</td>
+      <td class="mono" style="text-align:right">${fmt(r.currentValue)}</td>
+      <td class="mono" style="text-align:right;color:${col(r.perf)}">${sgn(r.perf)}${r.perf.toFixed(2)} %</td>
+    </tr>`;
+  }).join('');
+
+  if (statusEl) statusEl.textContent = indexName + ' · live ' + liveIdxPrice.toFixed(2);
+
+  // ── 5. Graphique comparaison ──
+  renderBenchmarkChart(indexData, sortedVers, dailyValues, portfolioCurrentValue, indexName);
+}
+
+function renderBenchmarkChart(indexData, sortedVers, dailyValues, portfolioCurrentValue, indexName) {
+  const ctx = document.getElementById('chart-benchmark');
+  if (!ctx) return;
+  if (benchmarkChart) { benchmarkChart.destroy(); benchmarkChart = null; }
+
+  // Construire les séries quotidiennes
+  const firstDate = sortedVers[0].date;
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Toutes les dates de trading de l'indice entre firstDate et today
+  const indexDates = Object.keys(indexData.prices).filter(d => d >= firstDate && d <= today).sort();
+
+  // Série DCA fictif : à chaque date, somme des units × prix du jour
+  // (les units sont accumulées à la date du versement)
+  const liveIdxPrice = indexData.liveQuote || indexData.prices[indexDates[indexDates.length - 1]];
+  const versByDate = {};
+  for (const v of sortedVers) versByDate[v.date] = (versByDate[v.date] || 0) + v.amount;
+
+  let cumUnits = 0;
+  const dcaSerie = [];
+  const cumInvestSerie = [];
+  let cumInvest = 0;
+
+  // Fusionner dates trading + dates versement pour couvrir tout
+  const allDatesSet = new Set(indexDates);
+  for (const d in versByDate) if (d >= firstDate && d <= today) allDatesSet.add(d);
+  const allDates = [...allDatesSet].sort();
+
+  for (const d of allDates) {
+    if (versByDate[d]) {
+      const px = getIndexPriceAt(indexData.prices, d);
+      if (px != null) cumUnits += versByDate[d] / px;
+      cumInvest += versByDate[d];
+    }
+    const px = getIndexPriceAt(indexData.prices, d);
+    dcaSerie.push({ x: d, y: +(cumUnits * px).toFixed(2) });
+    cumInvestSerie.push({ x: d, y: +cumInvest.toFixed(2) });
+  }
+
+  // Série PEA : dailyValues broker si dispo, sinon courbe fictive (investi seulement)
+  const peaSerie = [];
+  if (dailyValues && dailyValues.length) {
+    for (const dv of dailyValues) {
+      if (dv.date >= firstDate && dv.date <= today) {
+        peaSerie.push({ x: dv.date, y: dv.value });
+      }
+    }
+    // Ajouter la valeur actuelle (live) si plus récente que dernière dailyValue
+    const lastDailyDate = dailyValues[dailyValues.length - 1].date;
+    if (lastDailyDate < today) {
+      peaSerie.push({ x: today, y: +portfolioCurrentValue.toFixed(2) });
+    }
+  }
+
+  benchmarkChart = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: 'Mon PEA',
+          data: peaSerie,
+          borderColor: '#00e09e',
+          backgroundColor: 'rgba(0,224,158,0.08)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.25,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+        },
+        {
+          label: 'DCA ' + indexName,
+          data: dcaSerie,
+          borderColor: '#7c6df5',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [],
+          fill: false,
+          tension: 0.25,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+        },
+        {
+          label: 'Capital investi',
+          data: cumInvestSerie,
+          borderColor: 'rgba(255,255,255,0.25)',
+          backgroundColor: 'transparent',
+          borderWidth: 1,
+          borderDash: [4, 4],
+          fill: false,
+          tension: 0,
+          pointRadius: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { color: '#edf0f7', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return ctx.dataset.label + ' : ' + new Intl.NumberFormat('fr-FR', {style:'currency',currency:'EUR'}).format(ctx.parsed.y);
+            }
+          }
+        }
+      },
+      scales: {
+        x: { type: 'time', time: { unit: 'month' }, ticks: { color: '#8892a8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8892a8', font: { size: 10 }, callback: v => v + ' €' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+      },
+    },
+  });
+}
+
 function initBase100() {
   const months = getMonths('2025-02', '2026-03');
   const livretMonthly = 0.025 / 12;
@@ -4756,7 +5070,7 @@ function confirmDividende() {
 const _origShowPageAnalytique = showPage;
 showPage = function(id) {
   _origShowPageAnalytique(id);
-  if (id === 'base100')      initBase100();
+  if (id === 'benchmark')    initBenchmark();
   if (id === 'projections')  initProjections();
   if (id === 'bilan')        initBilan();
   if (id === 'dividendes')   initDividendes();
@@ -4765,7 +5079,7 @@ showPage = function(id) {
 const _origShowPageMobileAnalytique = showPageMobile;
 showPageMobile = function(id) {
   _origShowPageMobileAnalytique(id);
-  if (id === 'base100')      initBase100();
+  if (id === 'benchmark')    initBenchmark();
   if (id === 'projections')  initProjections();
   if (id === 'bilan')        initBilan();
   if (id === 'dividendes')   initDividendes();
