@@ -148,8 +148,8 @@
         <span class="mobile-drawer-icon">👁</span>Watchlist
       </div>
       <div class="mobile-drawer-section">Analytique</div>
-      <div class="mobile-drawer-item" onclick="showPageMobile('base100');closeMobileDrawer()" data-mob="base100">
-        <span class="mobile-drawer-icon">📐</span>Base 100
+      <div class="mobile-drawer-item" onclick="showPageMobile('benchmark');closeMobileDrawer()" data-mob="benchmark">
+        <span class="mobile-drawer-icon">🎯</span>Benchmark
       </div>
       <div class="mobile-drawer-item" onclick="showPageMobile('projections');closeMobileDrawer()" data-mob="projections">
         <span class="mobile-drawer-icon">🔭</span>Projections
@@ -189,8 +189,8 @@
         <span class="nav-icon">👁</span> Watchlist
       </div>
       <div class="nav-section-label" style="margin-top:10px">Analytique</div>
-      <div class="nav-item" onclick="showPage('base100')">
-        <span class="nav-icon">📐</span> Base 100
+      <div class="nav-item" onclick="showPage('benchmark')">
+        <span class="nav-icon">🎯</span> Benchmark
       </div>
       <div class="nav-item" onclick="showPage('projections')">
         <span class="nav-icon">🔭</span> Projections
@@ -401,48 +401,52 @@
     </div>
 
     <!-- ══════════════════════════════════════════════
-         BASE 100 PAGE
+         BENCHMARK PAGE
          ══════════════════════════════════════════════ -->
-    <div class="page" id="page-base100">
+    <div class="page" id="page-benchmark">
       <div class="page-header">
         <div>
-          <div class="page-title">Base 100</div>
-          <div class="page-subtitle">Performance relative depuis le premier achat de chaque actif</div>
+          <div class="page-title">Benchmark</div>
+          <div class="page-subtitle">Votre PEA vs indice — simulation DCA aux mêmes dates</div>
         </div>
         <div style="display:flex;gap:10px;align-items:center">
-          <div id="b100-legend" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12px"></div>
+          <select id="bench-select" onchange="initBenchmark()" class="form-input" style="padding:8px 12px;font-size:13px;min-width:180px">
+            <option value="^GSPC">S&amp;P 500</option>
+            <option value="^FCHI">CAC 40</option>
+            <option value="URTH">MSCI World</option>
+            <option value="^STOXX50E">Euro Stoxx 50</option>
+            <option value="^NDX">Nasdaq 100</option>
+          </select>
         </div>
       </div>
 
+      <!-- KPIs comparaison -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:18px" id="bench-kpis"></div>
+
+      <!-- Graphique de comparaison -->
       <div class="section-card" style="margin-bottom:18px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <div class="section-title">Performance normalisée — chaque ligne démarre à 100</div>
-          <div style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--text3)">
-            <svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--text2)" stroke-width="1.5" stroke-dasharray="4 3"/></svg>
-            Référence 100
-            <svg width="22" height="10" style="margin-left:6px"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--text3)" stroke-width="1.5" stroke-dasharray="3 2"/></svg>
-            Livret A 2,5%
-          </div>
-        </div>
+        <div class="section-title">Évolution comparée</div>
         <div style="position:relative;height:380px">
-          <canvas id="chart-base100"></canvas>
+          <canvas id="chart-benchmark"></canvas>
         </div>
       </div>
 
+      <!-- Table détaillée -->
       <div class="table-container">
         <div class="table-header">
-          <span class="table-title">Performances actuelles vs base 100</span>
+          <span class="table-title">Détail du DCA simulé sur l'indice</span>
+          <span id="bench-status" style="font-size:11px;color:var(--text3)"></span>
         </div>
         <table>
           <thead><tr>
-            <th>Actif</th>
-            <th>1er prix connu</th>
-            <th>Prix actuel</th>
-            <th>Base 100 → ?</th>
-            <th>Performance</th>
-            <th>vs Livret A</th>
+            <th style="text-align:left">Date versement</th>
+            <th>Montant</th>
+            <th>Prix indice</th>
+            <th>Parts achetées</th>
+            <th>Valeur actuelle</th>
+            <th>Perf</th>
           </tr></thead>
-          <tbody id="b100-tbody"></tbody>
+          <tbody id="bench-tbody"></tbody>
         </table>
       </div>
     </div>
