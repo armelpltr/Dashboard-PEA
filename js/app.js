@@ -3252,44 +3252,30 @@ function initTiltCards() {
 }
 
 // ═══════════════════════════════════════════════════
-// FEATURE 1: LIGHT/DARK TOGGLE
+// ═══════════════════════════════════════════════════
+// FEATURE 1: LIGHT/DARK TOGGLE (désactivé — dark forcé)
 // ═══════════════════════════════════════════════════
 function toggleTheme() {
-  const el = document.documentElement;
-  const isLight = el.getAttribute('data-theme') === 'light';
-  el.setAttribute('data-theme', isLight ? 'dark' : 'light');
-  document.getElementById('toggle-theme').classList.toggle('on', !isLight);
-  try { localStorage.setItem('pea_theme', isLight ? 'dark' : 'light'); } catch(e){}
+  // Fonction conservée pour compat, mais désactivée : on reste en dark.
 }
-// Restore on load
+// Force le mode sombre au chargement et nettoie toute pref
 (function(){
   try {
-    const t = localStorage.getItem('pea_theme');
-    if (t === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
-      setTimeout(() => { const el = document.getElementById('toggle-theme'); if(el) el.classList.add('on'); }, 0);
-    }
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.removeItem('pea_theme');
   } catch(e){}
 })();
 
 // ═══════════════════════════════════════════════════
-// FEATURE 2: COLOR THEME
+// FEATURE 2: COLOR THEME (désactivé — violet forcé)
 // ═══════════════════════════════════════════════════
 function setColorTheme(color) {
-  document.documentElement.setAttribute('data-color', color === 'violet' ? '' : color);
-  if (color === 'violet') document.documentElement.removeAttribute('data-color');
-  document.querySelectorAll('.color-dot').forEach(d => d.classList.toggle('active', d.dataset.c === color));
-  try { localStorage.setItem('pea_color', color); } catch(e){}
+  // Fonction conservée pour compat, mais désactivée : on reste en violet.
 }
 (function(){
   try {
-    const c = localStorage.getItem('pea_color');
-    if (c && c !== 'violet') {
-      document.documentElement.setAttribute('data-color', c);
-      setTimeout(() => {
-        document.querySelectorAll('.color-dot').forEach(d => d.classList.toggle('active', d.dataset.c === c));
-      }, 0);
-    }
+    document.documentElement.removeAttribute('data-color');
+    localStorage.removeItem('pea_color');
   } catch(e){}
 })();
 
@@ -3597,7 +3583,7 @@ function confirmWatchlistAdd() {
   if (!wlFoundTicker || !wlFoundPrice) return;
   const wl = getWatchlist(currentUser);
   if (wl.find(w => w.ticker === wlFoundTicker)) { alert('Déjà dans la watchlist.'); return; }
-  wl.push({ name: wlFoundName, ticker: wlFoundTicker, price: wlFoundPrice, addedAt: new Date().toISOString() });
+  wl.push({ name: wlFoundName, ticker: wlFoundTicker, price: wlFoundPrice, addedPrice: wlFoundPrice, addedAt: new Date().toISOString() });
   saveWatchlist(currentUser, wl);
   closeWatchlistModal();
   renderWatchlist();
@@ -3608,20 +3594,180 @@ function removeFromWatchlist(i) {
   saveWatchlist(currentUser, wl);
   renderWatchlist();
 }
-function renderWatchlist() {
+// ─────────────────────────────────────────────────────────────────
+//  WATCHLIST enrichie : prix live, variation jour, sparkline 30j,
+//  perf depuis ajout, dividend yield.
+//
+//  Stratégie : render immédiat avec placeholders, puis fetch Yahoo
+//  en parallèle pour chaque ticker et maj progressive des cellules.
+// ─────────────────────────────────────────────────────────────────
+async function renderWatchlist() {
   const wl = getWatchlist(currentUser);
   const tbody = document.getElementById('watchlist-tbody');
   const empty = document.getElementById('watchlist-empty');
   if (!wl.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
+
+  const fmtPct = v => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + ' %');
+  const col = v => v == null ? 'var(--text2)' : (v >= 0 ? 'var(--positive)' : 'var(--negative)');
+
+  // Rendu initial avec placeholders "…"
   tbody.innerHTML = wl.map((w, i) => {
-    return '<tr><td><div class="ticker-cell">' + logoHtml(w.ticker, 26, 'ticker-icon') +
-      '<div><div class="ticker-name">' + (w.name || w.ticker) + '</div>' +
-      '<div class="ticker-sym">' + w.ticker + '</div></div></div></td>' +
-      '<td class="mono">' + (w.price ? w.price.toFixed(2) + ' €' : '—') + '</td>' +
-      '<td class="mono" style="color:var(--text2)">—</td>' +
-      '<td><button class="btn-del" onclick="removeFromWatchlist(' + i + ')" title="Retirer">✕</button></td></tr>';
+    const rowId = 'wl-row-' + i;
+    const addedPrice = w.addedPrice || w.price; // compat données existantes
+    return (
+      '<tr id="' + rowId + '">' +
+        '<td><div class="ticker-cell">' + logoHtml(w.ticker, 26, 'ticker-icon') +
+          '<div><div class="ticker-name">' + (w.name || w.ticker) + '</div>' +
+          '<div class="ticker-sym">' + w.ticker + '</div></div></div></td>' +
+        '<td class="mono wl-price" style="text-align:right">…</td>' +
+        '<td class="mono wl-daychg" style="text-align:right;color:var(--text2)">…</td>' +
+        '<td class="wl-spark" style="min-width:120px;width:120px;padding:0 8px"><div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px">…</div></td>' +
+        '<td class="mono wl-since" style="text-align:right;color:var(--text2)" title="Depuis le ' + (w.addedAt ? w.addedAt.slice(0,10) : '?') + ' @ ' + (addedPrice ? addedPrice.toFixed(2) + ' €' : '?') + '">…</td>' +
+        '<td class="mono wl-yield" style="text-align:right;color:var(--text2)">…</td>' +
+        '<td style="text-align:right"><button class="btn-del" onclick="removeFromWatchlist(' + i + ')" title="Retirer">✕</button></td>' +
+      '</tr>'
+    );
   }).join('');
+
+  // Fetch en parallèle pour chaque ticker
+  wl.forEach((w, i) => enrichWatchlistRow(w, i));
+}
+
+async function enrichWatchlistRow(w, i) {
+  const row = document.getElementById('wl-row-' + i);
+  if (!row) return;
+  const elPrice  = row.querySelector('.wl-price');
+  const elDay    = row.querySelector('.wl-daychg');
+  const elSpark  = row.querySelector('.wl-spark');
+  const elSince  = row.querySelector('.wl-since');
+  const elYield  = row.querySelector('.wl-yield');
+
+  const setErr = el => { if (el) { el.textContent = '—'; el.style.color = 'var(--text3)'; } };
+
+  try {
+    const yt = resolveToYahooTicker(w.ticker);
+    // 1 mois + 1 semaine pour garantir 30 points de trading
+    const raw = await fetchWithFallback(
+      'https://query1.finance.yahoo.com/v8/finance/chart/'
+      + encodeURIComponent(yt)
+      + '?interval=1d&range=2mo'
+    );
+    const d = JSON.parse(raw);
+    const res = d.chart && d.chart.result && d.chart.result[0];
+    if (!res) throw new Error('no data');
+    const meta = res.meta || {};
+    const ts = res.timestamp || [];
+    const closes = (res.indicators && res.indicators.quote && res.indicators.quote[0].close) || [];
+
+    const livePrice = meta.regularMarketPrice;
+    const prevClose = meta.chartPreviousClose != null ? meta.chartPreviousClose
+                    : (meta.previousClose != null ? meta.previousClose : null);
+    const dayChgPct = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
+    const ccy = meta.currency === 'USD' ? ' $' : ' €';
+
+    // Prix live
+    if (elPrice) {
+      elPrice.textContent = livePrice != null ? livePrice.toFixed(2) + ccy : '—';
+    }
+
+    // Variation jour
+    if (elDay) {
+      if (dayChgPct == null) { setErr(elDay); }
+      else {
+        elDay.textContent = (dayChgPct >= 0 ? '+' : '') + dayChgPct.toFixed(2) + ' %';
+        elDay.style.color = dayChgPct >= 0 ? 'var(--positive)' : 'var(--negative)';
+      }
+    }
+
+    // Sparkline 30 derniers points
+    if (elSpark) {
+      const sparkPts = [];
+      for (let k = 0; k < ts.length; k++) if (closes[k] != null) sparkPts.push(closes[k]);
+      const points30 = sparkPts.slice(-30);
+      if (points30.length >= 2) {
+        elSpark.innerHTML = sparklineSVG(points30);
+      } else {
+        elSpark.innerHTML = '<div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px">—</div>';
+      }
+    }
+
+    // Perf depuis ajout
+    if (elSince) {
+      const addedPrice = w.addedPrice || w.price;
+      if (addedPrice && livePrice != null) {
+        const pct = (livePrice / addedPrice - 1) * 100;
+        elSince.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + ' %';
+        elSince.style.color = pct >= 0 ? 'var(--positive)' : 'var(--negative)';
+      } else setErr(elSince);
+    }
+
+    // Dividend yield — demande du module quoteSummary
+    fetchDividendYield(w.ticker).then(dy => {
+      if (!elYield) return;
+      if (dy == null) { setErr(elYield); return; }
+      elYield.textContent = (dy * 100).toFixed(2) + ' %';
+      elYield.style.color = 'var(--text)';
+    }).catch(() => setErr(elYield));
+
+  } catch (e) {
+    setErr(elPrice); setErr(elDay); setErr(elSince); setErr(elYield);
+    if (elSpark) elSpark.innerHTML = '<div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px">—</div>';
+  }
+}
+
+// Mini sparkline SVG 120×30
+function sparklineSVG(points) {
+  if (!points || points.length < 2) return '';
+  const w = 120, h = 30, pad = 2;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = (max - min) || 1;
+  const xStep = (w - 2*pad) / (points.length - 1);
+  const coords = points.map((p, i) => {
+    const x = pad + i * xStep;
+    const y = pad + (h - 2*pad) * (1 - (p - min) / range);
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  const last = points[points.length - 1], first = points[0];
+  const isUp = last >= first;
+  const color = isUp ? '#00e09e' : '#ff4d6a';
+  const areaFill = isUp ? 'rgba(0,224,158,0.12)' : 'rgba(255,77,106,0.12)';
+  // zone remplie sous la courbe
+  const areaCoords = coords + ' ' + (w - pad).toFixed(1) + ',' + (h - pad).toFixed(1) + ' ' + pad.toFixed(1) + ',' + (h - pad).toFixed(1);
+  return (
+    '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="display:block">' +
+      '<polygon points="' + areaCoords + '" fill="' + areaFill + '"/>' +
+      '<polyline points="' + coords + '" fill="none" stroke="' + color + '" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>' +
+    '</svg>'
+  );
+}
+
+// Cache pour dividendYield (évite de re-spammer Yahoo)
+const _wlDivYieldCache = {};
+async function fetchDividendYield(ticker) {
+  if (ticker in _wlDivYieldCache) return _wlDivYieldCache[ticker];
+  try {
+    const yt = resolveToYahooTicker(ticker);
+    const raw = await fetchWithFallback(
+      'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+      + encodeURIComponent(yt)
+      + '?modules=summaryDetail'
+    );
+    const d = JSON.parse(raw);
+    const sd = d.quoteSummary && d.quoteSummary.result && d.quoteSummary.result[0]
+               && d.quoteSummary.result[0].summaryDetail;
+    let dy = null;
+    if (sd) {
+      if (sd.dividendYield && sd.dividendYield.raw != null) dy = sd.dividendYield.raw;
+      else if (sd.trailingAnnualDividendYield && sd.trailingAnnualDividendYield.raw != null) dy = sd.trailingAnnualDividendYield.raw;
+    }
+    _wlDivYieldCache[ticker] = dy;
+    return dy;
+  } catch (e) {
+    _wlDivYieldCache[ticker] = null;
+    return null;
+  }
 }
 
 // ═══════════════════════════════════════════════════
