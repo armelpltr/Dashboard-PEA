@@ -4927,11 +4927,45 @@ async function computeAnnualPerformance(portfolio, txs) {
     allVersByDate[v.date] += v.amount;
   }
 
-  // ── 7. Calcul TWR par année (méthode Boursorama — chaînage quotidien) ──
-  // Formule Bourso pour chaque jour :
-  //   perf_jour = (V_jour - V_veille - versement_jour) / (V_veille + versement_jour)
-  //   (1 + perf_jour) = V_jour / (V_veille + versement_jour)
+  // ── 7. Calcul TWR par année (méthode TWR rigoureuse, alignée Boursorama) ──
+  //
+  // La formule naïve V_jour / (V_veille + versement_jour) souffre de deux biais :
+  //   1) Quand le prix Yahoo d'un titre diffère du prix réel de la transaction
+  //      (cas WPEA.PA acheté 5.54€ mais Yahoo cote 6.22€), Yahoo "voit" un gain
+  //      artificiel le jour de l'achat → la perf TWR est gonflée.
+  //   2) Convention "same_day" sur les versements : Bourso compte plutôt les
+  //      versements en sortie de journée (J+1).
+  //
+  // Correction appliquée :
+  //   - Neutralisation des écarts prix Yahoo / prix transaction comme flux extérieurs.
+  //     Pour chaque transaction du jour : flux_tx += sign × qty × (prix_yahoo - prix_tx)
+  //     (sign = +1 achat, -1 vente)
+  //   - Convention next_day pour versements : (1+r) = (V_jour - vers_jour) / (V_veille + flux_tx)
+  //
   // Perf annuelle = ∏(1 + perf_jour) - 1
+
+  // Index : pour chaque (ticker, date), prix moyen pondéré des transactions de ce jour
+  const txByDate = {};
+  for (const tx of txs) {
+    if (!tx.date || !tx.ticker) continue;
+    if (!txByDate[tx.date]) txByDate[tx.date] = [];
+    txByDate[tx.date].push(tx);
+  }
+
+  // Calcule le flux d'écart de valorisation pour les transactions d'un jour donné
+  function txFluxAt(dateStr) {
+    const txList = txByDate[dateStr];
+    if (!txList) return 0;
+    let flux = 0;
+    for (const tx of txList) {
+      const py = getPriceAt(tx.ticker, dateStr);
+      if (py == null) continue;
+      const sign = (tx.type === 'buy') ? 1 : -1;
+      flux += sign * tx.qty * (py - tx.price);
+    }
+    return flux;
+  }
+
   const yearResults = [];
 
   for (let y = firstYear; y <= currentYear; y++) {
@@ -4957,20 +4991,27 @@ async function computeAnnualPerformance(portfolio, txs) {
     const todayStr = new Date().toISOString().slice(0, 10);
 
     // Collecter toutes les dates à traiter :
-    // dates de trading Yahoo + dates de versement (même si pas jour de trading)
+    // dates de trading Yahoo + dates de versement + dates de transaction
     // Pour le YTD : exclure aujourd'hui de la boucle (on utilise les prix live après)
     const yearDatesSet = new Set();
     for (const d of allTradingDates) {
       if (d >= yearStart && d <= yearEnd) {
-        if (isYTD && d >= todayStr) continue; // exclure aujourd'hui et après
+        if (isYTD && d >= todayStr) continue;
         yearDatesSet.add(d);
       }
     }
-    // Ajouter les dates de versement (sauf aujourd'hui si YTD)
     for (const v of yearVers) {
       if (v.date >= yearStart && v.date <= yearEnd) {
         if (isYTD && v.date >= todayStr) continue;
         yearDatesSet.add(v.date);
+      }
+    }
+    // Ajouter aussi les dates de transaction (pour traiter le flux d'écart)
+    for (const tx of txs) {
+      if (!tx.date) continue;
+      if (tx.date >= yearStart && tx.date <= yearEnd) {
+        if (isYTD && tx.date >= todayStr) continue;
+        yearDatesSet.add(tx.date);
       }
     }
     const yearDates = [...yearDatesSet].sort();
@@ -4980,13 +5021,15 @@ async function computeAnnualPerformance(portfolio, txs) {
 
     for (const d of yearDates) {
       const versToday = allVersByDate[d] || 0;
-      const valToday = totalValueAt(d, false);
-      const denom = prevValue + versToday;
+      const fluxTx    = txFluxAt(d);
+      const valToday  = totalValueAt(d, false);
 
+      // Convention next_day + neutralisation flux tx :
+      //   (1+r) = (V_jour - vers_jour) / (V_veille + flux_tx)
+      const denom = prevValue + fluxTx;
       if (denom > 0.01) {
         hasCapital = true;
-        const dailyRet = valToday / denom;
-        twrProduct *= dailyRet;
+        twrProduct *= (valToday - versToday) / denom;
       }
 
       prevValue = valToday;
@@ -4998,16 +5041,15 @@ async function computeAnnualPerformance(portfolio, txs) {
       // Ajouter le rendement d'aujourd'hui avec les prix LIVE
       valueEnd = totalValueAt(todayStr, true);
       const versToday = allVersByDate[todayStr] || 0;
-      const denom = prevValue + versToday;
+      const fluxTx    = txFluxAt(todayStr);
+      const denom = prevValue + fluxTx;
       if (denom > 0.01) {
         hasCapital = true;
-        twrProduct *= (valueEnd / denom);
+        twrProduct *= (valueEnd - versToday) / denom;
       }
     } else {
       valueEnd = totalValueAt(yearEnd, false);
       if (prevValue > 0.01) {
-        // Il peut rester des jours entre la dernière date de trading et le 31/12
-        // (normalement non, mais au cas où)
         const lastDate = yearDates.length ? yearDates[yearDates.length - 1] : null;
         if (lastDate && lastDate < yearEnd) {
           const denom = prevValue;
