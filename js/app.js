@@ -60,7 +60,7 @@ const _localCache = {};
 // Charge toutes les données depuis Firestore au démarrage
 async function loadAllUserData(uid) {
   if (!uid || !db) return;
-  const cols = ['portfolio', 'transactions', 'versements', 'watchlist'];
+  const cols = ['portfolio', 'transactions', 'versements', 'watchlist', 'dailyValues'];
   await Promise.all(cols.map(async col => {
     try {
       const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', col));
@@ -100,12 +100,14 @@ function getPortfolio(user)    { return _localCache[(user||currentUser) + '_port
 function getTransactions(user) { return _localCache[(user||currentUser) + '_transactions'] || []; }
 function getVersements(user)   { return _localCache[(user||currentUser) + '_versements']   || []; }
 function getWatchlist(user)    { return _localCache[(user||currentUser) + '_watchlist']    || []; }
+function getDailyValues(user)  { return _localCache[(user||currentUser) + '_dailyValues']  || []; }
 
 // Écriture synchrone dans le cache + Firestore en arrière-plan
 function savePortfolio(user, data)    { _perfCache = null; _fsWrite(user||currentUser, 'portfolio',    data); }
 function saveTransactions(user, data) { _perfCache = null; _fsWrite(user||currentUser, 'transactions', data); }
-function saveVersements(user, data)   { _fsWrite(user||currentUser, 'versements',   data); }
+function saveVersements(user, data)   { _perfCache = null; _fsWrite(user||currentUser, 'versements',   data); }
 function saveWatchlist(user, data)    { _fsWrite(user||currentUser, 'watchlist',    data); }
+function saveDailyValues(user, data)  { _perfCache = null; _fsWrite(user||currentUser, 'dailyValues', data); }
 
 function _fsWrite(uid, col, data) {
   _localCache[uid + '_' + col] = data;
@@ -116,7 +118,7 @@ function _fsWrite(uid, col, data) {
 
 // Suppression complète des données utilisateur
 async function deleteAllUserData(uid) {
-  const cols = ['portfolio', 'transactions', 'versements', 'watchlist'];
+  const cols = ['portfolio', 'transactions', 'versements', 'watchlist', 'dailyValues'];
   await Promise.all(cols.map(col =>
     deleteFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', col)).catch(() => {})
   ));
@@ -4780,6 +4782,123 @@ showPageMobile = function(id) {
 let perfAnnualChart = null;
 let _perfCache = null; // évite de refetch à chaque clic
 
+// ─────────────────────────────────────────────────────────────────
+//  Import du CSV de valorisation quotidienne du broker
+//  Formats supportés (auto-détection) :
+//    - Boursorama : "Date","Valorisation portefeuille","Perf période portefeuille","Perf cumulée portefeuille"
+//    - Générique  : Date,Valeur (séparateur , ou ;)
+// ─────────────────────────────────────────────────────────────────
+function importDailyValuesCSV(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      let text = e.target.result;
+      // Strip BOM
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+      // Détecter séparateur (, ou ;)
+      const firstLine = text.split(/\r?\n/)[0];
+      const sep = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { alert('Le fichier semble vide ou invalide.'); return; }
+
+      // Parser en tenant compte des guillemets
+      function parseLine(line) {
+        const out = []; let cur = ''; let inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"') { inQ = !inQ; continue; }
+          if (c === sep && !inQ) { out.push(cur); cur = ''; continue; }
+          cur += c;
+        }
+        out.push(cur);
+        return out.map(s => s.trim());
+      }
+
+      const header = parseLine(lines[0]).map(h => h.toLowerCase());
+      const idxDate = header.findIndex(h => h.includes('date'));
+      const idxVal  = header.findIndex(h => h.includes('valorisation') || h.includes('valeur') || h.includes('value'));
+      if (idxDate < 0 || idxVal < 0) {
+        alert('Colonnes attendues introuvables.\n\nLe fichier doit contenir une colonne "Date" et une colonne "Valorisation" (ou "Valeur").');
+        return;
+      }
+
+      const rows = [];
+      const errors = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cells = parseLine(lines[i]);
+        if (cells.length <= Math.max(idxDate, idxVal)) continue;
+        let dateStr = cells[idxDate];
+        let valStr  = cells[idxVal];
+
+        // Normalisation date : accepte YYYY-MM-DD ou DD/MM/YYYY
+        let isoDate = null;
+        const m1 = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        const m2 = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (m1) isoDate = dateStr;
+        else if (m2) isoDate = m2[3] + '-' + m2[2] + '-' + m2[1];
+        if (!isoDate) { errors.push('ligne ' + (i+1) + ' : date invalide "' + dateStr + '"'); continue; }
+
+        // Normalisation valeur : accepte virgule décimale, espace milliers
+        valStr = valStr.replace(/\s/g, '').replace(/\u00A0/g, '').replace(',', '.');
+        const value = parseFloat(valStr);
+        if (!isFinite(value) || value <= 0) { errors.push('ligne ' + (i+1) + ' : valeur invalide "' + cells[idxVal] + '"'); continue; }
+
+        rows.push({ date: isoDate, value: value });
+      }
+
+      if (!rows.length) {
+        alert('Aucune ligne valide trouvée.\n\n' + (errors.slice(0,3).join('\n') || ''));
+        return;
+      }
+
+      // Dédupliquer (garder dernière occurrence) et trier
+      const byDate = {};
+      for (const r of rows) byDate[r.date] = r.value;
+      const finalRows = Object.keys(byDate).sort().map(d => ({ date: d, value: byDate[d] }));
+
+      saveDailyValues(currentUser, finalRows);
+      _perfCache = null;
+
+      let msg = '✓ ' + finalRows.length + ' valorisations importées (' + finalRows[0].date + ' → ' + finalRows[finalRows.length-1].date + ').\n\nLa performance annuelle utilisera désormais ces valeurs broker.';
+      if (errors.length) msg += '\n\n' + errors.length + ' ligne(s) ignorée(s).';
+      alert(msg);
+
+      updateDailyStatus();
+      // Recharger la page perf
+      if (typeof initPerformance === 'function') initPerformance();
+    } catch (err) {
+      console.error('Erreur import CSV daily values:', err);
+      alert('Erreur lors de la lecture du fichier : ' + err.message);
+    } finally {
+      event.target.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearDailyValues() {
+  if (!confirm('Supprimer toutes les valorisations broker importées ?\n\nLa performance sera recalculée depuis Yahoo Finance.')) return;
+  saveDailyValues(currentUser, []);
+  _perfCache = null;
+  updateDailyStatus();
+  if (typeof initPerformance === 'function') initPerformance();
+}
+
+function updateDailyStatus() {
+  const el = document.getElementById('daily-status');
+  if (!el) return;
+  const dv = getDailyValues(currentUser);
+  if (dv && dv.length) {
+    el.innerHTML = '<span style="color:var(--positive)">●</span> ' + dv.length + ' j (' + dv[0].date + ' → ' + dv[dv.length-1].date + ')';
+  } else {
+    el.innerHTML = '<span style="color:var(--text3)">○</span> aucune valeur broker — calcul Yahoo';
+  }
+}
+
 async function initPerformance() {
   const portfolio   = getPortfolio(currentUser);
   const txs         = getTransactions(currentUser);
@@ -4796,6 +4915,9 @@ async function initPerformance() {
   kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Chargement…</div></div>';
   tbodyEl.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">Récupération des prix historiques…</td></tr>';
 
+  // Mettre à jour l'indicateur de statut "valeurs broker importées"
+  if (typeof updateDailyStatus === 'function') updateDailyStatus();
+
   try {
     const result = _perfCache || await computeAnnualPerformance(portfolio, txs);
     _perfCache = result;
@@ -4808,8 +4930,172 @@ async function initPerformance() {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────
+//  Calcul de performance annuelle à partir des valeurs quotidiennes broker
+//  (export "performance.csv" Boursorama, équivalent chez Fortuneo, etc.)
+//
+//  C'est la méthode privilégiée car elle donne EXACTEMENT le chiffre du broker.
+// ─────────────────────────────────────────────────────────────────
+function computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio) {
+  // Index dates -> valeur, trié
+  const valByDate = {};
+  for (const dv of dailyValues) {
+    if (dv && dv.date && typeof dv.value === 'number' && isFinite(dv.value)) {
+      valByDate[dv.date] = dv.value;
+    }
+  }
+  const sortedDates = Object.keys(valByDate).sort();
+  if (sortedDates.length < 2) return { years: [] };
+
+  // Versements par date
+  const versByDate = {};
+  for (const v of versements) {
+    if (!v || !v.date) continue;
+    versByDate[v.date] = (versByDate[v.date] || 0) + v.amount;
+  }
+
+  // Valeur portefeuille LIVE (pour aujourd'hui si pas dans dailyValues)
+  let liveValue = null;
+  if (portfolio && portfolio.length) {
+    let v = 0;
+    for (const r of portfolio) {
+      if (r && r.qty && r.currentPrice) v += r.qty * r.currentPrice;
+    }
+    if (v > 0) liveValue = v;
+  }
+
+  // Cash actuel (si le portefeuille n'inclut pas le cash, on ne le connait pas
+  // précisément ; on se contente de la valeur titres = la dernière dailyValue
+  // pour aujourd'hui sinon)
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const firstDate = sortedDates[0];
+  const firstYear = new Date(firstDate + 'T12:00:00').getFullYear();
+  const lastDate = sortedDates[sortedDates.length - 1];
+  const currentYear = new Date().getFullYear();
+
+  const yearResults = [];
+
+  for (let y = firstYear; y <= currentYear; y++) {
+    const isYTD = (y === currentYear);
+    const yearStart = y + '-01-01';
+    const yearEnd   = y + '-12-31';
+
+    // Versements de l'année
+    const yearVers = versements.filter(v =>
+      v && v.date && new Date(v.date + 'T12:00:00').getFullYear() === y
+    );
+    const totalVersYear = yearVers.reduce((s, v) => s + v.amount, 0);
+
+    // V_début = dernière valeur connue strictement avant l'année (= 31/12 Y-1)
+    //
+    // Pour la PREMIÈRE année (= année d'ouverture du compte), on ne peut PAS
+    // prendre la première valeur de l'historique comme V_début, car c'est en
+    // général un versement initial (V_début = 0, pas la valeur du versement).
+    // On démarre donc à 0 et on traite le premier versement comme un flux entrant
+    // — la formule (1+r) = V_jour / (V_veille + vers_jour) gère ça nativement.
+    let prevValue = null;
+    if (y === firstYear) {
+      prevValue = 0; // compte ouvert avec un solde nul
+    } else {
+      // Cherche la dernière date < yearStart
+      for (let i = sortedDates.length - 1; i >= 0; i--) {
+        if (sortedDates[i] < yearStart) { prevValue = valByDate[sortedDates[i]]; break; }
+      }
+      if (prevValue == null) continue; // pas de données pour cette année
+    }
+
+    // Collecte les dates de l'année + dates de versement
+    const datesSet = new Set();
+    for (const d of sortedDates) {
+      if (d >= yearStart && d <= yearEnd) datesSet.add(d);
+    }
+    for (const v of yearVers) {
+      if (v.date >= yearStart && v.date <= yearEnd) datesSet.add(v.date);
+    }
+    const yearDates = [...datesSet].sort();
+
+    let twr = 1;
+    let hasCapital = false;
+    let valueEnd = prevValue;
+
+    for (const d of yearDates) {
+      const versToday = versByDate[d] || 0;
+      // Si pas de valorisation broker pour ce jour, on garde la veille (jour férié)
+      const valToday = (valByDate[d] != null) ? valByDate[d] : prevValue;
+      const denom = prevValue + versToday;
+      if (denom > 0.01) {
+        hasCapital = true;
+        twr *= valToday / denom;
+      }
+      prevValue = valToday;
+      valueEnd = valToday;
+    }
+
+    // Pour le YTD : si la dernière dailyValue n'est pas d'aujourd'hui mais
+    // qu'on a une valeur LIVE, on ajoute le ratio du jour
+    if (isYTD && liveValue != null) {
+      const lastBrokerDate = yearDates.length ? yearDates[yearDates.length - 1] : null;
+      if (lastBrokerDate && lastBrokerDate < todayStr) {
+        const versToday = versByDate[todayStr] || 0;
+        const denom = prevValue + versToday;
+        if (denom > 0.01) {
+          hasCapital = true;
+          twr *= liveValue / denom;
+          valueEnd = liveValue;
+        }
+      }
+    }
+
+    const perfPct = hasCapital ? (twr - 1) * 100 : 0;
+
+    // V_début de l'année pour la colonne "base"
+    // V_début de l'année pour la colonne "base"
+    const valueYearStart = (y === firstYear) ? 0 : (function(){
+      for (let i = sortedDates.length - 1; i >= 0; i--) {
+        if (sortedDates[i] < yearStart) return valByDate[sortedDates[i]];
+      }
+      return 0;
+    })();
+    const totalGain = valueEnd - valueYearStart - totalVersYear;
+
+    yearResults.push({
+      year: y,
+      isYTD,
+      base: +(valueYearStart + totalVersYear).toFixed(2),
+      gain: +totalGain.toFixed(2),
+      perfPct: +perfPct.toFixed(2),
+    });
+  }
+
+  return { years: yearResults };
+}
+
 async function computeAnnualPerformance(portfolio, txs) {
   const versements = getVersements(currentUser);
+  const dailyValues = getDailyValues(currentUser);
+
+  // ── PATH PRIORITAIRE : si on a les valorisations quotidiennes du broker, ──
+  //    on calcule directement la TWR à partir de ces valeurs (= EXACT broker).
+  //    Pas besoin de Yahoo, pas d'écart, pas de bricolage.
+  if (dailyValues && dailyValues.length >= 2) {
+    return computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio);
+  }
+
+  // ── PATH FALLBACK : reconstitution depuis prix Yahoo (méthode historique) ──
+
+  // ── PATH PRIORITAIRE : si on a les valorisations quotidiennes du broker, ──
+  //    on calcule directement la TWR à partir de ces valeurs (= EXACT broker).
+  //    Pas besoin de Yahoo, pas d'écart, pas de bricolage.
+  //
+  //    Formule Boursorama (convention same_day) :
+  //      (1 + perf_jour) = V_jour / (V_veille + versement_jour)
+  //
+  if (dailyValues && dailyValues.length >= 2) {
+    return computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio);
+  }
+
+  // ── PATH FALLBACK : reconstitution depuis prix Yahoo (méthode historique) ──
 
   // ── 1. Déterminer la plage de dates ──
   const allDates = [];
