@@ -437,7 +437,6 @@ function showPage(id) {
   document.querySelectorAll('.mobile-nav-item').forEach(b => {
     b.classList.toggle('active', b.dataset.mob === id);
   });
-  if (id === 'analyse')     { renderAnalysePortfolio(); }
   if (id === 'graphiques')  initCharts();
 }
 
@@ -451,7 +450,6 @@ function showPageMobile(id) {
     const onclick = n.getAttribute('onclick') || '';
     if (onclick.includes("'" + id + "'")) n.classList.add('active');
   });
-  if (id === 'analyse')     { renderAnalysePortfolio(); }
   if (id === 'graphiques')  initCharts();
 }
 
@@ -4761,8 +4759,6 @@ showPage = function(id) {
   if (id === 'base100')      initBase100();
   if (id === 'projections')  initProjections();
   if (id === 'bilan')        initBilan();
-  if (id === 'trophees')     initTrophees();
-  if (id === 'calendrier')   initCalendrier();
   if (id === 'dividendes')   initDividendes();
   if (id === 'performance')  initPerformance();
 };
@@ -4772,8 +4768,6 @@ showPageMobile = function(id) {
   if (id === 'base100')      initBase100();
   if (id === 'projections')  initProjections();
   if (id === 'bilan')        initBilan();
-  if (id === 'trophees')     initTrophees();
-  if (id === 'calendrier')   initCalendrier();
   if (id === 'dividendes')   initDividendes();
   if (id === 'performance')  initPerformance();
 };
