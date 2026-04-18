@@ -3724,22 +3724,46 @@ function getMonths(from, to) {
 //  BENCHMARK PAGE
 //  Compare le portefeuille réel (dailyValues broker) à un DCA fictif
 //  sur un indice, en utilisant les mêmes dates et montants de versement.
+//
+//  Corrections appliquées pour une comparaison ÉQUITABLE :
+//   - Utilisation des indices Total Return (dividendes réinvestis) quand dispo.
+//     CAC 40 et Euro Stoxx 50 n'ont pas de TR sur Yahoo → approximation
+//     via un rendement dividende annuel ajouté au prorata temporis.
+//   - Conversion EUR/USD pour les indices libellés en USD, pour matcher
+//     la base euro du PEA.
 // ─────────────────────────────────────────────────────────────────
 let benchmarkChart = null;
-let _benchCache = {}; // { ticker: { dailyPrices, liveQuote } }
+let _benchCache = {}; // { ticker: { prices, liveQuote, currency } }
+let _fxCache = null;  // { dateStr: EUR->USD rate, live: latest }
 
-async function fetchIndexDaily(ticker, period1) {
-  if (_benchCache[ticker]) return _benchCache[ticker];
+// Config par indice :
+//   - ticker    : symbole Yahoo à utiliser
+//   - name      : libellé affiché
+//   - divYield  : dividende annuel à ajouter si l'indice n'est PAS Total Return
+//                 (0 = l'indice est déjà TR, pas d'ajustement)
+const BENCH_CONFIG = {
+  '^GSPC':    { ticker: '^SP500TR',   name: 'S&P 500 (TR)',        divYield: 0,      isUSD: true  },
+  '^FCHI':    { ticker: '^FCHI',      name: 'CAC 40',              divYield: 0.032,  isUSD: false }, // ~3.2%/an dividendes CAC 40
+  'URTH':     { ticker: 'URTH',       name: 'MSCI World',          divYield: 0,      isUSD: true  }, // ETF capitalisant
+  '^STOXX50E':{ ticker: '^STOXX50E',  name: 'Euro Stoxx 50',       divYield: 0.030,  isUSD: false }, // ~3%/an dividendes
+  '^NDX':     { ticker: '^NDX',      name: 'Nasdaq 100',          divYield: 0.011,  isUSD: true  }, // ~1.1%/an dividendes (^XNDX Yahoo n'a pas l'historique)
+};
+
+async function fetchIndexDaily(cfgKey, period1) {
+  const cfg = BENCH_CONFIG[cfgKey] || BENCH_CONFIG['^GSPC'];
+  const cacheKey = cfg.ticker;
+  if (_benchCache[cacheKey]) return { ..._benchCache[cacheKey], cfg };
+
   const p1 = Math.floor(new Date(period1 + 'T00:00:00').getTime() / 1000);
   const p2 = Math.floor(Date.now() / 1000) + 86400;
   const raw = await fetchWithFallback(
     'https://query1.finance.yahoo.com/v8/finance/chart/'
-    + encodeURIComponent(ticker)
+    + encodeURIComponent(cfg.ticker)
     + '?interval=1d&period1=' + p1 + '&period2=' + p2
   );
   const d = JSON.parse(raw);
   const res = d.chart && d.chart.result && d.chart.result[0];
-  if (!res || !res.timestamp) throw new Error('Pas de données Yahoo pour ' + ticker);
+  if (!res || !res.timestamp) throw new Error('Pas de données Yahoo pour ' + cfg.ticker);
   const ts = res.timestamp;
   const closes = res.indicators.quote[0].close;
   const adjcloses = (res.indicators.adjclose && res.indicators.adjclose[0].adjclose) || closes;
@@ -3747,14 +3771,38 @@ async function fetchIndexDaily(ticker, period1) {
   for (let i = 0; i < ts.length; i++) {
     if (closes[i] == null) continue;
     const key = new Date(ts[i] * 1000).toISOString().slice(0, 10);
-    // Utilise adjclose (dividendes réinvestis) pour une comparaison équitable
-    // (le PEA bénéficie des dividendes en cash via les versements du broker)
     prices[key] = adjcloses[i] != null ? adjcloses[i] : closes[i];
   }
   const liveQuote = res.meta && res.meta.regularMarketPrice;
-  const data = { prices, liveQuote };
-  _benchCache[ticker] = data;
-  return data;
+  const currency = res.meta && res.meta.currency;
+  const data = { prices, liveQuote, currency };
+  _benchCache[cacheKey] = data;
+  return { ...data, cfg };
+}
+
+// Récupère les taux EUR/USD historiques (et live) pour convertir les indices USD
+async function fetchEURUSD(period1) {
+  if (_fxCache) return _fxCache;
+  const p1 = Math.floor(new Date(period1 + 'T00:00:00').getTime() / 1000);
+  const p2 = Math.floor(Date.now() / 1000) + 86400;
+  const raw = await fetchWithFallback(
+    'https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX'
+    + '?interval=1d&period1=' + p1 + '&period2=' + p2
+  );
+  const d = JSON.parse(raw);
+  const res = d.chart && d.chart.result && d.chart.result[0];
+  if (!res || !res.timestamp) throw new Error('Pas de données EUR/USD');
+  const ts = res.timestamp;
+  const closes = res.indicators.quote[0].close;
+  const rates = {};
+  for (let i = 0; i < ts.length; i++) {
+    if (closes[i] == null) continue;
+    const key = new Date(ts[i] * 1000).toISOString().slice(0, 10);
+    rates[key] = closes[i];
+  }
+  const live = res.meta && res.meta.regularMarketPrice;
+  _fxCache = { rates, live };
+  return _fxCache;
 }
 
 function getIndexPriceAt(prices, dateStr) {
@@ -3768,20 +3816,44 @@ function getIndexPriceAt(prices, dateStr) {
   return last;
 }
 
+function getFxAt(fx, dateStr) {
+  if (fx.rates[dateStr] != null) return fx.rates[dateStr];
+  const keys = Object.keys(fx.rates).sort();
+  let last = null;
+  for (const k of keys) {
+    if (k > dateStr) break;
+    last = fx.rates[k];
+  }
+  return last;
+}
+
+// Convertit un prix USD → EUR à une date donnée
+// prixUSD / tauxEURUSD(date) = prixEUR
+function toEUR(priceUSD, fx, dateStr, isLive) {
+  const rate = isLive ? fx.live : getFxAt(fx, dateStr);
+  if (!rate) return priceUSD; // fallback sans conversion
+  return priceUSD / rate;
+}
+
+// Applique l'ajustement dividendes : pour un indice "price return" qui verse
+// un dividende yield annuel, on fait pousser la valeur comme si on avait
+// réinvesti les dividendes au prorata du temps écoulé.
+// adjustedValue = rawValue × (1 + divYield × années_écoulées)
+// C'est une approximation linéaire, largement suffisante pour une comparaison.
+function applyDivYield(value, divYield, daysHeld) {
+  if (!divYield || daysHeld <= 0) return value;
+  const yearsHeld = daysHeld / 365.25;
+  return value * (1 + divYield * yearsHeld);
+}
+
 async function initBenchmark() {
   const selectEl  = document.getElementById('bench-select');
   const kpiEl     = document.getElementById('bench-kpis');
   const tbodyEl   = document.getElementById('bench-tbody');
   const statusEl  = document.getElementById('bench-status');
-  const ticker    = selectEl ? selectEl.value : '^GSPC';
-  const labelMap  = {
-    '^GSPC':     'S&P 500',
-    '^FCHI':     'CAC 40',
-    'URTH':      'MSCI World',
-    '^STOXX50E': 'Euro Stoxx 50',
-    '^NDX':      'Nasdaq 100',
-  };
-  const indexName = labelMap[ticker] || ticker;
+  const selectKey = selectEl ? selectEl.value : '^GSPC';
+  const cfg       = BENCH_CONFIG[selectKey] || BENCH_CONFIG['^GSPC'];
+  const indexName = cfg.name;
 
   const versements = getVersements(currentUser);
   const dailyValues = getDailyValues(currentUser);
@@ -3797,13 +3869,16 @@ async function initBenchmark() {
   kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Chargement…</div></div>';
   tbodyEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Récupération des cours ' + indexName + '…</td></tr>';
 
-  // Période : du 1er versement à aujourd'hui
   const sortedVers = [...versements].filter(v => v.date).sort((a,b) => a.date.localeCompare(b.date));
   const firstDate = sortedVers[0].date;
 
   let indexData;
+  let fx = null;
   try {
-    indexData = await fetchIndexDaily(ticker, firstDate);
+    indexData = await fetchIndexDaily(selectKey, firstDate);
+    if (cfg.isUSD) {
+      fx = await fetchEURUSD(firstDate);
+    }
   } catch (e) {
     kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label" style="color:var(--negative)">Erreur Yahoo</div><div class="stat-sub">' + (e.message || 'Indisponible') + '</div></div>';
     tbodyEl.innerHTML = '';
@@ -3811,12 +3886,10 @@ async function initBenchmark() {
   }
 
   // ── 1. Valeur réelle du portefeuille ──
-  // On utilise dailyValues broker si dispo (exact), sinon on retombe sur live.
   let portfolioCurrentValue = 0;
   if (portfolio && portfolio.length) {
     for (const r of portfolio) if (r.qty && r.currentPrice) portfolioCurrentValue += r.qty * r.currentPrice;
   }
-  // Ajouter le cash résiduel pour matcher la valeur broker
   let cashResidual = 0;
   for (const v of versements) if (typeof v.amount === 'number') cashResidual += v.amount;
   for (const t of txs) {
@@ -3826,41 +3899,49 @@ async function initBenchmark() {
   }
   if (cashResidual > 0.001) portfolioCurrentValue += cashResidual;
 
-  // Si on a les dailyValues broker, on privilégie leur dernière valeur (+ live si récent)
   if (dailyValues && dailyValues.length) {
     const last = dailyValues[dailyValues.length - 1];
     const todayStr = new Date().toISOString().slice(0, 10);
-    // Si dailyValues à jour au jour J, on prend. Sinon on garde le live.
     if (last.date === todayStr) portfolioCurrentValue = last.value;
   }
 
   const totalVers = versements.reduce((s, v) => s + (v.amount || 0), 0);
 
-  // ── 2. Simulation DCA sur l'indice ──
-  // Chaque versement "achète" des parts de l'indice au prix du jour
-  // Valeur fictive actuelle = total_parts × prix_actuel_indice
-  const liveIdxPrice = indexData.liveQuote || (function(){
+  // ── 2. Simulation DCA sur l'indice (avec conversion FX + ajustement div) ──
+  // Le prix live de l'indice (en EUR après conversion si besoin)
+  const rawLivePrice = indexData.liveQuote || (function(){
     const keys = Object.keys(indexData.prices).sort();
     return indexData.prices[keys[keys.length - 1]];
   })();
+  const liveIdxPriceEUR = cfg.isUSD ? toEUR(rawLivePrice, fx, null, true) : rawLivePrice;
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   let totalIndexUnits = 0;
-  const txRows = []; // pour le tableau
+  let totalDaysWeighted = 0; // pour calcul pondéré de divYield
+  const txRows = [];
 
   for (const v of sortedVers) {
-    const px = getIndexPriceAt(indexData.prices, v.date);
-    if (px == null) {
+    const rawPx = getIndexPriceAt(indexData.prices, v.date);
+    if (rawPx == null) {
       txRows.push({ date: v.date, amount: v.amount, price: null, units: 0, currentValue: 0, perf: null });
       continue;
     }
-    const units = v.amount / px;
+    const pxEUR = cfg.isUSD ? toEUR(rawPx, fx, v.date, false) : rawPx;
+    const units = v.amount / pxEUR;
     totalIndexUnits += units;
-    const currentValue = units * liveIdxPrice;
-    const perf = ((liveIdxPrice / px) - 1) * 100;
-    txRows.push({ date: v.date, amount: v.amount, price: px, units, currentValue, perf });
+
+    // Valeur actuelle de ce versement (avant ajustement dividendes)
+    const daysHeld = Math.max(0, (new Date(todayStr) - new Date(v.date)) / 86400000);
+    const rawCurrentValue = units * liveIdxPriceEUR;
+    const currentValue = applyDivYield(rawCurrentValue, cfg.divYield, daysHeld);
+    const perf = ((currentValue / v.amount) - 1) * 100;
+
+    totalDaysWeighted += v.amount * daysHeld;
+    txRows.push({ date: v.date, amount: v.amount, price: pxEUR, units, currentValue, perf });
   }
 
-  const indexSimValue = totalIndexUnits * liveIdxPrice;
+  // Somme des valeurs actuelles (chacune ajustée individuellement via divYield)
+  const indexSimValue = txRows.reduce((s, r) => s + (r.currentValue || 0), 0);
   const indexGain     = indexSimValue - totalVers;
   const indexPerfPct  = totalVers > 0 ? (indexGain / totalVers * 100) : 0;
 
@@ -3870,7 +3951,6 @@ async function initBenchmark() {
   const deltaEur = portfolioCurrentValue - indexSimValue;
   const deltaPct = portfolioPerfPct - indexPerfPct;
 
-  // ── 3. KPIs ──
   const col = v => v >= 0 ? 'var(--positive)' : 'var(--negative)';
   const sgn = v => v >= 0 ? '+' : '';
 
@@ -3897,7 +3977,6 @@ async function initBenchmark() {
     </div>
   `;
 
-  // ── 4. Tableau ──
   tbodyEl.innerHTML = txRows.map(r => {
     if (r.price == null) {
       return `<tr><td>${r.date}</td><td class="mono" style="text-align:right">${fmt(r.amount)}</td><td colspan="4" style="text-align:center;color:var(--text3)">—</td></tr>`;
@@ -3905,59 +3984,84 @@ async function initBenchmark() {
     return `<tr>
       <td style="font-weight:500">${r.date}</td>
       <td class="mono" style="text-align:right">${fmt(r.amount)}</td>
-      <td class="mono" style="text-align:right">${r.price.toFixed(2)}</td>
+      <td class="mono" style="text-align:right">${r.price.toFixed(2)} €</td>
       <td class="mono" style="text-align:right">${r.units.toFixed(4)}</td>
       <td class="mono" style="text-align:right">${fmt(r.currentValue)}</td>
       <td class="mono" style="text-align:right;color:${col(r.perf)}">${sgn(r.perf)}${r.perf.toFixed(2)} %</td>
     </tr>`;
   }).join('');
 
-  if (statusEl) statusEl.textContent = indexName + ' · live ' + liveIdxPrice.toFixed(2);
+  // Statut : indique ce qui est utilisé pour la transparence
+  if (statusEl) {
+    let parts = [cfg.ticker];
+    if (cfg.isUSD && fx) parts.push('× EUR/USD ' + fx.live.toFixed(4));
+    if (cfg.divYield > 0) parts.push('+ div. ' + (cfg.divYield*100).toFixed(1) + '%/an');
+    statusEl.textContent = parts.join(' · ');
+  }
 
-  // ── 5. Graphique comparaison ──
-  renderBenchmarkChart(indexData, sortedVers, dailyValues, portfolioCurrentValue, indexName);
+  renderBenchmarkChart(indexData, sortedVers, dailyValues, portfolioCurrentValue, indexName, cfg, fx);
 }
 
-function renderBenchmarkChart(indexData, sortedVers, dailyValues, portfolioCurrentValue, indexName) {
+function renderBenchmarkChart(indexData, sortedVers, dailyValues, portfolioCurrentValue, indexName, cfg, fx) {
   const ctx = document.getElementById('chart-benchmark');
   if (!ctx) return;
   if (benchmarkChart) { benchmarkChart.destroy(); benchmarkChart = null; }
 
-  // Construire les séries quotidiennes
   const firstDate = sortedVers[0].date;
   const today = new Date().toISOString().slice(0, 10);
 
-  // Toutes les dates de trading de l'indice entre firstDate et today
   const indexDates = Object.keys(indexData.prices).filter(d => d >= firstDate && d <= today).sort();
 
-  // Série DCA fictif : à chaque date, somme des units × prix du jour
-  // (les units sont accumulées à la date du versement)
-  const liveIdxPrice = indexData.liveQuote || indexData.prices[indexDates[indexDates.length - 1]];
+  const rawLivePrice = indexData.liveQuote || indexData.prices[indexDates[indexDates.length - 1]];
+  const liveIdxPriceEUR = cfg.isUSD ? toEUR(rawLivePrice, fx, null, true) : rawLivePrice;
+
   const versByDate = {};
   for (const v of sortedVers) versByDate[v.date] = (versByDate[v.date] || 0) + v.amount;
+  const versDatesList = {}; // date -> liste des dates des versements qui ont généré cumUnits
+  for (const v of sortedVers) {
+    if (!versDatesList[v.date]) versDatesList[v.date] = [];
+    versDatesList[v.date].push({ amount: v.amount, date: v.date });
+  }
 
-  let cumUnits = 0;
+  // Pour le graphe, on garde toutes les parts cumulées + leur date d'origine
+  // pour calculer correctement l'ajustement dividendes jour par jour.
+  const parts = []; // [{ units, startDate }]
+
   const dcaSerie = [];
   const cumInvestSerie = [];
   let cumInvest = 0;
 
-  // Fusionner dates trading + dates versement pour couvrir tout
   const allDatesSet = new Set(indexDates);
   for (const d in versByDate) if (d >= firstDate && d <= today) allDatesSet.add(d);
   const allDates = [...allDatesSet].sort();
 
   for (const d of allDates) {
+    // Ajouter les parts du versement si ce jour est un jour de versement
     if (versByDate[d]) {
-      const px = getIndexPriceAt(indexData.prices, d);
-      if (px != null) cumUnits += versByDate[d] / px;
+      const rawPx = getIndexPriceAt(indexData.prices, d);
+      if (rawPx != null) {
+        const pxEUR = cfg.isUSD ? toEUR(rawPx, fx, d, false) : rawPx;
+        const units = versByDate[d] / pxEUR;
+        parts.push({ units, startDate: d });
+      }
       cumInvest += versByDate[d];
     }
-    const px = getIndexPriceAt(indexData.prices, d);
-    dcaSerie.push({ x: d, y: +(cumUnits * px).toFixed(2) });
+
+    // Valorisation du jour : pour chaque lot de parts, appliquer divYield au prorata
+    const rawPx = getIndexPriceAt(indexData.prices, d);
+    const pxEUR = rawPx != null ? (cfg.isUSD ? toEUR(rawPx, fx, d, false) : rawPx) : null;
+    let dcaValue = 0;
+    if (pxEUR != null) {
+      for (const p of parts) {
+        const daysHeld = Math.max(0, (new Date(d) - new Date(p.startDate)) / 86400000);
+        const rawValue = p.units * pxEUR;
+        dcaValue += applyDivYield(rawValue, cfg.divYield, daysHeld);
+      }
+    }
+    dcaSerie.push({ x: d, y: +dcaValue.toFixed(2) });
     cumInvestSerie.push({ x: d, y: +cumInvest.toFixed(2) });
   }
 
-  // Série PEA : dailyValues broker si dispo, sinon courbe fictive (investi seulement)
   const peaSerie = [];
   if (dailyValues && dailyValues.length) {
     for (const dv of dailyValues) {
@@ -3965,7 +4069,6 @@ function renderBenchmarkChart(indexData, sortedVers, dailyValues, portfolioCurre
         peaSerie.push({ x: dv.date, y: dv.value });
       }
     }
-    // Ajouter la valeur actuelle (live) si plus récente que dernière dailyValue
     const lastDailyDate = dailyValues[dailyValues.length - 1].date;
     if (lastDailyDate < today) {
       peaSerie.push({ x: today, y: +portfolioCurrentValue.toFixed(2) });
@@ -3993,7 +4096,6 @@ function renderBenchmarkChart(indexData, sortedVers, dailyValues, portfolioCurre
           borderColor: '#7c6df5',
           backgroundColor: 'transparent',
           borderWidth: 2,
-          borderDash: [],
           fill: false,
           tension: 0.25,
           pointRadius: 0,
