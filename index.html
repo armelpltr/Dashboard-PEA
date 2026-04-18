@@ -202,23 +202,6 @@
         <span class="nav-icon">📊</span> Performance
       </div>
     </nav>
-    <div class="sidebar-settings">
-      <div class="setting-row">
-        <span class="setting-label">Mode clair</span>
-        <div class="toggle-wrap" id="toggle-theme" onclick="toggleTheme()">
-          <div class="toggle-dot"></div>
-        </div>
-      </div>
-      <div class="setting-row">
-        <span class="setting-label">Couleur</span>
-        <div class="color-dots">
-          <div class="color-dot active" data-c="violet" onclick="setColorTheme('violet')"></div>
-          <div class="color-dot" data-c="green" onclick="setColorTheme('green')"></div>
-          <div class="color-dot" data-c="blue" onclick="setColorTheme('blue')"></div>
-          <div class="color-dot" data-c="orange" onclick="setColorTheme('orange')"></div>
-        </div>
-      </div>
-    </div>
     <div class="sidebar-user">
       <div class="user-card" onclick="openProfilModal()" style="cursor:pointer" title="Mon profil">
         <div class="user-avatar" id="user-avatar">A</div>
@@ -390,7 +373,15 @@
           <button class="btn-add" onclick="openWatchlistModal()">＋ Ajouter</button>
         </div>
         <table>
-          <thead><tr><th>Action</th><th>Prix actuel</th><th>Variation</th><th></th></tr></thead>
+          <thead><tr>
+            <th style="text-align:left">Action</th>
+            <th>Prix actuel</th>
+            <th>Variation jour</th>
+            <th>30 jours</th>
+            <th>Depuis ajout</th>
+            <th>Rendement</th>
+            <th></th>
+          </tr></thead>
           <tbody id="watchlist-tbody"></tbody>
         </table>
         <div class="empty-state" id="watchlist-empty">
