@@ -5380,6 +5380,130 @@ async function computeAnnualPerformance(portfolio, txs) {
   return { years: yearResults };
 }
 
+// ─────────────────────────────────────────────────────────────────
+//  Calcul de performances courtes (mois en cours, veille)
+//  Utilise les dailyValues du broker en priorité, sinon retourne null.
+//  Même formule TWR que la perf annuelle :
+//    (1+r) = V_jour / (V_veille + vers_jour)
+// ─────────────────────────────────────────────────────────────────
+function computeShortPerf() {
+  const dailyValues = getDailyValues(currentUser);
+  const versements  = getVersements(currentUser);
+  const portfolio   = getPortfolio(currentUser);
+  const txs         = getTransactions(currentUser);
+
+  if (!dailyValues || dailyValues.length < 2) {
+    return { month: null, prevDay: null, monthLabel: null };
+  }
+
+  // Index date -> valeur, trié
+  const valByDate = {};
+  for (const dv of dailyValues) {
+    if (dv && dv.date && typeof dv.value === 'number' && isFinite(dv.value)) {
+      valByDate[dv.date] = dv.value;
+    }
+  }
+  const sortedDates = Object.keys(valByDate).sort();
+  if (sortedDates.length < 2) return { month: null, prevDay: null, monthLabel: null };
+
+  // Versements par date
+  const versByDate = {};
+  for (const v of versements) {
+    if (!v || !v.date) continue;
+    versByDate[v.date] = (versByDate[v.date] || 0) + v.amount;
+  }
+
+  // liveValue = portefeuille actuel + cash résiduel
+  let liveValue = null;
+  if (portfolio && portfolio.length) {
+    let v = 0;
+    for (const r of portfolio) if (r && r.qty && r.currentPrice) v += r.qty * r.currentPrice;
+    if (v > 0) liveValue = v;
+  }
+  let cashResidual = 0;
+  for (const v of versements) if (v && typeof v.amount === 'number') cashResidual += v.amount;
+  for (const t of txs) {
+    if (!t || !t.qty || !t.price) continue;
+    if (t.type === 'buy')  cashResidual -= t.qty * t.price;
+    if (t.type === 'sell') cashResidual += t.qty * t.price;
+  }
+  if (cashResidual > 0.001 && liveValue != null) liveValue += cashResidual;
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const lastDate = sortedDates[sortedDates.length - 1];
+
+  // Valeur "courante" : si on a une valeur live, on l'utilise. Sinon dernière dailyValue.
+  const valueNow = (liveValue != null) ? liveValue : valByDate[lastDate];
+  // Dernière date "comptée" comme V_courante
+  const dateNow = (liveValue != null && lastDate < todayStr) ? todayStr : lastDate;
+
+  // ─── Perf de la veille ───
+  // = dernier jour ouvré complet : ratio entre la valeur de la veille et l'avant-veille
+  // Pour rester cohérent avec Bourso "ma performance de la veille" = perf du dernier
+  // jour de cotation dans le CSV broker (pas le live).
+  let prevDay = null;
+  if (sortedDates.length >= 2) {
+    const dLast = sortedDates[sortedDates.length - 1];
+    const dPrev = sortedDates[sortedDates.length - 2];
+    const versJ = versByDate[dLast] || 0;
+    const denom = valByDate[dPrev] + versJ;
+    if (denom > 0.01) {
+      prevDay = (valByDate[dLast] / denom - 1) * 100;
+    }
+  }
+
+  // ─── Perf du mois en cours ───
+  // V_début mois = dernière valeur connue strictement avant le 1er du mois en cours
+  const now = new Date();
+  const monthStart = now.toISOString().slice(0, 7) + '-01'; // YYYY-MM-01
+  const monthLabel = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  let prevValue = null;
+  for (let i = sortedDates.length - 1; i >= 0; i--) {
+    if (sortedDates[i] < monthStart) { prevValue = valByDate[sortedDates[i]]; break; }
+  }
+  // Si on a démarré ce mois (compte ouvert ce mois), V_début = 0
+  if (prevValue == null) prevValue = 0;
+
+  // Dates à enchaîner : toutes les dailyValues du mois + dates de versement du mois
+  const monthDatesSet = new Set();
+  for (const d of sortedDates) {
+    if (d >= monthStart && d <= dateNow) monthDatesSet.add(d);
+  }
+  for (const d of Object.keys(versByDate)) {
+    if (d >= monthStart && d <= dateNow) monthDatesSet.add(d);
+  }
+  const monthDates = [...monthDatesSet].sort();
+
+  let twr = 1, hasCapital = false;
+  let lastSeenValue = prevValue;
+  for (const d of monthDates) {
+    const versJ = versByDate[d] || 0;
+    const valJ  = (valByDate[d] != null) ? valByDate[d] : lastSeenValue;
+    const denom = prevValue + versJ;
+    if (denom > 0.01) {
+      hasCapital = true;
+      twr *= valJ / denom;
+    }
+    prevValue = valJ;
+    lastSeenValue = valJ;
+  }
+
+  // Étape live : si le dernier point du mois < aujourd'hui et qu'on a liveValue
+  if (liveValue != null && monthDates.length && monthDates[monthDates.length - 1] < todayStr) {
+    const versJ = versByDate[todayStr] || 0;
+    const denom = prevValue + versJ;
+    if (denom > 0.01) {
+      hasCapital = true;
+      twr *= liveValue / denom;
+    }
+  }
+
+  const month = hasCapital ? (twr - 1) * 100 : null;
+
+  return { month, prevDay, monthLabel };
+}
+
 function renderPerformancePage(result, portfolio, txs) {
   const rows = result.years;
 
@@ -5392,6 +5516,11 @@ function renderPerformancePage(result, portfolio, txs) {
   const totalPerfEur = totalRealized + latentPnl;
   const totalPerfPct = totalInvested > 0 ? (totalPerfEur / totalInvested * 100) : 0;
 
+  // KPIs courts (mois en cours, veille) — calculés depuis dailyValues si dispo
+  const shortPerf = computeShortPerf();
+  const fmtPct = v => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + ' %');
+  const colPct = v => v == null ? 'var(--text3)' : (v >= 0 ? 'var(--positive)' : 'var(--negative)');
+
   const kpiHtml = `
     <div class="stat-card">
       <div class="stat-label">PERF GLOBALE</div>
@@ -5399,6 +5528,20 @@ function renderPerformancePage(result, portfolio, txs) {
         ${totalPerfEur >= 0 ? '+' : ''}${fmt(totalPerfEur)}
       </div>
       <div class="stat-sub">${totalPerfPct >= 0 ? '+' : ''}${totalPerfPct.toFixed(2)} %</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">PERF ${(shortPerf.monthLabel || 'MOIS EN COURS').toUpperCase()}</div>
+      <div class="stat-value" style="color:${colPct(shortPerf.month)}">
+        ${fmtPct(shortPerf.month)}
+      </div>
+      <div class="stat-sub">${shortPerf.month == null ? 'Importez le CSV broker' : 'Depuis le 1er du mois'}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">PERF DE LA VEILLE</div>
+      <div class="stat-value" style="color:${colPct(shortPerf.prevDay)}">
+        ${fmtPct(shortPerf.prevDay)}
+      </div>
+      <div class="stat-sub">${shortPerf.prevDay == null ? 'Importez le CSV broker' : 'Dernier jour de cotation'}</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">PNL RÉALISÉ TOTAL</div>
