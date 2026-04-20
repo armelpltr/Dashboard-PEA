@@ -236,6 +236,24 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 }
 .btn-logout:hover { color: var(--negative); background: var(--negative-d); }
 
+.btn-refresh {
+  background: none; border: none; color: var(--text3);
+  cursor: pointer; font-size: 14px; padding: 4px 6px;
+  transition: all 0.15s; border-radius: 6px;
+  font-weight: 500;
+  line-height: 1;
+}
+.btn-refresh:hover { color: var(--accent); background: var(--accent-d); }
+.btn-refresh.spinning {
+  color: var(--accent);
+  animation: btn-refresh-spin 0.9s linear infinite;
+}
+.btn-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+@keyframes btn-refresh-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .btn-outline {
   background: var(--s2);
   color: var(--text2);
