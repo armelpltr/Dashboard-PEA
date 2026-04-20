@@ -262,6 +262,42 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
   transform: translateY(1px);
 }
 
+/* Benchmark — period selector */
+.bench-period-bar {
+  display: flex;
+  gap: 4px;
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 16px;
+  width: fit-content;
+  flex-wrap: wrap;
+}
+.bench-period-btn {
+  background: transparent;
+  color: var(--text2);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: 0.03em;
+  min-width: 40px;
+}
+.bench-period-btn:hover {
+  background: var(--s3);
+  color: var(--text);
+}
+.bench-period-btn.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(124,109,245,0.25);
+}
+
 /* ═══════════════════════════════════════════════════
    MAIN CONTENT
    ═══════════════════════════════════════════════════ */
