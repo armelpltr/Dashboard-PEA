@@ -3992,291 +3992,317 @@ function applyDivYield(value, divYield, daysHeld) {
   return value * (1 + divYield * yearsHeld);
 }
 
-async function initBenchmark() {
-  const selectEl  = document.getElementById('bench-select');
-  const kpiEl     = document.getElementById('bench-kpis');
-  const tbodyEl   = document.getElementById('bench-tbody');
-  const statusEl  = document.getElementById('bench-status');
-  const selectKey = selectEl ? selectEl.value : '^GSPC';
-  const cfg       = BENCH_CONFIG[selectKey] || BENCH_CONFIG['^GSPC'];
-  const indexName = cfg.name;
+// ─────────────────────────────────────────────────────────────────
+//  BENCHMARK PAGE — Vue multi-indices
+//  Affiche une courbe par indice + PEA, normalisées en base 100.
+//  Sélecteur de période : 1J, 1S, 1M, 3M, 6M, YTD, 1A, 3A, 5A, 10A, Max.
+// ─────────────────────────────────────────────────────────────────
 
-  const versements = getVersements(currentUser);
-  const dailyValues = getDailyValues(currentUser);
-  const portfolio  = getPortfolio(currentUser);
-  const txs        = getTransactions(currentUser);
+// État global
+let _benchCurrentPeriod = '6M';
 
-  if (!versements.length) {
-    kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Aucun versement</div><div class="stat-sub">Ajoutez au moins un versement pour comparer</div></div>';
-    tbodyEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">—</td></tr>';
-    return;
+// Périodes : durée en jours depuis aujourd'hui, ou label spécial
+const BENCH_PERIODS = {
+  '1D':  { days: 1,    label: '1 jour' },
+  '1W':  { days: 7,    label: '1 semaine' },
+  '1M':  { days: 30,   label: '1 mois' },
+  '3M':  { days: 90,   label: '3 mois' },
+  '6M':  { days: 180,  label: '6 mois' },
+  'YTD': { days: null, label: 'YTD' },
+  '1Y':  { days: 365,  label: '1 an' },
+  '3Y':  { days: 1095, label: '3 ans' },
+  '5Y':  { days: 1825, label: '5 ans' },
+  '10Y': { days: 3650, label: '10 ans' },
+  'MAX': { days: null, label: 'Depuis 1er versement' },
+};
+
+// Couleurs assignées à chaque série (stable)
+const BENCH_COLORS = {
+  PEA:         '#00e09e',
+  '^GSPC':     '#378ADD',
+  '^FCHI':     '#F0997B',
+  'URTH':      '#AFA9EC',
+  '^STOXX50E': '#EF9F27',
+  '^NDX':      '#ED93B1',
+};
+
+const BENCH_NAMES = {
+  PEA:         'Mon PEA',
+  '^GSPC':     'S&P 500',
+  '^FCHI':     'CAC 40',
+  'URTH':      'MSCI World',
+  '^STOXX50E': 'Euro Stoxx 50',
+  '^NDX':      'Nasdaq 100',
+};
+
+// Calcule la date de début pour une période donnée
+function benchStartDateFor(period) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  if (period === 'YTD') return new Date(today.getFullYear(), 0, 1).toISOString().slice(0,10);
+  if (period === 'MAX') {
+    const vers = getVersements(currentUser);
+    if (!vers.length) return today.toISOString().slice(0,10);
+    return vers.reduce((min, v) => (v.date && v.date < min ? v.date : min), '9999-12-31');
   }
+  const cfg = BENCH_PERIODS[period];
+  if (!cfg || !cfg.days) return today.toISOString().slice(0,10);
+  const d = new Date(today.getTime() - cfg.days * 86400000);
+  return d.toISOString().slice(0,10);
+}
+
+// Bind des boutons de période (appelé une fois)
+function bindBenchPeriodButtons() {
+  const btns = document.querySelectorAll('.bench-period-btn');
+  btns.forEach(btn => {
+    btn.onclick = () => {
+      const p = btn.dataset.p;
+      _benchCurrentPeriod = p;
+      btns.forEach(b => b.classList.toggle('active', b.dataset.p === p));
+      initBenchmark();
+    };
+  });
+  // Activer le bouton de la période courante
+  btns.forEach(b => b.classList.toggle('active', b.dataset.p === _benchCurrentPeriod));
+}
+
+async function initBenchmark() {
+  const kpiEl    = document.getElementById('bench-kpis');
+  const statusEl = document.getElementById('bench-status');
+  if (!kpiEl) return;
+
+  // S'assurer que les boutons sont bindés
+  if (!document.querySelector('.bench-period-btn.active')) bindBenchPeriodButtons();
+  else bindBenchPeriodButtons(); // idempotent
+
+  const dailyValues = getDailyValues(currentUser);
+  const versements  = getVersements(currentUser);
+
+  const period = _benchCurrentPeriod;
+  const periodCfg = BENCH_PERIODS[period];
+  const startDate = benchStartDateFor(period);
+  const today = new Date().toISOString().slice(0,10);
 
   kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Chargement…</div></div>';
-  tbodyEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Récupération des cours ' + indexName + '…</td></tr>';
+  if (statusEl) statusEl.textContent = 'Période : ' + periodCfg.label;
 
-  const sortedVers = [...versements].filter(v => v.date).sort((a,b) => a.date.localeCompare(b.date));
-  const firstDate = sortedVers[0].date;
+  // Fetch les 5 indices + FX en parallèle
+  const tickers = ['^GSPC', '^FCHI', 'URTH', '^STOXX50E', '^NDX'];
+  // fetch la plus longue période nécessaire : on prend 11 ans pour couvrir "10A"
+  const fetchFrom = period === 'MAX'
+    ? (versements.length ? versements[0].date : today)
+    : new Date(Date.now() - 3650 * 86400000).toISOString().slice(0,10);
 
-  let indexData;
   let fx = null;
+  let indices = {};
   try {
-    indexData = await fetchIndexDaily(selectKey, firstDate);
-    if (cfg.isUSD) {
-      fx = await fetchEURUSD(firstDate);
+    const results = await Promise.all([
+      fetchEURUSD(fetchFrom),
+      ...tickers.map(t => fetchIndexDaily(t, fetchFrom).catch(() => null)),
+    ]);
+    fx = results[0];
+    for (let i = 0; i < tickers.length; i++) {
+      if (results[i+1]) indices[tickers[i]] = results[i+1];
     }
   } catch (e) {
     kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label" style="color:var(--negative)">Erreur Yahoo</div><div class="stat-sub">' + (e.message || 'Indisponible') + '</div></div>';
-    tbodyEl.innerHTML = '';
     return;
   }
 
-  // ── 1. Valeur réelle du portefeuille ──
-  let portfolioCurrentValue = 0;
-  if (portfolio && portfolio.length) {
-    for (const r of portfolio) if (r.qty && r.currentPrice) portfolioCurrentValue += r.qty * r.currentPrice;
-  }
-  let cashResidual = 0;
-  for (const v of versements) if (typeof v.amount === 'number') cashResidual += v.amount;
-  for (const t of txs) {
-    if (!t.qty || !t.price) continue;
-    if (t.type === 'buy')  cashResidual -= t.qty * t.price;
-    if (t.type === 'sell') cashResidual += t.qty * t.price;
-  }
-  if (cashResidual > 0.001) portfolioCurrentValue += cashResidual;
+  // ── Construire les séries base 100 pour chaque indice + le PEA ──
+  const series = {};
 
-  if (dailyValues && dailyValues.length) {
-    const last = dailyValues[dailyValues.length - 1];
-    const todayStr = new Date().toISOString().slice(0, 10);
-    if (last.date === todayStr) portfolioCurrentValue = last.value;
-  }
-
-  const totalVers = versements.reduce((s, v) => s + (v.amount || 0), 0);
-
-  // ── 2. Simulation DCA sur l'indice (avec conversion FX + ajustement div) ──
-  // Le prix live de l'indice (en EUR après conversion si besoin)
-  const rawLivePrice = indexData.liveQuote || (function(){
-    const keys = Object.keys(indexData.prices).sort();
-    return indexData.prices[keys[keys.length - 1]];
-  })();
-  const liveIdxPriceEUR = cfg.isUSD ? toEUR(rawLivePrice, fx, null, true) : rawLivePrice;
-  const todayStr = new Date().toISOString().slice(0, 10);
-
-  let totalIndexUnits = 0;
-  let totalDaysWeighted = 0; // pour calcul pondéré de divYield
-  const txRows = [];
-
-  for (const v of sortedVers) {
-    const rawPx = getIndexPriceAt(indexData.prices, v.date);
-    if (rawPx == null) {
-      txRows.push({ date: v.date, amount: v.amount, price: null, units: 0, currentValue: 0, perf: null });
-      continue;
+  // Prix en EUR du jour J, après conversion FX et ajustement dividendes
+  // Retourne { date -> valeur EUR ajustée }
+  function buildEurSerie(ticker) {
+    const data = indices[ticker];
+    if (!data || !data.cfg) return null;
+    const cfg = data.cfg;
+    const prices = data.prices;
+    const keys = Object.keys(prices).sort();
+    const serie = {};
+    // Pour l'ajustement dividendes, on prend la date de début de la série
+    // comme référence : les valeurs plus tard sont ajustées par le prorata.
+    const firstDate = keys[0];
+    for (const k of keys) {
+      let px = prices[k];
+      if (cfg.isUSD && fx) {
+        const r = getFxAt(fx, k);
+        if (r) px = px / r;
+      }
+      if (cfg.divYield > 0) {
+        const days = (new Date(k) - new Date(firstDate)) / 86400000;
+        const years = days / 365.25;
+        px = px * (1 + cfg.divYield * years);
+      }
+      serie[k] = px;
     }
-    const pxEUR = cfg.isUSD ? toEUR(rawPx, fx, v.date, false) : rawPx;
-    const units = v.amount / pxEUR;
-    totalIndexUnits += units;
-
-    // Valeur actuelle de ce versement (avant ajustement dividendes)
-    const daysHeld = Math.max(0, (new Date(todayStr) - new Date(v.date)) / 86400000);
-    const rawCurrentValue = units * liveIdxPriceEUR;
-    const currentValue = applyDivYield(rawCurrentValue, cfg.divYield, daysHeld);
-    const perf = ((currentValue / v.amount) - 1) * 100;
-
-    totalDaysWeighted += v.amount * daysHeld;
-    txRows.push({ date: v.date, amount: v.amount, price: pxEUR, units, currentValue, perf });
+    return serie;
   }
 
-  // Somme des valeurs actuelles (chacune ajustée individuellement via divYield)
-  const indexSimValue = txRows.reduce((s, r) => s + (r.currentValue || 0), 0);
-  const indexGain     = indexSimValue - totalVers;
-  const indexPerfPct  = totalVers > 0 ? (indexGain / totalVers * 100) : 0;
+  for (const t of tickers) {
+    const s = buildEurSerie(t);
+    if (s) series[t] = s;
+  }
 
-  const portfolioGain    = portfolioCurrentValue - totalVers;
-  const portfolioPerfPct = totalVers > 0 ? (portfolioGain / totalVers * 100) : 0;
+  // Série PEA : à partir des dailyValues broker
+  // Pour obtenir une "perf pure" (sans effet DCA), on chaîne les rendements
+  // quotidiens en neutralisant les versements.
+  // Résultat : une courbe "PEA base 100" qui ne grossit pas à chaque versement
+  // mais reflète seulement la performance des actifs.
+  if (dailyValues && dailyValues.length >= 2) {
+    const peaSerie = {};
+    const dvMap = {};
+    for (const dv of dailyValues) dvMap[dv.date] = dv.value;
+    const dvDates = Object.keys(dvMap).sort();
 
-  const deltaEur = portfolioCurrentValue - indexSimValue;
-  const deltaPct = portfolioPerfPct - indexPerfPct;
+    const versByDate = {};
+    for (const v of versements) {
+      if (!v.date) continue;
+      versByDate[v.date] = (versByDate[v.date] || 0) + v.amount;
+    }
+
+    // Chaînage TWR quotidien :
+    //   twr(J) = twr(J-1) × V_J / (V_J-1 + vers_J)
+    // On démarre à 100 au premier jour
+    let twr = 100;
+    let prevValue = null;
+    for (let i = 0; i < dvDates.length; i++) {
+      const d = dvDates[i];
+      const val = dvMap[d];
+      if (i === 0) {
+        peaSerie[d] = twr;
+        prevValue = val;
+        continue;
+      }
+      const versJ = versByDate[d] || 0;
+      const denom = prevValue + versJ;
+      if (denom > 0.01) {
+        twr *= val / denom;
+      }
+      peaSerie[d] = +twr.toFixed(4);
+      prevValue = val;
+    }
+    series.PEA = peaSerie;
+  }
+
+  // ── Normaliser toutes les séries en base 100 sur la période sélectionnée ──
+  // Pour chaque série, on prend la première valeur disponible dans [startDate, today]
+  // comme "valeur de référence" → base 100.
+  const datasets = [];
+  const kpis = []; // { key, name, perfPct, color }
+
+  const orderedKeys = ['PEA', '^GSPC', '^FCHI', 'URTH', '^STOXX50E', '^NDX'];
+
+  for (const key of orderedKeys) {
+    const serie = series[key];
+    if (!serie) continue;
+    const keys = Object.keys(serie).sort().filter(d => d >= startDate && d <= today);
+    if (keys.length < 2) continue;
+    const base = serie[keys[0]];
+    if (!base || base <= 0) continue;
+
+    const points = keys.map(d => ({ x: d, y: +((serie[d] / base) * 100 - 100).toFixed(3) }));
+    const perfPct = points[points.length - 1].y;
+
+    datasets.push({
+      label: BENCH_NAMES[key],
+      data: points,
+      borderColor: BENCH_COLORS[key],
+      backgroundColor: key === 'PEA' ? 'rgba(0,224,158,0.08)' : 'transparent',
+      borderWidth: key === 'PEA' ? 2.5 : 1.5,
+      fill: key === 'PEA',
+      tension: 0.2,
+      pointRadius: 0,
+      pointHoverRadius: 3,
+    });
+
+    kpis.push({ key, name: BENCH_NAMES[key], perfPct, color: BENCH_COLORS[key] });
+  }
+
+  // ── KPI par indice (perf sur la période) ──
+  // Tri du meilleur au pire, PEA toujours en premier
+  const peaKpi = kpis.find(k => k.key === 'PEA');
+  const otherKpis = kpis.filter(k => k.key !== 'PEA').sort((a, b) => b.perfPct - a.perfPct);
+  const orderedKpis = peaKpi ? [peaKpi, ...otherKpis] : otherKpis;
 
   const col = v => v >= 0 ? 'var(--positive)' : 'var(--negative)';
   const sgn = v => v >= 0 ? '+' : '';
 
-  kpiEl.innerHTML = `
-    <div class="stat-card">
-      <div class="stat-label">MON PEA</div>
-      <div class="stat-value" style="color:${col(portfolioGain)}">${fmt(portfolioCurrentValue)}</div>
-      <div class="stat-sub">${sgn(portfolioGain)}${fmt(portfolioGain)} · ${sgn(portfolioPerfPct)}${portfolioPerfPct.toFixed(2)} %</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">DCA FICTIF ${indexName.toUpperCase()}</div>
-      <div class="stat-value" style="color:${col(indexGain)}">${fmt(indexSimValue)}</div>
-      <div class="stat-sub">${sgn(indexGain)}${fmt(indexGain)} · ${sgn(indexPerfPct)}${indexPerfPct.toFixed(2)} %</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">ÉCART</div>
-      <div class="stat-value" style="color:${col(deltaEur)}">${sgn(deltaEur)}${fmt(deltaEur)}</div>
-      <div class="stat-sub">${deltaEur >= 0 ? 'Vous battez ' : 'Vous êtes battu par '}l'indice de ${Math.abs(deltaPct).toFixed(2)} pts</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">INVESTI TOTAL</div>
-      <div class="stat-value">${fmt(totalVers)}</div>
-      <div class="stat-sub">${versements.length} versement${versements.length > 1 ? 's' : ''}</div>
-    </div>
-  `;
-
-  tbodyEl.innerHTML = txRows.map(r => {
-    if (r.price == null) {
-      return `<tr><td>${r.date}</td><td class="mono" style="text-align:right">${fmt(r.amount)}</td><td colspan="4" style="text-align:center;color:var(--text3)">—</td></tr>`;
-    }
-    return `<tr>
-      <td style="font-weight:500">${r.date}</td>
-      <td class="mono" style="text-align:right">${fmt(r.amount)}</td>
-      <td class="mono" style="text-align:right">${r.price.toFixed(2)} €</td>
-      <td class="mono" style="text-align:right">${r.units.toFixed(4)}</td>
-      <td class="mono" style="text-align:right">${fmt(r.currentValue)}</td>
-      <td class="mono" style="text-align:right;color:${col(r.perf)}">${sgn(r.perf)}${r.perf.toFixed(2)} %</td>
-    </tr>`;
-  }).join('');
-
-  // Statut : indique ce qui est utilisé pour la transparence
-  if (statusEl) {
-    let parts = [cfg.ticker];
-    if (cfg.isUSD && fx) parts.push('× EUR/USD ' + fx.live.toFixed(4));
-    if (cfg.divYield > 0) parts.push('+ div. ' + (cfg.divYield*100).toFixed(1) + '%/an');
-    statusEl.textContent = parts.join(' · ');
+  if (!orderedKpis.length) {
+    kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Aucune donnée</div><div class="stat-sub">Pour la période ' + periodCfg.label + '</div></div>';
+  } else {
+    kpiEl.innerHTML = orderedKpis.map(k => {
+      const isPEA = k.key === 'PEA';
+      return '<div class="stat-card" style="border-left:3px solid ' + k.color + (isPEA ? ';background:rgba(0,224,158,0.04)' : '') + '">' +
+        '<div class="stat-label">' + k.name.toUpperCase() + '</div>' +
+        '<div class="stat-value" style="color:' + col(k.perfPct) + '">' + sgn(k.perfPct) + k.perfPct.toFixed(2) + ' %</div>' +
+        '<div class="stat-sub">' + periodCfg.label + '</div>' +
+      '</div>';
+    }).join('');
   }
 
-  renderBenchmarkChart(indexData, sortedVers, dailyValues, portfolioCurrentValue, indexName, cfg, fx);
+  if (statusEl) {
+    const missing = [];
+    if (!series.PEA) missing.push('PEA (importez le CSV broker)');
+    statusEl.textContent = 'Période : ' + periodCfg.label + ' · ' + startDate + ' → ' + today
+      + (missing.length ? ' · ' + missing.join(', ') : '');
+  }
+
+  // ── Render du graphique ──
+  renderBenchmarkMultiChart(datasets);
 }
 
-function renderBenchmarkChart(indexData, sortedVers, dailyValues, portfolioCurrentValue, indexName, cfg, fx) {
+function renderBenchmarkMultiChart(datasets) {
   const ctx = document.getElementById('chart-benchmark');
   if (!ctx) return;
   if (benchmarkChart) { benchmarkChart.destroy(); benchmarkChart = null; }
 
-  const firstDate = sortedVers[0].date;
-  const today = new Date().toISOString().slice(0, 10);
-
-  const indexDates = Object.keys(indexData.prices).filter(d => d >= firstDate && d <= today).sort();
-
-  const rawLivePrice = indexData.liveQuote || indexData.prices[indexDates[indexDates.length - 1]];
-  const liveIdxPriceEUR = cfg.isUSD ? toEUR(rawLivePrice, fx, null, true) : rawLivePrice;
-
-  const versByDate = {};
-  for (const v of sortedVers) versByDate[v.date] = (versByDate[v.date] || 0) + v.amount;
-  const versDatesList = {}; // date -> liste des dates des versements qui ont généré cumUnits
-  for (const v of sortedVers) {
-    if (!versDatesList[v.date]) versDatesList[v.date] = [];
-    versDatesList[v.date].push({ amount: v.amount, date: v.date });
-  }
-
-  // Pour le graphe, on garde toutes les parts cumulées + leur date d'origine
-  // pour calculer correctement l'ajustement dividendes jour par jour.
-  const parts = []; // [{ units, startDate }]
-
-  const dcaSerie = [];
-  const cumInvestSerie = [];
-  let cumInvest = 0;
-
-  const allDatesSet = new Set(indexDates);
-  for (const d in versByDate) if (d >= firstDate && d <= today) allDatesSet.add(d);
-  const allDates = [...allDatesSet].sort();
-
-  for (const d of allDates) {
-    // Ajouter les parts du versement si ce jour est un jour de versement
-    if (versByDate[d]) {
-      const rawPx = getIndexPriceAt(indexData.prices, d);
-      if (rawPx != null) {
-        const pxEUR = cfg.isUSD ? toEUR(rawPx, fx, d, false) : rawPx;
-        const units = versByDate[d] / pxEUR;
-        parts.push({ units, startDate: d });
-      }
-      cumInvest += versByDate[d];
-    }
-
-    // Valorisation du jour : pour chaque lot de parts, appliquer divYield au prorata
-    const rawPx = getIndexPriceAt(indexData.prices, d);
-    const pxEUR = rawPx != null ? (cfg.isUSD ? toEUR(rawPx, fx, d, false) : rawPx) : null;
-    let dcaValue = 0;
-    if (pxEUR != null) {
-      for (const p of parts) {
-        const daysHeld = Math.max(0, (new Date(d) - new Date(p.startDate)) / 86400000);
-        const rawValue = p.units * pxEUR;
-        dcaValue += applyDivYield(rawValue, cfg.divYield, daysHeld);
-      }
-    }
-    dcaSerie.push({ x: d, y: +dcaValue.toFixed(2) });
-    cumInvestSerie.push({ x: d, y: +cumInvest.toFixed(2) });
-  }
-
-  const peaSerie = [];
-  if (dailyValues && dailyValues.length) {
-    for (const dv of dailyValues) {
-      if (dv.date >= firstDate && dv.date <= today) {
-        peaSerie.push({ x: dv.date, y: dv.value });
-      }
-    }
-    const lastDailyDate = dailyValues[dailyValues.length - 1].date;
-    if (lastDailyDate < today) {
-      peaSerie.push({ x: today, y: +portfolioCurrentValue.toFixed(2) });
-    }
-  }
-
   benchmarkChart = new Chart(ctx.getContext('2d'), {
     type: 'line',
-    data: {
-      datasets: [
-        {
-          label: 'Mon PEA',
-          data: peaSerie,
-          borderColor: '#00e09e',
-          backgroundColor: 'rgba(0,224,158,0.08)',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.25,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-        },
-        {
-          label: 'DCA ' + indexName,
-          data: dcaSerie,
-          borderColor: '#7c6df5',
-          backgroundColor: 'transparent',
-          borderWidth: 2,
-          fill: false,
-          tension: 0.25,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-        },
-        {
-          label: 'Capital investi',
-          data: cumInvestSerie,
-          borderColor: 'rgba(255,255,255,0.25)',
-          backgroundColor: 'transparent',
-          borderWidth: 1,
-          borderDash: [4, 4],
-          fill: false,
-          tension: 0,
-          pointRadius: 0,
-        },
-      ],
-    },
+    data: { datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'top', labels: { color: '#edf0f7', font: { size: 11 } } },
+        legend: {
+          position: 'top',
+          align: 'end',
+          labels: {
+            color: '#edf0f7',
+            font: { size: 11 },
+            usePointStyle: true,
+            pointStyle: 'line',
+            boxWidth: 18,
+            padding: 14,
+          },
+        },
         tooltip: {
           callbacks: {
             label: function(ctx) {
-              return ctx.dataset.label + ' : ' + new Intl.NumberFormat('fr-FR', {style:'currency',currency:'EUR'}).format(ctx.parsed.y);
+              const v = ctx.parsed.y;
+              const sign = v >= 0 ? '+' : '';
+              return ctx.dataset.label + ' : ' + sign + v.toFixed(2) + ' %';
             }
           }
-        }
+        },
       },
       scales: {
-        x: { type: 'time', time: { unit: 'month' }, ticks: { color: '#8892a8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { ticks: { color: '#8892a8', font: { size: 10 }, callback: v => v + ' €' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        x: {
+          type: 'time',
+          time: { unit: 'auto' },
+          ticks: { color: '#8892a8', font: { size: 10 }, maxRotation: 0 },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+        },
+        y: {
+          ticks: {
+            color: '#8892a8',
+            font: { size: 10 },
+            callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + ' %',
+          },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+        },
       },
     },
   });
