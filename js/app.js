@@ -3,6 +3,7 @@
 let fbApp, fbAuth, db,
     createUserWithEmailAndPassword, signInWithEmailAndPassword,
     signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
+    signInWithRedirect, getRedirectResult,
     updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser,
     getFirestoreDoc, setFirestoreDoc, firestoreDoc, firestoreCollection, deleteFirestoreDoc, getDocs;
 
@@ -16,6 +17,8 @@ let fbApp, fbAuth, db,
   onAuthStateChanged             = auth.onAuthStateChanged;
   GoogleAuthProvider             = auth.GoogleAuthProvider;
   signInWithPopup                = auth.signInWithPopup;
+  signInWithRedirect             = auth.signInWithRedirect;
+  getRedirectResult              = auth.getRedirectResult;
   updateProfile                  = auth.updateProfile;
   updatePassword                 = auth.updatePassword;
   reauthenticateWithCredential   = auth.reauthenticateWithCredential;
@@ -33,6 +36,18 @@ let fbApp, fbAuth, db,
   fbApp  = initializeApp(firebaseConfig);
   fbAuth = auth.getAuth(fbApp);
   db     = firestore.getFirestore(fbApp);
+
+  // Gérer le retour d'un signInWithRedirect (PWA iOS notamment).
+  // Si l'utilisateur revient d'un redirect OAuth Google, Firebase
+  // complète la connexion ici. onAuthStateChanged prendra ensuite le relai.
+  try {
+    await auth.getRedirectResult(fbAuth);
+  } catch (e) {
+    // Si erreur non critique, on l'affiche dans la zone login au cas où
+    console.warn('Redirect result error:', e && e.code);
+    const err = document.getElementById('login-error');
+    if (err && e && e.code) err.textContent = firebaseErrorMsg(e.code);
+  }
 
   auth.onAuthStateChanged(fbAuth, user => {
     if (user) { startApp(user); } else { stopApp(); }
@@ -207,10 +222,36 @@ window.doRegister = async function() {
 };
 
 // ─── GOOGLE LOGIN ─────────────────────────────────────
+// En PWA iOS (écran d'accueil) ou sur mobile en général, signInWithPopup
+// échoue silencieusement : iOS bloque les popups et casse le retour vers
+// la webapp standalone. On détecte ces contextes et on bascule sur
+// signInWithRedirect, qui fait une vraie navigation dans la même fenêtre.
+function _shouldUseRedirectAuth() {
+  try {
+    // Mode standalone = app ajoutée à l'écran d'accueil (iOS ou Android)
+    const isStandalone =
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      window.navigator.standalone === true;
+    // Safari iOS même en mode navigateur pose problème avec les popups
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    return isStandalone || isIOS;
+  } catch (e) {
+    return false;
+  }
+}
+
 window.doLoginGoogle = async function() {
   const provider = new GoogleAuthProvider();
   try {
-    await signInWithPopup(fbAuth, provider);
+    if (_shouldUseRedirectAuth()) {
+      // Redirection complète : la page va naviguer vers Google puis revenir.
+      // Le traitement du retour est fait par getRedirectResult() dans initFirebase.
+      await signInWithRedirect(fbAuth, provider);
+      // On ne reprend jamais ici : la page a redirigé.
+    } else {
+      await signInWithPopup(fbAuth, provider);
+    }
     // onAuthStateChanged prend le relai
   } catch(e) {
     if (e.code === 'auth/popup-closed-by-user') return;
