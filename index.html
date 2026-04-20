@@ -398,47 +398,37 @@
       <div class="page-header">
         <div>
           <div class="page-title">Benchmark</div>
-          <div class="page-subtitle">Votre PEA vs indice — simulation DCA aux mêmes dates</div>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center">
-          <select id="bench-select" onchange="initBenchmark()" class="form-input" style="padding:8px 12px;font-size:13px;min-width:180px">
-            <option value="^GSPC">S&amp;P 500</option>
-            <option value="^FCHI">CAC 40</option>
-            <option value="URTH">MSCI World</option>
-            <option value="^STOXX50E">Euro Stoxx 50</option>
-            <option value="^NDX">Nasdaq 100</option>
-          </select>
+          <div class="page-subtitle">Votre PEA face aux grands indices — performance comparée en base 100</div>
         </div>
       </div>
 
-      <!-- KPIs comparaison -->
-      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:18px" id="bench-kpis"></div>
+      <!-- Sélecteur de période -->
+      <div class="bench-period-bar">
+        <button class="bench-period-btn" data-p="1D">1J</button>
+        <button class="bench-period-btn" data-p="1W">1S</button>
+        <button class="bench-period-btn" data-p="1M">1M</button>
+        <button class="bench-period-btn" data-p="3M">3M</button>
+        <button class="bench-period-btn" data-p="6M" class="active">6M</button>
+        <button class="bench-period-btn" data-p="YTD">YTD</button>
+        <button class="bench-period-btn" data-p="1Y">1A</button>
+        <button class="bench-period-btn" data-p="3Y">3A</button>
+        <button class="bench-period-btn" data-p="5Y">5A</button>
+        <button class="bench-period-btn" data-p="10Y">10A</button>
+        <button class="bench-period-btn active" data-p="MAX">Max</button>
+      </div>
 
-      <!-- Graphique de comparaison -->
+      <!-- KPIs de perf par indice pour la période -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px;gap:10px" id="bench-kpis"></div>
+
+      <!-- Graphique comparaison multi-indices -->
       <div class="section-card" style="margin-bottom:18px">
-        <div class="section-title">Évolution comparée</div>
-        <div style="position:relative;height:380px">
-          <canvas id="chart-benchmark"></canvas>
-        </div>
-      </div>
-
-      <!-- Table détaillée -->
-      <div class="table-container">
-        <div class="table-header">
-          <span class="table-title">Détail du DCA simulé sur l'indice</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="section-title" style="margin:0">Évolution comparée — base 100</div>
           <span id="bench-status" style="font-size:11px;color:var(--text3)"></span>
         </div>
-        <table>
-          <thead><tr>
-            <th style="text-align:left">Date versement</th>
-            <th>Montant</th>
-            <th>Prix indice</th>
-            <th>Parts achetées</th>
-            <th>Valeur actuelle</th>
-            <th>Perf</th>
-          </tr></thead>
-          <tbody id="bench-tbody"></tbody>
-        </table>
+        <div style="position:relative;height:420px">
+          <canvas id="chart-benchmark"></canvas>
+        </div>
       </div>
     </div>
 
