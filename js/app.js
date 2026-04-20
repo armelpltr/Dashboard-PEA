@@ -243,6 +243,12 @@ async function startApp(user) {
   window.renderPortfolio();
   window.fetchAllLogos();
   if (!window.autoRefreshInterval) window.toggleAutoRefresh();
+
+  // Preload des données lourdes (Benchmark + Performance + Watchlist)
+  // en arrière-plan, pour que les pages s'affichent instantanément quand
+  // l'utilisateur clique dessus.
+  // Ne bloque pas l'affichage : lancé après le rendu du portefeuille.
+  setTimeout(() => { preloadAll().catch(e => console.warn('Preload:', e)); }, 200);
 }
 
 function stopApp() {
@@ -3634,6 +3640,22 @@ async function renderWatchlist() {
   wl.forEach((w, i) => enrichWatchlistRow(w, i));
 }
 
+// Cache 5 minutes pour les charts watchlist (prix live bougent)
+const _wlChartCache = {};
+const _WL_CACHE_TTL_MS = 5 * 60 * 1000;
+async function fetchWatchlistChart(ticker) {
+  const now = Date.now();
+  const cached = _wlChartCache[ticker];
+  if (cached && (now - cached.ts) < _WL_CACHE_TTL_MS) return cached.raw;
+  const yt = resolveToYahooTicker(ticker);
+  const raw = await fetchWithFallback(
+    'https://query1.finance.yahoo.com/v8/finance/chart/'
+    + encodeURIComponent(yt) + '?interval=1d&range=2mo'
+  );
+  _wlChartCache[ticker] = { ts: now, raw };
+  return raw;
+}
+
 async function enrichWatchlistRow(w, i) {
   const row = document.getElementById('wl-row-' + i);
   if (!row) return;
@@ -3646,13 +3668,7 @@ async function enrichWatchlistRow(w, i) {
   const setErr = el => { if (el) { el.textContent = '—'; el.style.color = 'var(--text3)'; } };
 
   try {
-    const yt = resolveToYahooTicker(w.ticker);
-    // 1 mois + 1 semaine pour garantir 30 points de trading
-    const raw = await fetchWithFallback(
-      'https://query1.finance.yahoo.com/v8/finance/chart/'
-      + encodeURIComponent(yt)
-      + '?interval=1d&range=2mo'
-    );
+    const raw = await fetchWatchlistChart(w.ticker);
     const d = JSON.parse(raw);
     const res = d.chart && d.chart.result && d.chart.result[0];
     if (!res) throw new Error('no data');
@@ -3993,7 +4009,52 @@ function applyDivYield(value, divYield, daysHeld) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-//  BENCHMARK PAGE — Vue multi-indices
+//  PRELOAD — lance tous les fetch lourds au login en arrière-plan
+//  pour que les pages Benchmark, Performance et Watchlist s'affichent
+//  instantanément quand l'utilisateur clique dessus.
+// ─────────────────────────────────────────────────────────────────
+async function preloadAll() {
+  const tasks = [];
+
+  // ── Benchmark : fetch EUR/USD + les 5 indices sur 10 ans ──
+  // Remplit _benchCache et _fxCache. Quand l'utilisateur ouvre Benchmark,
+  // plus aucun fetch n'est nécessaire pour les périodes ≤ 10 ans.
+  const tenYearsAgo = new Date(Date.now() - 3650 * 86400000).toISOString().slice(0,10);
+  tasks.push(fetchEURUSD(tenYearsAgo).catch(() => null));
+  for (const t of ['^GSPC', '^FCHI', 'URTH', '^STOXX50E', '^NDX']) {
+    tasks.push(fetchIndexDaily(t, tenYearsAgo).catch(() => null));
+  }
+
+  // ── Performance : précalcule le résultat si on peut ──
+  // Si le CSV broker est importé (dailyValues non vide), c'est quasi-instantané
+  // côté CPU. Sinon, on lance le gros fetch multi-tickers Yahoo.
+  const portfolio = getPortfolio(currentUser);
+  const txs = getTransactions(currentUser);
+  if (portfolio.length || txs.length) {
+    tasks.push(
+      computeAnnualPerformance(portfolio, txs)
+        .then(r => { _perfCache = r; })
+        .catch(() => null)
+    );
+  }
+
+  // ── Watchlist : enrichir chaque ligne (prix live + div yield) ──
+  // Les fetch individuels remplissent leurs propres caches (chart + quoteSummary).
+  // On ne rend pas le DOM ici (il n'existe peut-être pas encore), on fait juste
+  // chauffer les caches Yahoo pour que renderWatchlist soit instantané au clic.
+  const wl = getWatchlist(currentUser);
+  for (const w of wl) {
+    if (!w.ticker) continue;
+    tasks.push(fetchWatchlistChart(w.ticker).catch(() => null));
+    tasks.push(fetchDividendYield(w.ticker).catch(() => null));
+  }
+
+  // On attend tout en parallèle. Tout est non-bloquant pour l'UI principale.
+  await Promise.allSettled(tasks);
+  console.log('✓ Preload terminé');
+}
+
+
 //  Affiche une courbe par indice + PEA, normalisées en base 100.
 //  Sélecteur de période : 1J, 1S, 1M, 3M, 6M, YTD, 1A, 3A, 5A, 10A, Max.
 // ─────────────────────────────────────────────────────────────────
