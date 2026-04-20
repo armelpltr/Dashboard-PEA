@@ -4258,9 +4258,39 @@ function renderBenchmarkMultiChart(datasets) {
   if (!ctx) return;
   if (benchmarkChart) { benchmarkChart.destroy(); benchmarkChart = null; }
 
+  // Chart.js type: 'time' nécessite un adapter de dates (pas chargé ici).
+  // On convertit en axe catégoriel : on construit une liste unifiée de labels
+  // (union de toutes les dates), et chaque dataset mappe ses valeurs dessus.
+  const allDatesSet = new Set();
+  for (const ds of datasets) {
+    for (const pt of ds.data) allDatesSet.add(pt.x);
+  }
+  const labels = [...allDatesSet].sort();
+
+  // Formatter d'affichage pour l'axe X : DD/MM
+  const shortLabels = labels.map(d => {
+    const [y, m, day] = d.split('-');
+    return day + '/' + m;
+  });
+
+  // Densité des ticks : on ne met pas plus de ~10 labels visibles
+  const maxTicks = 10;
+  const step = Math.max(1, Math.ceil(labels.length / maxTicks));
+
+  // Convertir chaque dataset : data = array aligné sur labels (null si absent)
+  const normalizedDatasets = datasets.map(ds => {
+    const byDate = {};
+    for (const pt of ds.data) byDate[pt.x] = pt.y;
+    return {
+      ...ds,
+      data: labels.map(d => byDate[d] != null ? byDate[d] : null),
+      spanGaps: true,
+    };
+  });
+
   benchmarkChart = new Chart(ctx.getContext('2d'), {
     type: 'line',
-    data: { datasets },
+    data: { labels: shortLabels, datasets: normalizedDatasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -4280,7 +4310,12 @@ function renderBenchmarkMultiChart(datasets) {
         },
         tooltip: {
           callbacks: {
+            title: function(items) {
+              if (!items.length) return '';
+              return labels[items[0].dataIndex] || '';
+            },
             label: function(ctx) {
+              if (ctx.parsed.y == null) return null;
               const v = ctx.parsed.y;
               const sign = v >= 0 ? '+' : '';
               return ctx.dataset.label + ' : ' + sign + v.toFixed(2) + ' %';
@@ -4290,9 +4325,16 @@ function renderBenchmarkMultiChart(datasets) {
       },
       scales: {
         x: {
-          type: 'time',
-          time: { unit: 'auto' },
-          ticks: { color: '#8892a8', font: { size: 10 }, maxRotation: 0 },
+          ticks: {
+            color: '#8892a8',
+            font: { size: 10 },
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: maxTicks,
+            callback: function(val, idx) {
+              return idx % step === 0 ? shortLabels[idx] : '';
+            },
+          },
           grid: { color: 'rgba(255,255,255,0.04)' },
         },
         y: {
