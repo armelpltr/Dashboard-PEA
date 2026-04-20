@@ -206,6 +206,7 @@
       <div class="user-card" onclick="openProfilModal()" style="cursor:pointer" title="Mon profil">
         <div class="user-avatar" id="user-avatar">A</div>
         <span class="user-name" id="user-name-display">—</span>
+        <button class="btn-refresh" onclick="event.stopPropagation();refreshAll()" title="Rafraîchir les données" id="btn-refresh-data">↻</button>
         <button class="btn-logout" onclick="event.stopPropagation();doLogout()" title="Déconnexion">⏻</button>
       </div>
     </div>
