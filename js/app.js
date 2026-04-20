@@ -4009,6 +4009,40 @@ function applyDivYield(value, divYield, daysHeld) {
 }
 
 // ─────────────────────────────────────────────────────────────────
+//  REFRESH — vide tous les caches et relance le preload
+//  Appelé par le bouton ↻ dans la sidebar.
+// ─────────────────────────────────────────────────────────────────
+async function refreshAll() {
+  const btn = document.getElementById('btn-refresh-data');
+  if (btn && btn.classList.contains('spinning')) return; // déjà en cours
+  if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
+
+  try {
+    // Vider tous les caches connus
+    try { for (const k in _benchCache) delete _benchCache[k]; } catch(e){}
+    try { _fxCache = null; } catch(e){}
+    try { _perfCache = null; } catch(e){}
+    try { for (const k in _wlChartCache) delete _wlChartCache[k]; } catch(e){}
+    try { for (const k in _wlDivYieldCache) delete _wlDivYieldCache[k]; } catch(e){}
+
+    // Relancer le preload
+    await preloadAll();
+
+    // Rafraîchir la page actuellement affichée
+    const activePage = document.querySelector('.page.active');
+    if (activePage) {
+      const id = activePage.id.replace('page-', '');
+      if (id === 'benchmark')    { try { initBenchmark(); }    catch(e){} }
+      if (id === 'performance')  { try { initPerformance(); }  catch(e){} }
+      if (id === 'watchlist')    { try { renderWatchlist(); }  catch(e){} }
+      if (id === 'portfolio')    { try { renderPortfolio(); }  catch(e){} }
+    }
+  } finally {
+    if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
 //  PRELOAD — lance tous les fetch lourds au login en arrière-plan
 //  pour que les pages Benchmark, Performance et Watchlist s'affichent
 //  instantanément quand l'utilisateur clique dessus.
