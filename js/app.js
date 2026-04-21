@@ -37,17 +37,7 @@ let fbApp, fbAuth, db,
   fbAuth = auth.getAuth(fbApp);
   db     = firestore.getFirestore(fbApp);
 
-  // Gérer le retour d'un signInWithRedirect (PWA iOS notamment).
-  // Si l'utilisateur revient d'un redirect OAuth Google, Firebase
-  // complète la connexion ici. onAuthStateChanged prendra ensuite le relai.
-  try {
-    await auth.getRedirectResult(fbAuth);
-  } catch (e) {
-    // Si erreur non critique, on l'affiche dans la zone login au cas où
-    console.warn('Redirect result error:', e && e.code);
-    const err = document.getElementById('login-error');
-    if (err && e && e.code) err.textContent = firebaseErrorMsg(e.code);
-  }
+  // Google Sign-In désactivé : plus besoin de gérer getRedirectResult.
 
   auth.onAuthStateChanged(fbAuth, user => {
     if (user) { startApp(user); } else { stopApp(); }
@@ -123,6 +113,110 @@ function saveTransactions(user, data) { _perfCache = null; _fsWrite(user||curren
 function saveVersements(user, data)   { _perfCache = null; _fsWrite(user||currentUser, 'versements',   data); }
 function saveWatchlist(user, data)    { _fsWrite(user||currentUser, 'watchlist',    data); }
 function saveDailyValues(user, data)  { _perfCache = null; _fsWrite(user||currentUser, 'dailyValues', data); }
+
+// ─────────────────────────────────────────────────────────────────
+//  EXPORT / IMPORT — sauvegarde complète d'un compte en JSON
+//  Inclut : portfolio, transactions, versements, watchlist, dailyValues, settings.
+//  N'inclut PAS : email ni mot de passe (gérés par Firebase Auth).
+// ─────────────────────────────────────────────────────────────────
+function exportAllUserData() {
+  const uid = currentUser;
+  if (!uid) { alert('Vous devez être connecté.'); return; }
+
+  const payload = {
+    _meta: {
+      format: 'dashboard-pea-export',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      uid: uid,
+    },
+    portfolio:    getPortfolio(uid),
+    transactions: getTransactions(uid),
+    versements:   getVersements(uid),
+    watchlist:    getWatchlist(uid),
+    dailyValues:  getDailyValues(uid),
+    settings:     getUserSettings(uid),
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
+              + '_' + String(d.getHours()).padStart(2,'0') + String(d.getMinutes()).padStart(2,'0');
+  a.href = url;
+  a.download = 'dashboard-pea-backup_' + stamp + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function importAllUserData(event) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = ''; // permettre de ré-importer le même fichier
+  if (!file) return;
+  const uid = currentUser;
+  if (!uid) { alert('Vous devez être connecté.'); return; }
+
+  // Lecture
+  let payload;
+  try {
+    const txt = await file.text();
+    payload = JSON.parse(txt);
+  } catch(e) {
+    alert('Fichier JSON invalide.');
+    return;
+  }
+
+  // Validation minimale
+  if (!payload || typeof payload !== 'object' || !payload._meta || payload._meta.format !== 'dashboard-pea-export') {
+    alert('Ce fichier n\'est pas un export valide du Dashboard PEA.');
+    return;
+  }
+
+  // Compter les items pour la confirmation
+  const counts = {
+    portfolio:    (payload.portfolio    || []).length,
+    transactions: (payload.transactions || []).length,
+    versements:   (payload.versements   || []).length,
+    watchlist:    (payload.watchlist    || []).length,
+    dailyValues:  (payload.dailyValues  || []).length,
+  };
+  const total = Object.values(counts).reduce((s,n) => s+n, 0);
+
+  const msg = 'Importer l\'export suivant ?\n\n'
+    + '• Portefeuille : ' + counts.portfolio + ' lignes\n'
+    + '• Transactions : ' + counts.transactions + '\n'
+    + '• Versements   : ' + counts.versements + '\n'
+    + '• Watchlist    : ' + counts.watchlist + '\n'
+    + '• Valorisations quotidiennes : ' + counts.dailyValues + '\n\n'
+    + 'Exporté le : ' + (payload._meta.exportedAt || '?') + '\n\n'
+    + '⚠️ Cela REMPLACE toutes les données actuelles de votre compte.';
+
+  if (!confirm(msg)) return;
+
+  // Application
+  try {
+    if (Array.isArray(payload.portfolio))    savePortfolio(uid, payload.portfolio);
+    if (Array.isArray(payload.transactions)) saveTransactions(uid, payload.transactions);
+    if (Array.isArray(payload.versements))   saveVersements(uid, payload.versements);
+    if (Array.isArray(payload.watchlist))    saveWatchlist(uid, payload.watchlist);
+    if (Array.isArray(payload.dailyValues))  saveDailyValues(uid, payload.dailyValues);
+    if (payload.settings && typeof payload.settings === 'object') {
+      await saveUserSettings(uid, payload.settings);
+    }
+  } catch(e) {
+    alert('Erreur pendant l\'import : ' + (e.message || e));
+    return;
+  }
+
+  alert('✓ Import réussi (' + total + ' éléments). La page va être rechargée.');
+  location.reload();
+}
+
+window.exportAllUserData = exportAllUserData;
+window.importAllUserData = importAllUserData;
 
 function _fsWrite(uid, col, data) {
   _localCache[uid + '_' + col] = data;
@@ -242,22 +336,10 @@ function _shouldUseRedirectAuth() {
 }
 
 window.doLoginGoogle = async function() {
-  const provider = new GoogleAuthProvider();
-  try {
-    if (_shouldUseRedirectAuth()) {
-      // Redirection complète : la page va naviguer vers Google puis revenir.
-      // Le traitement du retour est fait par getRedirectResult() dans initFirebase.
-      await signInWithRedirect(fbAuth, provider);
-      // On ne reprend jamais ici : la page a redirigé.
-    } else {
-      await signInWithPopup(fbAuth, provider);
-    }
-    // onAuthStateChanged prend le relai
-  } catch(e) {
-    if (e.code === 'auth/popup-closed-by-user') return;
-    const err = document.getElementById('login-error');
-    err.textContent = firebaseErrorMsg(e.code);
-  }
+  // Google Sign-In désactivé : posait problème en PWA iOS (cookies cross-domain).
+  // Connexion uniquement via email + mot de passe.
+  const err = document.getElementById('login-error');
+  if (err) err.textContent = 'Connexion Google désactivée. Utilisez email + mot de passe.';
 };
 
 // ─── LOGOUT ───────────────────────────────────────────
