@@ -3746,7 +3746,7 @@ function confirmWatchlistAdd() {
   wl.push({ name: wlFoundName, ticker: wlFoundTicker, price: wlFoundPrice, addedPrice: wlFoundPrice, addedAt: new Date().toISOString() });
   saveWatchlist(currentUser, wl);
   closeWatchlistModal();
-  renderWatchlist();
+  fetchLogo(wlFoundTicker, wlFoundName).then(() => renderWatchlist());
 }
 function removeFromWatchlist(i) {
   const wl = getWatchlist(currentUser);
