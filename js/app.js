@@ -1041,7 +1041,7 @@ function resolveToYahooTicker(ticker) {
 
 // ── LOGO FETCHING ──────────────────────────────────────
 // Persist logo cache to localStorage so logos survive reloads
-const LOGO_CACHE_VERSION = 'v2'; // bump to purge stale hardcoded entries
+const LOGO_CACHE_VERSION = 'v3'; // bump to purge stale hardcoded entries
 function loadLogoCache() {
   try {
     if (localStorage.getItem('pea_logos_ver') !== LOGO_CACHE_VERSION) {
@@ -1060,7 +1060,21 @@ function saveLogoCache() {
 }
 loadLogoCache();
 
-// Fetch logo URL for a ticker using Yahoo Finance assetProfile (website) → Google Favicon
+// Domaines de secours pour les tickers où Yahoo Finance échoue fréquemment
+const FALLBACK_DOMAINS = {
+  'MC.PA':'lvmh.com','OR.PA':'loreal.com','AI.PA':'airliquide.com','AIR.PA':'airbus.com',
+  'BNP.PA':'bnpparibas.com','SAN.PA':'sanofi.com','TTE.PA':'totalenergies.com','TTE':'totalenergies.com',
+  'SU.PA':'se.com','DG.PA':'vinci.com','RMS.PA':'hermes.com','BN.PA':'danone.com',
+  'ACA.PA':'credit-agricole.com','CS.PA':'axa.com','RNO.PA':'renault.com',
+  'ORA.PA':'orange.com','SGO.PA':'saint-gobain.com','ENGI.PA':'engie.com',
+  'GLE.PA':'societegenerale.com','VIE.PA':'veolia.com','DSY.PA':'3ds.com',
+  'EN.PA':'bouygues.com','HO.PA':'thalesgroup.com','ML.PA':'michelin.com',
+  'AAPL':'apple.com','MSFT':'microsoft.com','GOOGL':'google.com','GOOG':'google.com',
+  'AMZN':'amazon.com','META':'meta.com','TSLA':'tesla.com','NVDA':'nvidia.com',
+  'NFLX':'netflix.com','DIS':'disney.com','PYPL':'paypal.com','ADBE':'adobe.com',
+};
+
+// Fetch logo URL : Yahoo Finance assetProfile → Google Favicon, fallback domaines connus
 async function fetchLogo(ticker) {
   if (LOGO_CACHE[ticker]) return LOGO_CACHE[ticker];
 
@@ -1072,7 +1086,7 @@ async function fetchLogo(ticker) {
     return ETF_LOGO;
   }
 
-  // Récupère le site officiel via Yahoo Finance assetProfile → Google Favicon
+  // 1. Yahoo Finance assetProfile → site officiel → Google Favicon
   try {
     const qsUrl = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/' +
       encodeURIComponent(resolveToYahooTicker(ticker)) + '?modules=assetProfile';
@@ -1088,12 +1102,18 @@ async function fetchLogo(ticker) {
     }
   } catch(e) {}
 
-  // Fallback : devine le domaine depuis le ticker
+  // 2. Domaine de secours connu
+  const fallbackDomain = FALLBACK_DOMAINS[ticker];
+  if (fallbackDomain) {
+    const url = 'https://www.google.com/s2/favicons?domain=' + fallbackDomain + '&sz=128';
+    LOGO_CACHE[ticker] = url;
+    saveLogoCache();
+    return url;
+  }
+
+  // 3. Dernier recours : devine depuis le ticker (non caché → retente au prochain chargement)
   const clean = ticker.replace(/\.[A-Z]+$/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const url = 'https://www.google.com/s2/favicons?domain=' + clean + '.com&sz=128';
-  LOGO_CACHE[ticker] = url;
-  saveLogoCache();
-  return url;
+  return 'https://www.google.com/s2/favicons?domain=' + clean + '.com&sz=128';
 }
 
 // Fetch logos for all portfolio tickers in background
