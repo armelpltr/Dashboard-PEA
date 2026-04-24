@@ -5814,10 +5814,10 @@ function initDividendes() {
     if (kpiNext && nextRows.length) kpiNext.innerHTML = `
       <div class="stat-label">⏰ Prochain versement</div>
       <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
-        ${logoHtml(nextRows[0].r.ticker, 28, 'ticker-icon')}
-        <div class="stat-value" style="font-size:14px;color:var(--gold);margin:0">${nextRows[0].nextEstim}</div>
+        ${logoHtml(nextRows[0].r.ticker, 26, 'ticker-icon')}
+        <span style="font-size:13px;font-weight:600;color:var(--text1)">${nextRows[0].r.name || nextRows[0].r.ticker}</span>
       </div>
-      <div class="stat-change">${nextRows[0].r.name || nextRows[0].r.ticker}</div>`;
+      <div class="stat-value" style="font-size:16px;color:var(--gold)">${nextRows[0].nextEstim}</div>`;
 
     // Tableau
     if (tbody) tbody.innerHTML = !rows.length
