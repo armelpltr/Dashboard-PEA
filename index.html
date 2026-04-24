@@ -142,6 +142,13 @@
         <span class="mobile-drawer-icon">📊</span>Performance
       </div>
       <div class="mobile-drawer-section">Compte</div>
+      <div class="mobile-drawer-item" onclick="openIdeasPanel();closeMobileDrawer()">
+        <span class="mobile-drawer-icon">💡</span>Idées & suggestions
+        <span id="ideas-badge-mobile" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto;animation:pulse-glow 1.5s ease-in-out infinite"></span>
+      </div>
+      <div class="mobile-drawer-item" id="btn-superadmin-mobile" onclick="openSuperAdminPanel();closeMobileDrawer()" style="display:none;color:#fbbf24">
+        <span class="mobile-drawer-icon">👑</span>Super Admin
+      </div>
       <div class="mobile-drawer-item" onclick="openProfilModal();closeMobileDrawer()">
         <span class="mobile-drawer-icon">👤</span>Mon profil
       </div>

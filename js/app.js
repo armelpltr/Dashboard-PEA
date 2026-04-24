@@ -647,9 +647,12 @@ function updateRoleBadges() {
   if (pb) pb.innerHTML = _roleBadgeHtml(currentUserRole, '10px');
   const ib = document.getElementById('ideas-role-badge');
   if (ib) { ib.style.display = 'inline'; ib.innerHTML = _roleBadgeHtml(currentUserRole, '9px'); }
-  // Bouton Super Admin sidebar
+  // Bouton Super Admin sidebar + mobile
+  const isSA = isSuperAdmin(fbAuth.currentUser);
   const btnSA = document.getElementById('btn-superadmin');
-  if (btnSA) btnSA.style.display = isSuperAdmin(fbAuth.currentUser) ? 'flex' : 'none';
+  if (btnSA) btnSA.style.display = isSA ? 'flex' : 'none';
+  const btnSAm = document.getElementById('btn-superadmin-mobile');
+  if (btnSAm) btnSAm.style.display = isSA ? 'flex' : 'none';
 }
 
 window.openSuperAdminPanel = function() {
@@ -6944,8 +6947,10 @@ function _listenThreads(user) {
     _renderThreads(snap.docs, user);
     if (isAdmin(user)) {
       const unread = snap.docs.filter(d => d.data().unreadAdmin > 0).length;
-      const badge = document.getElementById('ideas-badge');
-      if (badge) { badge.textContent = unread || ''; badge.style.display = unread ? 'inline-block' : 'none'; }
+      ['ideas-badge', 'ideas-badge-mobile'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) { b.textContent = unread || ''; b.style.display = unread ? 'inline-block' : 'none'; }
+      });
     }
   });
 }
