@@ -1239,8 +1239,8 @@ async function fetchPrice(query) {
     let best;
     if (localETF) {
       best = { symbol: localETF.ticker, longname: localETF.name, quoteType: 'ETF' };
-    } else if (/^[A-Z0-9]{1,6}(\.[A-Z]{1,3})?$/i.test(query.trim())) {
-      // Ticker direct détecté → skip recherche, chart immédiat
+    } else if (/^[A-Z0-9]{1,6}\.[A-Z]{1,3}$/i.test(query.trim())) {
+      // Ticker avec suffixe exchange détecté (ex: MC.PA, IWDA.AS) → skip recherche
       best = { symbol: query.trim().toUpperCase(), longname: null, quoteType: 'EQUITY' };
     } else {
       const searchUrl = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(query) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
@@ -3728,7 +3728,7 @@ function onWlInput() {
       const localETF = searchETFLocal(val);
       let best;
       if (localETF) { best = { symbol: localETF.ticker, longname: localETF.name }; }
-      else if (/^[A-Z0-9]{1,6}(\.[A-Z]{1,3})?$/i.test(val.trim())) {
+      else if (/^[A-Z0-9]{1,6}\.[A-Z]{1,3}$/i.test(val.trim())) {
         best = { symbol: val.trim().toUpperCase(), longname: null };
       } else {
         const url = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(val) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
