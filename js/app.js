@@ -1167,6 +1167,20 @@ function logoHtml(ticker, size, cssClass) {
     '</div>';
 }
 
+// Version agrandie pour les modaux d'ajout (44px, sans padding parasite)
+function logoHtmlModal(ticker) {
+  const abbr = ticker.replace(/\.[A-Z]+$/, '').slice(0, 3).toUpperCase();
+  const url  = LOGO_CACHE[ticker] || null;
+  const base = 'width:44px;height:44px;border-radius:12px;flex-shrink:0;display:grid;place-items:center;';
+  if (!url) {
+    return '<div style="' + base + 'background:var(--s3);border:1px solid var(--border2);font-size:10px;font-weight:700;color:var(--accent);font-family:var(--mono)">' + abbr + '</div>';
+  }
+  const onErr = 'this.parentNode.innerHTML=\x22' + abbr + '\x22;this.parentNode.style.fontSize=\x2210px\x22';
+  return '<div style="' + base + 'background:var(--s3);border:1px solid var(--border2);overflow:hidden">' +
+    '<img src="' + url + '" style="width:32px;height:32px;object-fit:contain" onerror="' + onErr + '">' +
+    '</div>';
+}
+
 async function isinToTicker(isin) {
   if (ISIN_MAP[isin]) return ISIN_MAP[isin];
   try {
@@ -1263,10 +1277,10 @@ async function fetchPrice(query) {
 
     // Logo — affiche immédiatement (cache ou abbr), met à jour après fetch
     const resLogoEl = document.getElementById('res-logo');
-    resLogoEl.innerHTML = logoHtml(foundTicker, 36, 'ticker-icon');
+    resLogoEl.innerHTML = logoHtmlModal(foundTicker);
     if (!LOGO_CACHE[foundTicker]) {
       fetchLogo(foundTicker, foundName).then(() => {
-        resLogoEl.innerHTML = logoHtml(foundTicker, 36, 'ticker-icon');
+        resLogoEl.innerHTML = logoHtmlModal(foundTicker);
       });
     }
 
@@ -3733,10 +3747,10 @@ function onWlInput() {
       document.getElementById('wl-res-price').textContent = wlFoundPrice.toFixed(2) + ' ' + (meta.currency || '');
       document.getElementById('wl-res-info').textContent = best.symbol + ' · ' + (pct >= 0 ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(2) + '%';
       const wlLogoEl = document.getElementById('wl-logo');
-      wlLogoEl.innerHTML = logoHtml(wlFoundTicker, 36, 'ticker-icon');
+      wlLogoEl.innerHTML = logoHtmlModal(wlFoundTicker);
       if (!LOGO_CACHE[wlFoundTicker]) {
         fetchLogo(wlFoundTicker, wlFoundName).then(() => {
-          wlLogoEl.innerHTML = logoHtml(wlFoundTicker, 36, 'ticker-icon');
+          wlLogoEl.innerHTML = logoHtmlModal(wlFoundTicker);
         });
       }
       document.getElementById('wl-status').innerHTML = '';
