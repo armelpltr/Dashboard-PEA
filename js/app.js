@@ -880,7 +880,7 @@ function onTickerInput() {
   document.getElementById('search-status').innerHTML =
     '<div class="status-loading"><span class="loading-spinner"></span> Recherche du cours…</div>';
 
-  searchTimer = setTimeout(() => fetchPrice(val), 700);
+  searchTimer = setTimeout(() => fetchPrice(val), 350);
 }
 
 // ─── YAHOO FINANCE ───────────────────────────────────
@@ -935,51 +935,51 @@ function searchETFLocal(query) {
 }
 
 async function fetchWithFallback(url) {
-  const attempts = [
-    async (u) => {
-      const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(u), {signal: AbortSignal.timeout(8000)});
-      const j = await r.json();
-      if (!j.contents || j.contents === 'null') throw new Error('empty');
-      return j.contents;
-    },
-    async (u) => {
-      const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(u), {signal: AbortSignal.timeout(8000)});
-      if (!r.ok) throw new Error('not ok');
-      return await r.text();
-    },
-    async (u) => {
-      const u2 = u.replace('query1.', 'query2.');
-      const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(u2), {signal: AbortSignal.timeout(8000)});
-      const j = await r.json();
-      if (!j.contents || j.contents === 'null') throw new Error('empty');
-      return j.contents;
-    },
-    async (u) => {
-      const r = await fetch('https://cors.eu.org/' + u, {signal: AbortSignal.timeout(8000)});
-      if (!r.ok) throw new Error('not ok');
-      return await r.text();
-    },
-    async (u) => {
-      const r = await fetch('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u), {signal: AbortSignal.timeout(8000)});
-      if (!r.ok) throw new Error('not ok');
-      return await r.text();
-    },
-  ];
-
-  let lastErr = '';
-  for (const attempt of attempts) {
-    try {
-      const raw = await attempt(url);
-      const parsed = JSON.parse(raw);
-      if (parsed.chart && parsed.chart.error && parsed.chart.error.code) continue;
-      if (parsed.finance && parsed.finance.error) continue;
-      return raw;
-    } catch(e) {
-      lastErr = e.message;
-      continue;
-    }
+  function tryAllorigins(u) {
+    return fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(u), {signal: AbortSignal.timeout(4000)})
+      .then(r => r.json()).then(j => { if (!j.contents || j.contents === 'null') throw new Error('empty'); return j.contents; });
   }
-  throw new Error('Service temporairement indisponible. Réessayez dans quelques secondes. (' + lastErr + ')');
+  function tryCorsproxy(u) {
+    return fetch('https://corsproxy.io/?' + encodeURIComponent(u), {signal: AbortSignal.timeout(4000)})
+      .then(r => { if (!r.ok) throw new Error('not ok'); return r.text(); });
+  }
+  function tryCorsEu(u) {
+    return fetch('https://cors.eu.org/' + u, {signal: AbortSignal.timeout(5000)})
+      .then(r => { if (!r.ok) throw new Error('not ok'); return r.text(); });
+  }
+  function tryCodetabs(u) {
+    return fetch('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u), {signal: AbortSignal.timeout(5000)})
+      .then(r => { if (!r.ok) throw new Error('not ok'); return r.text(); });
+  }
+
+  function isValidRaw(raw) {
+    try {
+      const p = JSON.parse(raw);
+      if (p.chart && p.chart.error && p.chart.error.code) return false;
+      if (p.finance && p.finance.error) return false;
+      return true;
+    } catch { return false; }
+  }
+
+  // Round 1 : race allorigins + corsproxy simultanément
+  try {
+    const raw = await Promise.any([tryAllorigins(url), tryCorsproxy(url)]);
+    if (isValidRaw(raw)) return raw;
+  } catch {}
+
+  // Round 2 : allorigins sur query2 + cors.eu.org + codetabs séquentiels
+  const fallbacks = [
+    () => tryAllorigins(url.replace('query1.', 'query2.')),
+    () => tryCorsEu(url),
+    () => tryCodetabs(url),
+  ];
+  for (const fn of fallbacks) {
+    try {
+      const raw = await fn();
+      if (isValidRaw(raw)) return raw;
+    } catch {}
+  }
+  throw new Error('Service temporairement indisponible. Réessayez dans quelques secondes.');
 }
 
 const ISIN_MAP = {
@@ -1239,6 +1239,9 @@ async function fetchPrice(query) {
     let best;
     if (localETF) {
       best = { symbol: localETF.ticker, longname: localETF.name, quoteType: 'ETF' };
+    } else if (/^[A-Z0-9]{1,6}(\.[A-Z]{1,3})?$/i.test(query.trim())) {
+      // Ticker direct détecté → skip recherche, chart immédiat
+      best = { symbol: query.trim().toUpperCase(), longname: null, quoteType: 'EQUITY' };
     } else {
       const searchUrl = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(query) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
       const sraw = await fetchWithFallback(searchUrl);
@@ -3720,11 +3723,14 @@ function onWlInput() {
   if (val.length < 2) { document.getElementById('wl-status').innerHTML = ''; return; }
   document.getElementById('wl-status').innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Recherche…</div>';
   wlTimer = setTimeout(async () => {
+
     try {
       const localETF = searchETFLocal(val);
       let best;
       if (localETF) { best = { symbol: localETF.ticker, longname: localETF.name }; }
-      else {
+      else if (/^[A-Z0-9]{1,6}(\.[A-Z]{1,3})?$/i.test(val.trim())) {
+        best = { symbol: val.trim().toUpperCase(), longname: null };
+      } else {
         const url = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(val) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
         const raw = await fetchWithFallback(url);
         const sd = JSON.parse(raw);
@@ -3759,7 +3765,7 @@ function onWlInput() {
     } catch(err) {
       document.getElementById('wl-status').innerHTML = '<div class="status-error">⚠ ' + (err.message || 'Erreur') + '</div>';
     }
-  }, 700);
+  }, 350);
 }
 function confirmWatchlistAdd() {
   if (!wlFoundTicker || !wlFoundPrice) return;
