@@ -7158,7 +7158,6 @@ window.confirmNewThread = function() {
     lastMessage: '',
     createdAt:   serverTimestamp(),
     updatedAt:   serverTimestamp(),
-    expiresAt:   new Date(Date.now() + 48 * 3600 * 1000),
     status:      'open',
     unreadAdmin: 0,
     unreadUser:  0,
@@ -7174,7 +7173,10 @@ window.markThreadDone = async function(threadId) {
 };
 
 window.closeThread = async function(threadId) {
-  await setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), { status: 'closed' }, { merge: true });
+  await setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), {
+    status: 'closed',
+    expiresAt: new Date(Date.now() + 48 * 3600 * 1000),
+  }, { merge: true });
   _activeThread = null;
   document.getElementById('ideas-chat-view').style.display = 'none';
   document.getElementById('ideas-chat-empty').style.display = 'flex';
