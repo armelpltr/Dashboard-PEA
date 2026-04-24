@@ -43,8 +43,8 @@ function generateIcon(W, H, pts, lineThick, dotRad, dotGlowRad, fillBottom) {
   }
 
   // Fill under chart
-  const [xStart] = pts[0], [xEnd] = pts[pts.length-1];
-  for(let xi=xStart[0];xi<=xEnd[0];xi++){
+  const xStart = pts[0][0], xEnd = pts[pts.length-1][0];
+  for(let xi=xStart;xi<=xEnd;xi++){
     let lineY=fillBottom;
     for(let i=0;i<pts.length-1;i++){
       const [x0,y0]=pts[i],[x1,y1]=pts[i+1];
