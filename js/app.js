@@ -5881,10 +5881,10 @@ function initDividendes() {
             const srcBadge = e.source==='reçu'
               ? '<span style="background:rgba(124,109,245,0.15);color:#a89cf7;font-size:10px;padding:1px 7px;border-radius:4px">✓ Saisi</span>'
               : e.source==='reçu-auto'
-              ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px" title="Calculé automatiquement par Mistral AI">✓ Reçu · ✦ IA</span>'
+              ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px" title="Montant exact Yahoo Finance">✓ Reçu · Yahoo</span>'
               : e.source==='estimé'
               ? '<span style="background:rgba(245,183,49,0.15);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px" title="Estimé par Mistral AI">⏳ Estimé · ✦ IA</span>'
-              : '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Référence</span>';
+              : '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Yahoo Finance</span>';
             return `<tr>
               <td class="mono" style="font-size:12px;color:var(--text2)">${ds}</td>
               <td><div style="display:flex;align-items:center;gap:6px">${logoHtml(e.ticker||'',20,'ticker-icon')}
