@@ -5679,6 +5679,16 @@ function calcNextDivDate(history) {
   return next.toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
 }
 
+function getQtyAtDate(txs, ticker, date) {
+  let qty = 0;
+  for (const t of txs) {
+    if ((t.type === 'buy' || t.type === 'sell') && t.ticker === ticker && t.date <= date) {
+      qty += t.type === 'buy' ? t.qty : -t.qty;
+    }
+  }
+  return Math.max(0, qty);
+}
+
 function initDividendes() {
   const pf  = getPortfolio(currentUser);
   const txs = getTransactions(currentUser) || [];
@@ -5746,7 +5756,8 @@ function initDividendes() {
     autoReceived.forEach(d => {
       const alreadyManual = manualReceived.find(t => t.date === d.date);
       if (!alreadyManual) {
-        allReceived.push({ ticker: r.ticker, name: r.name, date: d.date, qty: r.qty, price: d.amount, auto: true });
+        const qtyAtDate = getQtyAtDate(txs, r.ticker, d.date);
+        allReceived.push({ ticker: r.ticker, name: r.name, date: d.date, qty: qtyAtDate, price: d.amount, auto: true });
       }
     });
 
@@ -5814,9 +5825,10 @@ function initDividendes() {
         if (alreadyManual) return;
         const during = firstBuyDate ? (d.date >= firstBuyDate && d.date <= today && !d.next) : false;
         const isAutoReceived = during;
+        const qtyForAmount = during ? getQtyAtDate(txs, r.ticker, d.date) : r.qty;
         allEntries.push({
           date: d.date, ticker: r.ticker, name: r.name,
-          amount: d.amount * r.qty, perShare: d.amount,
+          amount: d.amount * qtyForAmount, perShare: d.amount,
           label: d.label||'', source: isAutoReceived ? 'reçu-auto' : (d.next ? 'estimé' : 'référence'),
           duringHolding: during || (d.next && firstBuyDate && d.date >= firstBuyDate),
         });
