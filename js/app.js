@@ -647,7 +647,17 @@ function updateRoleBadges() {
   if (pb) pb.innerHTML = _roleBadgeHtml(currentUserRole, '10px');
   const ib = document.getElementById('ideas-role-badge');
   if (ib) { ib.style.display = 'inline'; ib.innerHTML = _roleBadgeHtml(currentUserRole, '9px'); }
+  // Bouton Super Admin sidebar
+  const btnSA = document.getElementById('btn-superadmin');
+  if (btnSA) btnSA.style.display = isSuperAdmin(fbAuth.currentUser) ? 'flex' : 'none';
 }
+
+window.openSuperAdminPanel = function() {
+  document.getElementById('superadmin-overlay').style.display = 'flex';
+};
+window.closeSuperAdminPanel = function() {
+  document.getElementById('superadmin-overlay').style.display = 'none';
+};
 
 // Update mobile header avatar
 function updateMobileAvatar(user) {
@@ -6911,7 +6921,6 @@ window.openIdeasPanel = function() {
   document.getElementById('ideas-overlay').style.display = 'flex';
   updateRoleBadges();
   const user = fbAuth.currentUser;
-  document.getElementById('ideas-admin-roles').style.display = isSuperAdmin(user) ? 'block' : 'none';
   document.getElementById('ideas-panel-subtitle').textContent = isAdmin(user)
     ? 'Toutes les conversations des utilisateurs' : 'Proposez vos idées de développement';
   document.getElementById('btn-new-thread').style.display = isAdmin(user) ? 'none' : 'inline-block';

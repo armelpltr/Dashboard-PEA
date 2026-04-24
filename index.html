@@ -183,13 +183,20 @@
         <span class="nav-icon">📊</span> Performance
       </div>
     </nav>
-    <div class="sidebar-ideas-btn" onclick="openIdeasPanel()" id="btn-ideas" title="Idées & suggestions" style="
-      margin:0 12px 8px;padding:9px 14px;border-radius:10px;cursor:pointer;
+    <div onclick="openIdeasPanel()" id="btn-ideas" title="Idées & suggestions" style="
+      margin:0 12px 4px;padding:9px 14px;border-radius:10px;cursor:pointer;
       display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2);
-      background:var(--s2);border:1px solid var(--border);transition:background .15s;position:relative">
+      background:var(--s2);border:1px solid var(--border);transition:background .15s">
       <span>💡</span>
       <span style="flex:1">Idées & suggestions</span>
-      <span id="ideas-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px"></span>
+      <span id="ideas-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;animation:pulse-glow 1.5s ease-in-out infinite"></span>
+    </div>
+    <div id="btn-superadmin" onclick="openSuperAdminPanel()" title="Super Admin" style="
+      display:none;margin:0 12px 8px;padding:9px 14px;border-radius:10px;cursor:pointer;
+      display:none;align-items:center;gap:10px;font-size:13px;color:#fbbf24;
+      background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);transition:background .15s">
+      <span>👑</span>
+      <span style="flex:1">Super Admin</span>
     </div>
     <div class="sidebar-user">
       <div class="user-card" onclick="openProfilModal()" style="cursor:pointer" title="Mon profil">
@@ -917,14 +924,6 @@
         </div>
       </div>
       <!-- Superadmin: gestion des rôles -->
-      <div id="ideas-admin-roles" style="display:none;margin-right:8px">
-        <div style="display:flex;gap:6px;align-items:center">
-          <input id="input-admin-email" type="email" placeholder="Email utilisateur" class="form-input" style="font-size:11px;padding:5px 8px;width:180px">
-          <button onclick="grantAdmin()" style="padding:5px 10px;background:var(--accent);border:none;color:#fff;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">+Admin</button>
-          <button onclick="revokeAdmin()" style="padding:5px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:7px;font-size:11px;cursor:pointer">−</button>
-        </div>
-        <div id="admin-role-status" style="font-size:10px;font-family:var(--mono);color:var(--positive);min-height:12px;margin-top:3px;text-align:right"></div>
-      </div>
       <button onclick="closeIdeasPanel()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;flex-shrink:0">✕</button>
     </div>
 
@@ -963,6 +962,34 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL SUPER ADMIN ═════════════════════════════ -->
+<div id="superadmin-overlay" onclick="if(event.target===this)closeSuperAdminPanel()" style="
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1300;
+  align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+  <div style="
+    width:500px;max-width:100%;background:var(--s1);border-radius:18px;
+    border:1px solid rgba(251,191,36,0.3);box-shadow:0 24px 60px rgba(0,0,0,0.5);
+    overflow:hidden">
+    <div style="padding:18px 22px;border-bottom:1px solid rgba(251,191,36,0.2);display:flex;align-items:center;gap:10px;background:rgba(251,191,36,0.05)">
+      <span style="font-size:20px">👑</span>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:15px;font-family:var(--display);color:#fbbf24">Super Admin</div>
+        <div style="font-size:11px;color:var(--text3)">Gestion des rôles et des accès</div>
+      </div>
+      <button onclick="closeSuperAdminPanel()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px">✕</button>
+    </div>
+    <div style="padding:22px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px">Gérer les administrateurs</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input id="input-admin-email" type="email" placeholder="Email de l'utilisateur" class="form-input" style="flex:1;font-size:13px">
+        <button onclick="grantAdmin()" style="padding:8px 14px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">+ Admin</button>
+        <button onclick="revokeAdmin()" style="padding:8px 14px;background:var(--s3);border:1px solid var(--border);color:var(--negative);border-radius:8px;font-size:12px;cursor:pointer">Retirer</button>
+      </div>
+      <div id="admin-role-status" style="font-size:12px;font-family:var(--mono);min-height:16px;color:var(--positive)"></div>
     </div>
   </div>
 </div>
