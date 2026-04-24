@@ -409,65 +409,53 @@ window.saveRecapFreq = async function(value) {
   if (st) { st.textContent = '✓ Sauvegardé'; setTimeout(() => { st.textContent = ''; }, 2500); }
 };
 
-let _pendingAvatarBase64 = null;
-
-window.previewPresetAvatar = function(el) {
-  const src = el.src;
+window.selectPresetAvatar = async function(el) {
   const img = new Image();
-  img.onload = function() {
+  img.onload = async function() {
     const canvas = document.createElement('canvas');
     canvas.width = 120; canvas.height = 120;
     canvas.getContext('2d').drawImage(img, 0, 0, 120, 120);
-    _pendingAvatarBase64 = canvas.toDataURL('image/png');
+    const base64 = canvas.toDataURL('image/png');
+    await saveUserSettings(currentUser, { avatarBase64: base64 });
     const imgEl = document.getElementById('profil-avatar-img');
     const letEl = document.getElementById('profil-avatar-letter');
-    imgEl.src = _pendingAvatarBase64;
+    imgEl.src = base64;
     imgEl.style.display = 'block';
     letEl.style.display = 'none';
+    updateMobileAvatar(fbAuth.currentUser);
     document.querySelectorAll('.preset-avatar').forEach(e => {
       e.style.borderColor = e === el ? 'var(--accent)' : 'transparent';
     });
-    const btn = document.getElementById('btn-avatar-valider');
-    if (btn) btn.style.display = 'inline-block';
+    const st = document.getElementById('avatar-status');
+    if (st) { st.textContent = '✓ Photo mise à jour'; setTimeout(() => { st.textContent = ''; }, 2500); }
   };
   img.crossOrigin = 'anonymous';
-  img.src = src;
-};
-
-window.confirmAvatarChange = async function() {
-  if (!_pendingAvatarBase64) return;
-  await saveUserSettings(currentUser, { avatarBase64: _pendingAvatarBase64 });
-  updateMobileAvatar(fbAuth.currentUser);
-  _pendingAvatarBase64 = null;
-  const btn = document.getElementById('btn-avatar-valider');
-  if (btn) btn.style.display = 'none';
-  const st = document.getElementById('avatar-status');
-  if (st) { st.textContent = '✓ Photo mise à jour'; setTimeout(() => { st.textContent = ''; }, 2500); }
+  img.src = el.src;
 };
 
 window.uploadProfilAvatar = function(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     const img = new Image();
-    img.onload = function() {
+    img.onload = async function() {
       const canvas = document.createElement('canvas');
       canvas.width = 120; canvas.height = 120;
       const ctx = canvas.getContext('2d');
       const size = Math.min(img.width, img.height);
-      const ox = (img.width - size) / 2;
-      const oy = (img.height - size) / 2;
-      ctx.drawImage(img, ox, oy, size, size, 0, 0, 120, 120);
-      _pendingAvatarBase64 = canvas.toDataURL('image/jpeg', 0.85);
+      ctx.drawImage(img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, 120, 120);
+      const base64 = canvas.toDataURL('image/jpeg', 0.85);
+      await saveUserSettings(currentUser, { avatarBase64: base64 });
       const imgEl = document.getElementById('profil-avatar-img');
       const letEl = document.getElementById('profil-avatar-letter');
-      imgEl.src = _pendingAvatarBase64;
+      imgEl.src = base64;
       imgEl.style.display = 'block';
       letEl.style.display = 'none';
+      updateMobileAvatar(fbAuth.currentUser);
       document.querySelectorAll('.preset-avatar').forEach(e => e.style.borderColor = 'transparent');
-      const btn = document.getElementById('btn-avatar-valider');
-      if (btn) btn.style.display = 'inline-block';
+      const st = document.getElementById('avatar-status');
+      if (st) { st.textContent = '✓ Photo mise à jour'; setTimeout(() => { st.textContent = ''; }, 2500); }
     };
     img.src = e.target.result;
   };
