@@ -376,13 +376,14 @@ async function startApp(user) {
   document.getElementById('app').style.display = 'block';
   document.getElementById('user-avatar').textContent = displayName[0].toUpperCase();
   document.getElementById('user-name-display').textContent = displayName;
-  loadProfilePage(user);
-  updateMobileAvatar(user);
   const d = new Date();
   document.getElementById('portfolio-date').textContent =
     'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
   // Charger FX rates + données Firestore avant de rendre
   await Promise.all([loadAllUserData(user.uid), loadFxRates()]);
+  // Avatar APRÈS chargement des settings (base64 dispo)
+  updateMobileAvatar(user);
+  loadProfilePage(user);
   window.renderPortfolio();
   window.fetchAllLogos();
   if (!window.autoRefreshInterval) window.toggleAutoRefresh();
