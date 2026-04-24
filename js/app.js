@@ -387,7 +387,7 @@ async function startApp(user) {
   window.fetchAllLogos();
   if (!window.autoRefreshInterval) window.toggleAutoRefresh();
   // Badge idées en arrière-plan
-  _listenIdeas(user);
+  _listenThreads(user);
 
   // Preload des données lourdes (Benchmark + Performance + Watchlist)
   // en arrière-plan, pour que les pages s'affichent instantanément quand
@@ -6898,143 +6898,193 @@ function renderPerformancePage(result, portfolio, txs) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// IDÉES & SUGGESTIONS
+// CHAT IDÉES & SUGGESTIONS
 // ═══════════════════════════════════════════════════════════
 
-let _ideasUnsub = null;
+let _threadsUnsub = null;
+let _chatUnsub    = null;
+let _activeThread = null;
 
 window.openIdeasPanel = function() {
-  const overlay = document.getElementById('ideas-overlay');
-  overlay.style.display = 'flex';
+  document.getElementById('ideas-overlay').style.display = 'flex';
   updateRoleBadges();
   const user = fbAuth.currentUser;
-  // Afficher section rôles si superadmin
   document.getElementById('ideas-admin-roles').style.display = isSuperAdmin(user) ? 'block' : 'none';
-  // Masquer formulaire si admin (admin répond seulement)
-  document.getElementById('ideas-form').style.display = isAdmin(user) ? 'none' : 'flex';
-  document.getElementById('ideas-form').style.flexDirection = 'column';
-  // Subtitle
   document.getElementById('ideas-panel-subtitle').textContent = isAdmin(user)
-    ? 'Toutes les idées soumises par les utilisateurs'
-    : 'Proposez vos idées de développement';
-  // Écoute real-time
-  _listenIdeas(user);
+    ? 'Toutes les conversations des utilisateurs' : 'Proposez vos idées de développement';
+  document.getElementById('btn-new-thread').style.display = isAdmin(user) ? 'none' : 'inline-block';
+  _listenThreads(user);
 };
 
 window.closeIdeasPanel = function() {
   document.getElementById('ideas-overlay').style.display = 'none';
-  if (_ideasUnsub) { _ideasUnsub(); _ideasUnsub = null; }
+  if (_threadsUnsub) { _threadsUnsub(); _threadsUnsub = null; }
+  if (_chatUnsub)    { _chatUnsub();    _chatUnsub    = null; }
+  _activeThread = null;
 };
 
-function _listenIdeas(user) {
-  if (_ideasUnsub) _ideasUnsub();
+function _listenThreads(user) {
+  if (_threadsUnsub) _threadsUnsub();
   const col = firestoreCollection(db, 'ideas');
   const q = isAdmin(user)
-    ? firestoreQuery(col, firestoreOrderBy('createdAt', 'desc'))
-    : firestoreQuery(col, firestoreWhere('uid', '==', user.uid), firestoreOrderBy('createdAt', 'desc'));
-  _ideasUnsub = onSnapshot(q, snap => {
-    _renderIdeas(snap.docs, user);
-    // Badge: idées sans réponse pour les admins
+    ? firestoreQuery(col, firestoreOrderBy('updatedAt', 'desc'))
+    : firestoreQuery(col, firestoreWhere('uid', '==', user.uid), firestoreOrderBy('updatedAt', 'desc'));
+  _threadsUnsub = onSnapshot(q, snap => {
+    _renderThreads(snap.docs, user);
     if (isAdmin(user)) {
-      const unread = snap.docs.filter(d => !d.data().adminReply).length;
+      const unread = snap.docs.filter(d => d.data().unreadAdmin > 0).length;
       const badge = document.getElementById('ideas-badge');
-      if (badge) {
-        badge.textContent = unread || '';
-        badge.style.display = unread ? 'inline-block' : 'none';
-      }
+      if (badge) { badge.textContent = unread || ''; badge.style.display = unread ? 'inline-block' : 'none'; }
     }
   });
 }
 
-function _renderIdeas(docs, user) {
-  const el = document.getElementById('ideas-list');
+function _renderThreads(docs, user) {
+  const el = document.getElementById('ideas-threads');
   if (!docs.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px 0;font-size:13px">Aucune idée soumise pour l\'instant.</div>';
+    el.innerHTML = '<div style="padding:20px 12px;font-size:12px;color:var(--text3)">Aucune conversation.</div>';
     return;
   }
   el.innerHTML = docs.map(doc => {
     const d = doc.data();
-    const date = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString('fr-FR', {day:'2-digit',month:'short',year:'numeric'}) : '—';
-    const statusColor = d.status === 'done' ? 'var(--positive)' : d.adminReply ? 'var(--accent)' : 'var(--text3)';
-    const statusLabel = d.status === 'done' ? '✓ Réalisé' : d.adminReply ? '💬 Répondu' : '⏳ En attente';
-    return `<div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        ${isAdmin(user) ? `<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">${d.userName || d.userEmail}</span>` : ''}
-        <span style="margin-left:auto;font-size:10px;color:var(--text3)">${date}</span>
-        <span style="font-size:10px;padding:1px 7px;border-radius:8px;background:var(--s3);color:${statusColor}">${statusLabel}</span>
-      </div>
-      <div style="font-size:13px;color:var(--text);line-height:1.5;white-space:pre-wrap">${d.message}</div>
-      ${d.adminReply ? `<div style="margin-top:10px;padding:10px 12px;background:rgba(124,109,245,0.08);border-left:3px solid var(--accent);border-radius:0 8px 8px 0">
-        <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:4px">Réponse</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.5">${d.adminReply}</div>
-      </div>` : ''}
-      ${isAdmin(user) && !d.adminReply ? `<div style="margin-top:10px;display:flex;gap:8px">
-        <textarea placeholder="Répondre…" id="reply-${doc.id}" style="flex:1;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:12px;font-family:var(--sans);resize:none;min-height:56px"></textarea>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <button onclick="sendReply('${doc.id}')" style="padding:6px 12px;background:var(--accent);border:none;color:#fff;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">Envoyer</button>
-          <button onclick="markDone('${doc.id}')" style="padding:6px 12px;background:var(--s3);border:1px solid var(--border);color:var(--positive);border-radius:7px;font-size:11px;cursor:pointer">✓ Fait</button>
-        </div>
-      </div>` : ''}
-      ${isAdmin(user) && d.adminReply && d.status !== 'done' ? `<button onclick="markDone('${doc.id}')" style="margin-top:8px;padding:5px 12px;background:var(--s3);border:1px solid var(--border);color:var(--positive);border-radius:7px;font-size:11px;cursor:pointer">✓ Marquer comme réalisé</button>` : ''}
-    </div>`;
+    const unread = isAdmin(user) ? (d.unreadAdmin || 0) : (d.unreadUser || 0);
+    const active = _activeThread === doc.id;
+    const statusDot = d.status === 'done'
+      ? '<span style="width:6px;height:6px;border-radius:50%;background:var(--positive);flex-shrink:0;display:inline-block"></span>'
+      : '';
+    return '<div onclick="openThread(\'' + doc.id + '\')" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);background:' + (active ? 'var(--s2)' : 'transparent') + ';transition:background .1s">'
+      + '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">'
+      + statusDot
+      + '<span style="font-size:12px;font-weight:600;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (d.title || 'Sans titre') + '</span>'
+      + (unread ? '<span style="background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;flex-shrink:0">' + unread + '</span>' : '')
+      + '</div>'
+      + (isAdmin(user) ? '<div style="font-size:10px;color:var(--text3)">' + (d.userName || d.userEmail || '') + '</div>' : '')
+      + '<div style="font-size:10px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (d.lastMessage || '—') + '</div>'
+      + '</div>';
   }).join('');
 }
 
-window.submitIdea = async function() {
+window.openThread = function(threadId) {
+  _activeThread = threadId;
+  if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
   const user = fbAuth.currentUser;
-  const msg = document.getElementById('ideas-textarea').value.trim();
-  if (!msg) return;
-  await addFirestoreDoc(firestoreCollection(db, 'ideas'), {
-    uid: user.uid,
-    userEmail: user.email,
-    userName: user.displayName || user.email.split('@')[0],
-    message: msg,
-    createdAt: serverTimestamp(),
-    status: 'open',
-    adminReply: null,
-    repliedAt: null,
+
+  document.getElementById('ideas-chat-empty').style.display = 'none';
+  const chatView = document.getElementById('ideas-chat-view');
+  chatView.style.display = 'flex';
+
+  const unreadField = isAdmin(user) ? { unreadAdmin: 0 } : { unreadUser: 0 };
+  setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), unreadField, { merge: true }).catch(() => {});
+
+  getFirestoreDoc(firestoreDoc(db, 'ideas', threadId)).then(doc => {
+    const d = doc.data();
+    const isDone = d.status === 'done';
+    document.getElementById('ideas-chat-header').innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px">'
+      + '<span>' + (d.title || 'Conversation') + '</span>'
+      + (isAdmin(user) ? '<span style="font-size:10px;color:var(--text3);font-weight:400">— ' + (d.userName || d.userEmail) + '</span>' : '')
+      + '<button onclick="markThreadDone(\'' + threadId + '\')" style="margin-left:auto;padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:' + (isDone ? 'var(--positive)' : 'var(--text3)') + ';border-radius:6px;font-size:10px;cursor:pointer">'
+      + (isDone ? '✓ Réalisé' : 'Marquer réalisé') + '</button>'
+      + '</div>';
   });
-  document.getElementById('ideas-textarea').value = '';
+
+  const msgCol = firestoreCollection(db, 'ideas', threadId, 'messages');
+  const q = firestoreQuery(msgCol, firestoreOrderBy('createdAt', 'asc'));
+  _chatUnsub = onSnapshot(q, snap => _renderMessages(snap.docs, user));
 };
 
-window.sendReply = async function(ideaId) {
-  const reply = document.getElementById('reply-' + ideaId)?.value.trim();
-  if (!reply) return;
+function _renderMessages(docs, user) {
+  const el = document.getElementById('ideas-messages');
+  if (!docs.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center">Début de la conversation.</div>';
+    return;
+  }
+  el.innerHTML = docs.map(doc => {
+    const d = doc.data();
+    const mine = d.senderUid === fbAuth.currentUser.uid;
+    const time = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) : '';
+    const isAdminMsg = d.senderRole === 'admin' || d.senderRole === 'superadmin';
+    return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + '">'
+      + (!mine ? '<span style="font-size:10px;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text3)') + ';margin-bottom:3px;font-weight:' + (isAdminMsg ? '600' : '400') + '">' + (isAdminMsg ? '⚡ ' : '') + (d.senderName || '') + '</span>' : '')
+      + '<div style="max-width:75%;padding:9px 13px;border-radius:' + (mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px') + ';background:' + (mine ? 'var(--accent)' : 'var(--s2)') + ';border:1px solid ' + (mine ? 'transparent' : 'var(--border)') + ';color:' + (mine ? '#fff' : 'var(--text)') + ';font-size:13px;line-height:1.5;white-space:pre-wrap">' + d.text + '</div>'
+      + '<span style="font-size:10px;color:var(--text3);margin-top:3px">' + time + '</span>'
+      + '</div>';
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+window.ideasMsgKeydown = function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+};
+
+window.sendChatMessage = async function() {
+  if (!_activeThread) return;
   const user = fbAuth.currentUser;
-  await setFirestoreDoc(firestoreDoc(db, 'ideas', ideaId), {
-    adminReply: reply,
-    repliedAt: serverTimestamp(),
-    repliedBy: user.displayName || user.email,
-    status: 'replied',
+  const input = document.getElementById('ideas-msg-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const msgCol = firestoreCollection(db, 'ideas', _activeThread, 'messages');
+  await addFirestoreDoc(msgCol, {
+    text,
+    senderUid:  user.uid,
+    senderName: user.displayName || user.email.split('@')[0],
+    senderRole: currentUserRole,
+    createdAt:  serverTimestamp(),
+  });
+  const unreadDoc = await getFirestoreDoc(firestoreDoc(db, 'ideas', _activeThread));
+  const cur = unreadDoc.exists() ? unreadDoc.data() : {};
+  const unreadField = isAdmin(user)
+    ? { unreadUser:  (cur.unreadUser  || 0) + 1 }
+    : { unreadAdmin: (cur.unreadAdmin || 0) + 1 };
+  await setFirestoreDoc(firestoreDoc(db, 'ideas', _activeThread), {
+    lastMessage: text.slice(0, 60),
+    updatedAt:   serverTimestamp(),
+    ...unreadField,
   }, { merge: true });
 };
 
-window.markDone = async function(ideaId) {
-  await setFirestoreDoc(firestoreDoc(db, 'ideas', ideaId), { status: 'done' }, { merge: true });
+window.newIdeasThread = function() {
+  const title = prompt('Titre de votre idée :');
+  if (!title || !title.trim()) return;
+  const user = fbAuth.currentUser;
+  addFirestoreDoc(firestoreCollection(db, 'ideas'), {
+    uid:         user.uid,
+    userEmail:   user.email,
+    userName:    user.displayName || user.email.split('@')[0],
+    title:       title.trim(),
+    lastMessage: '',
+    createdAt:   serverTimestamp(),
+    updatedAt:   serverTimestamp(),
+    status:      'open',
+    unreadAdmin: 0,
+    unreadUser:  0,
+  }).then(ref => openThread(ref.id));
+};
+
+window.markThreadDone = async function(threadId) {
+  const doc = await getFirestoreDoc(firestoreDoc(db, 'ideas', threadId));
+  const current = doc.data() ? doc.data().status : 'open';
+  await setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), { status: current === 'done' ? 'open' : 'done' }, { merge: true });
+  openThread(threadId);
 };
 
 // ── Gestion des rôles (superadmin) ─────────────────────────
 
-window.grantAdmin = async function() {
-  await _setRoleByEmail('admin');
-};
-
-window.revokeAdmin = async function() {
-  await _setRoleByEmail('user');
-};
+window.grantAdmin  = async function() { await _setRoleByEmail('admin'); };
+window.revokeAdmin = async function() { await _setRoleByEmail('user'); };
 
 async function _setRoleByEmail(role) {
   const email = document.getElementById('input-admin-email').value.trim().toLowerCase();
   const st    = document.getElementById('admin-role-status');
   if (!email) return;
-  // Chercher l'uid via collection users (settings)
   try {
     const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'users'), firestoreWhere('email', '==', email)));
     if (snap.empty) { st.style.color = 'var(--negative)'; st.textContent = 'Utilisateur introuvable.'; return; }
     const uid = snap.docs[0].id;
     await setFirestoreDoc(firestoreDoc(db, 'roles', uid), { role, email }, { merge: true });
-    st.style.color = 'var(--positive)';
-    st.textContent = role === 'admin' ? `✓ ${email} est maintenant admin` : `✓ Droits admin retirés pour ${email}`;
+    st.style.color   = 'var(--positive)';
+    st.textContent   = role === 'admin' ? ('✓ ' + email + ' est admin') : ('✓ Droits retirés pour ' + email);
     document.getElementById('input-admin-email').value = '';
     setTimeout(() => { st.textContent = ''; }, 3000);
   } catch(e) {
