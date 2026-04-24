@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#4c1d95"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="url(#g)"/>
+  <!-- Shield -->
+  <path d="M60 20 L88 34 L88 62 C88 80 60 98 60 98 C60 98 32 80 32 62 L32 34 Z" fill="#fff" opacity="0.95"/>
+  <!-- Shield inner -->
+  <path d="M60 30 L80 41 L80 63 C80 76 60 88 60 88 C60 88 40 76 40 63 L40 41 Z" fill="#8b5cf6" opacity="0.35"/>
+  <!-- Checkmark -->
+  <polyline points="48,60 57,70 74,50" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

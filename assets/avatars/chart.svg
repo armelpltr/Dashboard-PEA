@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c6df5"/>
+      <stop offset="100%" stop-color="#4f3cc9"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="url(#g)"/>
+  <!-- Chart area fill -->
+  <path d="M22 85 L38 65 L54 72 L72 42 L90 30 L90 85 Z" fill="#fff" opacity="0.12"/>
+  <!-- Chart line -->
+  <polyline points="22,85 38,65 54,72 72,42 90,30" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Dots -->
+  <circle cx="22" cy="85" r="4" fill="#fff"/>
+  <circle cx="38" cy="65" r="4" fill="#fff"/>
+  <circle cx="54" cy="72" r="4" fill="#fff"/>
+  <circle cx="72" cy="42" r="4" fill="#fff"/>
+  <circle cx="90" cy="30" r="5" fill="#fff"/>
+  <!-- Axes -->
+  <line x1="20" y1="28" x2="20" y2="92" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="20" y1="92" x2="98" y2="92" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+</svg>

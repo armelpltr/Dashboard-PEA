@@ -407,6 +407,31 @@ window.saveRecapFreq = async function(value) {
   await saveUserSettings(currentUser, { emailRecapFreq: value });
 };
 
+window.selectPresetAvatar = async function(src) {
+  // Convert SVG URL to base64 via canvas for consistent storage
+  const img = new Image();
+  img.onload = async function() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 120; canvas.height = 120;
+    canvas.getContext('2d').drawImage(img, 0, 0, 120, 120);
+    const base64 = canvas.toDataURL('image/png');
+    await saveUserSettings(currentUser, { avatarBase64: base64 });
+    const imgEl = document.getElementById('profil-avatar-img');
+    const letEl = document.getElementById('profil-avatar-letter');
+    imgEl.src = base64;
+    imgEl.style.display = 'block';
+    letEl.style.display = 'none';
+    updateMobileAvatar(fbAuth.currentUser);
+    // Highlight selected
+    document.querySelectorAll('.preset-avatar').forEach(el => {
+      el.style.borderColor = el.src === src || el.src.endsWith(src.split('/').pop())
+        ? 'var(--accent)' : 'transparent';
+    });
+  };
+  img.crossOrigin = 'anonymous';
+  img.src = src;
+};
+
 window.uploadProfilAvatar = async function(event) {
   const file = event.target.files[0];
   if (!file) return;
