@@ -890,20 +890,29 @@ async function fetchSuggestions(query) {
   } catch { return []; }
 }
 
+let _ddCallback = null; // callback courant du dropdown actif
+
 function renderDropdown(ddId, suggestions, onSelect) {
   const dd = document.getElementById(ddId);
   if (!suggestions.length) { dd.classList.remove('open'); dd.innerHTML = ''; return; }
   _ddActiveIdx = -1;
+  _ddCallback = onSelect;
   dd.innerHTML = suggestions.map((s, i) => {
-    const logoHtmlStr = LOGO_CACHE[s.symbol]
+    const logoStr = LOGO_CACHE[s.symbol]
       ? '<img src="' + LOGO_CACHE[s.symbol] + '" style="width:22px;height:22px;border-radius:5px;object-fit:contain;background:var(--s3)" onerror="this.style.display=\'none\'">'
       : '<div style="width:22px;height:22px;border-radius:5px;background:var(--s3);display:grid;place-items:center;font-size:8px;font-weight:700;color:var(--accent);font-family:var(--mono)">' + s.symbol.replace(/\.[A-Z]+$/, '').slice(0,3) + '</div>';
-    return '<div class="search-dropdown-item" data-idx="' + i + '" onclick="(' + onSelect.toString() + ')(\'' + s.symbol.replace(/'/g, "\\'") + '\',\'' + (s.name || '').replace(/'/g, "\\'").replace(/"/g,'') + '\')">' +
-      logoHtmlStr +
+    return '<div class="search-dropdown-item" data-symbol="' + s.symbol + '" data-name="' + (s.name || s.symbol).replace(/"/g, '&quot;') + '" data-idx="' + i + '">' +
+      logoStr +
       '<div style="flex:1;min-width:0"><div class="sd-name">' + (s.name || s.symbol) + '</div>' +
       '<div class="sd-ticker">' + s.symbol + (s.exchange ? '  ·  ' + s.exchange : '') + '</div></div>' +
       '</div>';
   }).join('');
+  // Délégation d'événement — pas d'inline onclick
+  dd.querySelectorAll('.search-dropdown-item').forEach(el => {
+    el.addEventListener('click', () => {
+      if (_ddCallback) _ddCallback(el.dataset.symbol, el.dataset.name);
+    });
+  });
   dd.classList.add('open');
 }
 
