@@ -6925,7 +6925,7 @@ window.openIdeasPanel = function() {
   updateRoleBadges();
   const user = fbAuth.currentUser;
   document.getElementById('ideas-panel-subtitle').textContent = isAdmin(user)
-    ? 'Toutes les conversations des utilisateurs' : 'Proposez vos idées de développement';
+    ? 'Toutes les conversations' : 'Envoyez un message ou une idée';
   document.getElementById('btn-new-thread').style.display = isAdmin(user) ? 'none' : 'inline-block';
   _listenThreads(user);
 };
@@ -6944,7 +6944,8 @@ function _listenThreads(user) {
     ? firestoreQuery(col, firestoreOrderBy('updatedAt', 'desc'))
     : firestoreQuery(col, firestoreWhere('uid', '==', user.uid), firestoreOrderBy('updatedAt', 'desc'));
   _threadsUnsub = onSnapshot(q, snap => {
-    _renderThreads(snap.docs, user);
+    _cleanExpiredThreads(snap.docs);
+    _renderThreads(snap.docs.filter(d => { const e = d.data().expiresAt; return !e || !e.toDate || e.toDate() > new Date(); }), user);
     if (isAdmin(user)) {
       const unread = snap.docs.filter(d => d.data().unreadAdmin > 0).length;
       ['ideas-badge', 'ideas-badge-mobile'].forEach(id => {
@@ -6995,13 +6996,16 @@ window.openThread = function(threadId) {
   getFirestoreDoc(firestoreDoc(db, 'ideas', threadId)).then(doc => {
     const d = doc.data();
     const isDone = d.status === 'done';
+    const isSA = isSuperAdmin(fbAuth.currentUser);
     document.getElementById('ideas-chat-header').innerHTML =
-      '<div style="display:flex;align-items:center;gap:8px">'
-      + '<span>' + (d.title || 'Conversation') + '</span>'
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      + '<span style="font-weight:700">' + (d.title || 'Conversation') + '</span>'
       + (isAdmin(user) ? '<span style="font-size:10px;color:var(--text3);font-weight:400">— ' + (d.userName || d.userEmail) + '</span>' : '')
-      + '<button onclick="markThreadDone(\'' + threadId + '\')" style="margin-left:auto;padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:' + (isDone ? 'var(--positive)' : 'var(--text3)') + ';border-radius:6px;font-size:10px;cursor:pointer">'
-      + (isDone ? '✓ Réalisé' : 'Marquer réalisé') + '</button>'
-      + '</div>';
+      + '<div style="margin-left:auto;display:flex;gap:6px">'
+      + (isAdmin(user) ? '<button onclick="markThreadDone(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:' + (isDone ? 'var(--positive)' : 'var(--text3)') + ';border-radius:6px;font-size:10px;cursor:pointer">' + (isDone ? '✓ Réalisé' : 'Marquer réalisé') + '</button>' : '')
+      + '<button onclick="closeThread(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:10px;cursor:pointer">Fermer</button>'
+      + (isSA ? '<button onclick="deleteThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);color:var(--negative);border-radius:6px;font-size:10px;cursor:pointer">🗑</button>' : '')
+      + '</div></div>';
   });
 
   const msgCol = firestoreCollection(db, 'ideas', threadId, 'messages');
@@ -7022,13 +7026,73 @@ function _renderMessages(docs, user) {
     const isAdminMsg = d.senderRole === 'admin' || d.senderRole === 'superadmin';
     return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + '">'
       + (!mine ? '<span style="font-size:10px;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text3)') + ';margin-bottom:3px;font-weight:' + (isAdminMsg ? '600' : '400') + '">' + (isAdminMsg ? '⚡ ' : '') + (d.senderName || '') + '</span>' : '')
-      + '<div style="max-width:75%;padding:9px 13px;border-radius:' + (mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px') + ';background:' + (mine ? 'var(--accent)' : 'var(--s2)') + ';border:1px solid ' + (mine ? 'transparent' : 'var(--border)') + ';color:' + (mine ? '#fff' : 'var(--text)') + ';font-size:13px;line-height:1.5;white-space:pre-wrap">' + d.text + '</div>'
+      + '<div style="max-width:75%;border-radius:' + (mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px') + ';overflow:hidden;border:1px solid ' + (mine ? 'transparent' : 'var(--border)') + '">'
+      + (d.image ? '<img src="' + d.image + '" style="max-width:100%;display:block;border-radius:inherit">' : '')
+      + (d.text ? '<div style="padding:9px 13px;background:' + (mine ? 'var(--accent)' : 'var(--s2)') + ';color:' + (mine ? '#fff' : 'var(--text)') + ';font-size:13px;line-height:1.5;white-space:pre-wrap">' + d.text + '</div>' : '')
+      + '</div>'
       + '<span style="font-size:10px;color:var(--text3);margin-top:3px">' + time + '</span>'
       + '</div>';
   }).join('');
   el.scrollTop = el.scrollHeight;
 }
 
+// ── Emoji picker ───────────────────────────────────────────
+const EMOJIS = ['😊','😂','👍','❤️','🔥','✅','💡','🚀','🎉','👀','🤔','😅','💪','🙏','⚡','💬','📊','📈','💰','🐂','🐻','💎','🛠️','🐛','❌','⚠️','📌','🔄','👏','😎'];
+
+window.toggleEmojiPicker = function() {
+  const el = document.getElementById('emoji-picker');
+  if (!el) return;
+  if (el.style.display === 'flex') { el.style.display = 'none'; return; }
+  el.innerHTML = EMOJIS.map(e =>
+    '<button onclick="insertEmoji(\'' + e + '\')" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px;border-radius:6px;line-height:1">' + e + '</button>'
+  ).join('');
+  el.style.display = 'flex';
+};
+
+window.insertEmoji = function(emoji) {
+  const input = document.getElementById('ideas-msg-input');
+  if (!input) return;
+  const pos = input.selectionStart;
+  input.value = input.value.slice(0, pos) + emoji + input.value.slice(pos);
+  input.focus();
+  input.selectionStart = input.selectionEnd = pos + emoji.length;
+};
+
+// ── Image upload dans le chat ───────────────────────────────
+let _pendingChatImage = null;
+
+window.chatImageSelected = function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const MAX = 800;
+      const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width  = img.width  * ratio;
+      canvas.height = img.height * ratio;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      _pendingChatImage = canvas.toDataURL('image/jpeg', 0.75);
+      const thumb = document.getElementById('chat-img-thumb');
+      const preview = document.getElementById('chat-img-preview');
+      if (thumb) thumb.src = _pendingChatImage;
+      if (preview) preview.style.display = 'block';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+};
+
+window.clearChatImage = function() {
+  _pendingChatImage = null;
+  const preview = document.getElementById('chat-img-preview');
+  if (preview) preview.style.display = 'none';
+};
+
+// ── Envoi message ───────────────────────────────────────────
 window.ideasMsgKeydown = function(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
 };
@@ -7038,52 +7102,102 @@ window.sendChatMessage = async function() {
   const user = fbAuth.currentUser;
   const input = document.getElementById('ideas-msg-input');
   const text = input.value.trim();
-  if (!text) return;
+  if (!text && !_pendingChatImage) return;
   input.value = '';
-  const msgCol = firestoreCollection(db, 'ideas', _activeThread, 'messages');
-  await addFirestoreDoc(msgCol, {
-    text,
+  document.getElementById('emoji-picker').style.display = 'none';
+  const msgData = {
+    text:       text || '',
+    image:      _pendingChatImage || null,
     senderUid:  user.uid,
     senderName: user.displayName || user.email.split('@')[0],
     senderRole: currentUserRole,
     createdAt:  serverTimestamp(),
-  });
+  };
+  clearChatImage();
+  const msgCol = firestoreCollection(db, 'ideas', _activeThread, 'messages');
+  await addFirestoreDoc(msgCol, msgData);
   const unreadDoc = await getFirestoreDoc(firestoreDoc(db, 'ideas', _activeThread));
   const cur = unreadDoc.exists() ? unreadDoc.data() : {};
   const unreadField = isAdmin(user)
     ? { unreadUser:  (cur.unreadUser  || 0) + 1 }
     : { unreadAdmin: (cur.unreadAdmin || 0) + 1 };
   await setFirestoreDoc(firestoreDoc(db, 'ideas', _activeThread), {
-    lastMessage: text.slice(0, 60),
+    lastMessage: text ? text.slice(0, 60) : '📷 Photo',
     updatedAt:   serverTimestamp(),
     ...unreadField,
   }, { merge: true });
 };
 
+// ── Nouveau thread — modal CSS ──────────────────────────────
 window.newIdeasThread = function() {
-  const title = prompt('Titre de votre idée :');
-  if (!title || !title.trim()) return;
+  const overlay = document.getElementById('new-thread-overlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    setTimeout(() => { document.getElementById('new-thread-title').focus(); }, 100);
+  }
+};
+
+window.closeNewThread = function() {
+  const overlay = document.getElementById('new-thread-overlay');
+  if (overlay) overlay.style.display = 'none';
+  const input = document.getElementById('new-thread-title');
+  if (input) input.value = '';
+};
+
+window.confirmNewThread = function() {
+  const titleEl = document.getElementById('new-thread-title');
+  const title = titleEl ? titleEl.value.trim() : '';
+  if (!title) return;
+  closeNewThread();
   const user = fbAuth.currentUser;
   addFirestoreDoc(firestoreCollection(db, 'ideas'), {
     uid:         user.uid,
     userEmail:   user.email,
     userName:    user.displayName || user.email.split('@')[0],
-    title:       title.trim(),
+    title,
     lastMessage: '',
     createdAt:   serverTimestamp(),
     updatedAt:   serverTimestamp(),
+    expiresAt:   new Date(Date.now() + 48 * 3600 * 1000),
     status:      'open',
     unreadAdmin: 0,
     unreadUser:  0,
   }).then(ref => openThread(ref.id));
 };
 
+// ── Fermer / supprimer thread ───────────────────────────────
 window.markThreadDone = async function(threadId) {
   const doc = await getFirestoreDoc(firestoreDoc(db, 'ideas', threadId));
   const current = doc.data() ? doc.data().status : 'open';
   await setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), { status: current === 'done' ? 'open' : 'done' }, { merge: true });
   openThread(threadId);
 };
+
+window.closeThread = async function(threadId) {
+  await setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), { status: 'closed' }, { merge: true });
+  _activeThread = null;
+  document.getElementById('ideas-chat-view').style.display = 'none';
+  document.getElementById('ideas-chat-empty').style.display = 'flex';
+};
+
+window.deleteThread = async function(threadId) {
+  if (!isSuperAdmin(fbAuth.currentUser)) return;
+  await deleteFirestoreDoc(firestoreDoc(db, 'ideas', threadId));
+  _activeThread = null;
+  document.getElementById('ideas-chat-view').style.display = 'none';
+  document.getElementById('ideas-chat-empty').style.display = 'flex';
+};
+
+// Nettoyage auto 48h côté client au chargement des threads
+function _cleanExpiredThreads(docs) {
+  const now = new Date();
+  docs.forEach(doc => {
+    const d = doc.data();
+    if (d.expiresAt && d.expiresAt.toDate && d.expiresAt.toDate() < now) {
+      deleteFirestoreDoc(firestoreDoc(db, 'ideas', doc.id)).catch(() => {});
+    }
+  });
+}
 
 // ── Gestion des rôles (superadmin) ─────────────────────────
 
