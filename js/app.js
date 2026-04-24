@@ -1042,7 +1042,7 @@ function resolveToYahooTicker(ticker) {
 
 // ── LOGO FETCHING ──────────────────────────────────────
 // Persist logo cache to localStorage so logos survive reloads
-const LOGO_CACHE_VERSION = 'v4'; // bump to purge stale hardcoded entries
+const LOGO_CACHE_VERSION = 'v5'; // bump to purge stale hardcoded entries
 function loadLogoCache() {
   try {
     if (localStorage.getItem('pea_logos_ver') !== LOGO_CACHE_VERSION) {
@@ -1100,19 +1100,19 @@ function fetchLogo(ticker, companyName) {
     return Promise.resolve(ETF_LOGO);
   }
 
-  // 1. Domaine dérivé du nom de la société
-  const nameDomain = companyNameToDomain(companyName);
-  if (nameDomain) {
-    const url = 'https://www.google.com/s2/favicons?domain=' + nameDomain + '&sz=128';
+  // 1. Domaine de secours explicite (tickers dont le nom ne donne pas le bon domaine)
+  const fallbackDomain = FALLBACK_DOMAINS[ticker];
+  if (fallbackDomain) {
+    const url = 'https://www.google.com/s2/favicons?domain=' + fallbackDomain + '&sz=128';
     LOGO_CACHE[ticker] = url;
     saveLogoCache();
     return Promise.resolve(url);
   }
 
-  // 2. Domaine de secours connu (tickers avec nom non-devinable : LVMH, Crédit Agricole…)
-  const fallbackDomain = FALLBACK_DOMAINS[ticker];
-  if (fallbackDomain) {
-    const url = 'https://www.google.com/s2/favicons?domain=' + fallbackDomain + '&sz=128';
+  // 2. Domaine dérivé du nom officiel de la société
+  const nameDomain = companyNameToDomain(companyName);
+  if (nameDomain) {
+    const url = 'https://www.google.com/s2/favicons?domain=' + nameDomain + '&sz=128';
     LOGO_CACHE[ticker] = url;
     saveLogoCache();
     return Promise.resolve(url);
