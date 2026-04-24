@@ -701,9 +701,14 @@
       <input type="text" class="form-input" id="modal-ticker" placeholder="ex: LVMH, Apple, TotalEnergies…" oninput="onTickerInput()">
       <div id="search-status"></div>
       <div class="search-result" id="search-result">
-        <div class="search-result-name" id="res-name">—</div>
-        <div class="search-result-price" id="res-price">—</div>
-        <div class="search-result-info" id="res-info">—</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="res-logo"></div>
+          <div style="flex:1;min-width:0">
+            <div class="search-result-name" id="res-name">—</div>
+            <div class="search-result-info" id="res-info">—</div>
+          </div>
+          <div class="search-result-price" id="res-price">—</div>
+        </div>
       </div>
     </div>
 

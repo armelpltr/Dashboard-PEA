@@ -846,6 +846,7 @@ function openModal() {
   document.getElementById('modal-qty').value = '';
   document.getElementById('modal-buy-price').value = '';
   document.getElementById('search-result').classList.remove('visible');
+  document.getElementById('res-logo').innerHTML = '';
   document.getElementById('search-status').innerHTML = '';
   document.getElementById('btn-confirm').disabled = true;
   document.getElementById('modal-buy-date').value = new Date().toISOString().slice(0,10);
@@ -1247,6 +1248,15 @@ async function fetchPrice(query) {
     document.getElementById('res-info').textContent  =
       best.symbol + '  ·  ' + (meta.exchangeName || '') +
       '  ·  ' + (isPos ? '▲' : '▼') + ' ' + Math.abs(changePct).toFixed(2) + "% aujourd'hui";
+
+    // Logo — affiche immédiatement (cache ou abbr), met à jour après fetch
+    const resLogoEl = document.getElementById('res-logo');
+    resLogoEl.innerHTML = logoHtml(foundTicker, 36, 'ticker-icon');
+    if (!LOGO_CACHE[foundTicker]) {
+      fetchLogo(foundTicker).then(() => {
+        resLogoEl.innerHTML = logoHtml(foundTicker, 36, 'ticker-icon');
+      });
+    }
 
     statusEl.innerHTML = '';
     resultEl.classList.add('visible');
