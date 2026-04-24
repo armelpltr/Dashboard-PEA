@@ -5635,22 +5635,50 @@ async function loadDivJson() {
 
 async function fetchDivHistory(ticker) {
   if (_divHistoryCache[ticker] !== undefined) return _divHistoryCache[ticker];
+
+  let history = [];
+
+  // Fetch real dividend history from Yahoo Finance (exact amounts)
+  try {
+    const yahooTicker = resolveToYahooTicker(ticker);
+    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
+      encodeURIComponent(yahooTicker) + '?interval=1mo&range=10y&events=div';
+    const raw = await fetchWithFallback(url);
+    const json = raw.contents ? JSON.parse(raw.contents) : raw;
+    const divEvents = json?.chart?.result?.[0]?.events?.dividends;
+    if (divEvents) {
+      history = Object.values(divEvents).map(d => ({
+        date:   new Date(d.date * 1000).toISOString().slice(0, 10),
+        amount: d.amount,
+        label:  'Dividende',
+      }));
+    }
+  } catch(e) {
+    console.warn('fetchDivHistory Yahoo error for', ticker, e);
+  }
+
+  // Fallback to JSON if Yahoo returned nothing
+  if (history.length === 0) {
+    await loadDivJson();
+    const data = _divJsonData[ticker];
+    if (data?.history) history = [...data.history];
+  }
+
+  // Inject next dividend from JSON (estimated/confirmed) — Yahoo doesn't have future events
   await loadDivJson();
-  const data = _divJsonData[ticker];
-  if (!data || !data.history) { _divHistoryCache[ticker] = []; return []; }
-  // Injecter le prochain dividende confirmé dans l'historique si présent
-  let history = [...data.history];
-  if (data.next && data.next.date) {
-    const alreadyIn = history.find(h => h.date === data.next.date);
+  const jsonData = _divJsonData[ticker];
+  if (jsonData?.next?.date) {
+    const alreadyIn = history.find(h => h.date === jsonData.next.date);
     if (!alreadyIn) {
       history.unshift({
-        date:   data.next.date,
-        amount: data.next.amount_estimated || 0,
-        label:  data.next.confirmed ? 'Prochain (confirmé)' : 'Prochain (estimé)',
+        date:   jsonData.next.date,
+        amount: jsonData.next.amount_estimated || 0,
+        label:  jsonData.next.confirmed ? 'Prochain (confirmé)' : 'Prochain (estimé)',
         next:   true,
       });
     }
   }
+
   history.sort((a, b) => b.date.localeCompare(a.date));
   _divHistoryCache[ticker] = history;
   return history;
