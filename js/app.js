@@ -64,10 +64,8 @@ const firebaseConfig = {
 let currentUser = null;
 let currentUserRole = 'user'; // 'user' | 'admin' | 'superadmin'
 
-const SUPERADMIN_EMAIL = 'armelpltr14@gmail.com';
-
-function isSuperAdmin(user) { return user && user.email === SUPERADMIN_EMAIL; }
-function isAdmin(user)      { return isSuperAdmin(user) || currentUserRole === 'admin'; }
+function isSuperAdmin(user) { return user && currentUserRole === 'superadmin'; }
+function isAdmin(user)      { return currentUserRole === 'admin' || currentUserRole === 'superadmin'; }
 
 // ─── COUCHE DONNÉES FIRESTORE (cache synchrone + sync arrière-plan) ──────
 // Les lectures/écritures sont SYNCHRONES via un cache mémoire.
@@ -367,15 +365,11 @@ window.doLogout = async function() {
 async function startApp(user) {
   currentUser = user.uid;
   window.currentUser = user.uid;
-  // Charger le rôle
-  if (isSuperAdmin(user)) {
-    currentUserRole = 'superadmin';
-  } else {
-    try {
-      const roleDoc = await getFirestoreDoc(firestoreDoc(db, 'roles', user.uid));
-      currentUserRole = roleDoc.exists() ? (roleDoc.data().role || 'user') : 'user';
-    } catch(e) { currentUserRole = 'user'; }
-  }
+  // Charger le rôle depuis Firestore
+  try {
+    const roleDoc = await getFirestoreDoc(firestoreDoc(db, 'roles', user.uid));
+    currentUserRole = roleDoc.exists() ? (roleDoc.data().role || 'user') : 'user';
+  } catch(e) { currentUserRole = 'user'; }
   const displayName = user.displayName || user.email.split('@')[0];
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
