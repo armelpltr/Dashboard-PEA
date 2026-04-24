@@ -5806,14 +5806,17 @@ function initDividendes() {
     if (kpiRecus) kpiRecus.innerHTML = `
       <div class="stat-label">🎁 Dividendes reçus</div>
       <div class="stat-value" style="color:var(--gold)">${totalRecuAuto.toFixed(2)} €</div>
-      <div class="stat-change pos">${totalVersionts} versement(s) détecté(s)</div>`;
+      ${totalVersionts > 0 ? `<div class="stat-change pos">${totalVersionts} versement(s) détecté(s)</div>` : ''}`;
     if (kpiHolding) kpiHolding.innerHTML = `
       <div class="stat-label">📅 Versements pendant détention</div>
       <div class="stat-value">${totalHolding}</div>
       <div class="stat-change">Depuis date d'achat</div>`;
     if (kpiNext && nextRows.length) kpiNext.innerHTML = `
       <div class="stat-label">⏰ Prochain versement</div>
-      <div class="stat-value" style="font-size:14px;color:var(--gold)">${nextRows[0].nextEstim}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+        ${logoHtml(nextRows[0].r.ticker, 28, 'ticker-icon')}
+        <div class="stat-value" style="font-size:14px;color:var(--gold);margin:0">${nextRows[0].nextEstim}</div>
+      </div>
       <div class="stat-change">${nextRows[0].r.name || nextRows[0].r.ticker}</div>`;
 
     // Tableau
