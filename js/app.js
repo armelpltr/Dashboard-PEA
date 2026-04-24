@@ -370,6 +370,7 @@ async function startApp(user) {
     const roleDoc = await getFirestoreDoc(firestoreDoc(db, 'roles', user.uid));
     currentUserRole = roleDoc.exists() ? (roleDoc.data().role || 'user') : 'user';
   } catch(e) { currentUserRole = 'user'; }
+  updateRoleBadges();
   const displayName = user.displayName || user.email.split('@')[0];
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -486,6 +487,7 @@ window.uploadProfilAvatar = function(event) {
 
 function loadProfilePage(user) {
   if (!user) return;
+  updateRoleBadges();
 
   // Avatar
   const letter = document.getElementById('profil-avatar-letter');
@@ -627,6 +629,22 @@ function syncMobileNav(id) {
   document.querySelectorAll('.mobile-drawer-item[data-mob]').forEach(b => {
     b.classList.toggle('active', b.dataset.mob === id);
   });
+}
+
+function _roleBadgeHtml(role, size) {
+  const s = size || '9px';
+  if (role === 'superadmin') return `<span style="font-size:${s};font-family:var(--mono);font-weight:700;padding:1px 7px;border-radius:4px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">👑 Super Admin</span>`;
+  if (role === 'admin')      return `<span style="font-size:${s};font-family:var(--mono);font-weight:700;padding:1px 7px;border-radius:4px;background:rgba(124,109,245,0.15);color:var(--accent);border:1px solid rgba(124,109,245,0.25)">⚡ Admin</span>`;
+  return `<span style="font-size:${s};font-family:var(--mono);padding:1px 7px;border-radius:4px;background:var(--s3);color:var(--text3)">Utilisateur</span>`;
+}
+
+function updateRoleBadges() {
+  const sb = document.getElementById('sidebar-role-badge');
+  if (sb) { sb.style.display = 'inline'; sb.innerHTML = _roleBadgeHtml(currentUserRole, '9px'); }
+  const pb = document.getElementById('profil-role-badge');
+  if (pb) pb.innerHTML = _roleBadgeHtml(currentUserRole, '10px');
+  const ib = document.getElementById('ideas-role-badge');
+  if (ib) { ib.style.display = 'inline'; ib.innerHTML = _roleBadgeHtml(currentUserRole, '9px'); }
 }
 
 // Update mobile header avatar
@@ -6888,6 +6906,7 @@ let _ideasUnsub = null;
 window.openIdeasPanel = function() {
   const overlay = document.getElementById('ideas-overlay');
   overlay.style.display = 'flex';
+  updateRoleBadges();
   const user = fbAuth.currentUser;
   // Afficher section rôles si superadmin
   document.getElementById('ideas-admin-roles').style.display = isSuperAdmin(user) ? 'block' : 'none';

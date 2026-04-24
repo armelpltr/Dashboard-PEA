@@ -194,7 +194,10 @@
     <div class="sidebar-user">
       <div class="user-card" onclick="openProfilModal()" style="cursor:pointer" title="Mon profil">
         <div class="user-avatar" id="user-avatar">A</div>
-        <span class="user-name" id="user-name-display">—</span>
+        <div style="flex:1;min-width:0">
+          <span class="user-name" id="user-name-display" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</span>
+          <span id="sidebar-role-badge" style="font-size:9px;font-family:var(--mono);font-weight:600;padding:1px 6px;border-radius:4px;display:none"></span>
+        </div>
         <button class="btn-refresh" onclick="event.stopPropagation();refreshAll()" title="Rafraîchir les données" id="btn-refresh-data">↻</button>
         <button class="btn-logout" onclick="event.stopPropagation();doLogout()" title="Déconnexion">⏻</button>
       </div>
@@ -604,6 +607,7 @@
         <div id="profil-display-name" style="font-family:var(--display);font-size:18px;font-weight:700">—</div>
         <div id="profil-email" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:3px">—</div>
         <div id="profil-provider-badge" style="margin-top:6px"></div>
+        <div id="profil-role-badge" style="margin-top:4px"></div>
       </div>
       <button onclick="closeProfilModal()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:4px;border-radius:6px;line-height:1" title="Fermer">✕</button>
     </div>
@@ -906,7 +910,10 @@
       <span style="font-size:18px">💡</span>
       <div style="flex:1">
         <div style="font-weight:700;font-size:15px;font-family:var(--display)">Idées & suggestions</div>
-        <div id="ideas-panel-subtitle" style="font-size:11px;color:var(--text3)">Proposez vos idées de développement</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+          <div id="ideas-panel-subtitle" style="font-size:11px;color:var(--text3)">Proposez vos idées de développement</div>
+          <span id="ideas-role-badge" style="display:none;font-size:9px;font-family:var(--mono);font-weight:600;padding:1px 6px;border-radius:4px"></span>
+        </div>
       </div>
       <button onclick="closeIdeasPanel()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px">✕</button>
     </div>
