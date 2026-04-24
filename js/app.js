@@ -1116,22 +1116,26 @@ async function fetchLogo(ticker) {
   return 'https://www.google.com/s2/favicons?domain=' + clean + '.com&sz=128';
 }
 
-// Fetch logos for all portfolio tickers in background
+// Fetch logos for all portfolio + watchlist tickers in background
 let _logoFetchRunning = false;
 async function fetchAllLogos() {
   if (!currentUser || _logoFetchRunning) return;
   _logoFetchRunning = true;
-  const data = getPortfolio(currentUser);
-  const tickers = [...new Set(data.map(r => r.ticker).filter(Boolean))];
-  let anyNew = false;
+  const portfolioTickers = getPortfolio(currentUser).map(r => r.ticker);
+  const watchlistTickers = getWatchlist(currentUser).map(w => w.ticker);
+  const tickers = [...new Set([...portfolioTickers, ...watchlistTickers].filter(Boolean))];
+  let anyPortfolio = false;
+  let anyWatchlist = false;
   for (const ticker of tickers) {
     if (!LOGO_CACHE[ticker]) {
       await fetchLogo(ticker);
-      anyNew = true;
+      if (portfolioTickers.includes(ticker)) anyPortfolio = true;
+      if (watchlistTickers.includes(ticker)) anyWatchlist = true;
     }
   }
   _logoFetchRunning = false;
-  if (anyNew) renderPortfolio();
+  if (anyPortfolio) renderPortfolio();
+  if (anyWatchlist) renderWatchlist();
 }
 
 let foundISIN = null;
