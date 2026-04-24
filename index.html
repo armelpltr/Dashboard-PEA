@@ -505,14 +505,17 @@
 
       <!-- Historique complet -->
       <div class="section-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="margin-bottom:14px">
           <div class="section-title" style="margin:0">Historique complet</div>
+        </div>
+        <div id="div-history"></div>
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--s3);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <span style="font-size:12px;color:var(--text3)">Il vous manque un dividende ? Saisissez-le manuellement.</span>
           <button onclick="openDivModal()"
             style="background:var(--accent);border:none;color:#fff;border-radius:8px;padding:6px 13px;cursor:pointer;font-size:12px;font-weight:600">
             + Saisir un dividende reçu
           </button>
         </div>
-        <div id="div-history"></div>
       </div>
     </div>
 
