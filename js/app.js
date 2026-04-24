@@ -1042,7 +1042,7 @@ function resolveToYahooTicker(ticker) {
 
 // ── LOGO FETCHING ──────────────────────────────────────
 // Persist logo cache to localStorage so logos survive reloads
-const LOGO_CACHE_VERSION = 'v3'; // bump to purge stale hardcoded entries
+const LOGO_CACHE_VERSION = 'v4'; // bump to purge stale hardcoded entries
 function loadLogoCache() {
   try {
     if (localStorage.getItem('pea_logos_ver') !== LOGO_CACHE_VERSION) {
@@ -1061,7 +1061,7 @@ function saveLogoCache() {
 }
 loadLogoCache();
 
-// Domaines de secours pour les tickers où Yahoo Finance échoue fréquemment
+// Domaines de secours pour tickers dont le nom ne suffit pas à deviner le domaine
 const FALLBACK_DOMAINS = {
   'MC.PA':'lvmh.com','OR.PA':'loreal.com','AI.PA':'airliquide.com','AIR.PA':'airbus.com',
   'BNP.PA':'bnpparibas.com','SAN.PA':'sanofi.com','TTE.PA':'totalenergies.com','TTE':'totalenergies.com',
@@ -1075,46 +1075,52 @@ const FALLBACK_DOMAINS = {
   'NFLX':'netflix.com','DIS':'disney.com','PYPL':'paypal.com','ADBE':'adobe.com',
 };
 
-// Fetch logo URL : Yahoo Finance assetProfile → Google Favicon, fallback domaines connus
-async function fetchLogo(ticker) {
-  if (LOGO_CACHE[ticker]) return LOGO_CACHE[ticker];
+// Dérive un domaine depuis le nom officiel de la société (zéro requête réseau)
+function companyNameToDomain(name) {
+  if (!name) return null;
+  const clean = name
+    .replace(/\b(S\.A\.|S\.A|SE|Inc\.|Inc|Corp\.|Corp|Ltd\.|Ltd|PLC|N\.V\.|NV|AG|GmbH|SAS|SA|LLC|Co\.|Co|Group|Holdings?|Holding|Société Anonyme|Moët Hennessy)\b/gi, '')
+    .replace(/[''·\-,]/g, ' ')
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '');
+  return clean.length > 2 ? clean + '.com' : null;
+}
+
+// Fetch logo : nom société → domaine, fallback map, fallback ticker (aucun appel réseau extra)
+function fetchLogo(ticker, companyName) {
+  if (LOGO_CACHE[ticker]) return Promise.resolve(LOGO_CACHE[ticker]);
 
   const ETF_LOGO = 'https://raw.githubusercontent.com/armelpltr/Dashboard-PEA/main/data/ETF-Database-Logo2-wPadding_RGB%20(1)%20square.png';
 
   if (isETF(ticker)) {
     LOGO_CACHE[ticker] = ETF_LOGO;
     saveLogoCache();
-    return ETF_LOGO;
+    return Promise.resolve(ETF_LOGO);
   }
 
-  // 1. Yahoo Finance assetProfile → site officiel → Google Favicon
-  try {
-    const qsUrl = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/' +
-      encodeURIComponent(resolveToYahooTicker(ticker)) + '?modules=assetProfile';
-    const raw = await fetchWithFallback(qsUrl);
-    const qs  = JSON.parse(raw);
-    const website = qs?.quoteSummary?.result?.[0]?.assetProfile?.website;
-    if (website) {
-      const domain = new URL(website).hostname.replace(/^www\./, '');
-      const url = 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=128';
-      LOGO_CACHE[ticker] = url;
-      saveLogoCache();
-      return url;
-    }
-  } catch(e) {}
+  // 1. Domaine dérivé du nom de la société
+  const nameDomain = companyNameToDomain(companyName);
+  if (nameDomain) {
+    const url = 'https://www.google.com/s2/favicons?domain=' + nameDomain + '&sz=128';
+    LOGO_CACHE[ticker] = url;
+    saveLogoCache();
+    return Promise.resolve(url);
+  }
 
-  // 2. Domaine de secours connu
+  // 2. Domaine de secours connu (tickers avec nom non-devinable : LVMH, Crédit Agricole…)
   const fallbackDomain = FALLBACK_DOMAINS[ticker];
   if (fallbackDomain) {
     const url = 'https://www.google.com/s2/favicons?domain=' + fallbackDomain + '&sz=128';
     LOGO_CACHE[ticker] = url;
     saveLogoCache();
-    return url;
+    return Promise.resolve(url);
   }
 
   // 3. Dernier recours : devine depuis le ticker (non caché → retente au prochain chargement)
   const clean = ticker.replace(/\.[A-Z]+$/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  return 'https://www.google.com/s2/favicons?domain=' + clean + '.com&sz=128';
+  return Promise.resolve('https://www.google.com/s2/favicons?domain=' + clean + '.com&sz=128');
 }
 
 // Fetch logos for all portfolio + watchlist tickers in background
@@ -1122,14 +1128,20 @@ let _logoFetchRunning = false;
 async function fetchAllLogos() {
   if (!currentUser || _logoFetchRunning) return;
   _logoFetchRunning = true;
-  const portfolioTickers = getPortfolio(currentUser).map(r => r.ticker);
-  const watchlistTickers = getWatchlist(currentUser).map(w => w.ticker);
+  const portfolioItems  = getPortfolio(currentUser);
+  const watchlistItems  = getWatchlist(currentUser);
+  const portfolioTickers = portfolioItems.map(r => r.ticker);
+  const watchlistTickers = watchlistItems.map(w => w.ticker);
+  const nameMap = {};
+  [...portfolioItems, ...watchlistItems].forEach(item => {
+    if (item.ticker && item.name) nameMap[item.ticker] = item.name;
+  });
   const tickers = [...new Set([...portfolioTickers, ...watchlistTickers].filter(Boolean))];
   let anyPortfolio = false;
   let anyWatchlist = false;
   for (const ticker of tickers) {
     if (!LOGO_CACHE[ticker]) {
-      await fetchLogo(ticker);
+      await fetchLogo(ticker, nameMap[ticker]);
       if (portfolioTickers.includes(ticker)) anyPortfolio = true;
       if (watchlistTickers.includes(ticker)) anyWatchlist = true;
     }
@@ -1253,7 +1265,7 @@ async function fetchPrice(query) {
     const resLogoEl = document.getElementById('res-logo');
     resLogoEl.innerHTML = logoHtml(foundTicker, 36, 'ticker-icon');
     if (!LOGO_CACHE[foundTicker]) {
-      fetchLogo(foundTicker).then(() => {
+      fetchLogo(foundTicker, foundName).then(() => {
         resLogoEl.innerHTML = logoHtml(foundTicker, 36, 'ticker-icon');
       });
     }
@@ -1308,7 +1320,7 @@ function confirmAdd() {
   closeModal();
   renderPortfolio();
   // Fetch logo for the new ticker in background
-  if (foundTicker) fetchLogo(foundTicker).then(() => renderPortfolio());
+  if (foundTicker) fetchLogo(foundTicker, foundName).then(() => renderPortfolio());
 }
 
 // ─── ANALYSE PAGE — FULL DASHBOARD ───────────────────
