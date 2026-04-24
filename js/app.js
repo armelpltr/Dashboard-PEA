@@ -610,11 +610,26 @@ function syncMobileNav(id) {
 
 // Update mobile header avatar
 function updateMobileAvatar(user) {
+  if (!user) return;
+  const settings = getUserSettings(user.uid);
+  const src = settings.avatarBase64 || user.photoURL;
+
+  // Sidebar desktop
+  const sidebarEl = document.getElementById('user-avatar');
+  if (sidebarEl) {
+    if (src) {
+      sidebarEl.innerHTML = `<img src="${src}" style="width:100%;height:100%;border-radius:10px;object-fit:cover;display:block;">`;
+    } else {
+      sidebarEl.textContent = (user.displayName || user.email || '?')[0].toUpperCase();
+    }
+  }
+
+  // Mobile
   const letter = document.getElementById('mobile-avatar-letter');
   if (!letter) return;
-  if (user && user.photoURL) {
-    letter.innerHTML = `<img src="${user.photoURL}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">`;
-  } else if (user) {
+  if (src) {
+    letter.innerHTML = `<img src="${src}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">`;
+  } else {
     letter.textContent = (user.displayName || user.email || '?')[0].toUpperCase();
   }
 }
