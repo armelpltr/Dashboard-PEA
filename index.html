@@ -603,17 +603,25 @@
     <!-- Avatars prédéfinis -->
     <div style="margin-bottom:18px">
       <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Choisir un avatar prédéfini</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <img src="assets/avatars/bull.svg"      title="Taureau"  onclick="selectPresetAvatar(this.src)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
-        <img src="assets/avatars/bear.svg"      title="Ours"     onclick="selectPresetAvatar(this.src)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
-        <img src="assets/avatars/chart.svg"     title="Graphique" onclick="selectPresetAvatar(this.src)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
-        <img src="assets/avatars/diamond.svg"   title="Diamant"  onclick="selectPresetAvatar(this.src)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
-        <img src="assets/avatars/rocket.svg"    title="Fusée"    onclick="selectPresetAvatar(this.src)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
-        <img src="assets/avatars/coin.svg"      title="Pièce"    onclick="selectPresetAvatar(this.src)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
-        <img src="assets/avatars/shield.svg"    title="Bouclier" onclick="selectPresetAvatar(this.src)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
-        <img src="assets/avatars/globe.svg"     title="Globe"    onclick="selectPresetAvatar(this.src)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
-        <img src="assets/avatars/lightning.svg" title="Éclair"   onclick="selectPresetAvatar(this.src)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <img src="assets/avatars/bull.svg"      title="Taureau"   onclick="previewPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="assets/avatars/bear.svg"      title="Ours"      onclick="previewPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="assets/avatars/chart.svg"     title="Graphique" onclick="previewPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="assets/avatars/diamond.svg"   title="Diamant"   onclick="previewPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="assets/avatars/rocket.svg"    title="Fusée"     onclick="previewPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="assets/avatars/coin.svg"      title="Pièce"     onclick="previewPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="assets/avatars/shield.svg"    title="Bouclier"  onclick="previewPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="assets/avatars/globe.svg"     title="Globe"     onclick="previewPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="assets/avatars/lightning.svg" title="Éclair"    onclick="previewPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
         <div onclick="document.getElementById('profil-avatar-input').click()" title="Importer une image" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px dashed var(--border);display:grid;place-items:center;color:var(--text3);font-size:18px;transition:border-color .15s;flex-shrink:0">+</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="confirmAvatarChange()" id="btn-avatar-valider" style="
+          display:none;padding:7px 16px;background:var(--accent);border:none;color:#fff;
+          border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)">
+          Valider la photo
+        </button>
+        <span id="avatar-status" style="font-size:11px;font-family:var(--mono);min-height:16px;color:var(--positive)"></span>
       </div>
     </div>
 
@@ -660,9 +668,9 @@
     <!-- Notifications -->
     <div style="height:1px;background:var(--border);margin:18px 0"></div>
     <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">📬 Récap par mail</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
       <div style="font-size:12px;color:var(--text3)">Fréquence d'envoi du résumé de performance</div>
-      <select id="select-recap-freq" onchange="saveRecapFreq(this.value)" style="
+      <select id="select-recap-freq" style="
         background:var(--s2);border:1px solid var(--border);color:var(--text);
         border-radius:8px;padding:6px 10px;font-size:12px;font-family:var(--sans);cursor:pointer;flex-shrink:0">
         <option value="never">Jamais</option>
@@ -675,6 +683,14 @@
         <option value="3years">Tous les 3 ans</option>
         <option value="5years">Tous les 5 ans</option>
       </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button onclick="saveRecapFreq(document.getElementById('select-recap-freq').value)" style="
+        padding:7px 16px;background:var(--accent);border:none;color:#fff;
+        border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)">
+        Valider
+      </button>
+      <span id="recap-freq-status" style="font-size:11px;font-family:var(--mono);color:var(--positive)"></span>
     </div>
 
     <!-- Sauvegarde / restauration -->

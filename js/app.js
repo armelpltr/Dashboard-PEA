@@ -405,40 +405,53 @@ window.toggleRecapSetting = async function() {
 
 window.saveRecapFreq = async function(value) {
   await saveUserSettings(currentUser, { emailRecapFreq: value });
+  const st = document.getElementById('recap-freq-status');
+  if (st) { st.textContent = '✓ Sauvegardé'; setTimeout(() => { st.textContent = ''; }, 2500); }
 };
 
-window.selectPresetAvatar = async function(src) {
-  // Convert SVG URL to base64 via canvas for consistent storage
+let _pendingAvatarBase64 = null;
+
+window.previewPresetAvatar = function(el) {
+  const src = el.src;
   const img = new Image();
-  img.onload = async function() {
+  img.onload = function() {
     const canvas = document.createElement('canvas');
     canvas.width = 120; canvas.height = 120;
     canvas.getContext('2d').drawImage(img, 0, 0, 120, 120);
-    const base64 = canvas.toDataURL('image/png');
-    await saveUserSettings(currentUser, { avatarBase64: base64 });
+    _pendingAvatarBase64 = canvas.toDataURL('image/png');
     const imgEl = document.getElementById('profil-avatar-img');
     const letEl = document.getElementById('profil-avatar-letter');
-    imgEl.src = base64;
+    imgEl.src = _pendingAvatarBase64;
     imgEl.style.display = 'block';
     letEl.style.display = 'none';
-    updateMobileAvatar(fbAuth.currentUser);
-    // Highlight selected
-    document.querySelectorAll('.preset-avatar').forEach(el => {
-      el.style.borderColor = el.src === src || el.src.endsWith(src.split('/').pop())
-        ? 'var(--accent)' : 'transparent';
+    document.querySelectorAll('.preset-avatar').forEach(e => {
+      e.style.borderColor = e === el ? 'var(--accent)' : 'transparent';
     });
+    const btn = document.getElementById('btn-avatar-valider');
+    if (btn) btn.style.display = 'inline-block';
   };
   img.crossOrigin = 'anonymous';
   img.src = src;
 };
 
-window.uploadProfilAvatar = async function(event) {
+window.confirmAvatarChange = async function() {
+  if (!_pendingAvatarBase64) return;
+  await saveUserSettings(currentUser, { avatarBase64: _pendingAvatarBase64 });
+  updateMobileAvatar(fbAuth.currentUser);
+  _pendingAvatarBase64 = null;
+  const btn = document.getElementById('btn-avatar-valider');
+  if (btn) btn.style.display = 'none';
+  const st = document.getElementById('avatar-status');
+  if (st) { st.textContent = '✓ Photo mise à jour'; setTimeout(() => { st.textContent = ''; }, 2500); }
+};
+
+window.uploadProfilAvatar = function(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = async function(e) {
+  reader.onload = function(e) {
     const img = new Image();
-    img.onload = async function() {
+    img.onload = function() {
       const canvas = document.createElement('canvas');
       canvas.width = 120; canvas.height = 120;
       const ctx = canvas.getContext('2d');
@@ -446,15 +459,15 @@ window.uploadProfilAvatar = async function(event) {
       const ox = (img.width - size) / 2;
       const oy = (img.height - size) / 2;
       ctx.drawImage(img, ox, oy, size, size, 0, 0, 120, 120);
-      const base64 = canvas.toDataURL('image/jpeg', 0.85);
-      await saveUserSettings(currentUser, { avatarBase64: base64 });
-      const imgEl  = document.getElementById('profil-avatar-img');
-      const letEl  = document.getElementById('profil-avatar-letter');
-      const navEl  = document.querySelector('#user-avatar img, #user-avatar');
-      imgEl.src = base64;
+      _pendingAvatarBase64 = canvas.toDataURL('image/jpeg', 0.85);
+      const imgEl = document.getElementById('profil-avatar-img');
+      const letEl = document.getElementById('profil-avatar-letter');
+      imgEl.src = _pendingAvatarBase64;
       imgEl.style.display = 'block';
       letEl.style.display = 'none';
-      updateMobileAvatar(fbAuth.currentUser);
+      document.querySelectorAll('.preset-avatar').forEach(e => e.style.borderColor = 'transparent');
+      const btn = document.getElementById('btn-avatar-valider');
+      if (btn) btn.style.display = 'inline-block';
     };
     img.src = e.target.result;
   };
