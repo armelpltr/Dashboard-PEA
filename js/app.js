@@ -840,6 +840,89 @@ let foundPrice = null;
 let foundName = null;
 let foundTicker = null;
 
+// ─── CACHE RECHERCHES ─────────────────────────────────
+const SEARCH_CACHE = new Map(); // query → {suggestions, ts}
+const PRICE_CACHE  = new Map(); // ticker → {price, name, meta, ts}
+const CACHE_TTL    = 5 * 60 * 1000;
+
+function getCachedSearch(q) {
+  const e = SEARCH_CACHE.get(q.toLowerCase());
+  if (!e || Date.now() - e.ts > CACHE_TTL) { SEARCH_CACHE.delete(q.toLowerCase()); return null; }
+  return e.suggestions;
+}
+function setCachedSearch(q, suggestions) {
+  SEARCH_CACHE.set(q.toLowerCase(), { suggestions, ts: Date.now() });
+}
+function getCachedPrice(ticker) {
+  const e = PRICE_CACHE.get(ticker);
+  if (!e || Date.now() - e.ts > CACHE_TTL) { PRICE_CACHE.delete(ticker); return null; }
+  return e;
+}
+function setCachedPrice(ticker, data) {
+  PRICE_CACHE.set(ticker, { ...data, ts: Date.now() });
+}
+
+// ─── AUTOCOMPLETE SHARED ──────────────────────────────
+let _ddActiveIdx = -1;
+
+async function fetchSuggestions(query) {
+  const cached = getCachedSearch(query);
+  if (cached) return cached;
+  const localETF = searchETFLocal(query);
+  if (localETF) {
+    const suggs = [{ symbol: localETF.ticker, name: localETF.name, exchange: 'ETF' }];
+    setCachedSearch(query, suggs);
+    return suggs;
+  }
+  if (/^[A-Z0-9]{1,6}\.[A-Z]{1,3}$/i.test(query.trim())) {
+    const suggs = [{ symbol: query.trim().toUpperCase(), name: query.trim().toUpperCase(), exchange: '' }];
+    setCachedSearch(query, suggs);
+    return suggs;
+  }
+  try {
+    const url = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(query) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
+    const raw = await fetchWithFallback(url);
+    const sd = JSON.parse(raw);
+    const quotes = (sd.quotes || []).filter(q => q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND').slice(0, 5);
+    const suggs = quotes.map(q => ({ symbol: q.symbol, name: q.longname || q.shortname || q.symbol, exchange: q.exchDisp || q.exchange || '' }));
+    setCachedSearch(query, suggs);
+    return suggs;
+  } catch { return []; }
+}
+
+function renderDropdown(ddId, suggestions, onSelect) {
+  const dd = document.getElementById(ddId);
+  if (!suggestions.length) { dd.classList.remove('open'); dd.innerHTML = ''; return; }
+  _ddActiveIdx = -1;
+  dd.innerHTML = suggestions.map((s, i) => {
+    const logoHtmlStr = LOGO_CACHE[s.symbol]
+      ? '<img src="' + LOGO_CACHE[s.symbol] + '" style="width:22px;height:22px;border-radius:5px;object-fit:contain;background:var(--s3)" onerror="this.style.display=\'none\'">'
+      : '<div style="width:22px;height:22px;border-radius:5px;background:var(--s3);display:grid;place-items:center;font-size:8px;font-weight:700;color:var(--accent);font-family:var(--mono)">' + s.symbol.replace(/\.[A-Z]+$/, '').slice(0,3) + '</div>';
+    return '<div class="search-dropdown-item" data-idx="' + i + '" onclick="(' + onSelect.toString() + ')(\'' + s.symbol.replace(/'/g, "\\'") + '\',\'' + (s.name || '').replace(/'/g, "\\'").replace(/"/g,'') + '\')">' +
+      logoHtmlStr +
+      '<div style="flex:1;min-width:0"><div class="sd-name">' + (s.name || s.symbol) + '</div>' +
+      '<div class="sd-ticker">' + s.symbol + (s.exchange ? '  ·  ' + s.exchange : '') + '</div></div>' +
+      '</div>';
+  }).join('');
+  dd.classList.add('open');
+}
+
+function closeDropdown(ddId) {
+  const dd = document.getElementById(ddId);
+  if (dd) { dd.classList.remove('open'); dd.innerHTML = ''; }
+  _ddActiveIdx = -1;
+}
+
+function navigateDropdown(ddId, direction) {
+  const dd = document.getElementById(ddId);
+  const items = dd.querySelectorAll('.search-dropdown-item');
+  if (!items.length) return;
+  items[_ddActiveIdx]?.classList.remove('active');
+  _ddActiveIdx = Math.max(0, Math.min(items.length - 1, _ddActiveIdx + direction));
+  items[_ddActiveIdx]?.classList.add('active');
+  items[_ddActiveIdx]?.scrollIntoView({ block: 'nearest' });
+}
+
 function openModal() {
   document.getElementById('modal-overlay').classList.add('open');
   document.getElementById('modal-ticker').value = '';
@@ -849,6 +932,7 @@ function openModal() {
   document.getElementById('res-logo').innerHTML = '';
   document.getElementById('search-status').innerHTML = '';
   document.getElementById('btn-confirm').disabled = true;
+  closeDropdown('search-dropdown');
   document.getElementById('modal-buy-date').value = new Date().toISOString().slice(0,10);
   foundPrice = null; foundName = ''; foundTicker = '';
   foundQuoteType = 'EQUITY'; foundPE = null; foundBeta = null;
@@ -874,14 +958,40 @@ function onTickerInput() {
 
   if (val.length < 2) {
     document.getElementById('search-status').innerHTML = '';
+    closeDropdown('search-dropdown');
     return;
   }
 
-  document.getElementById('search-status').innerHTML =
-    '<div class="status-loading"><span class="loading-spinner"></span> Recherche du cours…</div>';
-
-  searchTimer = setTimeout(() => fetchPrice(val), 350);
+  searchTimer = setTimeout(async () => {
+    const suggs = await fetchSuggestions(val);
+    if (!suggs.length) {
+      document.getElementById('search-status').innerHTML = '<div class="status-error">⚠ Introuvable.</div>';
+      return;
+    }
+    renderDropdown('search-dropdown', suggs, selectPortfolioSuggestion);
+    // Prefetch logo en arrière-plan
+    suggs.forEach(s => { if (!LOGO_CACHE[s.symbol]) fetchLogo(s.symbol, s.name); });
+  }, 350);
 }
+
+function onTickerKeydown(e) {
+  const dd = document.getElementById('search-dropdown');
+  if (!dd.classList.contains('open')) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); navigateDropdown('search-dropdown', 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); navigateDropdown('search-dropdown', -1); }
+  else if (e.key === 'Enter' && _ddActiveIdx >= 0) {
+    e.preventDefault();
+    dd.querySelectorAll('.search-dropdown-item')[_ddActiveIdx]?.click();
+  } else if (e.key === 'Escape') closeDropdown('search-dropdown');
+}
+
+async function selectPortfolioSuggestion(symbol, name) {
+  closeDropdown('search-dropdown');
+  document.getElementById('modal-ticker').value = name || symbol;
+  document.getElementById('search-status').innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Récupération du cours…</div>';
+  await fetchPrice(symbol);
+}
+
 
 // ─── YAHOO FINANCE ───────────────────────────────────
 function proxyUrl(url) {
@@ -1233,28 +1343,40 @@ async function fetchPrice(query) {
   foundPrice = null;
 
   try {
-    statusEl.innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Recherche…</div>';
+    statusEl.innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Récupération du cours…</div>';
 
-    const localETF = searchETFLocal(query);
+    // Résolution du symbole Yahoo Finance
     let best;
+    const localETF = searchETFLocal(query);
     if (localETF) {
       best = { symbol: localETF.ticker, longname: localETF.name, quoteType: 'ETF' };
-    } else if (/^[A-Z0-9]{1,6}\.[A-Z]{1,3}$/i.test(query.trim())) {
-      // Ticker avec suffixe exchange détecté (ex: MC.PA, IWDA.AS) → skip recherche
+    } else if (/^[A-Z0-9]{1,6}\.[A-Z]{1,3}$/i.test(query.trim()) || /^[A-Z]{2,6}$/.test(query.trim())) {
+      // Ticker direct (avec ou sans suffixe exchange)
       best = { symbol: query.trim().toUpperCase(), longname: null, quoteType: 'EQUITY' };
     } else {
-      const searchUrl = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(query) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
-      const sraw = await fetchWithFallback(searchUrl);
-      const sd = JSON.parse(sraw);
-      if (!sd || sd.error) throw new Error('Réponse invalide.');
-      const quotes = (sd.quotes || []).filter(q =>
-        q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND'
-      );
-      if (!quotes.length) throw new Error('Introuvable. Essayez le ticker (ex: MC.PA, IWDA.AS, AAPL).');
-      best = quotes[0];
+      // Recherche par nom — vérifie le cache d'abord
+      const cached = getCachedSearch(query);
+      const suggs = cached || await fetchSuggestions(query);
+      if (!suggs.length) throw new Error('Introuvable. Essayez le ticker (ex: MC.PA, IWDA.AS, AAPL).');
+      best = { symbol: suggs[0].symbol, longname: suggs[0].name, quoteType: 'EQUITY' };
     }
 
-    statusEl.innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Récupération du cours…</div>';
+    // Cache prix
+    const cachedPrice = getCachedPrice(best.symbol);
+    if (cachedPrice) {
+      foundPrice = cachedPrice.price; foundName = cachedPrice.name; foundTicker = best.symbol;
+      document.getElementById('res-name').textContent  = foundName;
+      document.getElementById('res-price').textContent = foundPrice.toFixed(2) + ' ' + (cachedPrice.currency || '');
+      document.getElementById('res-info').textContent  = best.symbol + '  ·  ' + cachedPrice.exchange + '  ·  ' + (cachedPrice.changePct >= 0 ? '▲' : '▼') + ' ' + Math.abs(cachedPrice.changePct).toFixed(2) + "% aujourd'hui";
+      const resLogoEl = document.getElementById('res-logo');
+      resLogoEl.innerHTML = logoHtmlModal(foundTicker);
+      if (!LOGO_CACHE[foundTicker]) fetchLogo(foundTicker, foundName).then(() => { resLogoEl.innerHTML = logoHtmlModal(foundTicker); });
+      statusEl.innerHTML = ''; resultEl.classList.add('visible');
+      document.getElementById('btn-confirm').disabled = false;
+      if (!document.getElementById('modal-buy-price').value) document.getElementById('modal-buy-price').value = foundPrice.toFixed(2);
+      return;
+    }
+
     const chartUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(best.symbol) + '?interval=1d&range=5d';
     const qraw = await fetchWithFallback(chartUrl);
     const qd = JSON.parse(qraw);
@@ -1270,6 +1392,8 @@ async function fetchPrice(query) {
     const prev = meta.chartPreviousClose || meta.previousClose || foundPrice;
     const changePct = prev ? ((foundPrice - prev) / prev) * 100 : 0;
     const isPos = changePct >= 0;
+
+    setCachedPrice(best.symbol, { price: foundPrice, name: foundName, currency: meta.currency || '', exchange: meta.exchangeName || '', changePct });
 
     document.getElementById('res-name').textContent  = foundName;
     document.getElementById('res-price').textContent =
@@ -3708,11 +3832,13 @@ function openWatchlistModal() {
   document.getElementById('wl-logo').innerHTML = '';
   document.getElementById('wl-status').innerHTML = '';
   document.getElementById('btn-wl-confirm').disabled = true;
+  closeDropdown('wl-dropdown');
   wlFoundTicker = null; wlFoundName = null; wlFoundPrice = null;
   setTimeout(() => document.getElementById('wl-ticker').focus(), 100);
 }
 function closeWatchlistModal() {
   document.getElementById('watchlist-modal-overlay').classList.remove('open');
+  closeDropdown('wl-dropdown');
 }
 function onWlInput() {
   clearTimeout(wlTimer);
@@ -3720,52 +3846,57 @@ function onWlInput() {
   document.getElementById('wl-result').classList.remove('visible');
   document.getElementById('btn-wl-confirm').disabled = true;
   wlFoundPrice = null;
-  if (val.length < 2) { document.getElementById('wl-status').innerHTML = ''; return; }
-  document.getElementById('wl-status').innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Recherche…</div>';
+  if (val.length < 2) { document.getElementById('wl-status').innerHTML = ''; closeDropdown('wl-dropdown'); return; }
   wlTimer = setTimeout(async () => {
-
-    try {
-      const localETF = searchETFLocal(val);
-      let best;
-      if (localETF) { best = { symbol: localETF.ticker, longname: localETF.name }; }
-      else if (/^[A-Z0-9]{1,6}\.[A-Z]{1,3}$/i.test(val.trim())) {
-        best = { symbol: val.trim().toUpperCase(), longname: null };
-      } else {
-        const url = 'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(val) + '&lang=fr&region=FR&quotesCount=6&newsCount=0';
-        const raw = await fetchWithFallback(url);
-        const sd = JSON.parse(raw);
-        const quotes = (sd.quotes || []).filter(q => q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND');
-        if (!quotes.length) throw new Error('Introuvable.');
-        best = quotes[0];
-      }
-      const cUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(best.symbol) + '?interval=1d&range=5d';
-      const cRaw = await fetchWithFallback(cUrl);
-      const cd = JSON.parse(cRaw);
-      const res = cd.chart && cd.chart.result && cd.chart.result[0];
-      if (!res) throw new Error('Cours non disponible.');
-      const meta = res.meta;
-      wlFoundPrice = meta.regularMarketPrice;
-      wlFoundName = best.longname || best.shortname || best.symbol;
-      wlFoundTicker = best.symbol;
-      const prev = meta.chartPreviousClose || meta.previousClose || wlFoundPrice;
-      const pct = prev ? ((wlFoundPrice - prev) / prev * 100) : 0;
-      document.getElementById('wl-res-name').textContent = wlFoundName;
-      document.getElementById('wl-res-price').textContent = wlFoundPrice.toFixed(2) + ' ' + (meta.currency || '');
-      document.getElementById('wl-res-info').textContent = best.symbol + ' · ' + (pct >= 0 ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(2) + '%';
-      const wlLogoEl = document.getElementById('wl-logo');
-      wlLogoEl.innerHTML = logoHtmlModal(wlFoundTicker);
-      if (!LOGO_CACHE[wlFoundTicker]) {
-        fetchLogo(wlFoundTicker, wlFoundName).then(() => {
-          wlLogoEl.innerHTML = logoHtmlModal(wlFoundTicker);
-        });
-      }
-      document.getElementById('wl-status').innerHTML = '';
-      document.getElementById('wl-result').classList.add('visible');
-      document.getElementById('btn-wl-confirm').disabled = false;
-    } catch(err) {
-      document.getElementById('wl-status').innerHTML = '<div class="status-error">⚠ ' + (err.message || 'Erreur') + '</div>';
-    }
+    const suggs = await fetchSuggestions(val);
+    if (!suggs.length) { document.getElementById('wl-status').innerHTML = '<div class="status-error">⚠ Introuvable.</div>'; return; }
+    renderDropdown('wl-dropdown', suggs, selectWatchlistSuggestion);
+    suggs.forEach(s => { if (!LOGO_CACHE[s.symbol]) fetchLogo(s.symbol, s.name); });
   }, 350);
+}
+function onWlKeydown(e) {
+  const dd = document.getElementById('wl-dropdown');
+  if (!dd.classList.contains('open')) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); navigateDropdown('wl-dropdown', 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); navigateDropdown('wl-dropdown', -1); }
+  else if (e.key === 'Enter' && _ddActiveIdx >= 0) {
+    e.preventDefault();
+    dd.querySelectorAll('.search-dropdown-item')[_ddActiveIdx]?.click();
+  } else if (e.key === 'Escape') closeDropdown('wl-dropdown');
+}
+async function selectWatchlistSuggestion(symbol, name) {
+  closeDropdown('wl-dropdown');
+  document.getElementById('wl-ticker').value = name || symbol;
+  document.getElementById('wl-status').innerHTML = '<div class="status-loading"><span class="loading-spinner"></span> Récupération du cours…</div>';
+  try {
+    const cached = getCachedPrice(symbol);
+    let price, currency, pct;
+    if (cached) {
+      price = cached.price; currency = cached.currency; pct = cached.changePct;
+      wlFoundName = cached.name;
+    } else {
+      const cRaw = await fetchWithFallback('https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) + '?interval=1d&range=5d');
+      const meta = JSON.parse(cRaw).chart.result[0].meta;
+      price = meta.regularMarketPrice;
+      currency = meta.currency || '';
+      const prev = meta.chartPreviousClose || meta.previousClose || price;
+      pct = prev ? ((price - prev) / prev * 100) : 0;
+      wlFoundName = name || symbol;
+      setCachedPrice(symbol, { price, name: wlFoundName, currency, exchange: meta.exchangeName || '', changePct: pct });
+    }
+    wlFoundPrice = price; wlFoundTicker = symbol;
+    document.getElementById('wl-res-name').textContent  = wlFoundName;
+    document.getElementById('wl-res-price').textContent = price.toFixed(2) + ' ' + currency;
+    document.getElementById('wl-res-info').textContent  = symbol + ' · ' + (pct >= 0 ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(2) + '%';
+    const wlLogoEl = document.getElementById('wl-logo');
+    wlLogoEl.innerHTML = logoHtmlModal(symbol);
+    if (!LOGO_CACHE[symbol]) fetchLogo(symbol, wlFoundName).then(() => { wlLogoEl.innerHTML = logoHtmlModal(symbol); });
+    document.getElementById('wl-status').innerHTML = '';
+    document.getElementById('wl-result').classList.add('visible');
+    document.getElementById('btn-wl-confirm').disabled = false;
+  } catch(err) {
+    document.getElementById('wl-status').innerHTML = '<div class="status-error">⚠ ' + (err.message || 'Erreur') + '</div>';
+  }
 }
 function confirmWatchlistAdd() {
   if (!wlFoundTicker || !wlFoundPrice) return;

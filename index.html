@@ -698,7 +698,8 @@
 
     <div class="form-group">
       <label class="form-label">Nom ou ticker <span class="price-tag">auto prix</span></label>
-      <input type="text" class="form-input" id="modal-ticker" placeholder="ex: LVMH, Apple, TotalEnergies…" oninput="onTickerInput()">
+      <input type="text" class="form-input" id="modal-ticker" placeholder="ex: LVMH, Apple, TotalEnergies…" oninput="onTickerInput()" onkeydown="onTickerKeydown(event)" autocomplete="off">
+      <div id="search-dropdown" class="search-dropdown"></div>
       <div id="search-status"></div>
       <div class="search-result" id="search-result">
         <div style="display:flex;align-items:center;gap:10px">
@@ -781,7 +782,8 @@
     <div class="modal-sub">Recherchez une action à suivre.</div>
     <div class="form-group">
       <label class="form-label">Nom ou ticker</label>
-      <input type="text" class="form-input" id="wl-ticker" placeholder="ex: AAPL, LVMH…" oninput="onWlInput()">
+      <input type="text" class="form-input" id="wl-ticker" placeholder="ex: AAPL, LVMH…" oninput="onWlInput()" onkeydown="onWlKeydown(event)" autocomplete="off">
+      <div id="wl-dropdown" class="search-dropdown"></div>
       <div id="wl-status"></div>
       <div class="search-result" id="wl-result">
         <div style="display:flex;align-items:center;gap:10px">

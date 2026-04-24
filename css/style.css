@@ -564,6 +564,21 @@ tr:hover td { background: rgba(255,255,255,0.018); }
 .btn-primary:hover { box-shadow: 0 4px 20px rgba(124,109,245,0.35); }
 .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
 
+.search-dropdown {
+  background: var(--s2); border: 1px solid var(--border2);
+  border-radius: 10px; margin-top: 4px; overflow: hidden; display: none;
+}
+.search-dropdown.open { display: block; }
+.search-dropdown-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; cursor: pointer; transition: background 0.12s;
+}
+.search-dropdown-item:hover, .search-dropdown-item.active { background: var(--s3); }
+.search-dropdown-item + .search-dropdown-item { border-top: 1px solid var(--border); }
+.sd-name { font-size: 12px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-ticker { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 1px; }
+.sd-price { font-size: 12px; font-family: var(--mono); color: var(--positive); white-space: nowrap; }
+
 .search-result {
   background: var(--s2); border: 1px solid var(--border2);
   border-radius: 10px; padding: 12px 14px; margin-top: 10px; display: none;
