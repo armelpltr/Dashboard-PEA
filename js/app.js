@@ -398,9 +398,43 @@ window.closeProfilModal = function() {
 window.toggleRecapSetting = async function() {
   const toggle   = document.getElementById('toggle-recap');
   const settings = getUserSettings(currentUser);
-  const newVal   = settings.emailRecap === false; // flip
+  const newVal   = settings.emailRecap === false;
   toggle.classList.toggle('on', newVal);
   await saveUserSettings(currentUser, { emailRecap: newVal });
+};
+
+window.saveRecapFreq = async function(value) {
+  await saveUserSettings(currentUser, { emailRecapFreq: value });
+};
+
+window.uploadProfilAvatar = async function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const img = new Image();
+    img.onload = async function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 120; canvas.height = 120;
+      const ctx = canvas.getContext('2d');
+      const size = Math.min(img.width, img.height);
+      const ox = (img.width - size) / 2;
+      const oy = (img.height - size) / 2;
+      ctx.drawImage(img, ox, oy, size, size, 0, 0, 120, 120);
+      const base64 = canvas.toDataURL('image/jpeg', 0.85);
+      await saveUserSettings(currentUser, { avatarBase64: base64 });
+      const imgEl  = document.getElementById('profil-avatar-img');
+      const letEl  = document.getElementById('profil-avatar-letter');
+      const navEl  = document.querySelector('#user-avatar img, #user-avatar');
+      imgEl.src = base64;
+      imgEl.style.display = 'block';
+      letEl.style.display = 'none';
+      updateMobileAvatar(fbAuth.currentUser);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
 };
 
 function loadProfilePage(user) {
@@ -410,8 +444,10 @@ function loadProfilePage(user) {
   const letter = document.getElementById('profil-avatar-letter');
   const img    = document.getElementById('profil-avatar-img');
   const big    = document.getElementById('profil-avatar-big');
-  if (user.photoURL) {
-    img.src = user.photoURL;
+  const settingsAvatar = getUserSettings(user.uid);
+  const avatarSrc = settingsAvatar.avatarBase64 || user.photoURL;
+  if (avatarSrc) {
+    img.src = avatarSrc;
     img.style.display = 'block';
     letter.style.display = 'none';
   } else {
@@ -419,6 +455,9 @@ function loadProfilePage(user) {
     letter.style.display = 'block';
     letter.textContent = (user.displayName || user.email || '?')[0].toUpperCase();
   }
+  // Hover overlay
+  big.onmouseenter = () => { document.getElementById('profil-avatar-overlay').style.opacity = '1'; };
+  big.onmouseleave = () => { document.getElementById('profil-avatar-overlay').style.opacity = '0'; };
 
   // Nom & email
   const nameEl = document.getElementById('profil-display-name');
@@ -439,13 +478,10 @@ function loadProfilePage(user) {
   const passSection = document.getElementById('profil-password-section');
   if (passSection) passSection.style.display = isGoogle ? 'none' : 'block';
 
-  // Toggle récap email
+  // Fréquence récap email
   const settings    = getUserSettings(user.uid);
-  const toggleRecap = document.getElementById('toggle-recap');
-  if (toggleRecap) {
-    if (settings.emailRecap !== false) toggleRecap.classList.add('on');
-    else toggleRecap.classList.remove('on');
-  }
+  const freqSelect  = document.getElementById('select-recap-freq');
+  if (freqSelect) freqSelect.value = settings.emailRecapFreq || 'never';
 }
 
 window.saveDisplayName = async function() {
@@ -5805,7 +5841,7 @@ function initDividendes() {
     const kpiNext    = document.getElementById('div-kpi-next');
     if (kpiRecus) kpiRecus.innerHTML = `
       <div class="stat-label">🎁 Dividendes reçus</div>
-      <div class="stat-value" style="color:var(--gold)">${totalRecuAuto.toFixed(2)} €</div>
+      <div class="stat-value" style="color:var(--gold);font-size:26px">${totalRecuAuto.toFixed(2)} €</div>
       ${totalVersionts > 0 ? `<div class="stat-change pos">${totalVersionts} versement(s) détecté(s)</div>` : ''}`;
     if (kpiHolding) kpiHolding.innerHTML = `
       <div class="stat-label">📅 Versements pendant détention</div>
