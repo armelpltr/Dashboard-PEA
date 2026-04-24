@@ -782,9 +782,14 @@
       <input type="text" class="form-input" id="wl-ticker" placeholder="ex: AAPL, LVMH…" oninput="onWlInput()">
       <div id="wl-status"></div>
       <div class="search-result" id="wl-result">
-        <div class="search-result-name" id="wl-res-name">—</div>
-        <div class="search-result-price" id="wl-res-price">—</div>
-        <div class="search-result-info" id="wl-res-info">—</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="wl-logo"></div>
+          <div style="flex:1;min-width:0">
+            <div class="search-result-name" id="wl-res-name">—</div>
+            <div class="search-result-info" id="wl-res-info">—</div>
+          </div>
+          <div class="search-result-price" id="wl-res-price">—</div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">

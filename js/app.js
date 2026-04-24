@@ -3688,6 +3688,7 @@ function openWatchlistModal() {
   document.getElementById('watchlist-modal-overlay').classList.add('open');
   document.getElementById('wl-ticker').value = '';
   document.getElementById('wl-result').classList.remove('visible');
+  document.getElementById('wl-logo').innerHTML = '';
   document.getElementById('wl-status').innerHTML = '';
   document.getElementById('btn-wl-confirm').disabled = true;
   wlFoundTicker = null; wlFoundName = null; wlFoundPrice = null;
@@ -3731,6 +3732,13 @@ function onWlInput() {
       document.getElementById('wl-res-name').textContent = wlFoundName;
       document.getElementById('wl-res-price').textContent = wlFoundPrice.toFixed(2) + ' ' + (meta.currency || '');
       document.getElementById('wl-res-info').textContent = best.symbol + ' · ' + (pct >= 0 ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(2) + '%';
+      const wlLogoEl = document.getElementById('wl-logo');
+      wlLogoEl.innerHTML = logoHtml(wlFoundTicker, 36, 'ticker-icon');
+      if (!LOGO_CACHE[wlFoundTicker]) {
+        fetchLogo(wlFoundTicker, wlFoundName).then(() => {
+          wlLogoEl.innerHTML = logoHtml(wlFoundTicker, 36, 'ticker-icon');
+        });
+      }
       document.getElementById('wl-status').innerHTML = '';
       document.getElementById('wl-result').classList.add('visible');
       document.getElementById('btn-wl-confirm').disabled = false;
