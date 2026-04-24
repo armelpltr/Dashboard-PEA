@@ -361,8 +361,8 @@ async function startApp(user) {
   const d = new Date();
   document.getElementById('portfolio-date').textContent =
     'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-  // Charger toutes les données Firestore avant de rendre
-  await loadAllUserData(user.uid);
+  // Charger FX rates + données Firestore avant de rendre
+  await Promise.all([loadAllUserData(user.uid), loadFxRates()]);
   window.renderPortfolio();
   window.fetchAllLogos();
   if (!window.autoRefreshInterval) window.toggleAutoRefresh();
@@ -862,8 +862,54 @@ function setCachedPrice(ticker, data) {
   PRICE_CACHE.set(ticker, { ...data, ts: Date.now() });
 }
 
+// ─── FX RATES (EUR conversion) ────────────────────────
+let _fxRates = { USD: null, GBP: null }; // EUR per 1 unit
+
+async function loadFxRates() {
+  try {
+    const [usdRes, gbpRes] = await Promise.allSettled([
+      fetchWithFallback('https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1d&range=1d'),
+      fetchWithFallback('https://query1.finance.yahoo.com/v8/finance/chart/EURGBP%3DX?interval=1d&range=1d'),
+    ]);
+    if (usdRes.status === 'fulfilled') {
+      const rate = JSON.parse(usdRes.value).chart?.result?.[0]?.meta?.regularMarketPrice;
+      if (rate) _fxRates.USD = 1 / rate; // 1 USD = 1/EURUSD EUR
+    }
+    if (gbpRes.status === 'fulfilled') {
+      const rate = JSON.parse(gbpRes.value).chart?.result?.[0]?.meta?.regularMarketPrice;
+      if (rate) _fxRates.GBP = 1 / rate; // 1 GBP = 1/EURGBP EUR
+    }
+  } catch(e) {}
+}
+
+function toEur(price, currency) {
+  if (!price) return price;
+  const cu = (currency || 'EUR').toUpperCase();
+  if (cu === 'EUR') return price;
+  if (cu === 'USD') return _fxRates.USD ? price * _fxRates.USD : price;
+  if (cu === 'GBP') return _fxRates.GBP ? price * _fxRates.GBP : price;
+  if (cu === 'GBX' || cu === 'GBp') return _fxRates.GBP ? (price / 100) * _fxRates.GBP : price / 100;
+  return price;
+}
+
 // ─── AUTOCOMPLETE SHARED ──────────────────────────────
 let _ddActiveIdx = -1;
+
+const PEA_ELIGIBLE_SUFFIXES = new Set([
+  '.PA','.AS','.BR','.DE','.F','.HM','.BE','.MI','.MC','.VI','.HE','.ST','.CO','.OL','.LS','.SW','.IR','.AT','.PR','.BO','.WAR'
+]);
+const PEA_ELIGIBLE_EXCHANGES = ['paris','euronext','amsterdam','brussels','frankfurt','milan','madrid','lisbon','vienna','helsinki','stockholm','oslo','copenhagen'];
+
+function getPeaEligibility(symbol, exchange) {
+  const sym = (symbol || '').toUpperCase();
+  const exch = (exchange || '').toLowerCase();
+  const suffix = sym.match(/(\.[A-Z]+)$/)?.[1] || '';
+  if (PEA_ELIGIBLE_SUFFIXES.has(suffix)) return 'yes';
+  if (PEA_ELIGIBLE_EXCHANGES.some(e => exch.includes(e))) return 'yes';
+  // Ticker sans suffixe ou suffixe US → non éligible
+  if (!suffix || suffix === '.US') return 'no';
+  return 'unknown';
+}
 
 async function fetchSuggestions(query) {
   const cached = getCachedSearch(query);
@@ -901,10 +947,23 @@ function renderDropdown(ddId, suggestions, onSelect) {
     const logoStr = LOGO_CACHE[s.symbol]
       ? '<img src="' + LOGO_CACHE[s.symbol] + '" style="width:22px;height:22px;border-radius:5px;object-fit:contain;background:var(--s3)" onerror="this.style.display=\'none\'">'
       : '<div style="width:22px;height:22px;border-radius:5px;background:var(--s3);display:grid;place-items:center;font-size:8px;font-weight:700;color:var(--accent);font-family:var(--mono)">' + s.symbol.replace(/\.[A-Z]+$/, '').slice(0,3) + '</div>';
+    // Prix depuis cache si disponible
+    const cached = getCachedPrice(s.symbol);
+    const priceStr = cached ? toEur(cached.price, cached.currency).toFixed(2) + ' €' : '';
+    const pea = getPeaEligibility(s.symbol, s.exchange);
+    const peaBadge = pea === 'yes'
+      ? '<span class="pea-badge pea-yes">PEA ✓</span>'
+      : pea === 'no'
+        ? '<span class="pea-badge pea-no">PEA ✗</span>'
+        : '';
     return '<div class="search-dropdown-item" data-symbol="' + s.symbol + '" data-name="' + (s.name || s.symbol).replace(/"/g, '&quot;') + '" data-idx="' + i + '">' +
       logoStr +
       '<div style="flex:1;min-width:0"><div class="sd-name">' + (s.name || s.symbol) + '</div>' +
       '<div class="sd-ticker">' + s.symbol + (s.exchange ? '  ·  ' + s.exchange : '') + '</div></div>' +
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' +
+      '<div class="sd-price" id="sdp-' + ddId + '-' + i + '">' + priceStr + '</div>' +
+      peaBadge +
+      '</div>' +
       '</div>';
   }).join('');
   // Délégation d'événement — pas d'inline onclick
@@ -914,6 +973,32 @@ function renderDropdown(ddId, suggestions, onSelect) {
     });
   });
   dd.classList.add('open');
+  // Fetch prix en arrière-plan pour les items sans prix
+  prefetchSuggestionPrices(ddId, suggestions);
+}
+
+async function prefetchSuggestionPrices(ddId, suggestions) {
+  await Promise.allSettled(suggestions.map(async (s, i) => {
+    const el = document.getElementById('sdp-' + ddId + '-' + i);
+    if (!el || el.textContent) return; // déjà rempli depuis cache
+    try {
+      const raw = await fetchWithFallback(
+        'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(s.symbol) + '?interval=1d&range=1d'
+      );
+      const meta = JSON.parse(raw).chart?.result?.[0]?.meta;
+      if (!meta?.regularMarketPrice) return;
+      const priceEur = toEur(meta.regularMarketPrice, meta.currency);
+      setCachedPrice(s.symbol, {
+        price: meta.regularMarketPrice,
+        name: s.name || s.symbol,
+        currency: meta.currency || 'EUR',
+        exchange: meta.exchangeName || '',
+        changePct: meta.chartPreviousClose ? ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose * 100) : 0,
+      });
+      const el2 = document.getElementById('sdp-' + ddId + '-' + i);
+      if (el2) el2.textContent = priceEur.toFixed(2) + ' €';
+    } catch(e) {}
+  }));
 }
 
 function closeDropdown(ddId) {
@@ -1375,7 +1460,7 @@ async function fetchPrice(query) {
     if (cachedPrice) {
       foundPrice = cachedPrice.price; foundName = cachedPrice.name; foundTicker = best.symbol;
       document.getElementById('res-name').textContent  = foundName;
-      document.getElementById('res-price').textContent = foundPrice.toFixed(2) + ' ' + (cachedPrice.currency || '');
+      document.getElementById('res-price').textContent = toEur(foundPrice, cachedPrice.currency).toFixed(2) + ' €';
       document.getElementById('res-info').textContent  = best.symbol + '  ·  ' + cachedPrice.exchange + '  ·  ' + (cachedPrice.changePct >= 0 ? '▲' : '▼') + ' ' + Math.abs(cachedPrice.changePct).toFixed(2) + "% aujourd'hui";
       const resLogoEl = document.getElementById('res-logo');
       resLogoEl.innerHTML = logoHtmlModal(foundTicker);
@@ -1406,7 +1491,7 @@ async function fetchPrice(query) {
 
     document.getElementById('res-name').textContent  = foundName;
     document.getElementById('res-price').textContent =
-      foundPrice.toFixed(2) + ' ' + (meta.currency || '');
+      toEur(foundPrice, meta.currency).toFixed(2) + ' €';
     document.getElementById('res-info').textContent  =
       best.symbol + '  ·  ' + (meta.exchangeName || '') +
       '  ·  ' + (isPos ? '▲' : '▼') + ' ' + Math.abs(changePct).toFixed(2) + "% aujourd'hui";
@@ -3895,7 +3980,7 @@ async function selectWatchlistSuggestion(symbol, name) {
     }
     wlFoundPrice = price; wlFoundTicker = symbol;
     document.getElementById('wl-res-name').textContent  = wlFoundName;
-    document.getElementById('wl-res-price').textContent = price.toFixed(2) + ' ' + currency;
+    document.getElementById('wl-res-price').textContent = toEur(price, currency).toFixed(2) + ' €';
     document.getElementById('wl-res-info').textContent  = symbol + ' · ' + (pct >= 0 ? '▲' : '▼') + ' ' + Math.abs(pct).toFixed(2) + '%';
     const wlLogoEl = document.getElementById('wl-logo');
     wlLogoEl.innerHTML = logoHtmlModal(symbol);
