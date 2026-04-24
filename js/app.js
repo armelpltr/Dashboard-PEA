@@ -1041,10 +1041,15 @@ function resolveToYahooTicker(ticker) {
 
 // ── LOGO FETCHING ──────────────────────────────────────
 // Persist logo cache to localStorage so logos survive reloads
+const LOGO_CACHE_VERSION = 'v2'; // bump to purge stale hardcoded entries
 function loadLogoCache() {
   try {
+    if (localStorage.getItem('pea_logos_ver') !== LOGO_CACHE_VERSION) {
+      localStorage.removeItem('pea_logos');
+      localStorage.setItem('pea_logos_ver', LOGO_CACHE_VERSION);
+      return;
+    }
     const saved = JSON.parse(localStorage.getItem('pea_logos') || '{}');
-    // Purge stale clearbit URLs (switched to Google favicons)
     for (const [k, v] of Object.entries(saved)) {
       if (v && !v.includes('clearbit')) LOGO_CACHE[k] = v;
     }
@@ -1055,56 +1060,36 @@ function saveLogoCache() {
 }
 loadLogoCache();
 
-// Fetch logo URL for a ticker using multiple sources
+// Fetch logo URL for a ticker using Yahoo Finance assetProfile (website) → Google Favicon
 async function fetchLogo(ticker) {
   if (LOGO_CACHE[ticker]) return LOGO_CACHE[ticker];
 
-  // Known company domains for reliable logos
-  const TICKER_DOMAINS = {
-    'MC.PA':'lvmh.com','OR.PA':'loreal.com','AI.PA':'airbus.com','AIR.PA':'airbus.com',
-    'BNP.PA':'bnpparibas.com','SAN.PA':'sanofi.com','TTE.PA':'totalenergies.com',
-    'SU.PA':'se.com','DG.PA':'vinci.com','RMS.PA':'hermes.com','BN.PA':'danone.com',
-    'ACA.PA':'credit-agricole.com','CS.PA':'axa.com','RNO.PA':'renault.com',
-    'ORA.PA':'orange.com','SGO.PA':'saint-gobain.com','ENGI.PA':'engie.com',
-    'GLE.PA':'societegenerale.com','VIE.PA':'veolia.com','DSY.PA':'3ds.com',
-    'EN.PA':'bouygues.com','HO.PA':'thalesgroup.com','ML.PA':'michelin.com',
-    'AAPL':'apple.com','MSFT':'microsoft.com','GOOGL':'google.com','GOOG':'google.com',
-    'AMZN':'amazon.com','META':'meta.com','TSLA':'tesla.com','NVDA':'nvidia.com',
-    'NFLX':'netflix.com','DIS':'disney.com','PYPL':'paypal.com','ADBE':'adobe.com',
-    'CRM':'salesforce.com','INTC':'intel.com','AMD':'amd.com','CSCO':'cisco.com',
-    'PANX.PA':'amundi.com','CW8.PA':'amundi.com','MWRD.PA':'amundi.com',
-    'PAEEM.PA':'amundi.com','PCEU.PA':'amundi.com','RS2K.PA':'amundi.com',
-    'PE500.PA':'amundi.com','ESE.PA':'bnpparibas-am.com',
-    'IWDA.AS':'ishares.com','CSPX.AS':'ishares.com','EMIM.AS':'ishares.com',
-    'VWRL.AS':'vanguard.com','VWCE.AS':'vanguard.com','VOO':'vanguard.com',
-    'VTI':'vanguard.com','VT':'vanguard.com',
-    'SPY':'ssga.com','QQQ':'invesco.com','WPEA.PA':'invesco.com',
-    'ARKK':'ark-invest.com','GLD':'ssga.com','TLT':'ishares.com','SOXX':'ishares.com',
-  };
-
   const ETF_LOGO = 'https://raw.githubusercontent.com/armelpltr/Dashboard-PEA/main/data/ETF-Database-Logo2-wPadding_RGB%20(1)%20square.png';
 
-  const ETF_TICKERS_SET = new Set(['WPEA.PA','ESEE.PA','ESE.PA','PUST.PA','PANX.PA','PAEEM.PA','ETZ.PA','EWLD.PA','CW8.PA','MWRD.PA','RS2K.PA','PCEU.PA','PE500.PA','IUSQ.AS','IWDA.AS','VWCE.AS','VWRL.AS','CSPX.AS','EMIM.AS','XDWD.AS','SPPW.AS','SPY','QQQ','VTI','VT','VOO','ARKK','GLD','TLT','SOXX']);
-
-  // ETF check first — priorité sur TICKER_DOMAINS
-  if (ETF_TICKERS_SET.has(ticker)) {
+  if (isETF(ticker)) {
     LOGO_CACHE[ticker] = ETF_LOGO;
     saveLogoCache();
     return ETF_LOGO;
   }
 
-  const knownDomain = TICKER_DOMAINS[ticker];
-  if (knownDomain) {
-    // Use Google favicon — works without CORS, no file:/// issues
-    const url = 'https://www.google.com/s2/favicons?domain=' + knownDomain + '&sz=128';
-    LOGO_CACHE[ticker] = url;
-    saveLogoCache();
-    return url;
-  }
+  // Récupère le site officiel via Yahoo Finance assetProfile → Google Favicon
+  try {
+    const qsUrl = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/' +
+      encodeURIComponent(resolveToYahooTicker(ticker)) + '?modules=assetProfile';
+    const raw = await fetchWithFallback(qsUrl);
+    const qs  = JSON.parse(raw);
+    const website = qs?.quoteSummary?.result?.[0]?.assetProfile?.website;
+    if (website) {
+      const domain = new URL(website).hostname.replace(/^www\./, '');
+      const url = 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=128';
+      LOGO_CACHE[ticker] = url;
+      saveLogoCache();
+      return url;
+    }
+  } catch(e) {}
 
-  // Fallback: guess domain from ticker name
+  // Fallback : devine le domaine depuis le ticker
   const clean = ticker.replace(/\.[A-Z]+$/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
   const url = 'https://www.google.com/s2/favicons?domain=' + clean + '.com&sz=128';
   LOGO_CACHE[ticker] = url;
   saveLogoCache();
