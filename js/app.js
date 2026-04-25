@@ -6943,7 +6943,11 @@ function _dateLabel(date) {
   if (+d === +yest)  return 'Hier';
   return date.toLocaleDateString('fr-FR', {day:'numeric',month:'long',year:'numeric'});
 }
+const _baseTitle = document.title || 'PEA Dashboard';
 function _updateFavicon(count) {
+  document.title = count > 0
+    ? '[' + count + '] ' + _baseTitle + ' — ' + count + ' message' + (count > 1 ? 's' : '') + ' non lu' + (count > 1 ? 's' : '')
+    : _baseTitle;
   try {
     const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
     const ctx = canvas.getContext('2d');
