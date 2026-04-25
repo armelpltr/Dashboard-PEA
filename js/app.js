@@ -7063,48 +7063,73 @@ window.closeIdeasPanel = function() {
   _activeThread = null;
 };
 
+function _handleThreadsSnap(snap, user) {
+  _cleanExpiredThreads(snap.docs);
+  _renderThreads(snap.docs.filter(d => { const e = d.data().expiresAt; return !e || !e.toDate || e.toDate() > new Date(); }), user);
+  const unreadField = isAdmin(user) ? 'unreadAdmin' : 'unreadUser';
+  const totalUnread = snap.docs.reduce((sum, d) => sum + (d.data()[unreadField] || 0), 0);
+  _updateFavicon(totalUnread);
+  if (isAdmin(user)) {
+    const unread = snap.docs.filter(d => d.data().unreadAdmin > 0).length;
+    ['ideas-badge', 'ideas-badge-mobile'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) { b.textContent = unread || ''; b.style.display = unread ? 'inline-block' : 'none'; }
+    });
+  }
+  snap.docChanges().forEach(change => {
+    const d   = change.doc.data();
+    const tid = change.doc.id;
+    if (change.type === 'added' && isAdmin(user) && Object.keys(_threadUnread).length > 0) {
+      _playSound('created');
+      _showChatToast({ icon: '🆕', title: d.title || 'Nouvelle conversation', msg: d.userName || d.userEmail || '', threadId: tid });
+      _showBrowserNotif(d.title || 'Nouvelle conversation', d.userName || d.userEmail || '', tid);
+    }
+    if (change.type !== 'modified') return;
+    const prev = _threadUnread[tid] ?? 0;
+    const cur  = d[unreadField] || 0;
+    _threadUnread[tid] = cur;
+    if (cur > prev) {
+      if (_activeThread !== tid) {
+        _playSound('message');
+        const toastMsg = (d.lastSenderName ? d.lastSenderName + ' : ' : '') + (d.lastMessage || '📷 Photo');
+        _showChatToast({ icon: '💬', title: d.title || 'Nouveau message', msg: toastMsg, threadId: tid });
+        _showBrowserNotif(d.title || 'Nouveau message', toastMsg, tid);
+      }
+    }
+  });
+  snap.docs.forEach(d => { _threadUnread[d.id] = _threadUnread[d.id] ?? (d.data()[unreadField] || 0); });
+}
+
 function _listenThreads(user) {
   if (_threadsUnsub) _threadsUnsub();
   const col = firestoreCollection(db, 'ideas');
-  const q = isAdmin(user)
-    ? firestoreQuery(col, firestoreOrderBy('updatedAt', 'desc'))
-    : firestoreQuery(col, firestoreOr(firestoreWhere('uid', '==', user.uid), firestoreWhere('memberEmails', 'array-contains', user.email)), firestoreOrderBy('updatedAt', 'desc'));
-  _threadsUnsub = onSnapshot(q, snap => {
-    _cleanExpiredThreads(snap.docs);
-    _renderThreads(snap.docs.filter(d => { const e = d.data().expiresAt; return !e || !e.toDate || e.toDate() > new Date(); }), user);
-    const unreadField = isAdmin(user) ? 'unreadAdmin' : 'unreadUser';
-    const totalUnread = snap.docs.reduce((sum, d) => sum + (d.data()[unreadField] || 0), 0);
-    _updateFavicon(totalUnread);
-    if (isAdmin(user)) {
-      const unread = snap.docs.filter(d => d.data().unreadAdmin > 0).length;
-      ['ideas-badge', 'ideas-badge-mobile'].forEach(id => {
-        const b = document.getElementById(id);
-        if (b) { b.textContent = unread || ''; b.style.display = unread ? 'inline-block' : 'none'; }
-      });
-    }
-    snap.docChanges().forEach(change => {
-      const d   = change.doc.data();
-      const tid = change.doc.id;
-      if (change.type === 'added' && isAdmin(user) && Object.keys(_threadUnread).length > 0) {
-        _playSound('created');
-        _showChatToast({ icon: '🆕', title: d.title || 'Nouvelle conversation', msg: d.userName || d.userEmail || '', threadId: tid });
-        _showBrowserNotif(d.title || 'Nouvelle conversation', d.userName || d.userEmail || '', tid);
-      }
-      if (change.type !== 'modified') return;
-      const prev = _threadUnread[tid] ?? 0;
-      const cur  = d[unreadField] || 0;
-      _threadUnread[tid] = cur;
-      if (cur > prev) {
-        if (_activeThread !== tid) {
-          _playSound('message');
-          const toastMsg = (d.lastSenderName ? d.lastSenderName + ' : ' : '') + (d.lastMessage || '📷 Photo');
-          _showChatToast({ icon: '💬', title: d.title || 'Nouveau message', msg: toastMsg, threadId: tid });
-          _showBrowserNotif(d.title || 'Nouveau message', toastMsg, tid);
-        }
-      }
+
+  if (isAdmin(user)) {
+    const q = firestoreQuery(col, firestoreOrderBy('updatedAt', 'desc'));
+    _threadsUnsub = onSnapshot(q, snap => _handleThreadsSnap(snap, user));
+    return;
+  }
+
+  // Non-admin : deux listeners séparés (évite index composite)
+  let _ownDocs    = [];
+  let _memberDocs = [];
+  const qOwn    = firestoreQuery(col, firestoreWhere('uid', '==', user.uid), firestoreOrderBy('updatedAt', 'desc'));
+  const qMember = firestoreQuery(col, firestoreWhere('memberEmails', 'array-contains', user.email));
+
+  function _merge() {
+    const map = new Map();
+    [..._ownDocs, ..._memberDocs].forEach(d => map.set(d.id, d));
+    const merged = [...map.values()].sort((a, b) => {
+      const ta = a.data().updatedAt?.toMillis?.() || 0;
+      const tb = b.data().updatedAt?.toMillis?.() || 0;
+      return tb - ta;
     });
-    snap.docs.forEach(d => { _threadUnread[d.id] = _threadUnread[d.id] ?? (d.data()[unreadField] || 0); });
-  });
+    _handleThreadsSnap({ docs: merged, docChanges: () => [] }, user);
+  }
+
+  const unsub1 = onSnapshot(qOwn,    snap => { _ownDocs    = snap.docs; _merge(); });
+  const unsub2 = onSnapshot(qMember, snap => { _memberDocs = snap.docs; _merge(); });
+  _threadsUnsub = () => { unsub1(); unsub2(); };
 }
 
 function _renderThreads(docs, user) {
