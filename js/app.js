@@ -6,7 +6,8 @@ let fbApp, fbAuth, db,
     signInWithRedirect, getRedirectResult,
     updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser,
     getFirestoreDoc, setFirestoreDoc, firestoreDoc, firestoreCollection, deleteFirestoreDoc, getDocs,
-    addFirestoreDoc, onSnapshot, firestoreQuery, firestoreWhere, firestoreOrderBy, serverTimestamp;
+    addFirestoreDoc, onSnapshot, firestoreQuery, firestoreWhere, firestoreOrderBy, serverTimestamp,
+    firestoreArrayUnion, firestoreOr;
 
 (async function initFirebase() {
   const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
@@ -39,6 +40,8 @@ let fbApp, fbAuth, db,
   firestoreWhere      = firestore.where;
   firestoreOrderBy    = firestore.orderBy;
   serverTimestamp     = firestore.serverTimestamp;
+  firestoreArrayUnion = firestore.arrayUnion;
+  firestoreOr         = firestore.or;
 
   fbApp  = initializeApp(firebaseConfig);
   fbAuth = auth.getAuth(fbApp);
@@ -7064,7 +7067,7 @@ function _listenThreads(user) {
   const col = firestoreCollection(db, 'ideas');
   const q = isAdmin(user)
     ? firestoreQuery(col, firestoreOrderBy('updatedAt', 'desc'))
-    : firestoreQuery(col, firestoreWhere('uid', '==', user.uid), firestoreOrderBy('updatedAt', 'desc'));
+    : firestoreQuery(col, firestoreOr(firestoreWhere('uid', '==', user.uid), firestoreWhere('members', 'array-contains', user.uid)), firestoreOrderBy('updatedAt', 'desc'));
   _threadsUnsub = onSnapshot(q, snap => {
     _cleanExpiredThreads(snap.docs);
     _renderThreads(snap.docs.filter(d => { const e = d.data().expiresAt; return !e || !e.toDate || e.toDate() > new Date(); }), user);
@@ -7196,7 +7199,9 @@ window.openThread = async function(threadId) {
     + (!isClosed ? '<button onclick="closeThread(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:10px;cursor:pointer">Terminer la conversation</button>' : '')
     + (isClosed && isAdmin(user) ? '<button onclick="reopenThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:var(--positive);border-radius:6px;font-size:10px;cursor:pointer">Rouvrir</button>' : '')
     + (isSA ? '<button onclick="deleteThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);color:var(--negative);border-radius:6px;font-size:10px;cursor:pointer">🗑 Supprimer</button>' : '')
-    + '</div></div>';
+    + (isSA ? '<button onclick="addMemberToThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(124,109,245,0.1);border:1px solid rgba(124,109,245,0.2);color:var(--accent);border-radius:6px;font-size:10px;cursor:pointer">👤+ Ajouter</button>' : '')
+    + '</div></div>'
+    + (isSA && d.memberEmails && d.memberEmails.length ? '<div style="font-size:10px;color:var(--text3);margin-top:4px">Membres : ' + d.memberEmails.map(e => '<span style="background:var(--s2);padding:1px 6px;border-radius:4px;margin-right:3px">' + _escHtml(e) + '</span>').join('') + '</div>' : '');
 
   // Input zone
   const inputZone = document.getElementById('ideas-input-zone');
@@ -7681,3 +7686,21 @@ async function _setRoleByEmail(role) {
     st.textContent = 'Erreur : ' + e.message;
   }
 }
+
+// ── Ajouter un membre à une conversation (superadmin) ──────
+window.addMemberToThread = async function(threadId) {
+  const email = window.prompt('Email de l\'utilisateur à ajouter :');
+  if (!email) return;
+  const trimmed = email.trim().toLowerCase();
+  try {
+    const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'users'), firestoreWhere('email', '==', trimmed)));
+    if (snap.empty) { alert('Utilisateur introuvable : ' + trimmed); return; }
+    const uid = snap.docs[0].id;
+    const threadRef = firestoreDoc(db, 'ideas', threadId);
+    await setFirestoreDoc(threadRef, { members: firestoreArrayUnion(uid), memberEmails: firestoreArrayUnion(trimmed) }, { merge: true });
+    openThread(threadId);
+    _showChatToast({ icon: '👤', title: 'Membre ajouté', msg: trimmed, duration: 3000 });
+  } catch(e) {
+    alert('Erreur : ' + e.message);
+  }
+};
