@@ -368,7 +368,9 @@ async function startApp(user) {
   // Charger le rôle depuis Firestore
   try {
     const roleDoc = await getFirestoreDoc(firestoreDoc(db, 'roles', user.uid));
-    console.log('🔑 role doc exists:', roleDoc.exists(), roleDoc.exists() ? roleDoc.data() : 'no doc', 'uid:', user.uid);
+    if (!roleDoc.exists()) {
+      await setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { role: 'user', email: user.email });
+    }
     currentUserRole = roleDoc.exists() ? (roleDoc.data().role || 'user') : 'user';
   } catch(e) { console.error('🔑 role load error:', e); currentUserRole = 'user'; }
   updateRoleBadges();
