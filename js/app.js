@@ -7163,25 +7163,66 @@ window.confirmNewThread = function() {
   }).then(ref => openThread(ref.id));
 };
 
-// ── Terminer / supprimer thread ────────────────────────────
-window.closeThread = async function(threadId) {
-  if (!confirm('Terminer cette conversation ? Elle sera supprimée automatiquement après 48h.')) return;
-  await setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), {
-    status: 'closed',
-    expiresAt: new Date(Date.now() + 48 * 3600 * 1000),
-  }, { merge: true });
-  _activeThread = null;
-  document.getElementById('ideas-chat-view').style.display = 'none';
-  document.getElementById('ideas-chat-empty').style.display = 'flex';
+// ── Modal confirmation générique ────────────────────────────
+let _confirmModalCallback = null;
+
+function showConfirm({ icon, title, message, label, color, callback }) {
+  document.getElementById('confirm-modal-icon').textContent  = icon;
+  document.getElementById('confirm-modal-title').textContent = title;
+  document.getElementById('confirm-modal-msg').textContent   = message;
+  const btn = document.getElementById('confirm-modal-btn');
+  btn.textContent       = label;
+  btn.style.background  = color;
+  _confirmModalCallback = callback;
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+window._confirmModalOk = function() {
+  document.getElementById('confirm-modal').style.display = 'none';
+  if (_confirmModalCallback) _confirmModalCallback();
+  _confirmModalCallback = null;
 };
 
-window.deleteThread = async function(threadId) {
+window._confirmModalCancel = function() {
+  document.getElementById('confirm-modal').style.display = 'none';
+  _confirmModalCallback = null;
+};
+
+// ── Terminer / supprimer thread ────────────────────────────
+window.closeThread = function(threadId) {
+  showConfirm({
+    icon:     '💬',
+    title:    'Terminer la conversation',
+    message:  'Cette conversation sera clôturée et supprimée automatiquement après 48h.',
+    label:    'Terminer la conversation',
+    color:    'var(--accent)',
+    callback: async () => {
+      await setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), {
+        status: 'closed',
+        expiresAt: new Date(Date.now() + 48 * 3600 * 1000),
+      }, { merge: true });
+      _activeThread = null;
+      document.getElementById('ideas-chat-view').style.display = 'none';
+      document.getElementById('ideas-chat-empty').style.display = 'flex';
+    },
+  });
+};
+
+window.deleteThread = function(threadId) {
   if (!isSuperAdmin(fbAuth.currentUser)) return;
-  if (!confirm('Supprimer définitivement cette conversation ? Cette action est irréversible.')) return;
-  await deleteFirestoreDoc(firestoreDoc(db, 'ideas', threadId));
-  _activeThread = null;
-  document.getElementById('ideas-chat-view').style.display = 'none';
-  document.getElementById('ideas-chat-empty').style.display = 'flex';
+  showConfirm({
+    icon:     '🗑',
+    title:    'Supprimer la conversation',
+    message:  'Cette action est irréversible. La conversation et tous ses messages seront définitivement supprimés.',
+    label:    'Supprimer',
+    color:    'var(--negative)',
+    callback: async () => {
+      await deleteFirestoreDoc(firestoreDoc(db, 'ideas', threadId));
+      _activeThread = null;
+      document.getElementById('ideas-chat-view').style.display = 'none';
+      document.getElementById('ideas-chat-empty').style.display = 'flex';
+    },
+  });
 };
 
 // Nettoyage auto 48h côté client au chargement des threads
