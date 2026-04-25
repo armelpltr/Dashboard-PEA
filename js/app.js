@@ -6962,6 +6962,12 @@ function _renderThreads(docs, user) {
     el.innerHTML = '<div style="padding:20px 12px;font-size:12px;color:var(--text3)">Aucune conversation.</div>';
     return;
   }
+  if (!_activeThread) {
+    const saved = localStorage.getItem('chat_active_thread');
+    const panelOpen = document.getElementById('ideas-overlay').style.display === 'flex';
+    if (saved && panelOpen && docs.find(d => d.id === saved)) openThread(saved);
+  }
+
   el.innerHTML = docs.map(doc => {
     const d = doc.data();
     const unread = isAdmin(user) ? (d.unreadAdmin || 0) : (d.unreadUser || 0);
@@ -6983,6 +6989,7 @@ function _renderThreads(docs, user) {
 
 window.openThread = function(threadId) {
   _activeThread = threadId;
+  localStorage.setItem('chat_active_thread', threadId);
   if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
   const user = fbAuth.currentUser;
 
@@ -7202,6 +7209,7 @@ window.closeThread = function(threadId) {
         expiresAt: new Date(Date.now() + 48 * 3600 * 1000),
       }, { merge: true });
       _activeThread = null;
+      localStorage.removeItem('chat_active_thread');
       document.getElementById('ideas-chat-view').style.display = 'none';
       document.getElementById('ideas-chat-empty').style.display = 'flex';
     },
@@ -7219,6 +7227,7 @@ window.deleteThread = function(threadId) {
     callback: async () => {
       await deleteFirestoreDoc(firestoreDoc(db, 'ideas', threadId));
       _activeThread = null;
+      localStorage.removeItem('chat_active_thread');
       document.getElementById('ideas-chat-view').style.display = 'none';
       document.getElementById('ideas-chat-empty').style.display = 'flex';
     },
