@@ -6946,7 +6946,7 @@ function _dateLabel(date) {
 const _baseTitle = document.title || 'PEA Dashboard';
 function _updateFavicon(count) {
   document.title = count > 0
-    ? '[' + count + '] ' + _baseTitle + ' — ' + count + ' message' + (count > 1 ? 's' : '') + ' non lu' + (count > 1 ? 's' : '')
+    ? _baseTitle + ' — ' + count + ' message' + (count > 1 ? 's' : '') + ' non lu' + (count > 1 ? 's' : '')
     : _baseTitle;
   try {
     const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
