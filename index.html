@@ -74,10 +74,23 @@
         <div style="font-size:11px;color:var(--text3);margin-top:2px">Recevez chaque soir à 18h un résumé de la performance de votre PEA.</div>
       </div>
     </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;cursor:pointer" onclick="document.getElementById('reg-rgpd').click()">
+      <input type="checkbox" id="reg-rgpd" style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">J'accepte les CGU et la politique de confidentialité <span style="color:#e55">*</span></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">En créant un compte, vous acceptez nos <a href="cgu.html" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent)">CGU</a> et notre <a href="politique-confidentialite.html" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent)">politique de confidentialité</a>.</div>
+      </div>
+    </div>
+    <div id="register-rgpd-error" style="display:none;color:#e55;font-size:12px;margin-bottom:10px;text-align:center">Vous devez accepter les CGU pour créer un compte.</div>
     <button class="btn-login" id="btn-register-submit" onclick="doRegister()">Créer le compte</button>
     <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
       Déjà un compte ?
       <span onclick="showLoginView()" style="color:var(--accent);cursor:pointer;font-weight:600;margin-left:4px">Se connecter</span>
+    </div>
+    <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a href="mentions-legales.html" target="_blank" style="font-size:11px;color:var(--text3);text-decoration:none">Mentions légales</a>
+      <a href="politique-confidentialite.html" target="_blank" style="font-size:11px;color:var(--text3);text-decoration:none">Confidentialité</a>
+      <a href="cgu.html" target="_blank" style="font-size:11px;color:var(--text3);text-decoration:none">CGU</a>
     </div>
   </div>
 </div>
@@ -204,6 +217,11 @@
       background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);transition:background .15s">
       <span>👑</span>
       <span style="flex:1">Super Admin</span>
+    </div>
+    <div style="padding:6px 12px 4px;display:flex;gap:10px;flex-wrap:wrap">
+      <a href="mentions-legales.html" target="_blank" style="font-size:10px;color:var(--text3);text-decoration:none;transition:color .15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'">Légal</a>
+      <a href="politique-confidentialite.html" target="_blank" style="font-size:10px;color:var(--text3);text-decoration:none;transition:color .15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'">Confidentialité</a>
+      <a href="cgu.html" target="_blank" style="font-size:10px;color:var(--text3);text-decoration:none;transition:color .15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'">CGU</a>
     </div>
     <div class="sidebar-user">
       <div class="user-card" onclick="openProfilModal()" style="cursor:pointer" title="Mon profil">

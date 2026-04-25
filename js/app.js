@@ -311,10 +311,14 @@ window.doRegister = async function() {
   const pass  = document.getElementById('reg-pass').value;
   const pass2 = document.getElementById('reg-pass2').value;
   const err   = document.getElementById('register-error');
-  err.textContent = '';
+  const rgpdErr = document.getElementById('register-rgpd-error');
+  err.textContent = ''; err.style.display = 'none';
+  if (rgpdErr) rgpdErr.style.display = 'none';
   if (!email || !pass || !pass2) { err.textContent = 'Veuillez remplir tous les champs.'; err.style.display = 'block'; return; }
   if (pass !== pass2) { err.textContent = 'Les mots de passe ne correspondent pas.'; err.style.display = 'block'; return; }
   if (pass.length < 6) { err.textContent = 'Mot de passe trop court (6 caractères min).'; err.style.display = 'block'; return; }
+  const rgpdChecked = document.getElementById('reg-rgpd')?.checked;
+  if (!rgpdChecked) { if (rgpdErr) { rgpdErr.style.display = 'block'; } return; }
   setLoading('btn-register-submit', true);
   const wantsRecap = document.getElementById('reg-recap')?.checked !== false;
   try {

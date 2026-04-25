@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Politique de confidentialité — PEA Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .legal-wrap { max-width: 760px; margin: 0 auto; padding: 60px 24px 80px; }
+  .legal-back { display:inline-flex;align-items:center;gap:8px;color:var(--text3);font-size:13px;text-decoration:none;margin-bottom:40px;transition:color .15s }
+  .legal-back:hover { color:var(--accent) }
+  .legal-badge { display:inline-block;padding:4px 12px;background:var(--accent-d);color:var(--accent);border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:20px }
+  .legal-title { font-family:var(--display);font-size:clamp(28px,5vw,42px);font-weight:800;margin:0 0 8px;color:var(--text) }
+  .legal-date { font-size:12px;color:var(--text3);margin-bottom:48px }
+  .legal-section { margin-bottom:40px }
+  .legal-section h2 { font-size:16px;font-weight:700;color:var(--text);margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--border2) }
+  .legal-section p, .legal-section li { font-size:14px;line-height:1.8;color:var(--text2);margin:0 0 10px }
+  .legal-section ul { padding-left:20px;margin-bottom:10px }
+  .legal-section a { color:var(--accent);text-decoration:none }
+  .legal-section a:hover { text-decoration:underline }
+  .data-table { width:100%;border-collapse:collapse;margin-bottom:14px }
+  .data-table th { text-align:left;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border2) }
+  .data-table td { font-size:13px;color:var(--text2);padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top }
+  .data-table tr:last-child td { border-bottom:none }
+  .rights-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:8px }
+  .right-card { background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:14px 16px }
+  .right-card .icon { font-size:20px;margin-bottom:8px }
+  .right-card .name { font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px }
+  .right-card .desc { font-size:12px;color:var(--text3);line-height:1.5 }
+  .nav-legal { display:flex;gap:12px;flex-wrap:wrap;margin-bottom:48px }
+  .nav-legal a { font-size:12px;color:var(--text3);text-decoration:none;padding:6px 14px;border:1px solid var(--border2);border-radius:20px;transition:all .15s }
+  .nav-legal a:hover, .nav-legal a.active { border-color:var(--accent);color:var(--accent) }
+</style>
+</head>
+<body>
+<div class="legal-wrap">
+  <a href="index.html" class="legal-back">← Retour au Dashboard</a>
+
+  <div class="nav-legal">
+    <a href="mentions-legales.html">Mentions légales</a>
+    <a href="politique-confidentialite.html" class="active">Politique de confidentialité</a>
+    <a href="cgu.html">CGU</a>
+  </div>
+
+  <div class="legal-badge">RGPD</div>
+  <h1 class="legal-title">Politique de confidentialité</h1>
+  <div class="legal-date">Dernière mise à jour : avril 2026</div>
+
+  <div class="legal-section">
+    <h2>1. Responsable du traitement</h2>
+    <p>Le responsable du traitement des données personnelles collectées sur PEA Dashboard est :</p>
+    <p><strong style="color:var(--text)">Armel Plantier</strong> — <a href="mailto:armel.plantier@protonmail.com">armel.plantier@protonmail.com</a></p>
+  </div>
+
+  <div class="legal-section">
+    <h2>2. Données collectées</h2>
+    <table class="data-table">
+      <thead>
+        <tr><th>Donnée</th><th>Finalité</th><th>Base légale</th><th>Durée</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Adresse e-mail</td>
+          <td>Création et gestion du compte</td>
+          <td>Exécution du contrat</td>
+          <td>Durée du compte + 3 ans</td>
+        </tr>
+        <tr>
+          <td>Données de portefeuille (positions, valeurs, transactions)</td>
+          <td>Affichage et suivi du PEA</td>
+          <td>Exécution du contrat</td>
+          <td>Durée du compte + 3 ans</td>
+        </tr>
+        <tr>
+          <td>Messages du support chat</td>
+          <td>Assistance utilisateur</td>
+          <td>Intérêt légitime</td>
+          <td>2 ans après clôture</td>
+        </tr>
+        <tr>
+          <td>Préférence récap quotidien</td>
+          <td>Envoi du résumé de performance par e-mail</td>
+          <td>Consentement</td>
+          <td>Jusqu'au retrait du consentement</td>
+        </tr>
+        <tr>
+          <td>Données techniques (horodatages, identifiants Firebase)</td>
+          <td>Sécurité et bon fonctionnement</td>
+          <td>Intérêt légitime</td>
+          <td>13 mois</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Aucune donnée bancaire, aucun mot de passe en clair et aucune donnée sensible au sens de l'article 9 du RGPD ne sont collectés.</p>
+  </div>
+
+  <div class="legal-section">
+    <h2>3. Partage des données</h2>
+    <p>Vos données ne sont pas vendues ni partagées à des fins commerciales. Elles sont transmises aux seuls prestataires techniques nécessaires au fonctionnement du service :</p>
+    <ul>
+      <li><strong style="color:var(--text)">Google Firebase</strong> (authentification, base de données, stockage) — Google Ireland Limited, Gordon House, Dublin 4, Irlande. <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Politique Firebase →</a></li>
+    </ul>
+    <p>Google est certifié conforme au mécanisme EU-U.S. Data Privacy Framework, garantissant un niveau de protection adéquat pour les transferts hors UE.</p>
+  </div>
+
+  <div class="legal-section">
+    <h2>4. Cookies et traceurs</h2>
+    <p>PEA Dashboard utilise uniquement des cookies techniques strictement nécessaires au fonctionnement du service (session d'authentification Firebase). Aucun cookie publicitaire ou de tracking tiers n'est déposé.</p>
+    <p>Ces cookies techniques ne nécessitent pas de consentement préalable conformément à la recommandation CNIL du 17 septembre 2020.</p>
+  </div>
+
+  <div class="legal-section">
+    <h2>5. Vos droits</h2>
+    <p>Conformément au RGPD (articles 15 à 22) et à la loi Informatique et Libertés, vous disposez des droits suivants :</p>
+    <div class="rights-grid">
+      <div class="right-card">
+        <div class="icon">👁</div>
+        <div class="name">Accès</div>
+        <div class="desc">Obtenir une copie de vos données</div>
+      </div>
+      <div class="right-card">
+        <div class="icon">✏️</div>
+        <div class="name">Rectification</div>
+        <div class="desc">Corriger des données inexactes</div>
+      </div>
+      <div class="right-card">
+        <div class="icon">🗑️</div>
+        <div class="name">Suppression</div>
+        <div class="desc">Demander l'effacement de vos données</div>
+      </div>
+      <div class="right-card">
+        <div class="icon">⏸️</div>
+        <div class="name">Limitation</div>
+        <div class="desc">Restreindre un traitement</div>
+      </div>
+      <div class="right-card">
+        <div class="icon">📦</div>
+        <div class="name">Portabilité</div>
+        <div class="desc">Récupérer vos données dans un format structuré</div>
+      </div>
+      <div class="right-card">
+        <div class="icon">🚫</div>
+        <div class="name">Opposition</div>
+        <div class="desc">S'opposer à un traitement basé sur l'intérêt légitime</div>
+      </div>
+    </div>
+    <p style="margin-top:16px">Pour exercer ces droits, contactez : <a href="mailto:armel.plantier@protonmail.com">armel.plantier@protonmail.com</a>. Réponse sous 30 jours.</p>
+    <p>En cas de réponse insatisfaisante, vous pouvez introduire une réclamation auprès de la <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">CNIL →</a></p>
+  </div>
+
+  <div class="legal-section">
+    <h2>6. Sécurité</h2>
+    <p>Les données sont protégées par :</p>
+    <ul>
+      <li>Chiffrement en transit (HTTPS/TLS)</li>
+      <li>Chiffrement au repos par Firebase</li>
+      <li>Règles d'accès Firestore : chaque utilisateur n'accède qu'à ses propres données</li>
+      <li>Authentification Firebase avec hachage des mots de passe (bcrypt)</li>
+    </ul>
+  </div>
+
+  <div class="legal-section">
+    <h2>7. Modifications</h2>
+    <p>Cette politique peut être mise à jour. En cas de modification substantielle, vous serez informé par e-mail. La date de dernière mise à jour est indiquée en haut de cette page.</p>
+  </div>
+</div>
+</body>
+</html>
