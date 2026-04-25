@@ -7,7 +7,7 @@ let fbApp, fbAuth, db,
     updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser,
     getFirestoreDoc, setFirestoreDoc, firestoreDoc, firestoreCollection, deleteFirestoreDoc, getDocs,
     addFirestoreDoc, onSnapshot, firestoreQuery, firestoreWhere, firestoreOrderBy, serverTimestamp,
-    firestoreArrayUnion, firestoreOr;
+    firestoreArrayUnion, firestoreArrayRemove, firestoreOr, firestoreDeleteField;
 
 (async function initFirebase() {
   const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
@@ -40,8 +40,10 @@ let fbApp, fbAuth, db,
   firestoreWhere      = firestore.where;
   firestoreOrderBy    = firestore.orderBy;
   serverTimestamp     = firestore.serverTimestamp;
-  firestoreArrayUnion = firestore.arrayUnion;
-  firestoreOr         = firestore.or;
+  firestoreArrayUnion  = firestore.arrayUnion;
+  firestoreArrayRemove = firestore.arrayRemove;
+  firestoreOr          = firestore.or;
+  firestoreDeleteField = firestore.deleteField;
 
   fbApp  = initializeApp(firebaseConfig);
   fbAuth = auth.getAuth(fbApp);
@@ -7237,6 +7239,7 @@ window.openThread = async function(threadId) {
             return '<span style="background:var(--s2);border:1px solid var(--border);padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:4px">'
               + '<span style="color:' + roleColor + '">' + roleLabel + '</span>'
               + '<span>' + _escHtml(e) + '</span>'
+              + '<button onclick="removeMemberFromThread(\'' + threadId + '\',\'' + _escAttr(e) + '\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0 0 0 2px;line-height:1" title="Retirer">✕</button>'
               + '</span>';
           }).join('')
         + '</div>'
@@ -7789,5 +7792,27 @@ window.confirmAddMember = async function() {
     st.style.color = 'var(--negative)';
     st.textContent = 'Erreur : ' + e.message;
     btn.disabled = false; btn.textContent = 'Ajouter';
+  }
+};
+
+// ── Retirer un membre (superadmin) ─────────────────────────
+window.removeMemberFromThread = async function(threadId, email) {
+  if (!confirm('Retirer ' + email + ' de la conversation ?')) return;
+  try {
+    const threadRef = firestoreDoc(db, 'ideas', threadId);
+    const update = { memberEmails: firestoreArrayRemove(email) };
+    update['memberRoles.' + email] = firestoreDeleteField();
+    await setFirestoreDoc(threadRef, update, { merge: true });
+
+    const user = fbAuth.currentUser;
+    const msgCol = firestoreCollection(db, 'ideas', threadId, 'messages');
+    await addFirestoreDoc(msgCol, {
+      type:      'system',
+      text:      '👤 ' + email + ' a été retiré de la conversation par ' + (user.displayName || user.email.split('@')[0]),
+      createdAt: serverTimestamp(),
+    });
+    openThread(threadId);
+  } catch(e) {
+    alert('Erreur : ' + e.message);
   }
 };
