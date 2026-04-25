@@ -7022,7 +7022,7 @@ function _listenThreads(user) {
         const activeAndVisible = panelOpen && _activeThread === tid;
         if (!activeAndVisible) {
           _playSound('message');
-          _showChatToast({ icon: '💬', title: d.title || 'Nouveau message', msg: d.lastMessage || '📷 Photo', threadId: tid });
+          _showChatToast({ icon: '💬', title: d.lastSenderName || d.title || 'Nouveau message', msg: d.lastMessage || '📷 Photo', threadId: tid });
         }
       }
     });
@@ -7209,8 +7209,9 @@ window.sendChatMessage = async function() {
     ? { unreadUser:  (cur.unreadUser  || 0) + 1 }
     : { unreadAdmin: (cur.unreadAdmin || 0) + 1 };
   await setFirestoreDoc(firestoreDoc(db, 'ideas', _activeThread), {
-    lastMessage: text ? text.slice(0, 60) : '📷 Photo',
-    updatedAt:   serverTimestamp(),
+    lastMessage:    text ? text.slice(0, 60) : '📷 Photo',
+    lastSenderName: user.displayName || user.email.split('@')[0],
+    updatedAt:      serverTimestamp(),
     ...unreadField,
   }, { merge: true });
 };
