@@ -7242,7 +7242,6 @@ window.openThread = async function(threadId) {
     + (!isClosed ? '<button onclick="closeThread(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:10px;cursor:pointer">Terminer la conversation</button>' : '')
     + (isClosed && isAdmin(user) ? '<button onclick="reopenThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:var(--positive);border-radius:6px;font-size:10px;cursor:pointer">Rouvrir</button>' : '')
     + (isSA ? '<button onclick="deleteThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);color:var(--negative);border-radius:6px;font-size:10px;cursor:pointer">🗑 Supprimer</button>' : '')
-    + (isSA ? '<button onclick="addMemberToThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(124,109,245,0.1);border:1px solid rgba(124,109,245,0.2);color:var(--accent);border-radius:6px;font-size:10px;cursor:pointer">👤+ Ajouter</button>' : '')
     + '</div></div>';
 
   // Panneau membres Discord-style (SA only)
@@ -7250,6 +7249,8 @@ window.openThread = async function(threadId) {
   const membersList  = document.getElementById('chat-members-list');
   if (isSA && membersPanel && membersList) {
     membersPanel.style.display = 'flex';
+    const btnAdd = document.getElementById('btn-add-member-panel');
+    if (btnAdd) btnAdd.onclick = () => addMemberToThread(threadId);
 
     // Propriétaire du thread
     const ownerEmail = d.userEmail || '';
