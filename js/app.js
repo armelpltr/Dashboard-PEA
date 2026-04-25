@@ -7487,26 +7487,24 @@ function _renderMessages(docs, user) {
     const isSuperAdminMsg = d0.senderRole === 'superadmin';
     const isAdminMsg = d0.senderRole === 'admin' || isSuperAdminMsg;
 
-    // Avatar (tous les messages, anneau pour admin)
+    // Badge rôle
+    const roleBadge = isSuperAdminMsg
+      ? '<div style="font-size:9px;font-weight:700;background:linear-gradient(135deg,rgba(124,109,245,0.2),rgba(91,141,238,0.15));color:var(--accent);border:1px solid rgba(124,109,245,0.25);border-radius:4px;padding:1px 5px;letter-spacing:.3px;margin-top:2px;text-align:center">⚡ SA</div>'
+      : (d0.senderRole === 'admin'
+        ? '<div style="font-size:9px;font-weight:700;background:rgba(91,141,238,0.12);color:var(--accent2);border:1px solid rgba(91,141,238,0.2);border-radius:4px;padding:1px 5px;letter-spacing:.3px;margin-top:2px;text-align:center">🛡 Admin</div>'
+        : '');
+
+    // Avatar + nom en colonne (bottom-aligned), anneau pour admin
     const avatarRing = isAdminMsg
       ? ';outline:2px solid ' + (isSuperAdminMsg ? 'rgba(124,109,245,0.7)' : 'rgba(91,141,238,0.6)') + ';outline-offset:2px'
       : '';
-    const avatarEl = senderAvatarSrc
-      ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end' + avatarRing + '" title="' + _escHtml(d0.senderName || '') + '">'
-      : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--s4),var(--muted2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text2);flex-shrink:0;align-self:flex-end' + avatarRing + '">' + _escHtml((d0.senderName||'?')[0].toUpperCase()) + '</div>';
-
-    // Badge rôle
-    const roleBadge = isSuperAdminMsg
-      ? '<span style="font-size:9px;font-weight:700;background:linear-gradient(135deg,rgba(124,109,245,0.2),rgba(91,141,238,0.15));color:var(--accent);border:1px solid rgba(124,109,245,0.25);border-radius:4px;padding:1px 6px;letter-spacing:.3px">⚡ SA</span>'
-      : (d0.senderRole === 'admin'
-        ? '<span style="font-size:9px;font-weight:700;background:rgba(91,141,238,0.12);color:var(--accent2);border:1px solid rgba(91,141,238,0.2);border-radius:4px;padding:1px 6px;letter-spacing:.3px">🛡</span>'
-        : '');
-
-    // Nom + badge (tous les messages, email en vue SA pour les autres)
-    const nameHtml = '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px' + (mine ? ';justify-content:flex-end' : '') + '">'
-      + '<span style="font-size:12px;font-weight:700;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text)') + '">' + _escHtml(d0.senderName || '') + '</span>'
+    const avatarImg = senderAvatarSrc
+      ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover' + avatarRing + '" title="' + _escHtml(d0.senderName || '') + '">'
+      : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--s4),var(--muted2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text2)' + avatarRing + '">' + _escHtml((d0.senderName||'?')[0].toUpperCase()) + '</div>';
+    const avatarEl = '<div style="display:flex;flex-direction:column;align-items:center;align-self:flex-end;flex-shrink:0;width:42px;gap:2px">'
+      + avatarImg
+      + '<span style="font-size:10px;font-weight:600;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text2)') + ';text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _escHtml(d0.senderName || '') + '">' + _escHtml((d0.senderName || '').split(' ')[0]) + '</span>'
       + roleBadge
-      + (!mine && isSA && d0.senderEmail ? '<span style="font-size:10px;color:var(--text3)">' + _escHtml(d0.senderEmail) + '</span>' : '')
       + '</div>';
 
     // Bulles
@@ -7568,7 +7566,7 @@ function _renderMessages(docs, user) {
     html += '<div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:14px' + (mine ? ';flex-direction:row-reverse' : '') + ';padding:0 6px">'
       + avatarEl
       + '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + '">'
-      + nameHtml
+      + (!mine && isSA && d0.senderEmail ? '<div style="font-size:10px;color:var(--text3);margin-bottom:3px">' + _escHtml(d0.senderEmail) + '</div>' : '')
       + bubblesHtml
       + '</div>'
       + '</div>';
