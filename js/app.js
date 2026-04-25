@@ -6921,6 +6921,26 @@ function renderPerformancePage(result, portfolio, txs) {
 let _threadsUnsub = null;
 let _chatUnsub    = null;
 let _activeThread = null;
+let _chatMsgCount = 0;
+
+function _playSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const note = (freq, t, dur, vol = 0.1) => {
+      const osc = ctx.createOscillator();
+      const g   = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.value = freq;
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.start(t); osc.stop(t + dur);
+    };
+    const t = ctx.currentTime;
+    if      (type === 'message') { note(880, t, 0.25); }
+    else if (type === 'created') { note(523, t, 0.18); note(659, t + 0.1, 0.18); note(784, t + 0.2, 0.28); }
+    else if (type === 'closed')  { note(523, t, 0.18); note(392, t + 0.13, 0.3); }
+  } catch(e) {}
+}
 
 window.openIdeasPanel = function() {
   document.getElementById('ideas-overlay').style.display = 'flex';
@@ -6991,6 +7011,7 @@ function _renderThreads(docs, user) {
 
 window.openThread = function(threadId) {
   _activeThread = threadId;
+  _chatMsgCount = 0;
   localStorage.setItem('chat_active_thread', threadId);
   if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
   const user = fbAuth.currentUser;
@@ -7022,6 +7043,12 @@ window.openThread = function(threadId) {
 };
 
 function _renderMessages(docs, user) {
+  const prevCount = _chatMsgCount;
+  _chatMsgCount = docs.length;
+  if (prevCount > 0 && docs.length > prevCount) {
+    const last = docs[docs.length - 1].data();
+    if (last.senderUid !== fbAuth.currentUser.uid) _playSound('message');
+  }
   const el = document.getElementById('ideas-messages');
   if (!docs.length) {
     el.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center">Début de la conversation.</div>';
@@ -7157,6 +7184,7 @@ window.confirmNewThread = function() {
   const title = titleEl ? titleEl.value.trim() : '';
   if (!title) return;
   closeNewThread();
+  _playSound('created');
   const user = fbAuth.currentUser;
   addFirestoreDoc(firestoreCollection(db, 'ideas'), {
     uid:         user.uid,
@@ -7210,6 +7238,7 @@ window.closeThread = function(threadId) {
         status: 'closed',
         expiresAt: new Date(Date.now() + 48 * 3600 * 1000),
       }, { merge: true });
+      _playSound('closed');
       _activeThread = null;
       localStorage.removeItem('chat_active_thread');
       document.getElementById('ideas-chat-view').style.display = 'none';
