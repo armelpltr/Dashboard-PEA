@@ -7227,7 +7227,20 @@ window.openThread = async function(threadId) {
     + (isSA ? '<button onclick="deleteThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);color:var(--negative);border-radius:6px;font-size:10px;cursor:pointer">🗑 Supprimer</button>' : '')
     + (isSA ? '<button onclick="addMemberToThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(124,109,245,0.1);border:1px solid rgba(124,109,245,0.2);color:var(--accent);border-radius:6px;font-size:10px;cursor:pointer">👤+ Ajouter</button>' : '')
     + '</div></div>'
-    + (isSA && d.memberEmails && d.memberEmails.length ? '<div style="font-size:10px;color:var(--text3);margin-top:4px">Membres : ' + d.memberEmails.map(e => '<span style="background:var(--s2);padding:1px 6px;border-radius:4px;margin-right:3px">' + _escHtml(e) + '</span>').join('') + '</div>' : '');
+    + (isSA && d.memberEmails && d.memberEmails.length
+      ? '<div style="font-size:10px;color:var(--text3);margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+        + '<span style="font-weight:600;color:var(--text2)">👥 Membres :</span>'
+        + d.memberEmails.map(e => {
+            const role = (d.memberRoles && d.memberRoles[e]) || 'user';
+            const roleColor = role === 'superadmin' ? '#fbbf24' : role === 'admin' ? 'var(--accent)' : 'var(--text3)';
+            const roleLabel = role === 'superadmin' ? '👑' : role === 'admin' ? '⚡' : '👤';
+            return '<span style="background:var(--s2);border:1px solid var(--border);padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:4px">'
+              + '<span style="color:' + roleColor + '">' + roleLabel + '</span>'
+              + '<span>' + _escHtml(e) + '</span>'
+              + '</span>';
+          }).join('')
+        + '</div>'
+      : '');
 
   // Input zone
   const inputZone = document.getElementById('ideas-input-zone');
@@ -7341,6 +7354,15 @@ function _renderMessages(docs, user) {
         + '<span style="font-size:10px;color:var(--accent);font-weight:600">Nouveaux messages</span>'
         + '<div style="flex:1;height:1px;background:var(--accent);opacity:.3"></div>'
         + '</div>');
+    }
+
+    // Message système
+    if (d.type === 'system') {
+      parts.push('<div style="text-align:center;padding:6px 0">'
+        + '<span style="display:inline-block;background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:3px 12px;font-size:11px;color:var(--text3)">'
+        + _escHtml(d.text || '')
+        + '</span></div>');
+      return parts.join('');
     }
 
     // Reply quote
@@ -7739,7 +7761,27 @@ window.confirmAddMember = async function() {
   btn.textContent = '…';
   st.textContent = '';
   try {
-    await setFirestoreDoc(firestoreDoc(db, 'ideas', _addMemberThreadId), { memberEmails: firestoreArrayUnion(email) }, { merge: true });
+    // Lookup role
+    let memberRole = 'user';
+    try {
+      const roleSnap = await getDocs(firestoreQuery(firestoreCollection(db, 'roles'), firestoreWhere('email', '==', email)));
+      if (!roleSnap.empty) memberRole = roleSnap.docs[0].data().role || 'user';
+    } catch(e) { /* règle non configurée, role reste 'user' */ }
+
+    const threadRef = firestoreDoc(db, 'ideas', _addMemberThreadId);
+    const roleUpdate = {};
+    roleUpdate['memberRoles.' + email] = memberRole;
+    await setFirestoreDoc(threadRef, { memberEmails: firestoreArrayUnion(email), ...roleUpdate }, { merge: true });
+
+    // Message système
+    const user = fbAuth.currentUser;
+    const msgCol = firestoreCollection(db, 'ideas', _addMemberThreadId, 'messages');
+    await addFirestoreDoc(msgCol, {
+      type:      'system',
+      text:      '👤 ' + email + ' a été ajouté à la conversation par ' + (user.displayName || user.email.split('@')[0]),
+      createdAt: serverTimestamp(),
+    });
+
     closeAddMember();
     openThread(_addMemberThreadId);
     _showChatToast({ icon: '👤', title: 'Membre ajouté', msg: email, duration: 3000 });
