@@ -7020,7 +7020,7 @@ function _listenThreads(user) {
       if (cur > prev) {
         if (_activeThread !== tid) {
           _playSound('message');
-          _showChatToast({ icon: '💬', title: d.lastSenderName || d.title || 'Nouveau message', msg: d.lastMessage || '📷 Photo', threadId: tid });
+          _showChatToast({ icon: '💬', title: d.title || 'Nouveau message', msg: (d.lastSenderName ? d.lastSenderName + ' : ' : '') + (d.lastMessage || '📷 Photo'), threadId: tid });
         }
       }
     });
