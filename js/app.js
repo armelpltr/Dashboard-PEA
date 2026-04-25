@@ -7487,28 +7487,26 @@ function _renderMessages(docs, user) {
     const isSuperAdminMsg = d0.senderRole === 'superadmin';
     const isAdminMsg = d0.senderRole === 'admin' || isSuperAdminMsg;
 
-    // Avatar seulement pour les messages des autres (pas les siens — style iMessage)
+    // Avatar (tous les messages, anneau pour admin)
     const avatarRing = isAdminMsg
       ? ';outline:2px solid ' + (isSuperAdminMsg ? 'rgba(124,109,245,0.7)' : 'rgba(91,141,238,0.6)') + ';outline-offset:2px'
       : '';
-    const avatarEl = mine ? '<div style="width:36px;flex-shrink:0"></div>' // spacer invisible pour alignement
-      : (senderAvatarSrc
-        ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end' + avatarRing + '" title="' + _escHtml(d0.senderName || '') + '">'
-        : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--s4),var(--muted2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text2);flex-shrink:0;align-self:flex-end' + avatarRing + '">' + _escHtml((d0.senderName||'?')[0].toUpperCase()) + '</div>');
+    const avatarEl = senderAvatarSrc
+      ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end' + avatarRing + '" title="' + _escHtml(d0.senderName || '') + '">'
+      : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--s4),var(--muted2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text2);flex-shrink:0;align-self:flex-end' + avatarRing + '">' + _escHtml((d0.senderName||'?')[0].toUpperCase()) + '</div>';
 
-    // Badge rôle (uniquement pour les autres)
-    const roleBadge = !mine && isSuperAdminMsg
+    // Badge rôle
+    const roleBadge = isSuperAdminMsg
       ? '<span style="font-size:9px;font-weight:700;background:linear-gradient(135deg,rgba(124,109,245,0.2),rgba(91,141,238,0.15));color:var(--accent);border:1px solid rgba(124,109,245,0.25);border-radius:4px;padding:1px 6px;letter-spacing:.3px">⚡ SA</span>'
-      : (!mine && d0.senderRole === 'admin'
+      : (d0.senderRole === 'admin'
         ? '<span style="font-size:9px;font-weight:700;background:rgba(91,141,238,0.12);color:var(--accent2);border:1px solid rgba(91,141,238,0.2);border-radius:4px;padding:1px 6px;letter-spacing:.3px">🛡</span>'
         : '');
 
-    // Nom : pour les autres uniquement, avec email SA si vue SA
-    const nameHtml = mine ? '' :
-      '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">'
+    // Nom + badge (tous les messages, email en vue SA pour les autres)
+    const nameHtml = '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px' + (mine ? ';justify-content:flex-end' : '') + '">'
       + '<span style="font-size:12px;font-weight:700;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text)') + '">' + _escHtml(d0.senderName || '') + '</span>'
       + roleBadge
-      + (isSA && d0.senderEmail ? '<span style="font-size:10px;color:var(--text3)">' + _escHtml(d0.senderEmail) + '</span>' : '')
+      + (!mine && isSA && d0.senderEmail ? '<span style="font-size:10px;color:var(--text3)">' + _escHtml(d0.senderEmail) + '</span>' : '')
       + '</div>';
 
     // Bulles
@@ -7553,7 +7551,7 @@ function _renderMessages(docs, user) {
         : '';
 
       // Bulle avec reply-btn en position absolute pour ne pas perturber le layout
-      bubblesHtml += '<div class="chat-msg-wrap" id="msg-' + mDoc.id + '" style="position:relative;display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:2px">'
+      bubblesHtml += '<div class="chat-msg-wrap" id="msg-' + mDoc.id + '" style="position:relative;display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:2px;width:100%">'
         + '<div class="chat-bubble" style="max-width:75%;border-radius:' + radius + ';overflow:hidden;' + bubbleBg + bubbleShadow + 'transition:filter .12s">'
         + replyHtml
         + (d.image ? '<img src="' + d.image + '" onclick="openLightbox(this.src)" style="max-width:100%;display:block;cursor:zoom-in">' : '')
