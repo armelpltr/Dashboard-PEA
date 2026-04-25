@@ -7002,9 +7002,8 @@ window.openThread = function(threadId) {
       + '<span style="font-weight:700">' + (d.title || 'Conversation') + '</span>'
       + (isAdmin(user) ? '<span style="font-size:10px;color:var(--text3);font-weight:400">— ' + (d.userName || d.userEmail) + '</span>' : '')
       + '<div style="margin-left:auto;display:flex;gap:6px">'
-      + (isAdmin(user) ? '<button onclick="markThreadDone(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:' + (isDone ? 'var(--positive)' : 'var(--text3)') + ';border-radius:6px;font-size:10px;cursor:pointer">' + (isDone ? '✓ Réalisé' : 'Marquer réalisé') + '</button>' : '')
-      + '<button onclick="closeThread(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:10px;cursor:pointer">Fermer</button>'
-      + (isSA ? '<button onclick="deleteThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);color:var(--negative);border-radius:6px;font-size:10px;cursor:pointer">🗑</button>' : '')
+      + '<button onclick="closeThread(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:10px;cursor:pointer">Terminer la conversation</button>'
+      + (isSA ? '<button onclick="deleteThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);color:var(--negative);border-radius:6px;font-size:10px;cursor:pointer">🗑 Supprimer</button>' : '')
       + '</div></div>';
   });
 
@@ -7164,15 +7163,9 @@ window.confirmNewThread = function() {
   }).then(ref => openThread(ref.id));
 };
 
-// ── Fermer / supprimer thread ───────────────────────────────
-window.markThreadDone = async function(threadId) {
-  const doc = await getFirestoreDoc(firestoreDoc(db, 'ideas', threadId));
-  const current = doc.data() ? doc.data().status : 'open';
-  await setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), { status: current === 'done' ? 'open' : 'done' }, { merge: true });
-  openThread(threadId);
-};
-
+// ── Terminer / supprimer thread ────────────────────────────
 window.closeThread = async function(threadId) {
+  if (!confirm('Terminer cette conversation ? Elle sera supprimée automatiquement après 48h.')) return;
   await setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), {
     status: 'closed',
     expiresAt: new Date(Date.now() + 48 * 3600 * 1000),
@@ -7184,6 +7177,7 @@ window.closeThread = async function(threadId) {
 
 window.deleteThread = async function(threadId) {
   if (!isSuperAdmin(fbAuth.currentUser)) return;
+  if (!confirm('Supprimer définitivement cette conversation ? Cette action est irréversible.')) return;
   await deleteFirestoreDoc(firestoreDoc(db, 'ideas', threadId));
   _activeThread = null;
   document.getElementById('ideas-chat-view').style.display = 'none';
