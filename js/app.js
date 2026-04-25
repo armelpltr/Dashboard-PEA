@@ -375,6 +375,7 @@ async function startApp(user) {
   // Charger le rôle depuis Firestore
   try {
     const roleDoc = await getFirestoreDoc(firestoreDoc(db, 'roles', user.uid));
+    await setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { email: user.email }, { merge: true });
     if (!roleDoc.exists()) {
       await setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { role: 'user', email: user.email });
     }
