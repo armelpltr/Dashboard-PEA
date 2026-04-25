@@ -7076,7 +7076,7 @@ function _memberRow(name, email, role, threadId, canRemove) {
     + '<div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(name) + '</div>'
     + '<div style="font-size:10px;color:' + roleColor + '">' + roleIcon + ' ' + role + '</div>'
     + '</div>'
-    + (canRemove ? '<button onclick="removeMemberFromThread(\'' + threadId + '\',\'' + _escAttr(email) + '\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;opacity:0;transition:opacity .15s;flex-shrink:0" title="Retirer" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'">✕</button>' : '')
+    + (canRemove ? '<button onclick="removeMemberFromThread(\'' + threadId + '\',\'' + _escAttr(email) + '\')" style="background:none;border:none;color:transparent;cursor:pointer;font-size:12px;transition:color .15s;flex-shrink:0" title="Retirer" onmouseenter="this.style.color=\'var(--negative)\'" onmouseleave="this.style.color=\'transparent\'">✕</button>' : '')
     + '</div>';
 }
 
@@ -7864,8 +7864,28 @@ window.confirmAddMember = async function() {
 };
 
 // ── Retirer un membre (superadmin) ─────────────────────────
-window.removeMemberFromThread = async function(threadId, email) {
-  if (!confirm('Retirer ' + email + ' de la conversation ?')) return;
+let _removeMemberThreadId = null;
+let _removeMemberEmail    = null;
+
+window.removeMemberFromThread = function(threadId, email) {
+  _removeMemberThreadId = threadId;
+  _removeMemberEmail    = email;
+  document.getElementById('remove-member-subtitle').textContent = email;
+  document.getElementById('remove-member-overlay').style.display = 'flex';
+};
+
+window.closeRemoveMember = function() {
+  document.getElementById('remove-member-overlay').style.display = 'none';
+  _removeMemberThreadId = null;
+  _removeMemberEmail    = null;
+};
+
+window.confirmRemoveMember = async function() {
+  const threadId = _removeMemberThreadId;
+  const email    = _removeMemberEmail;
+  if (!threadId || !email) return;
+  document.getElementById('remove-member-btn').disabled = true;
+  closeRemoveMember();
   try {
     const threadRef = firestoreDoc(db, 'ideas', threadId);
     const update = { memberEmails: firestoreArrayRemove(email) };
@@ -7886,6 +7906,7 @@ window.removeMemberFromThread = async function(threadId, email) {
     });
     openThread(threadId);
   } catch(e) {
+    document.getElementById('remove-member-btn').disabled = false;
     alert('Erreur : ' + e.message);
   }
 };
