@@ -7404,9 +7404,23 @@ function _renderMessages(docs, user) {
 
     // Message système
     if (d.type === 'system') {
+      const isSA = isSuperAdmin(fbAuth.currentUser);
+      let sysText = '';
+      if (d.subtype === 'member_added' || d.subtype === 'member_removed') {
+        const verb = d.subtype === 'member_added' ? 'ajouté à' : 'retiré de';
+        if (isSA) {
+          const mLabel = '👤 ' + _escHtml(d.memberName || '') + '<span style="color:var(--text3)">(' + _escHtml(d.memberEmail || '') + ' | ' + _escHtml(d.memberRole || 'user') + ')</span>';
+          const byLabel = _escHtml(d.addedByName || '') + '<span style="color:var(--text3)">(' + _escHtml(d.addedByEmail || '') + ' | ' + _escHtml(d.addedByRole || '') + ')</span>';
+          sysText = mLabel + ' a été ' + verb + ' la conversation par ' + byLabel;
+        } else {
+          sysText = _escHtml(d.memberName || '') + ' a été ' + verb + ' la conversation par ' + _escHtml(d.addedByName || '');
+        }
+      } else {
+        sysText = _escHtml(d.text || '');
+      }
       parts.push('<div style="text-align:center;padding:6px 0">'
         + '<span style="display:inline-block;background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:3px 12px;font-size:11px;color:var(--text3)">'
-        + _escHtml(d.text || '')
+        + sysText
         + '</span></div>');
       return parts.join('');
     }
@@ -7828,9 +7842,15 @@ window.confirmAddMember = async function() {
     const user = fbAuth.currentUser;
     const msgCol = firestoreCollection(db, 'ideas', _addMemberThreadId, 'messages');
     await addFirestoreDoc(msgCol, {
-      type:      'system',
-      text:      '👤 ' + email + ' a été ajouté à la conversation par ' + (user.displayName || user.email.split('@')[0]),
-      createdAt: serverTimestamp(),
+      type:          'system',
+      subtype:       'member_added',
+      memberEmail:   email,
+      memberName:    email.split('@')[0],
+      memberRole:    memberRole,
+      addedByEmail:  user.email || '',
+      addedByName:   user.displayName || user.email.split('@')[0],
+      addedByRole:   currentUserRole,
+      createdAt:     serverTimestamp(),
     });
 
     closeAddMember();
@@ -7855,9 +7875,14 @@ window.removeMemberFromThread = async function(threadId, email) {
     const user = fbAuth.currentUser;
     const msgCol = firestoreCollection(db, 'ideas', threadId, 'messages');
     await addFirestoreDoc(msgCol, {
-      type:      'system',
-      text:      '👤 ' + email + ' a été retiré de la conversation par ' + (user.displayName || user.email.split('@')[0]),
-      createdAt: serverTimestamp(),
+      type:         'system',
+      subtype:      'member_removed',
+      memberEmail:  email,
+      memberName:   email.split('@')[0],
+      addedByEmail: user.email || '',
+      addedByName:  user.displayName || user.email.split('@')[0],
+      addedByRole:  currentUserRole,
+      createdAt:    serverTimestamp(),
     });
     openThread(threadId);
   } catch(e) {
