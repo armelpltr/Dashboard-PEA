@@ -7487,12 +7487,7 @@ function _renderMessages(docs, user) {
     const isSuperAdminMsg = d0.senderRole === 'superadmin';
     const isAdminMsg = d0.senderRole === 'admin' || isSuperAdminMsg;
 
-    // Badge rôle
-    const roleBadge = isSuperAdminMsg
-      ? '<div style="font-size:9px;font-weight:700;background:linear-gradient(135deg,rgba(124,109,245,0.2),rgba(91,141,238,0.15));color:var(--accent);border:1px solid rgba(124,109,245,0.25);border-radius:4px;padding:1px 5px;letter-spacing:.3px;margin-top:2px;text-align:center">⚡ SA</div>'
-      : (d0.senderRole === 'admin'
-        ? '<div style="font-size:9px;font-weight:700;background:rgba(91,141,238,0.12);color:var(--accent2);border:1px solid rgba(91,141,238,0.2);border-radius:4px;padding:1px 5px;letter-spacing:.3px;margin-top:2px;text-align:center">🛡 Admin</div>'
-        : '');
+    const roleBadge = '';
 
     // Avatar + nom en colonne (bottom-aligned), anneau pour admin
     const avatarRing = isAdminMsg
