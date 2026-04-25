@@ -7048,11 +7048,21 @@ function _renderThreads(docs, user) {
     const active = _activeThread === doc.id;
     const statusDot = d.status === 'done'
       ? '<span style="width:6px;height:6px;border-radius:50%;background:var(--positive);flex-shrink:0;display:inline-block"></span>'
+      : d.status === 'closed'
+      ? '<span style="width:6px;height:6px;border-radius:50%;background:var(--negative);flex-shrink:0;display:inline-block"></span>'
       : '';
+    let closedLabel = '';
+    if (d.status === 'closed' && d.expiresAt && d.expiresAt.toDate) {
+      const diff = Math.max(0, d.expiresAt.toDate() - new Date());
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      closedLabel = '<span style="font-size:9px;color:var(--negative);margin-left:4px">🔒 ' + (h > 0 ? h + 'h ' + m + 'm' : m + 'm') + '</span>';
+    }
     return '<div onclick="openThread(\'' + doc.id + '\')" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);background:' + (active ? 'var(--s2)' : 'transparent') + ';transition:background .1s">'
       + '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">'
       + statusDot
       + '<span style="font-size:12px;font-weight:600;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (d.title || 'Sans titre') + '</span>'
+      + closedLabel
       + (unread ? '<span style="background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;flex-shrink:0">' + unread + '</span>' : '')
       + '</div>'
       + (isAdmin(user) ? '<div style="font-size:10px;color:var(--text3)">' + (d.userName || d.userEmail || '') + '</div>' : '')
@@ -7077,16 +7087,48 @@ window.openThread = function(threadId) {
 
   getFirestoreDoc(firestoreDoc(db, 'ideas', threadId)).then(doc => {
     const d = doc.data();
-    const isDone = d.status === 'done';
+    const isClosed = d.status === 'closed';
     const isSA = isSuperAdmin(fbAuth.currentUser);
+
+    // Header
     document.getElementById('ideas-chat-header').innerHTML =
       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
       + '<span style="font-weight:700">' + (d.title || 'Conversation') + '</span>'
       + (isAdmin(user) ? '<span style="font-size:10px;color:var(--text3);font-weight:400">— ' + (d.userName || d.userEmail) + '</span>' : '')
       + '<div style="margin-left:auto;display:flex;gap:6px">'
-      + '<button onclick="closeThread(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:10px;cursor:pointer">Terminer la conversation</button>'
+      + (!isClosed ? '<button onclick="closeThread(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:10px;cursor:pointer">Terminer la conversation</button>' : '')
       + (isSA ? '<button onclick="deleteThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);color:var(--negative);border-radius:6px;font-size:10px;cursor:pointer">🗑 Supprimer</button>' : '')
       + '</div></div>';
+
+    // Input zone lock
+    const inputZone = document.getElementById('ideas-input-zone');
+    if (isClosed) {
+      let timeLeft = '';
+      if (d.expiresAt && d.expiresAt.toDate) {
+        const diff = Math.max(0, d.expiresAt.toDate() - new Date());
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        timeLeft = h > 0 ? `${h}h ${m}m` : `${m}m`;
+      }
+      inputZone.innerHTML = '<div style="text-align:center;padding:10px 0;font-size:12px;color:var(--text3)">'
+        + '🔒 Conversation terminée'
+        + (timeLeft ? ' — suppression dans <span style="color:var(--negative);font-weight:600">' + timeLeft + '</span>' : '')
+        + '</div>';
+    } else {
+      if (!document.getElementById('ideas-msg-input')) {
+        inputZone.innerHTML = ''
+          + '<div id="chat-img-preview" style="display:none;margin-bottom:8px;position:relative;width:fit-content">'
+          + '<img id="chat-img-thumb" style="max-height:80px;border-radius:8px;border:1px solid var(--border)">'
+          + '<button onclick="clearChatImage()" style="position:absolute;top:-6px;right:-6px;background:var(--negative);border:none;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px;text-align:center">✕</button>'
+          + '</div>'
+          + '<div style="display:flex;gap:8px;align-items:flex-end">'
+          + '<button onclick="toggleEmojiPicker()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:6px;border-radius:8px;color:var(--text2);flex-shrink:0" title="Emoji">😊</button>'
+          + '<label style="cursor:pointer;padding:6px;border-radius:8px;font-size:16px;color:var(--text2);flex-shrink:0" title="Photo">📎<input type="file" id="chat-img-input" accept="image/*" onchange="chatImageSelected(event)" style="display:none"></label>'
+          + '<textarea id="ideas-msg-input" placeholder="Votre message…" rows="2" onkeydown="ideasMsgKeydown(event)" style="flex:1;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:9px 12px;font-size:13px;font-family:var(--sans);resize:none"></textarea>'
+          + '<button onclick="sendChatMessage()" style="padding:0 16px;height:42px;background:var(--accent);border:none;color:#fff;border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0">↑</button>'
+          + '</div>';
+      }
+    }
   });
 
   const msgCol = firestoreCollection(db, 'ideas', threadId, 'messages');
