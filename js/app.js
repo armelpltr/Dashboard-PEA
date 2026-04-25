@@ -7713,7 +7713,7 @@ window.confirmAddMember = async function() {
   btn.textContent = '…';
   st.textContent = '';
   try {
-    const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'users'), firestoreWhere('email', '==', email)));
+    const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'roles'), firestoreWhere('email', '==', email)));
     if (snap.empty) {
       st.style.color = 'var(--negative)';
       st.textContent = 'Utilisateur introuvable.';
