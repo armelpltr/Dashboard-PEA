@@ -7487,25 +7487,27 @@ function _renderMessages(docs, user) {
     const isSuperAdminMsg = d0.senderRole === 'superadmin';
     const isAdminMsg = d0.senderRole === 'admin' || isSuperAdminMsg;
 
-    // Avatar (bottom-aligned, 36px, anneau pour admin)
+    // Avatar seulement pour les messages des autres (pas les siens — style iMessage)
     const avatarRing = isAdminMsg
-      ? 'outline:2px solid ' + (isSuperAdminMsg ? 'rgba(124,109,245,0.7)' : 'rgba(91,141,238,0.6)') + ';outline-offset:2px;'
+      ? ';outline:2px solid ' + (isSuperAdminMsg ? 'rgba(124,109,245,0.7)' : 'rgba(91,141,238,0.6)') + ';outline-offset:2px'
       : '';
-    const avatarEl = senderAvatarSrc
-      ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end;' + avatarRing + '" title="' + _escHtml(d0.senderName || '') + '">'
-      : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--s4),var(--muted2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text2);flex-shrink:0;align-self:flex-end;' + avatarRing + '">' + _escHtml((d0.senderName||'?')[0].toUpperCase()) + '</div>';
+    const avatarEl = mine ? '<div style="width:36px;flex-shrink:0"></div>' // spacer invisible pour alignement
+      : (senderAvatarSrc
+        ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end' + avatarRing + '" title="' + _escHtml(d0.senderName || '') + '">'
+        : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--s4),var(--muted2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text2);flex-shrink:0;align-self:flex-end' + avatarRing + '">' + _escHtml((d0.senderName||'?')[0].toUpperCase()) + '</div>');
 
-    // Badge rôle
-    const roleBadge = isSuperAdminMsg
-      ? '<span style="font-size:9px;font-weight:700;background:linear-gradient(135deg,rgba(124,109,245,0.25),rgba(91,141,238,0.2));color:var(--accent);border:1px solid rgba(124,109,245,0.25);border-radius:4px;padding:1px 6px;letter-spacing:.3px">⚡ Super Admin</span>'
-      : (d0.senderRole === 'admin'
-        ? '<span style="font-size:9px;font-weight:700;background:rgba(91,141,238,0.15);color:var(--accent2);border:1px solid rgba(91,141,238,0.2);border-radius:4px;padding:1px 6px;letter-spacing:.3px">🛡 Admin</span>'
+    // Badge rôle (uniquement pour les autres)
+    const roleBadge = !mine && isSuperAdminMsg
+      ? '<span style="font-size:9px;font-weight:700;background:linear-gradient(135deg,rgba(124,109,245,0.2),rgba(91,141,238,0.15));color:var(--accent);border:1px solid rgba(124,109,245,0.25);border-radius:4px;padding:1px 6px;letter-spacing:.3px">⚡ SA</span>'
+      : (!mine && d0.senderRole === 'admin'
+        ? '<span style="font-size:9px;font-weight:700;background:rgba(91,141,238,0.12);color:var(--accent2);border:1px solid rgba(91,141,238,0.2);border-radius:4px;padding:1px 6px;letter-spacing:.3px">🛡</span>'
         : '');
 
-    // Nom + meta
-    const nameHtml = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;' + (mine ? 'flex-direction:row-reverse' : '') + '">'
-      + roleBadge
+    // Nom : pour les autres uniquement, avec email SA si vue SA
+    const nameHtml = mine ? '' :
+      '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">'
       + '<span style="font-size:12px;font-weight:700;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text)') + '">' + _escHtml(d0.senderName || '') + '</span>'
+      + roleBadge
       + (isSA && d0.senderEmail ? '<span style="font-size:10px;color:var(--text3)">' + _escHtml(d0.senderEmail) + '</span>' : '')
       + '</div>';
 
@@ -7513,18 +7515,17 @@ function _renderMessages(docs, user) {
     let bubblesHtml = '';
     group.msgs.forEach(({ doc: mDoc, idx: mIdx }, mPos) => {
       const d = mDoc.data();
-      const isFirst = mPos === 0;
       const isLastMsg = mPos === group.msgs.length - 1;
       const isOnlyMsg = group.msgs.length === 1;
       const isLastOfAll = mIdx === docs.length - 1;
       const createdAt = d.createdAt ? d.createdAt.toDate() : null;
       const time = createdAt ? createdAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
 
-      // Border-radius adaptatif style iMessage/Discord
+      // Border-radius adaptatif
       let radius;
       if (isOnlyMsg) {
         radius = mine ? '18px 4px 18px 18px' : '4px 18px 18px 18px';
-      } else if (isFirst) {
+      } else if (mPos === 0) {
         radius = mine ? '18px 4px 4px 18px' : '4px 18px 18px 4px';
       } else if (isLastMsg) {
         radius = mine ? '18px 4px 18px 18px' : '4px 18px 18px 18px';
@@ -7532,36 +7533,33 @@ function _renderMessages(docs, user) {
         radius = mine ? '18px 4px 4px 18px' : '4px 18px 18px 4px';
       }
 
-      // Fond bulle
       const bubbleBg = mine
         ? 'background:linear-gradient(135deg,#7c6df5,#5b8dee);'
         : 'background:var(--s3);border:1px solid var(--border2);';
       const bubbleColor = mine ? 'color:#fff;' : 'color:var(--text);';
       const bubbleShadow = mine
-        ? 'box-shadow:0 2px 12px rgba(124,109,245,0.25),0 1px 3px rgba(0,0,0,0.15);'
-        : 'box-shadow:0 1px 4px rgba(0,0,0,0.12);';
+        ? 'box-shadow:0 2px 12px rgba(124,109,245,0.22),0 1px 3px rgba(0,0,0,0.15);'
+        : 'box-shadow:0 1px 4px rgba(0,0,0,0.1);';
 
       const replyHtml = d.replyTo
-        ? '<div style="' + (mine ? 'background:rgba(255,255,255,0.12);border-left:3px solid rgba(255,255,255,0.5);' : 'background:rgba(124,109,245,0.08);border-left:3px solid var(--accent);') + 'border-radius:4px;padding:5px 9px;margin-bottom:5px;font-size:11px">'
-          + '<span style="font-weight:700;' + (mine ? 'color:rgba(255,255,255,0.85)' : 'color:var(--accent)') + '">' + _escHtml(d.replyTo.senderName || '') + '</span><br>'
-          + '<span style="' + (mine ? 'color:rgba(255,255,255,0.65)' : 'color:var(--text2)') + '">' + _escHtml((d.replyTo.text || '📷 Photo').slice(0, 80)) + ((d.replyTo.text||'').length > 80 ? '…' : '') + '</span>'
+        ? '<div style="margin:8px 12px 0;' + (mine ? 'background:rgba(255,255,255,0.12);border-left:3px solid rgba(255,255,255,0.45);' : 'background:rgba(124,109,245,0.08);border-left:3px solid var(--accent);') + 'border-radius:4px;padding:5px 9px;font-size:11px">'
+          + '<div style="font-weight:700;' + (mine ? 'color:rgba(255,255,255,0.85)' : 'color:var(--accent)') + ';margin-bottom:2px">' + _escHtml(d.replyTo.senderName || '') + '</div>'
+          + '<div style="' + (mine ? 'color:rgba(255,255,255,0.65)' : 'color:var(--text2)') + '">' + _escHtml((d.replyTo.text || '📷 Photo').slice(0, 80)) + ((d.replyTo.text||'').length > 80 ? '…' : '') + '</div>'
           + '</div>'
         : '';
 
       const readHtml = (mine && isLastOfAll)
-        ? '<span id="chat-last-read" style="font-size:10px;font-weight:600;color:' + (isRead ? '#7c6df5' : 'var(--text3)') + '">' + (isRead ? '✓✓' : '✓') + '</span>'
+        ? '<span id="chat-last-read" style="font-size:10px;font-weight:600;color:' + (isRead ? 'var(--accent)' : 'var(--text3)') + '">' + (isRead ? '✓✓' : '✓') + '</span>'
         : '';
 
-      // Heure affichée au survol via title, et en inline sous le dernier msg
-      bubblesHtml += '<div class="chat-msg-wrap" id="msg-' + mDoc.id + '" style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:2px">'
-        + '<div style="display:flex;align-items:center;gap:5px' + (mine ? ';flex-direction:row-reverse' : '') + '">'
-        + '<button class="reply-btn" onclick="setReply(\'' + mDoc.id + '\',\'' + _escAttr(d.senderName||'') + '\',\'' + _escAttr((d.text||'').slice(0,80)) + '\')" style="opacity:0;transition:opacity .15s;background:var(--s3);border:1px solid var(--border2);color:var(--text3);cursor:pointer;font-size:12px;padding:3px 8px;border-radius:8px;flex-shrink:0" title="Répondre">↩</button>'
-        + '<div class="chat-bubble" title="' + _escAttr(time) + '" style="max-width:75%;border-radius:' + radius + ';overflow:hidden;' + bubbleBg + bubbleShadow + 'transition:filter .1s">'
-        + (d.image ? '<img src="' + d.image + '" onclick="openLightbox(this.src)" style="max-width:100%;display:block;cursor:zoom-in;border-radius:' + (d.text ? '0' : radius) + '">' : '')
-        + (d.text ? '<div style="padding:9px 14px;' + bubbleColor + 'font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word">' + _escHtml(d.text) + '</div>' : '')
-        + (replyHtml ? '<div style="padding:8px 14px 0">' + replyHtml + '</div>' : '')
+      // Bulle avec reply-btn en position absolute pour ne pas perturber le layout
+      bubblesHtml += '<div class="chat-msg-wrap" id="msg-' + mDoc.id + '" style="position:relative;display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:2px">'
+        + '<div class="chat-bubble" style="max-width:75%;border-radius:' + radius + ';overflow:hidden;' + bubbleBg + bubbleShadow + 'transition:filter .12s">'
+        + replyHtml
+        + (d.image ? '<img src="' + d.image + '" onclick="openLightbox(this.src)" style="max-width:100%;display:block;cursor:zoom-in">' : '')
+        + (d.text ? '<div style="padding:9px 14px;' + bubbleColor + 'font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word' + (replyHtml ? ';margin-top:6px' : '') + '">' + _escHtml(d.text) + '</div>' : '')
         + '</div>'
-        + '</div>'
+        + '<button class="reply-btn" onclick="setReply(\'' + mDoc.id + '\',\'' + _escAttr(d.senderName||'') + '\',\'' + _escAttr((d.text||'').slice(0,80)) + '\')" style="display:none;position:absolute;' + (mine ? 'left:-36px' : 'right:-36px') + ';top:50%;transform:translateY(-50%);background:var(--s3);border:1px solid var(--border2);color:var(--text3);cursor:pointer;font-size:12px;padding:3px 7px;border-radius:8px;white-space:nowrap" title="Répondre">↩</button>'
         + (isLastMsg ? '<div style="display:flex;align-items:center;gap:4px;margin-top:3px;' + (mine ? 'justify-content:flex-end' : '') + '">'
           + '<span style="font-size:10px;color:var(--text3)">' + time + '</span>'
           + readHtml
@@ -7569,7 +7567,7 @@ function _renderMessages(docs, user) {
         + '</div>';
     });
 
-    html += '<div style="display:flex;gap:10px;margin-bottom:14px' + (mine ? ';flex-direction:row-reverse' : '') + ';padding:0 2px">'
+    html += '<div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:14px' + (mine ? ';flex-direction:row-reverse' : '') + ';padding:0 6px">'
       + avatarEl
       + '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + '">'
       + nameHtml
@@ -7580,16 +7578,16 @@ function _renderMessages(docs, user) {
 
   el.innerHTML = html;
 
-  // Hover: reply button + bulle légère
+  // Hover: reply button (display toggle) + bulle brightness
   el.querySelectorAll('.chat-msg-wrap').forEach(wrap => {
     const btn = wrap.querySelector('.reply-btn');
     const bbl = wrap.querySelector('.chat-bubble');
     if (btn) {
-      wrap.addEventListener('mouseenter', () => btn.style.opacity = '1');
-      wrap.addEventListener('mouseleave', () => btn.style.opacity = '0');
+      wrap.addEventListener('mouseenter', () => btn.style.display = 'block');
+      wrap.addEventListener('mouseleave', () => btn.style.display = 'none');
     }
     if (bbl) {
-      bbl.addEventListener('mouseenter', () => bbl.style.filter = 'brightness(1.07)');
+      bbl.addEventListener('mouseenter', () => bbl.style.filter = 'brightness(1.08)');
       bbl.addEventListener('mouseleave', () => bbl.style.filter = '');
     }
   });
