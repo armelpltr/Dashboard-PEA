@@ -7018,9 +7018,7 @@ function _listenThreads(user) {
       const cur  = d[unreadField] || 0;
       _threadUnread[tid] = cur;
       if (cur > prev) {
-        const panelOpen = document.getElementById('ideas-overlay').style.display === 'flex';
-        const activeAndVisible = panelOpen && _activeThread === tid;
-        if (!activeAndVisible) {
+        if (_activeThread !== tid) {
           _playSound('message');
           _showChatToast({ icon: '💬', title: d.lastSenderName || d.title || 'Nouveau message', msg: d.lastMessage || '📷 Photo', threadId: tid });
         }
