@@ -7404,113 +7404,194 @@ function _renderMessages(docs, user) {
   const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
   const firstUnreadIdx = _currentThreadUnreadCount > 0 ? Math.max(0, docs.length - _currentThreadUnreadCount) : -1;
   const isRead = isAdmin(user) ? (_currentThreadUnreadUser === 0) : (_currentThreadUnreadAdmin === 0);
+  const isSA = isSuperAdmin(fbAuth.currentUser);
   let lastDateLabel = null;
+  let html = '';
 
-  const html = docs.map((doc, idx) => {
+  // Groupe les messages consécutifs du même expéditeur (fenêtre 3 min)
+  const groups = [];
+  docs.forEach((doc, idx) => {
     const d = doc.data();
+    if (d.type === 'system') { groups.push({ system: true, doc, idx }); return; }
     const mine = d.senderUid === fbAuth.currentUser.uid;
-    const createdAt = d.createdAt ? d.createdAt.toDate() : null;
-    const time = createdAt ? createdAt.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) : '';
-    const isAdminMsg = d.senderRole === 'admin' || d.senderRole === 'superadmin';
-    const isLast = idx === docs.length - 1;
-    let parts = [];
+    const prev = idx > 0 ? docs[idx - 1].data() : null;
+    const tCur  = d.createdAt ? d.createdAt.toMillis() : 0;
+    const tPrev = prev && prev.createdAt ? prev.createdAt.toMillis() : 0;
+    const sameGroup = prev && !prev.type && prev.senderUid === d.senderUid && (tCur - tPrev) < 180000;
+    if (sameGroup && groups.length && !groups[groups.length - 1].system) {
+      groups[groups.length - 1].msgs.push({ doc, idx });
+    } else {
+      groups.push({ system: false, mine, msgs: [{ doc, idx }] });
+    }
+  });
 
-    // Date separator
-    if (createdAt) {
-      const dl = _dateLabel(createdAt);
+  groups.forEach(group => {
+    // Séparateur date
+    const firstDoc = group.system ? group.doc : group.msgs[0].doc;
+    const firstD   = firstDoc.data();
+    const firstAt  = firstD.createdAt ? firstD.createdAt.toDate() : null;
+    if (firstAt) {
+      const dl = _dateLabel(firstAt);
       if (dl !== lastDateLabel) {
         lastDateLabel = dl;
-        parts.push('<div style="text-align:center;font-size:10px;color:var(--text3);padding:8px 0;font-weight:600;letter-spacing:.3px">' + _escHtml(dl) + '</div>');
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:14px 4px 10px">'
+          + '<div style="flex:1;height:1px;background:linear-gradient(to right,transparent,var(--border2))"></div>'
+          + '<span style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:1px;text-transform:uppercase;white-space:nowrap">' + _escHtml(dl) + '</span>'
+          + '<div style="flex:1;height:1px;background:linear-gradient(to left,transparent,var(--border2))"></div>'
+          + '</div>';
       }
     }
 
-    // Unread separator
-    if (idx === firstUnreadIdx && firstUnreadIdx > 0) {
-      parts.push('<div data-unread-sep style="display:flex;align-items:center;gap:8px;padding:4px 0">'
-        + '<div style="flex:1;height:1px;background:var(--accent);opacity:.3"></div>'
-        + '<span style="font-size:10px;color:var(--accent);font-weight:600">Nouveaux messages</span>'
-        + '<div style="flex:1;height:1px;background:var(--accent);opacity:.3"></div>'
-        + '</div>');
+    // Séparateur non-lus
+    if (group.msgs && group.msgs[0].idx === firstUnreadIdx && firstUnreadIdx > 0) {
+      html += '<div data-unread-sep style="display:flex;align-items:center;gap:8px;padding:6px 0 10px">'
+        + '<div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(124,109,245,0.4))"></div>'
+        + '<span style="font-size:10px;color:var(--accent);font-weight:700;letter-spacing:.5px;background:rgba(124,109,245,0.1);border:1px solid rgba(124,109,245,0.2);border-radius:20px;padding:2px 10px">Nouveaux messages</span>'
+        + '<div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(124,109,245,0.4))"></div>'
+        + '</div>';
     }
 
     // Message système
-    if (d.type === 'system') {
-      const isSA = isSuperAdmin(fbAuth.currentUser);
+    if (group.system) {
+      const d = group.doc.data();
+      let sysIcon = '💬';
       let sysText = '';
       if (d.subtype === 'member_added' || d.subtype === 'member_removed') {
-        const verb = d.subtype === 'member_added' ? 'ajouté à' : 'retiré de';
+        sysIcon = d.subtype === 'member_added' ? '👤' : '👋';
+        const verb = d.subtype === 'member_added' ? 'a rejoint' : 'a quitté';
         if (isSA) {
-          const mLabel = '👤 ' + _escHtml(d.memberName || '') + '<span style="color:var(--text3)">(' + _escHtml(d.memberEmail || '') + ' | ' + _escHtml(d.memberRole || 'user') + ')</span>';
-          const byLabel = _escHtml(d.addedByName || '') + '<span style="color:var(--text3)">(' + _escHtml(d.addedByEmail || '') + ' | ' + _escHtml(d.addedByRole || '') + ')</span>';
-          sysText = mLabel + ' a été ' + verb + ' la conversation par ' + byLabel;
+          sysText = '<strong style="color:var(--text2)">' + _escHtml(d.memberName || '') + '</strong>'
+            + ' <span style="color:var(--text3);font-size:10px">(' + _escHtml(d.memberEmail || '') + ' · ' + _escHtml(d.memberRole || 'user') + ')</span>'
+            + ' ' + verb + ' la conv · par <strong style="color:var(--text2)">' + _escHtml(d.addedByName || '') + '</strong>'
+            + ' <span style="color:var(--text3);font-size:10px">(' + _escHtml(d.addedByEmail || '') + ')</span>';
         } else {
-          sysText = _escHtml(d.memberName || '') + ' a été ' + verb + ' la conversation par ' + _escHtml(d.addedByName || '');
+          sysText = '<strong style="color:var(--text2)">' + _escHtml(d.memberName || '') + '</strong> ' + verb + ' la conversation';
         }
       } else {
         sysText = _escHtml(d.text || '');
       }
-      parts.push('<div style="text-align:center;padding:6px 0">'
-        + '<span style="display:inline-block;background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:3px 12px;font-size:11px;color:var(--text3)">'
-        + sysText
-        + '</span></div>');
-      return parts.join('');
+      const sysAt = firstD.createdAt ? firstD.createdAt.toDate().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+      html += '<div style="display:flex;justify-content:center;padding:3px 0 10px">'
+        + '<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.03);border:1px solid var(--border2);border-radius:20px;padding:4px 14px 4px 10px;font-size:11px;color:var(--text3);max-width:90%">'
+        + '<span style="font-size:13px">' + sysIcon + '</span>'
+        + '<span>' + sysText + '</span>'
+        + (sysAt ? '<span style="font-size:10px;color:var(--text3);opacity:.6;margin-left:2px">' + sysAt + '</span>' : '')
+        + '</div></div>';
+      return;
     }
 
-    // Reply quote
-    const replyHtml = d.replyTo
-      ? '<div style="background:rgba(124,109,245,0.08);border-left:3px solid var(--accent);border-radius:4px;padding:5px 8px;margin-bottom:2px;font-size:11px;color:var(--text2)">'
-        + '<span style="font-weight:600;color:var(--accent)">' + _escHtml(d.replyTo.senderName || '') + '</span><br>'
-        + _escHtml((d.replyTo.text || '📷 Photo').slice(0, 80)) + ((d.replyTo.text||'').length > 80 ? '…' : '')
+    // Groupe de messages normaux
+    const { mine } = group;
+    const d0 = group.msgs[0].doc.data();
+    const senderAvatarSrc = (d0.senderEmail && _avatarCache[d0.senderEmail]) || d0.senderAvatar || null;
+    const isSuperAdminMsg = d0.senderRole === 'superadmin';
+    const isAdminMsg = d0.senderRole === 'admin' || isSuperAdminMsg;
+
+    // Avatar (bottom-aligned, 36px, anneau pour admin)
+    const avatarRing = isAdminMsg
+      ? 'outline:2px solid ' + (isSuperAdminMsg ? 'rgba(124,109,245,0.7)' : 'rgba(91,141,238,0.6)') + ';outline-offset:2px;'
+      : '';
+    const avatarEl = senderAvatarSrc
+      ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end;' + avatarRing + '" title="' + _escHtml(d0.senderName || '') + '">'
+      : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--s4),var(--muted2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text2);flex-shrink:0;align-self:flex-end;' + avatarRing + '">' + _escHtml((d0.senderName||'?')[0].toUpperCase()) + '</div>';
+
+    // Badge rôle
+    const roleBadge = isSuperAdminMsg
+      ? '<span style="font-size:9px;font-weight:700;background:linear-gradient(135deg,rgba(124,109,245,0.25),rgba(91,141,238,0.2));color:var(--accent);border:1px solid rgba(124,109,245,0.25);border-radius:4px;padding:1px 6px;letter-spacing:.3px">⚡ Super Admin</span>'
+      : (d0.senderRole === 'admin'
+        ? '<span style="font-size:9px;font-weight:700;background:rgba(91,141,238,0.15);color:var(--accent2);border:1px solid rgba(91,141,238,0.2);border-radius:4px;padding:1px 6px;letter-spacing:.3px">🛡 Admin</span>'
+        : '');
+
+    // Nom + meta
+    const nameHtml = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;' + (mine ? 'flex-direction:row-reverse' : '') + '">'
+      + roleBadge
+      + '<span style="font-size:12px;font-weight:700;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text)') + '">' + _escHtml(d0.senderName || '') + '</span>'
+      + (isSA && d0.senderEmail ? '<span style="font-size:10px;color:var(--text3)">' + _escHtml(d0.senderEmail) + '</span>' : '')
+      + '</div>';
+
+    // Bulles
+    let bubblesHtml = '';
+    group.msgs.forEach(({ doc: mDoc, idx: mIdx }, mPos) => {
+      const d = mDoc.data();
+      const isFirst = mPos === 0;
+      const isLastMsg = mPos === group.msgs.length - 1;
+      const isOnlyMsg = group.msgs.length === 1;
+      const isLastOfAll = mIdx === docs.length - 1;
+      const createdAt = d.createdAt ? d.createdAt.toDate() : null;
+      const time = createdAt ? createdAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+
+      // Border-radius adaptatif style iMessage/Discord
+      let radius;
+      if (isOnlyMsg) {
+        radius = mine ? '18px 4px 18px 18px' : '4px 18px 18px 18px';
+      } else if (isFirst) {
+        radius = mine ? '18px 4px 4px 18px' : '4px 18px 18px 4px';
+      } else if (isLastMsg) {
+        radius = mine ? '18px 4px 18px 18px' : '4px 18px 18px 18px';
+      } else {
+        radius = mine ? '18px 4px 4px 18px' : '4px 18px 18px 4px';
+      }
+
+      // Fond bulle
+      const bubbleBg = mine
+        ? 'background:linear-gradient(135deg,#7c6df5,#5b8dee);'
+        : 'background:var(--s3);border:1px solid var(--border2);';
+      const bubbleColor = mine ? 'color:#fff;' : 'color:var(--text);';
+      const bubbleShadow = mine
+        ? 'box-shadow:0 2px 12px rgba(124,109,245,0.25),0 1px 3px rgba(0,0,0,0.15);'
+        : 'box-shadow:0 1px 4px rgba(0,0,0,0.12);';
+
+      const replyHtml = d.replyTo
+        ? '<div style="' + (mine ? 'background:rgba(255,255,255,0.12);border-left:3px solid rgba(255,255,255,0.5);' : 'background:rgba(124,109,245,0.08);border-left:3px solid var(--accent);') + 'border-radius:4px;padding:5px 9px;margin-bottom:5px;font-size:11px">'
+          + '<span style="font-weight:700;' + (mine ? 'color:rgba(255,255,255,0.85)' : 'color:var(--accent)') + '">' + _escHtml(d.replyTo.senderName || '') + '</span><br>'
+          + '<span style="' + (mine ? 'color:rgba(255,255,255,0.65)' : 'color:var(--text2)') + '">' + _escHtml((d.replyTo.text || '📷 Photo').slice(0, 80)) + ((d.replyTo.text||'').length > 80 ? '…' : '') + '</span>'
+          + '</div>'
+        : '';
+
+      const readHtml = (mine && isLastOfAll)
+        ? '<span id="chat-last-read" style="font-size:10px;font-weight:600;color:' + (isRead ? '#7c6df5' : 'var(--text3)') + '">' + (isRead ? '✓✓' : '✓') + '</span>'
+        : '';
+
+      // Heure affichée au survol via title, et en inline sous le dernier msg
+      bubblesHtml += '<div class="chat-msg-wrap" id="msg-' + mDoc.id + '" style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:2px">'
+        + '<div style="display:flex;align-items:center;gap:5px' + (mine ? ';flex-direction:row-reverse' : '') + '">'
+        + '<button class="reply-btn" onclick="setReply(\'' + mDoc.id + '\',\'' + _escAttr(d.senderName||'') + '\',\'' + _escAttr((d.text||'').slice(0,80)) + '\')" style="opacity:0;transition:opacity .15s;background:var(--s3);border:1px solid var(--border2);color:var(--text3);cursor:pointer;font-size:12px;padding:3px 8px;border-radius:8px;flex-shrink:0" title="Répondre">↩</button>'
+        + '<div class="chat-bubble" title="' + _escAttr(time) + '" style="max-width:75%;border-radius:' + radius + ';overflow:hidden;' + bubbleBg + bubbleShadow + 'transition:filter .1s">'
+        + (d.image ? '<img src="' + d.image + '" onclick="openLightbox(this.src)" style="max-width:100%;display:block;cursor:zoom-in;border-radius:' + (d.text ? '0' : radius) + '">' : '')
+        + (d.text ? '<div style="padding:9px 14px;' + bubbleColor + 'font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word">' + _escHtml(d.text) + '</div>' : '')
+        + (replyHtml ? '<div style="padding:8px 14px 0">' + replyHtml + '</div>' : '')
         + '</div>'
-      : '';
+        + '</div>'
+        + (isLastMsg ? '<div style="display:flex;align-items:center;gap:4px;margin-top:3px;' + (mine ? 'justify-content:flex-end' : '') + '">'
+          + '<span style="font-size:10px;color:var(--text3)">' + time + '</span>'
+          + readHtml
+          + '</div>' : '')
+        + '</div>';
+    });
 
-    // Read status on last sent message
-    const readStatusHtml = (mine && isLast)
-      ? '<span id="chat-last-read" style="font-size:10px;color:' + (isRead ? 'var(--accent)' : 'var(--text3)') + ';margin-left:2px">' + (isRead ? '✓✓' : '✓') + '</span>'
-      : '';
-
-    // Reply button
-    const replyBtn = '<button class="reply-btn" onclick="setReply(\'' + doc.id + '\',\'' + _escAttr(d.senderName||'') + '\',\'' + _escAttr((d.text||'').slice(0,80)) + '\')" style="opacity:0;transition:opacity .15s;background:none;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px;border-radius:6px;flex-shrink:0" title="Répondre">↩</button>';
-
-    const senderAvatarSrc = (d.senderEmail && _avatarCache[d.senderEmail]) || d.senderAvatar || null;
-    const _avStyle = 'width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end;margin-bottom:18px';
-    const _avFallStyle = 'width:28px;height:28px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0;align-self:flex-end;margin-bottom:18px';
-    const avatarHtml = senderAvatarSrc
-      ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="' + _avStyle + '">'
-      : '<div style="' + _avFallStyle + '">' + _escHtml((d.senderName||'?')[0].toUpperCase()) + '</div>';
-
-    parts.push(
-      '<div class="chat-msg-wrap" style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + '" id="msg-' + doc.id + '">'
-      + '<span style="font-size:10px;margin-bottom:3px;display:inline-flex;align-items:center;gap:4px;' + (mine ? 'margin-right:36px;justify-content:flex-end' : 'margin-left:36px') + '">'
-          + '<span style="color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text3)') + ';font-weight:' + (isAdminMsg ? '600' : '400') + '">' + (isAdminMsg ? '⚡ ' : '') + _escHtml(d.senderName || '') + '</span>'
-          + (isSuperAdmin(fbAuth.currentUser) && d.senderEmail ? '<span style="color:var(--text3);font-weight:400">' + _escHtml(d.senderEmail) + '</span>' : '')
-          + (isSuperAdmin(fbAuth.currentUser) && d.senderRole ? '<span style="font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:4px;background:var(--s3);color:var(--text3)">' + _escHtml(d.senderRole) + '</span>' : '')
-          + '</span>'
-      + '<div style="display:flex;align-items:flex-end;gap:6px' + (mine ? ';flex-direction:row-reverse' : '') + '">'
-      + avatarHtml
-      + replyBtn
-      + '<div style="max-width:75%;border-radius:' + (mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px') + ';overflow:hidden;border:1px solid ' + (mine ? 'transparent' : 'var(--border)') + '">'
-      + replyHtml
-      + (d.image ? '<img src="' + d.image + '" onclick="openLightbox(this.src)" style="max-width:100%;display:block;cursor:pointer;border-radius:6px" title="Cliquer pour agrandir">' : '')
-      + (d.text ? '<div style="padding:9px 13px;background:' + (mine ? 'var(--accent)' : 'var(--s2)') + ';color:' + (mine ? '#fff' : 'var(--text)') + ';font-size:13px;line-height:1.5;white-space:pre-wrap">' + _escHtml(d.text) + '</div>' : '')
-      + '</div></div>'
-      + '<div style="display:flex;align-items:center;gap:3px;margin-top:3px">'
-      + '<span style="font-size:10px;color:var(--text3)">' + time + '</span>'
-      + readStatusHtml
+    html += '<div style="display:flex;gap:10px;margin-bottom:14px' + (mine ? ';flex-direction:row-reverse' : '') + ';padding:0 2px">'
+      + avatarEl
+      + '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + '">'
+      + nameHtml
+      + bubblesHtml
       + '</div>'
-      + '</div>'
-    );
-    return parts.join('');
-  }).join('');
+      + '</div>';
+  });
 
   el.innerHTML = html;
 
-  // Hover events for reply buttons
+  // Hover: reply button + bulle légère
   el.querySelectorAll('.chat-msg-wrap').forEach(wrap => {
     const btn = wrap.querySelector('.reply-btn');
-    if (!btn) return;
-    wrap.addEventListener('mouseenter', () => btn.style.opacity = '1');
-    wrap.addEventListener('mouseleave', () => btn.style.opacity = '0');
+    const bbl = wrap.querySelector('.chat-bubble');
+    if (btn) {
+      wrap.addEventListener('mouseenter', () => btn.style.opacity = '1');
+      wrap.addEventListener('mouseleave', () => btn.style.opacity = '0');
+    }
+    if (bbl) {
+      bbl.addEventListener('mouseenter', () => bbl.style.filter = 'brightness(1.07)');
+      bbl.addEventListener('mouseleave', () => bbl.style.filter = '');
+    }
   });
 
   // Scroll behavior
