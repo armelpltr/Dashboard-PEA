@@ -377,11 +377,9 @@ async function startApp(user) {
   // Charger le rôle depuis Firestore
   try {
     const roleDoc = await getFirestoreDoc(firestoreDoc(db, 'roles', user.uid));
-    const avatarSync = { email: user.email, displayName: user.displayName || '' };
-    if (user.photoURL) avatarSync.photoURL = user.photoURL;
-    const cachedAvatar = getUserSettings(user.uid).avatarBase64;
-    if (cachedAvatar) avatarSync.avatarBase64 = cachedAvatar;
-    await setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), avatarSync, { merge: true });
+    const baseSync = { email: user.email, displayName: user.displayName || '' };
+    if (user.photoURL) baseSync.photoURL = user.photoURL;
+    await setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), baseSync, { merge: true });
     if (!roleDoc.exists()) {
       await setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { role: 'user', email: user.email });
     }
@@ -398,8 +396,10 @@ async function startApp(user) {
     'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
   // Charger FX rates + données Firestore avant de rendre
   await Promise.all([loadAllUserData(user.uid), loadFxRates()]);
-  // Avatar APRÈS chargement des settings (base64 dispo)
+  // Avatar + sync roles APRÈS chargement des settings (avatarBase64 dispo)
   updateMobileAvatar(user);
+  const _avatar = getUserSettings(user.uid).avatarBase64;
+  if (_avatar) setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { avatarBase64: _avatar }, { merge: true }).catch(() => {});
   loadProfilePage(user);
   window.renderPortfolio();
   window.fetchAllLogos();
