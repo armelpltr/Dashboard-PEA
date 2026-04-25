@@ -6918,10 +6918,63 @@ function renderPerformancePage(result, portfolio, txs) {
 // CHAT IDÉES & SUGGESTIONS
 // ═══════════════════════════════════════════════════════════
 
-let _threadsUnsub = null;
-let _chatUnsub    = null;
-let _activeThread = null;
-let _chatMsgCount = 0;
+let _threadsUnsub  = null;
+let _chatUnsub     = null;
+let _threadDocUnsub = null;
+let _activeThread  = null;
+let _chatMsgCount  = 0;
+let _replyTo       = null;
+let _typingActive  = false;
+let _typingTimer   = null;
+let _searchQuery   = '';
+let _lastThreadDocs = null;
+let _lastThreadUser = null;
+let _currentThreadUnreadCount  = 0;
+let _currentThreadUnreadAdmin  = 0;
+let _currentThreadUnreadUser   = 0;
+
+function _escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _escAttr(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function _dateLabel(date) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const yest  = new Date(today); yest.setDate(today.getDate()-1);
+  const d = new Date(date); d.setHours(0,0,0,0);
+  if (+d === +today) return "Aujourd'hui";
+  if (+d === +yest)  return 'Hier';
+  return date.toLocaleDateString('fr-FR', {day:'numeric',month:'long',year:'numeric'});
+}
+function _updateFavicon(count) {
+  try {
+    const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    const img = new Image(); img.src = '/favicon-32.png';
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, 32, 32);
+      if (count > 0) {
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath(); ctx.arc(24, 8, 9, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(count > 9 ? '9+' : String(count), 24, 8);
+      }
+      let link = document.querySelector("link[rel='icon']") || document.querySelector("link[rel='shortcut icon']");
+      if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+      link.href = canvas.toDataURL();
+    };
+    img.onerror = () => {};
+  } catch(e) {}
+}
+function _requestNotifPermission() {
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+}
+function _showBrowserNotif(title, body, threadId) {
+  if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
+  try {
+    const n = new Notification('Dashboard PEA — ' + title, { body, icon: '/favicon-32.png' });
+    n.onclick = () => { window.focus(); openIdeasPanel(); if (threadId) openThread(threadId); n.close(); };
+    setTimeout(() => n.close(), 8000);
+  } catch(e) {}
+}
 
 let _toastTimer   = null;
 let _threadUnread = {}; // { [threadId]: unreadCount }
@@ -6976,16 +7029,25 @@ function _playSound(type) {
 window.openIdeasPanel = function() {
   document.getElementById('ideas-overlay').style.display = 'flex';
   updateRoleBadges();
+  _requestNotifPermission();
   const user = fbAuth.currentUser;
   document.getElementById('ideas-panel-subtitle').textContent = isAdmin(user)
     ? 'Toutes les conversations' : 'Envoyez un message ou une idée';
   document.getElementById('btn-new-thread').style.display = isAdmin(user) ? 'none' : 'inline-block';
+  const searchZone = document.getElementById('chat-search-zone');
+  if (searchZone) searchZone.style.display = isAdmin(user) ? 'block' : 'none';
   if (!_threadsUnsub) _listenThreads(user);
 };
 
 window.closeIdeasPanel = function() {
   document.getElementById('ideas-overlay').style.display = 'none';
-  if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
+  if (_chatUnsub)      { _chatUnsub();      _chatUnsub      = null; }
+  if (_threadDocUnsub) { _threadDocUnsub(); _threadDocUnsub = null; }
+  _clearTyping();
+  clearReply();
+  _searchQuery = '';
+  const si = document.getElementById('chat-search-input');
+  if (si) si.value = '';
   _activeThread = null;
 };
 
@@ -6999,6 +7061,8 @@ function _listenThreads(user) {
     _cleanExpiredThreads(snap.docs);
     _renderThreads(snap.docs.filter(d => { const e = d.data().expiresAt; return !e || !e.toDate || e.toDate() > new Date(); }), user);
     const unreadField = isAdmin(user) ? 'unreadAdmin' : 'unreadUser';
+    const totalUnread = snap.docs.reduce((sum, d) => sum + (d.data()[unreadField] || 0), 0);
+    _updateFavicon(totalUnread);
     if (isAdmin(user)) {
       const unread = snap.docs.filter(d => d.data().unreadAdmin > 0).length;
       ['ideas-badge', 'ideas-badge-mobile'].forEach(id => {
@@ -7012,6 +7076,7 @@ function _listenThreads(user) {
       if (change.type === 'added' && isAdmin(user) && Object.keys(_threadUnread).length > 0) {
         _playSound('created');
         _showChatToast({ icon: '🆕', title: d.title || 'Nouvelle conversation', msg: d.userName || d.userEmail || '', threadId: tid });
+        _showBrowserNotif(d.title || 'Nouvelle conversation', d.userName || d.userEmail || '', tid);
       }
       if (change.type !== 'modified') return;
       const prev = _threadUnread[tid] ?? 0;
@@ -7020,7 +7085,9 @@ function _listenThreads(user) {
       if (cur > prev) {
         if (_activeThread !== tid) {
           _playSound('message');
-          _showChatToast({ icon: '💬', title: d.title || 'Nouveau message', msg: (d.lastSenderName ? d.lastSenderName + ' : ' : '') + (d.lastMessage || '📷 Photo'), threadId: tid });
+          const toastMsg = (d.lastSenderName ? d.lastSenderName + ' : ' : '') + (d.lastMessage || '📷 Photo');
+          _showChatToast({ icon: '💬', title: d.title || 'Nouveau message', msg: toastMsg, threadId: tid });
+          _showBrowserNotif(d.title || 'Nouveau message', toastMsg, tid);
         }
       }
     });
@@ -7029,28 +7096,43 @@ function _listenThreads(user) {
 }
 
 function _renderThreads(docs, user) {
-  const el = document.getElementById('ideas-threads');
-  if (!docs.length) {
-    el.innerHTML = '<div style="padding:20px 12px;font-size:12px;color:var(--text3)">Aucune conversation.</div>';
-    return;
-  }
+  _lastThreadDocs = docs;
+  _lastThreadUser = user;
+
   if (!_activeThread) {
     const saved = localStorage.getItem('chat_active_thread');
     const panelOpen = document.getElementById('ideas-overlay').style.display === 'flex';
     if (saved && panelOpen && docs.find(d => d.id === saved)) openThread(saved);
   }
 
-  el.innerHTML = docs.map(doc => {
+  const filtered = _searchQuery
+    ? docs.filter(doc => {
+        const d = doc.data();
+        return (d.title||'').toLowerCase().includes(_searchQuery)
+          || (d.lastMessage||'').toLowerCase().includes(_searchQuery)
+          || (d.userName||'').toLowerCase().includes(_searchQuery)
+          || (d.userEmail||'').toLowerCase().includes(_searchQuery);
+      })
+    : docs;
+
+  const el = document.getElementById('ideas-threads');
+  if (!filtered.length) {
+    el.innerHTML = '<div style="padding:20px 12px;font-size:12px;color:var(--text3)">' + (_searchQuery ? 'Aucun résultat.' : 'Aucune conversation.') + '</div>';
+    return;
+  }
+
+  el.innerHTML = filtered.map(doc => {
     const d = doc.data();
     const unread = isAdmin(user) ? (d.unreadAdmin || 0) : (d.unreadUser || 0);
     const active = _activeThread === doc.id;
+    const isClosed = d.status === 'closed';
     const statusDot = d.status === 'done'
       ? '<span style="width:6px;height:6px;border-radius:50%;background:var(--positive);flex-shrink:0;display:inline-block"></span>'
-      : d.status === 'closed'
+      : isClosed
       ? '<span style="width:6px;height:6px;border-radius:50%;background:var(--negative);flex-shrink:0;display:inline-block"></span>'
       : '';
     let closedLabel = '';
-    if (d.status === 'closed' && d.expiresAt && d.expiresAt.toDate) {
+    if (isClosed && d.expiresAt && d.expiresAt.toDate) {
       const diff = Math.max(0, d.expiresAt.toDate() - new Date());
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
@@ -7059,77 +7141,119 @@ function _renderThreads(docs, user) {
     return '<div onclick="openThread(\'' + doc.id + '\')" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);background:' + (active ? 'var(--s2)' : 'transparent') + ';transition:background .1s">'
       + '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">'
       + statusDot
-      + '<span style="font-size:12px;font-weight:600;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (d.title || 'Sans titre') + '</span>'
+      + '<span style="font-size:12px;font-weight:600;color:' + (isClosed ? 'var(--text3)' : 'var(--text)') + ';flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(d.title || 'Sans titre') + '</span>'
       + closedLabel
       + (unread ? '<span style="background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;flex-shrink:0">' + unread + '</span>' : '')
       + '</div>'
-      + (isAdmin(user) ? '<div style="font-size:10px;color:var(--text3)">' + (d.userName || d.userEmail || '') + '</div>' : '')
-      + '<div style="font-size:10px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (d.lastMessage || '—') + '</div>'
+      + (isAdmin(user) ? '<div style="font-size:10px;color:var(--text3)">' + _escHtml(d.userName || d.userEmail || '') + '</div>' : '')
+      + '<div style="font-size:10px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(d.lastMessage || '—') + '</div>'
       + '</div>';
   }).join('');
 }
 
-window.openThread = function(threadId) {
+window.openThread = async function(threadId) {
   _activeThread = threadId;
   _chatMsgCount = 0;
+  clearReply();
   if (_toastThreadId === threadId) _dismissChatToast();
   localStorage.setItem('chat_active_thread', threadId);
-  if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
+  if (_chatUnsub)      { _chatUnsub();      _chatUnsub      = null; }
+  if (_threadDocUnsub) { _threadDocUnsub(); _threadDocUnsub = null; }
+  _clearTyping();
   const user = fbAuth.currentUser;
 
   document.getElementById('ideas-chat-empty').style.display = 'none';
-  const chatView = document.getElementById('ideas-chat-view');
-  chatView.style.display = 'flex';
+  document.getElementById('ideas-chat-view').style.display = 'flex';
 
+  // Get thread data BEFORE resetting unread (for scroll-to-unread)
+  const docSnap = await getFirestoreDoc(firestoreDoc(db, 'ideas', threadId));
+  const d = docSnap.data();
+  _currentThreadUnreadAdmin = d.unreadAdmin || 0;
+  _currentThreadUnreadUser  = d.unreadUser  || 0;
+  _currentThreadUnreadCount = isAdmin(user) ? _currentThreadUnreadAdmin : _currentThreadUnreadUser;
+
+  // Reset unread
   const unreadField = isAdmin(user) ? { unreadAdmin: 0 } : { unreadUser: 0 };
   setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), unreadField, { merge: true }).catch(() => {});
 
-  getFirestoreDoc(firestoreDoc(db, 'ideas', threadId)).then(doc => {
-    const d = doc.data();
-    const isClosed = d.status === 'closed';
-    const isSA = isSuperAdmin(fbAuth.currentUser);
+  const isClosed = d.status === 'closed';
+  const isSA = isSuperAdmin(fbAuth.currentUser);
 
-    // Header
-    document.getElementById('ideas-chat-header').innerHTML =
-      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
-      + '<span style="font-weight:700">' + (d.title || 'Conversation') + '</span>'
-      + (isAdmin(user) ? '<span style="font-size:10px;color:var(--text3);font-weight:400">— ' + (d.userName || d.userEmail) + '</span>' : '')
-      + '<div style="margin-left:auto;display:flex;gap:6px">'
-      + (!isClosed ? '<button onclick="closeThread(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:10px;cursor:pointer">Terminer la conversation</button>' : '')
-      + (isSA ? '<button onclick="deleteThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);color:var(--negative);border-radius:6px;font-size:10px;cursor:pointer">🗑 Supprimer</button>' : '')
-      + '</div></div>';
+  // Header
+  document.getElementById('ideas-chat-header').innerHTML =
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+    + '<span style="font-weight:700">' + _escHtml(d.title || 'Conversation') + '</span>'
+    + (isAdmin(user) ? '<span style="font-size:10px;color:var(--text3);font-weight:400">— ' + _escHtml(d.userName || d.userEmail || '') + '</span>' : '')
+    + '<div style="margin-left:auto;display:flex;gap:6px">'
+    + (!isClosed ? '<button onclick="closeThread(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:10px;cursor:pointer">Terminer la conversation</button>' : '')
+    + (isClosed && isAdmin(user) ? '<button onclick="reopenThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:var(--positive);border-radius:6px;font-size:10px;cursor:pointer">Rouvrir</button>' : '')
+    + (isSA ? '<button onclick="deleteThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);color:var(--negative);border-radius:6px;font-size:10px;cursor:pointer">🗑 Supprimer</button>' : '')
+    + '</div></div>';
 
-    // Input zone lock
-    const inputZone = document.getElementById('ideas-input-zone');
-    if (isClosed) {
-      let timeLeft = '';
-      if (d.expiresAt && d.expiresAt.toDate) {
-        const diff = Math.max(0, d.expiresAt.toDate() - new Date());
-        const h = Math.floor(diff / 3600000);
-        const m = Math.floor((diff % 3600000) / 60000);
-        timeLeft = h > 0 ? `${h}h ${m}m` : `${m}m`;
-      }
-      inputZone.innerHTML = '<div style="text-align:center;padding:10px 0;font-size:12px;color:var(--text3)">'
-        + '🔒 Conversation terminée'
-        + (timeLeft ? ' — suppression dans <span style="color:var(--negative);font-weight:600">' + timeLeft + '</span>' : '')
+  // Input zone
+  const inputZone = document.getElementById('ideas-input-zone');
+  if (isClosed) {
+    let timeLeft = '';
+    if (d.expiresAt && d.expiresAt.toDate) {
+      const diff = Math.max(0, d.expiresAt.toDate() - new Date());
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      timeLeft = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    }
+    inputZone.innerHTML = '<div style="text-align:center;padding:10px 0;font-size:12px;color:var(--text3)">'
+      + '🔒 Conversation terminée'
+      + (timeLeft ? ' — suppression dans <span style="color:var(--negative);font-weight:600">' + timeLeft + '</span>' : '')
+      + '</div>';
+  } else {
+    if (!document.getElementById('ideas-msg-input')) {
+      inputZone.innerHTML = ''
+        + '<div id="chat-img-preview" style="display:none;margin-bottom:8px;position:relative;width:fit-content">'
+        + '<img id="chat-img-thumb" style="max-height:80px;border-radius:8px;border:1px solid var(--border)">'
+        + '<button onclick="clearChatImage()" style="position:absolute;top:-6px;right:-6px;background:var(--negative);border:none;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px;text-align:center">✕</button>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px;align-items:flex-end">'
+        + '<button onclick="toggleEmojiPicker()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:6px;border-radius:8px;color:var(--text2);flex-shrink:0" title="Emoji">😊</button>'
+        + '<label style="cursor:pointer;padding:6px;border-radius:8px;font-size:16px;color:var(--text2);flex-shrink:0" title="Photo">📎<input type="file" id="chat-img-input" accept="image/*" onchange="chatImageSelected(event)" style="display:none"></label>'
+        + '<textarea id="ideas-msg-input" placeholder="Votre message…" rows="2" onkeydown="ideasMsgKeydown(event)" oninput="_onChatTyping()" style="flex:1;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:9px 12px;font-size:13px;font-family:var(--sans);resize:none"></textarea>'
+        + '<button onclick="sendChatMessage()" style="padding:0 16px;height:42px;background:var(--accent);border:none;color:#fff;border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0">↑</button>'
         + '</div>';
-    } else {
-      if (!document.getElementById('ideas-msg-input')) {
-        inputZone.innerHTML = ''
-          + '<div id="chat-img-preview" style="display:none;margin-bottom:8px;position:relative;width:fit-content">'
-          + '<img id="chat-img-thumb" style="max-height:80px;border-radius:8px;border:1px solid var(--border)">'
-          + '<button onclick="clearChatImage()" style="position:absolute;top:-6px;right:-6px;background:var(--negative);border:none;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px;text-align:center">✕</button>'
-          + '</div>'
-          + '<div style="display:flex;gap:8px;align-items:flex-end">'
-          + '<button onclick="toggleEmojiPicker()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:6px;border-radius:8px;color:var(--text2);flex-shrink:0" title="Emoji">😊</button>'
-          + '<label style="cursor:pointer;padding:6px;border-radius:8px;font-size:16px;color:var(--text2);flex-shrink:0" title="Photo">📎<input type="file" id="chat-img-input" accept="image/*" onchange="chatImageSelected(event)" style="display:none"></label>'
-          + '<textarea id="ideas-msg-input" placeholder="Votre message…" rows="2" onkeydown="ideasMsgKeydown(event)" style="flex:1;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:9px 12px;font-size:13px;font-family:var(--sans);resize:none"></textarea>'
-          + '<button onclick="sendChatMessage()" style="padding:0 16px;height:42px;background:var(--accent);border:none;color:#fff;border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0">↑</button>'
-          + '</div>';
+    }
+  }
+
+  // Thread doc listener (typing + read status live update)
+  _threadDocUnsub = onSnapshot(firestoreDoc(db, 'ideas', threadId), snap => {
+    if (!snap.exists()) return;
+    const data = snap.data();
+    _currentThreadUnreadAdmin = data.unreadAdmin || 0;
+    _currentThreadUnreadUser  = data.unreadUser  || 0;
+
+    // Update read indicator without full re-render
+    const readEl = document.getElementById('chat-last-read');
+    if (readEl) {
+      const isRead = isAdmin(fbAuth.currentUser) ? (_currentThreadUnreadUser === 0) : (_currentThreadUnreadAdmin === 0);
+      readEl.style.color = isRead ? 'var(--accent)' : 'var(--text3)';
+      readEl.textContent  = isRead ? '✓✓' : '✓';
+    }
+
+    // Typing indicator
+    const uid = fbAuth.currentUser.uid;
+    const now = Date.now();
+    const isTyping = Object.keys(data)
+      .filter(k => k.startsWith('typing_') && k !== 'typing_' + uid)
+      .some(k => data[k] && data[k].toDate && (now - data[k].toDate()) < 4000);
+    const typingEl = document.getElementById('chat-typing');
+    if (typingEl) {
+      if (isTyping) {
+        const name = isAdmin(fbAuth.currentUser) ? (data.userName || 'Utilisateur') : 'Support';
+        typingEl.textContent = name + ' est en train d\'écrire…';
+        typingEl.style.display = 'block';
+      } else {
+        typingEl.style.display = 'none';
       }
     }
   });
 
+  // Messages listener
   const msgCol = firestoreCollection(db, 'ideas', threadId, 'messages');
   const q = firestoreQuery(msgCol, firestoreOrderBy('createdAt', 'asc'));
   _chatUnsub = onSnapshot(q, snap => _renderMessages(snap.docs, user));
@@ -7147,21 +7271,92 @@ function _renderMessages(docs, user) {
     el.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center">Début de la conversation.</div>';
     return;
   }
-  el.innerHTML = docs.map(doc => {
+
+  const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  const firstUnreadIdx = _currentThreadUnreadCount > 0 ? Math.max(0, docs.length - _currentThreadUnreadCount) : -1;
+  const isRead = isAdmin(user) ? (_currentThreadUnreadUser === 0) : (_currentThreadUnreadAdmin === 0);
+  let lastDateLabel = null;
+
+  const html = docs.map((doc, idx) => {
     const d = doc.data();
     const mine = d.senderUid === fbAuth.currentUser.uid;
-    const time = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) : '';
+    const createdAt = d.createdAt ? d.createdAt.toDate() : null;
+    const time = createdAt ? createdAt.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) : '';
     const isAdminMsg = d.senderRole === 'admin' || d.senderRole === 'superadmin';
-    return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + '">'
-      + (!mine ? '<span style="font-size:10px;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text3)') + ';margin-bottom:3px;font-weight:' + (isAdminMsg ? '600' : '400') + '">' + (isAdminMsg ? '⚡ ' : '') + (d.senderName || '') + '</span>' : '')
+    const isLast = idx === docs.length - 1;
+    let parts = [];
+
+    // Date separator
+    if (createdAt) {
+      const dl = _dateLabel(createdAt);
+      if (dl !== lastDateLabel) {
+        lastDateLabel = dl;
+        parts.push('<div style="text-align:center;font-size:10px;color:var(--text3);padding:8px 0;font-weight:600;letter-spacing:.3px">' + _escHtml(dl) + '</div>');
+      }
+    }
+
+    // Unread separator
+    if (idx === firstUnreadIdx && firstUnreadIdx > 0) {
+      parts.push('<div data-unread-sep style="display:flex;align-items:center;gap:8px;padding:4px 0">'
+        + '<div style="flex:1;height:1px;background:var(--accent);opacity:.3"></div>'
+        + '<span style="font-size:10px;color:var(--accent);font-weight:600">Nouveaux messages</span>'
+        + '<div style="flex:1;height:1px;background:var(--accent);opacity:.3"></div>'
+        + '</div>');
+    }
+
+    // Reply quote
+    const replyHtml = d.replyTo
+      ? '<div style="background:rgba(124,109,245,0.08);border-left:3px solid var(--accent);border-radius:4px;padding:5px 8px;margin-bottom:2px;font-size:11px;color:var(--text2)">'
+        + '<span style="font-weight:600;color:var(--accent)">' + _escHtml(d.replyTo.senderName || '') + '</span><br>'
+        + _escHtml((d.replyTo.text || '📷 Photo').slice(0, 80)) + ((d.replyTo.text||'').length > 80 ? '…' : '')
+        + '</div>'
+      : '';
+
+    // Read status on last sent message
+    const readStatusHtml = (mine && isLast)
+      ? '<span id="chat-last-read" style="font-size:10px;color:' + (isRead ? 'var(--accent)' : 'var(--text3)') + ';margin-left:2px">' + (isRead ? '✓✓' : '✓') + '</span>'
+      : '';
+
+    // Reply button
+    const replyBtn = '<button class="reply-btn" onclick="setReply(\'' + doc.id + '\',\'' + _escAttr(d.senderName||'') + '\',\'' + _escAttr((d.text||'').slice(0,80)) + '\')" style="opacity:0;transition:opacity .15s;background:none;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px;border-radius:6px;flex-shrink:0" title="Répondre">↩</button>';
+
+    parts.push(
+      '<div class="chat-msg-wrap" style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + '" id="msg-' + doc.id + '">'
+      + (!mine ? '<span style="font-size:10px;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text3)') + ';margin-bottom:3px;font-weight:' + (isAdminMsg ? '600' : '400') + '">' + (isAdminMsg ? '⚡ ' : '') + _escHtml(d.senderName || '') + '</span>' : '')
+      + '<div style="display:flex;align-items:flex-end;gap:4px' + (mine ? ';flex-direction:row-reverse' : '') + '">'
+      + replyBtn
       + '<div style="max-width:75%;border-radius:' + (mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px') + ';overflow:hidden;border:1px solid ' + (mine ? 'transparent' : 'var(--border)') + '">'
-      + (d.image ? '<img src="' + d.image + '" style="max-width:100%;display:block;border-radius:inherit">' : '')
-      + (d.text ? '<div style="padding:9px 13px;background:' + (mine ? 'var(--accent)' : 'var(--s2)') + ';color:' + (mine ? '#fff' : 'var(--text)') + ';font-size:13px;line-height:1.5;white-space:pre-wrap">' + d.text + '</div>' : '')
+      + replyHtml
+      + (d.image ? '<img src="' + d.image + '" style="max-width:100%;display:block">' : '')
+      + (d.text ? '<div style="padding:9px 13px;background:' + (mine ? 'var(--accent)' : 'var(--s2)') + ';color:' + (mine ? '#fff' : 'var(--text)') + ';font-size:13px;line-height:1.5;white-space:pre-wrap">' + _escHtml(d.text) + '</div>' : '')
+      + '</div></div>'
+      + '<div style="display:flex;align-items:center;gap:3px;margin-top:3px">'
+      + '<span style="font-size:10px;color:var(--text3)">' + time + '</span>'
+      + readStatusHtml
       + '</div>'
-      + '<span style="font-size:10px;color:var(--text3);margin-top:3px">' + time + '</span>'
-      + '</div>';
+      + '</div>'
+    );
+    return parts.join('');
   }).join('');
-  el.scrollTop = el.scrollHeight;
+
+  el.innerHTML = html;
+
+  // Hover events for reply buttons
+  el.querySelectorAll('.chat-msg-wrap').forEach(wrap => {
+    const btn = wrap.querySelector('.reply-btn');
+    if (!btn) return;
+    wrap.addEventListener('mouseenter', () => btn.style.opacity = '1');
+    wrap.addEventListener('mouseleave', () => btn.style.opacity = '0');
+  });
+
+  // Scroll behavior
+  if (firstUnreadIdx > 0 && prevCount === 0) {
+    const sep = el.querySelector('[data-unread-sep]');
+    if (sep) setTimeout(() => sep.scrollIntoView({ block: 'start', behavior: 'smooth' }), 50);
+    else el.scrollTop = el.scrollHeight;
+  } else if (wasAtBottom || prevCount === 0) {
+    el.scrollTop = el.scrollHeight;
+  }
 }
 
 // ── Emoji picker ───────────────────────────────────────────
@@ -7240,8 +7435,11 @@ window.sendChatMessage = async function() {
     senderName: user.displayName || user.email.split('@')[0],
     senderRole: currentUserRole,
     createdAt:  serverTimestamp(),
+    replyTo:    _replyTo || null,
   };
   clearChatImage();
+  clearReply();
+  _clearTyping();
   const msgCol = firestoreCollection(db, 'ideas', _activeThread, 'messages');
   await addFirestoreDoc(msgCol, msgData);
   const unreadDoc = await getFirestoreDoc(firestoreDoc(db, 'ideas', _activeThread));
@@ -7317,6 +7515,61 @@ window._confirmModalOk = function() {
 window._confirmModalCancel = function() {
   document.getElementById('confirm-modal').style.display = 'none';
   _confirmModalCallback = null;
+};
+
+// ── Recherche + rouvrir ─────────────────────────────────────
+window._filterThreads = function(val) {
+  _searchQuery = val.toLowerCase().trim();
+  if (_lastThreadDocs && _lastThreadUser) _renderThreads(_lastThreadDocs, _lastThreadUser);
+};
+
+window.reopenThread = async function(threadId) {
+  await setFirestoreDoc(firestoreDoc(db, 'ideas', threadId), { status: 'open', expiresAt: null }, { merge: true });
+  openThread(threadId);
+};
+
+// ── Typing indicator ────────────────────────────────────────
+window._onChatTyping = function() {
+  if (!_activeThread || !fbAuth.currentUser) return;
+  if (_typingTimer) clearTimeout(_typingTimer);
+  if (!_typingActive) {
+    _typingActive = true;
+    setFirestoreDoc(firestoreDoc(db, 'ideas', _activeThread), {
+      ['typing_' + fbAuth.currentUser.uid]: serverTimestamp(),
+    }, { merge: true }).catch(() => {});
+  }
+  _typingTimer = setTimeout(() => { _typingActive = false; _clearTyping(); }, 3000);
+};
+
+function _clearTyping() {
+  if (!fbAuth.currentUser) return;
+  const tid = _activeThread;
+  if (tid) {
+    setFirestoreDoc(firestoreDoc(db, 'ideas', tid), {
+      ['typing_' + fbAuth.currentUser.uid]: null,
+    }, { merge: true }).catch(() => {});
+  }
+  if (_typingTimer) { clearTimeout(_typingTimer); _typingTimer = null; }
+  _typingActive = false;
+}
+
+// ── Reply/quote ─────────────────────────────────────────────
+window.setReply = function(messageId, senderName, text) {
+  _replyTo = { messageId, senderName, text };
+  const zone = document.getElementById('chat-reply-preview');
+  if (zone) {
+    zone.style.display = 'block';
+    document.getElementById('chat-reply-name').textContent = senderName;
+    document.getElementById('chat-reply-text').textContent = text || '📷 Photo';
+  }
+  const input = document.getElementById('ideas-msg-input');
+  if (input) input.focus();
+};
+
+window.clearReply = function() {
+  _replyTo = null;
+  const zone = document.getElementById('chat-reply-preview');
+  if (zone) zone.style.display = 'none';
 };
 
 // ── Terminer / supprimer thread ────────────────────────────
