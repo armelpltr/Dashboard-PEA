@@ -7503,7 +7503,7 @@ function _renderMessages(docs, user) {
       : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--s4),var(--muted2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text2)' + avatarRing + '">' + _escHtml((d0.senderName||'?')[0].toUpperCase()) + '</div>';
     const avatarEl = '<div style="display:flex;flex-direction:column;align-items:center;align-self:flex-end;flex-shrink:0;width:42px;gap:2px">'
       + avatarImg
-      + '<span style="font-size:10px;font-weight:600;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text2)') + ';text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _escHtml(d0.senderName || '') + '">' + _escHtml(d0.senderName || '') + '</span>'
+      + '<span style="font-size:10px;font-weight:600;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text2)') + ';text-align:center;word-break:break-word;line-height:1.3">' + _escHtml(d0.senderName || '') + '</span>'
       + roleBadge
       + '</div>';
 
