@@ -7481,11 +7481,11 @@ function _renderMessages(docs, user) {
 
     parts.push(
       '<div class="chat-msg-wrap" style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + '" id="msg-' + doc.id + '">'
-      + (!mine ? '<span style="font-size:10px;margin-bottom:3px;display:inline-flex;align-items:center;gap:4px;margin-left:36px">'
+      + '<span style="font-size:10px;margin-bottom:3px;display:inline-flex;align-items:center;gap:4px;' + (mine ? 'margin-right:36px;justify-content:flex-end' : 'margin-left:36px') + '">'
           + '<span style="color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text3)') + ';font-weight:' + (isAdminMsg ? '600' : '400') + '">' + (isAdminMsg ? '⚡ ' : '') + _escHtml(d.senderName || '') + '</span>'
           + (isSuperAdmin(fbAuth.currentUser) && d.senderEmail ? '<span style="color:var(--text3);font-weight:400">' + _escHtml(d.senderEmail) + '</span>' : '')
           + (isSuperAdmin(fbAuth.currentUser) && d.senderRole ? '<span style="font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:4px;background:var(--s3);color:var(--text3)">' + _escHtml(d.senderRole) + '</span>' : '')
-          + '</span>' : '')
+          + '</span>'
       + '<div style="display:flex;align-items:flex-end;gap:6px' + (mine ? ';flex-direction:row-reverse' : '') + '">'
       + avatarHtml
       + replyBtn
