@@ -7072,6 +7072,7 @@ function _renderThreads(docs, user) {
 window.openThread = function(threadId) {
   _activeThread = threadId;
   _chatMsgCount = 0;
+  if (_toastThreadId === threadId) _dismissChatToast();
   localStorage.setItem('chat_active_thread', threadId);
   if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
   const user = fbAuth.currentUser;
