@@ -7688,19 +7688,46 @@ async function _setRoleByEmail(role) {
 }
 
 // ── Ajouter un membre à une conversation (superadmin) ──────
-window.addMemberToThread = async function(threadId) {
-  const email = window.prompt('Email de l\'utilisateur à ajouter :');
-  if (!email) return;
-  const trimmed = email.trim().toLowerCase();
+let _addMemberThreadId = null;
+
+window.addMemberToThread = function(threadId) {
+  _addMemberThreadId = threadId;
+  const overlay = document.getElementById('add-member-overlay');
+  document.getElementById('add-member-email').value = '';
+  document.getElementById('add-member-status').textContent = '';
+  overlay.style.display = 'flex';
+  setTimeout(() => document.getElementById('add-member-email').focus(), 80);
+};
+
+window.closeAddMember = function() {
+  document.getElementById('add-member-overlay').style.display = 'none';
+  _addMemberThreadId = null;
+};
+
+window.confirmAddMember = async function() {
+  const email = document.getElementById('add-member-email').value.trim().toLowerCase();
+  const st  = document.getElementById('add-member-status');
+  const btn = document.getElementById('add-member-btn');
+  if (!email) { st.style.color = 'var(--negative)'; st.textContent = 'Saisissez un email.'; return; }
+  btn.disabled = true;
+  btn.textContent = '…';
+  st.textContent = '';
   try {
-    const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'users'), firestoreWhere('email', '==', trimmed)));
-    if (snap.empty) { alert('Utilisateur introuvable : ' + trimmed); return; }
+    const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'users'), firestoreWhere('email', '==', email)));
+    if (snap.empty) {
+      st.style.color = 'var(--negative)';
+      st.textContent = 'Utilisateur introuvable.';
+      btn.disabled = false; btn.textContent = 'Ajouter';
+      return;
+    }
     const uid = snap.docs[0].id;
-    const threadRef = firestoreDoc(db, 'ideas', threadId);
-    await setFirestoreDoc(threadRef, { members: firestoreArrayUnion(uid), memberEmails: firestoreArrayUnion(trimmed) }, { merge: true });
-    openThread(threadId);
-    _showChatToast({ icon: '👤', title: 'Membre ajouté', msg: trimmed, duration: 3000 });
+    await setFirestoreDoc(firestoreDoc(db, 'ideas', _addMemberThreadId), { members: firestoreArrayUnion(uid), memberEmails: firestoreArrayUnion(email) }, { merge: true });
+    closeAddMember();
+    openThread(_addMemberThreadId);
+    _showChatToast({ icon: '👤', title: 'Membre ajouté', msg: email, duration: 3000 });
   } catch(e) {
-    alert('Erreur : ' + e.message);
+    st.style.color = 'var(--negative)';
+    st.textContent = 'Erreur : ' + e.message;
+    btn.disabled = false; btn.textContent = 'Ajouter';
   }
 };
