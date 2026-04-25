@@ -6925,16 +6925,28 @@ let _chatMsgCount = 0;
 
 let _toastTimer   = null;
 let _threadUnread = {}; // { [threadId]: unreadCount }
+let _toastThreadId = null;
 
-function _showChatToast(sender, msg) {
+function _showChatToast({ icon = '💬', title, msg, threadId = null, duration = 5000 }) {
   const toast = document.getElementById('chat-toast');
   if (!toast) return;
-  document.getElementById('chat-toast-sender').textContent = sender;
-  document.getElementById('chat-toast-msg').textContent = msg;
+  _toastThreadId = threadId;
+  document.getElementById('chat-toast-icon').textContent  = icon;
+  document.getElementById('chat-toast-title').textContent = title;
+  document.getElementById('chat-toast-msg').textContent   = msg;
+  const bar = document.getElementById('chat-toast-bar');
+  bar.style.animation = 'none';
+  bar.offsetHeight; // reflow
+  bar.style.animation = `toast-bar ${duration}ms linear forwards`;
   toast.style.display = 'block';
   if (_toastTimer) clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(_dismissChatToast, 5000);
+  _toastTimer = setTimeout(_dismissChatToast, duration);
 }
+
+window._chatToastClick = function() {
+  _dismissChatToast();
+  if (_toastThreadId) { openIdeasPanel(); openThread(_toastThreadId); }
+};
 
 window._dismissChatToast = function() {
   const toast = document.getElementById('chat-toast');
@@ -6995,9 +7007,13 @@ function _listenThreads(user) {
       });
     }
     snap.docChanges().forEach(change => {
+      const d   = change.doc.data();
+      const tid = change.doc.id;
+      if (change.type === 'added' && isAdmin(user) && Object.keys(_threadUnread).length > 0) {
+        _playSound('created');
+        _showChatToast({ icon: '🆕', title: d.title || 'Nouvelle conversation', msg: d.userName || d.userEmail || '', threadId: tid });
+      }
       if (change.type !== 'modified') return;
-      const d    = change.doc.data();
-      const tid  = change.doc.id;
       const prev = _threadUnread[tid] ?? 0;
       const cur  = d[unreadField] || 0;
       _threadUnread[tid] = cur;
@@ -7006,7 +7022,7 @@ function _listenThreads(user) {
         const activeAndVisible = panelOpen && _activeThread === tid;
         if (!activeAndVisible) {
           _playSound('message');
-          _showChatToast(d.userName || d.userEmail || 'Support', d.lastMessage || '📷 Photo');
+          _showChatToast({ icon: '💬', title: d.title || 'Nouveau message', msg: d.lastMessage || '📷 Photo', threadId: tid });
         }
       }
     });
@@ -7297,6 +7313,7 @@ window.deleteThread = function(threadId) {
       localStorage.removeItem('chat_active_thread');
       document.getElementById('ideas-chat-view').style.display = 'none';
       document.getElementById('ideas-chat-empty').style.display = 'flex';
+      _showChatToast({ icon: '🗑', title: 'Conversation supprimée', msg: 'La conversation a été supprimée.', threadId: null, duration: 3000 });
     },
   });
 };
