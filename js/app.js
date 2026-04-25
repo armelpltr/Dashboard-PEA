@@ -379,6 +379,8 @@ async function startApp(user) {
     const roleDoc = await getFirestoreDoc(firestoreDoc(db, 'roles', user.uid));
     const avatarSync = { email: user.email, displayName: user.displayName || '' };
     if (user.photoURL) avatarSync.photoURL = user.photoURL;
+    const cachedAvatar = getUserSettings(user.uid).avatarBase64;
+    if (cachedAvatar) avatarSync.avatarBase64 = cachedAvatar;
     await setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), avatarSync, { merge: true });
     if (!roleDoc.exists()) {
       await setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { role: 'user', email: user.email });
@@ -455,6 +457,7 @@ window.selectPresetAvatar = async function(el) {
     canvas.getContext('2d').drawImage(img, 0, 0, 120, 120);
     const base64 = canvas.toDataURL('image/png');
     await saveUserSettings(currentUser, { avatarBase64: base64 });
+    setFirestoreDoc(firestoreDoc(db, 'roles', currentUser), { avatarBase64: base64 }, { merge: true }).catch(() => {});
     const imgEl = document.getElementById('profil-avatar-img');
     const letEl = document.getElementById('profil-avatar-letter');
     imgEl.src = base64;
@@ -485,6 +488,7 @@ window.uploadProfilAvatar = function(event) {
       ctx.drawImage(img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, 120, 120);
       const base64 = canvas.toDataURL('image/jpeg', 0.85);
       await saveUserSettings(currentUser, { avatarBase64: base64 });
+      setFirestoreDoc(firestoreDoc(db, 'roles', currentUser), { avatarBase64: base64 }, { merge: true }).catch(() => {});
       const imgEl = document.getElementById('profil-avatar-img');
       const letEl = document.getElementById('profil-avatar-letter');
       imgEl.src = base64;
@@ -7074,7 +7078,10 @@ async function _renderMembersPanel(d, threadId, el) {
   try {
     await Promise.all(emails.map(async e => {
       const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'roles'), firestoreWhere('email', '==', e)));
-      if (!snap.empty) photoMap[e] = snap.docs[0].data().photoURL || null;
+      if (!snap.empty) {
+        const rd = snap.docs[0].data();
+        photoMap[e] = rd.avatarBase64 || rd.photoURL || null;
+      }
     }));
   } catch(e) { /* ignore */ }
 
@@ -7599,7 +7606,7 @@ window.sendChatMessage = async function() {
     senderName:   user.displayName || user.email.split('@')[0],
     senderEmail:  user.email || '',
     senderRole:   currentUserRole,
-    senderAvatar: user.photoURL || getUserSettings(user.uid).avatarBase64 || null,
+    senderAvatar: getUserSettings(user.uid).avatarBase64 || user.photoURL || null,
     createdAt:  serverTimestamp(),
     replyTo:    _replyTo || null,
   };
