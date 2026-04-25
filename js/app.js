@@ -7473,11 +7473,11 @@ function _renderMessages(docs, user) {
     const replyBtn = '<button class="reply-btn" onclick="setReply(\'' + doc.id + '\',\'' + _escAttr(d.senderName||'') + '\',\'' + _escAttr((d.text||'').slice(0,80)) + '\')" style="opacity:0;transition:opacity .15s;background:none;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px;border-radius:6px;flex-shrink:0" title="Répondre">↩</button>';
 
     const senderAvatarSrc = (d.senderEmail && _avatarCache[d.senderEmail]) || d.senderAvatar || null;
-    const avatarHtml = !mine
-      ? (senderAvatarSrc
-          ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end;margin-bottom:18px">'
-          : '<div style="width:28px;height:28px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0;align-self:flex-end;margin-bottom:18px">' + _escHtml((d.senderName||'?')[0].toUpperCase()) + '</div>')
-      : '';
+    const _avStyle = 'width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end;margin-bottom:18px';
+    const _avFallStyle = 'width:28px;height:28px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0;align-self:flex-end;margin-bottom:18px';
+    const avatarHtml = senderAvatarSrc
+      ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="' + _avStyle + '">'
+      : '<div style="' + _avFallStyle + '">' + _escHtml((d.senderName||'?')[0].toUpperCase()) + '</div>';
 
     parts.push(
       '<div class="chat-msg-wrap" style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + '" id="msg-' + doc.id + '">'
