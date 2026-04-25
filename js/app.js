@@ -7271,23 +7271,22 @@ window.openThread = async function(threadId) {
   const isClosed = d.status === 'closed';
   const isSA = isSuperAdmin(fbAuth.currentUser);
 
-  // Pré-charger avatars depuis roles (owner + membres invités)
+  // Pré-charger avatars depuis roles (await avant render messages)
   _avatarCache = {};
-  (async () => {
-    const emails = [d.userEmail, ...(d.memberEmails || []), fbAuth.currentUser.email].filter(Boolean);
-    await Promise.all([...new Set(emails)].map(async e => {
+  const me = fbAuth.currentUser;
+  if (me) _avatarCache[me.email] = getUserSettings(me.uid).avatarBase64 || me.photoURL || null;
+  try {
+    const emails = [d.userEmail, ...(d.memberEmails || []), me && me.email].filter(Boolean);
+    await Promise.all([...new Set(emails)].map(async email => {
       try {
-        const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'roles'), firestoreWhere('email', '==', e)));
+        const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'roles'), firestoreWhere('email', '==', email)));
         if (!snap.empty) {
           const rd = snap.docs[0].data();
-          _avatarCache[e] = rd.avatarBase64 || rd.photoURL || null;
+          _avatarCache[email] = rd.avatarBase64 || rd.photoURL || _avatarCache[email] || null;
         }
       } catch(e) {}
     }));
-    // aussi l'avatar local du user courant
-    const me = fbAuth.currentUser;
-    if (me) _avatarCache[me.email] = getUserSettings(me.uid).avatarBase64 || me.photoURL || _avatarCache[me.email] || null;
-  })();
+  } catch(e) {}
 
   // Header
   document.getElementById('ideas-chat-header').innerHTML =
