@@ -6923,7 +6923,8 @@ let _chatUnsub    = null;
 let _activeThread = null;
 let _chatMsgCount = 0;
 
-let _toastTimer = null;
+let _toastTimer   = null;
+let _threadUnread = {}; // { [threadId]: unreadCount }
 
 function _showChatToast(sender, msg) {
   const toast = document.getElementById('chat-toast');
@@ -6986,6 +6987,7 @@ function _listenThreads(user) {
   _threadsUnsub = onSnapshot(q, snap => {
     _cleanExpiredThreads(snap.docs);
     _renderThreads(snap.docs.filter(d => { const e = d.data().expiresAt; return !e || !e.toDate || e.toDate() > new Date(); }), user);
+    const unreadField = isAdmin(user) ? 'unreadAdmin' : 'unreadUser';
     if (isAdmin(user)) {
       const unread = snap.docs.filter(d => d.data().unreadAdmin > 0).length;
       ['ideas-badge', 'ideas-badge-mobile'].forEach(id => {
@@ -6993,6 +6995,23 @@ function _listenThreads(user) {
         if (b) { b.textContent = unread || ''; b.style.display = unread ? 'inline-block' : 'none'; }
       });
     }
+    snap.docChanges().forEach(change => {
+      if (change.type !== 'modified') return;
+      const d    = change.doc.data();
+      const tid  = change.doc.id;
+      const prev = _threadUnread[tid] ?? 0;
+      const cur  = d[unreadField] || 0;
+      _threadUnread[tid] = cur;
+      if (cur > prev) {
+        const panelOpen = document.getElementById('ideas-overlay').style.display === 'flex';
+        const activeAndVisible = panelOpen && _activeThread === tid;
+        if (!activeAndVisible) {
+          _playSound('message');
+          _showChatToast(d.userName || d.userEmail || 'Support', d.lastMessage || '📷 Photo');
+        }
+      }
+    });
+    snap.docs.forEach(d => { _threadUnread[d.id] = _threadUnread[d.id] ?? (d.data()[unreadField] || 0); });
   });
 }
 
@@ -7065,11 +7084,7 @@ function _renderMessages(docs, user) {
   _chatMsgCount = docs.length;
   if (prevCount > 0 && docs.length > prevCount) {
     const last = docs[docs.length - 1].data();
-    if (last.senderUid !== fbAuth.currentUser.uid) {
-      _playSound('message');
-      const panelOpen = document.getElementById('ideas-overlay').style.display === 'flex';
-      if (!panelOpen) _showChatToast(last.senderName || 'Support', last.text || '📷 Photo');
-    }
+    if (last.senderUid !== fbAuth.currentUser.uid) _playSound('message');
   }
   const el = document.getElementById('ideas-messages');
   if (!docs.length) {
