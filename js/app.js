@@ -7069,16 +7069,14 @@ function _memberRow(name, email, role, threadId, canRemove) {
   const roleColor = role === 'superadmin' ? '#fbbf24' : role === 'admin' ? 'var(--accent)' : 'var(--text3)';
   const roleIcon  = role === 'superadmin' ? '👑' : role === 'admin' ? '⚡' : '👤';
   const initial   = (name || '?')[0].toUpperCase();
-  const btnId = canRemove ? 'rm-btn-' + email.replace(/[^a-z0-9]/gi, '_') : '';
   return '<div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:6px;margin:0 4px" '
-    + 'onmouseenter="this.style.background=\'var(--s2)\'' + (canRemove ? ';document.getElementById(\'' + btnId + '\').style.color=\'var(--negative)\'' : '') + '"'
-    + ' onmouseleave="this.style.background=\'\'' + (canRemove ? ';document.getElementById(\'' + btnId + '\').style.color=\'transparent\'' : '') + '">'
+    + 'onmouseenter="this.style.background=\'var(--s2)\'" onmouseleave="this.style.background=\'\'">'
     + '<div style="width:28px;height:28px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0">' + _escHtml(initial) + '</div>'
     + '<div style="flex:1;min-width:0">'
     + '<div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(name) + '</div>'
     + '<div style="font-size:10px;color:' + roleColor + '">' + roleIcon + ' ' + role + '</div>'
     + '</div>'
-    + (canRemove ? '<button id="' + btnId + '" onclick="removeMemberFromThread(\'' + threadId + '\',\'' + _escAttr(email) + '\')" style="background:none;border:none;color:transparent;cursor:pointer;font-size:12px;transition:color .15s;flex-shrink:0" title="Retirer">✕</button>' : '')
+    + (canRemove ? '<button onclick="removeMemberFromThread(\'' + threadId + '\',\'' + _escAttr(email) + '\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;flex-shrink:0" title="Retirer">✕</button>' : '')
     + '</div>';
 }
 
