@@ -6923,6 +6923,24 @@ let _chatUnsub    = null;
 let _activeThread = null;
 let _chatMsgCount = 0;
 
+let _toastTimer = null;
+
+function _showChatToast(sender, msg) {
+  const toast = document.getElementById('chat-toast');
+  if (!toast) return;
+  document.getElementById('chat-toast-sender').textContent = sender;
+  document.getElementById('chat-toast-msg').textContent = msg;
+  toast.style.display = 'block';
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(_dismissChatToast, 5000);
+}
+
+window._dismissChatToast = function() {
+  const toast = document.getElementById('chat-toast');
+  if (toast) toast.style.display = 'none';
+  if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
+};
+
 function _playSound(type) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -7047,7 +7065,11 @@ function _renderMessages(docs, user) {
   _chatMsgCount = docs.length;
   if (prevCount > 0 && docs.length > prevCount) {
     const last = docs[docs.length - 1].data();
-    if (last.senderUid !== fbAuth.currentUser.uid) _playSound('message');
+    if (last.senderUid !== fbAuth.currentUser.uid) {
+      _playSound('message');
+      const panelOpen = document.getElementById('ideas-overlay').style.display === 'flex';
+      if (!panelOpen) _showChatToast(last.senderName || 'Support', last.text || '📷 Photo');
+    }
   }
   const el = document.getElementById('ideas-messages');
   if (!docs.length) {
