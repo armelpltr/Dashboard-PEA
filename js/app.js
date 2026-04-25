@@ -7065,6 +7065,21 @@ window.closeIdeasPanel = function() {
   _activeThread = null;
 };
 
+function _memberRow(name, email, role, threadId, canRemove) {
+  const roleColor = role === 'superadmin' ? '#fbbf24' : role === 'admin' ? 'var(--accent)' : 'var(--text3)';
+  const roleIcon  = role === 'superadmin' ? '👑' : role === 'admin' ? '⚡' : '👤';
+  const initial   = (name || '?')[0].toUpperCase();
+  return '<div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:6px;margin:0 4px" '
+    + 'onmouseenter="this.style.background=\'var(--s2)\'" onmouseleave="this.style.background=\'\'">'
+    + '<div style="width:28px;height:28px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0">' + _escHtml(initial) + '</div>'
+    + '<div style="flex:1;min-width:0">'
+    + '<div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(name) + '</div>'
+    + '<div style="font-size:10px;color:' + roleColor + '">' + roleIcon + ' ' + role + '</div>'
+    + '</div>'
+    + (canRemove ? '<button onclick="removeMemberFromThread(\'' + threadId + '\',\'' + _escAttr(email) + '\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;opacity:0;transition:opacity .15s;flex-shrink:0" title="Retirer" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'">✕</button>' : '')
+    + '</div>';
+}
+
 function _handleThreadsSnap(snap, user) {
   _cleanExpiredThreads(snap.docs);
   _renderThreads(snap.docs.filter(d => { const e = d.data().expiresAt; return !e || !e.toDate || e.toDate() > new Date(); }), user);
@@ -7228,22 +7243,32 @@ window.openThread = async function(threadId) {
     + (isClosed && isAdmin(user) ? '<button onclick="reopenThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:var(--positive);border-radius:6px;font-size:10px;cursor:pointer">Rouvrir</button>' : '')
     + (isSA ? '<button onclick="deleteThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);color:var(--negative);border-radius:6px;font-size:10px;cursor:pointer">🗑 Supprimer</button>' : '')
     + (isSA ? '<button onclick="addMemberToThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(124,109,245,0.1);border:1px solid rgba(124,109,245,0.2);color:var(--accent);border-radius:6px;font-size:10px;cursor:pointer">👤+ Ajouter</button>' : '')
-    + '</div></div>'
-    + (isSA && d.memberEmails && d.memberEmails.length
-      ? '<div style="font-size:10px;color:var(--text3);margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
-        + '<span style="font-weight:600;color:var(--text2)">👥 Membres :</span>'
-        + d.memberEmails.map(e => {
-            const role = (d.memberRoles && d.memberRoles[e]) || 'user';
-            const roleColor = role === 'superadmin' ? '#fbbf24' : role === 'admin' ? 'var(--accent)' : 'var(--text3)';
-            const roleLabel = role === 'superadmin' ? '👑' : role === 'admin' ? '⚡' : '👤';
-            return '<span style="background:var(--s2);border:1px solid var(--border);padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:4px">'
-              + '<span style="color:' + roleColor + '">' + roleLabel + '</span>'
-              + '<span>' + _escHtml(e) + '</span>'
-              + '<button onclick="removeMemberFromThread(\'' + threadId + '\',\'' + _escAttr(e) + '\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0 0 0 2px;line-height:1" title="Retirer">✕</button>'
-              + '</span>';
-          }).join('')
-        + '</div>'
-      : '');
+    + '</div></div>';
+
+  // Panneau membres Discord-style (SA only)
+  const membersPanel = document.getElementById('chat-members-panel');
+  const membersList  = document.getElementById('chat-members-list');
+  if (isSA && membersPanel && membersList) {
+    membersPanel.style.display = 'flex';
+
+    // Propriétaire du thread
+    const ownerEmail = d.userEmail || '';
+    const ownerName  = d.userName  || ownerEmail.split('@')[0] || 'Utilisateur';
+
+    let html = '<div style="padding:4px 12px 6px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Propriétaire</div>';
+    html += _memberRow(ownerName, ownerEmail, 'user', threadId, false);
+
+    if (d.memberEmails && d.memberEmails.length) {
+      html += '<div style="padding:10px 12px 6px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Invités</div>';
+      html += d.memberEmails.map(e => {
+        const role = (d.memberRoles && d.memberRoles[e]) || 'user';
+        return _memberRow(e.split('@')[0], e, role, threadId, true);
+      }).join('');
+    }
+    membersList.innerHTML = html;
+  } else if (membersPanel) {
+    membersPanel.style.display = 'none';
+  }
 
   // Input zone
   const inputZone = document.getElementById('ideas-input-zone');

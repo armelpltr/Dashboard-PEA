@@ -979,7 +979,10 @@
         <div id="ideas-chat-empty" style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px">
           Sélectionnez une conversation
         </div>
-        <div id="ideas-chat-view" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+        <div id="ideas-chat-view" style="display:none;flex:1;flex-direction:row;overflow:hidden">
+
+          <!-- Colonne chat principale -->
+          <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0">
           <!-- Thread header -->
           <div id="ideas-chat-header" style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;flex-shrink:0"></div>
           <!-- Messages -->
@@ -1018,7 +1021,17 @@
                 border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0">↑</button>
             </div>
           </div>
-        </div>
+          </div><!-- /colonne chat -->
+
+          <!-- Panneau membres (SA only) -->
+          <div id="chat-members-panel" style="display:none;width:170px;flex-shrink:0;border-left:1px solid var(--border);flex-direction:column;overflow:hidden">
+            <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Membres</span>
+            </div>
+            <div id="chat-members-list" style="flex:1;overflow-y:auto;padding:8px 0"></div>
+          </div>
+
+        </div><!-- /ideas-chat-view -->
       </div>
     </div>
   </div>
