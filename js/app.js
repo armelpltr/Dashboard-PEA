@@ -7068,7 +7068,7 @@ function _listenThreads(user) {
   const col = firestoreCollection(db, 'ideas');
   const q = isAdmin(user)
     ? firestoreQuery(col, firestoreOrderBy('updatedAt', 'desc'))
-    : firestoreQuery(col, firestoreOr(firestoreWhere('uid', '==', user.uid), firestoreWhere('members', 'array-contains', user.uid)), firestoreOrderBy('updatedAt', 'desc'));
+    : firestoreQuery(col, firestoreOr(firestoreWhere('uid', '==', user.uid), firestoreWhere('memberEmails', 'array-contains', user.email)), firestoreOrderBy('updatedAt', 'desc'));
   _threadsUnsub = onSnapshot(q, snap => {
     _cleanExpiredThreads(snap.docs);
     _renderThreads(snap.docs.filter(d => { const e = d.data().expiresAt; return !e || !e.toDate || e.toDate() > new Date(); }), user);
@@ -7714,15 +7714,7 @@ window.confirmAddMember = async function() {
   btn.textContent = '…';
   st.textContent = '';
   try {
-    const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'roles'), firestoreWhere('email', '==', email)));
-    if (snap.empty) {
-      st.style.color = 'var(--negative)';
-      st.textContent = 'Utilisateur introuvable.';
-      btn.disabled = false; btn.textContent = 'Ajouter';
-      return;
-    }
-    const uid = snap.docs[0].id;
-    await setFirestoreDoc(firestoreDoc(db, 'ideas', _addMemberThreadId), { members: firestoreArrayUnion(uid), memberEmails: firestoreArrayUnion(email) }, { merge: true });
+    await setFirestoreDoc(firestoreDoc(db, 'ideas', _addMemberThreadId), { memberEmails: firestoreArrayUnion(email) }, { merge: true });
     closeAddMember();
     openThread(_addMemberThreadId);
     _showChatToast({ icon: '👤', title: 'Membre ajouté', msg: email, duration: 3000 });
