@@ -6980,7 +6980,7 @@ window.openIdeasPanel = function() {
   document.getElementById('ideas-panel-subtitle').textContent = isAdmin(user)
     ? 'Toutes les conversations' : 'Envoyez un message ou une idée';
   document.getElementById('btn-new-thread').style.display = isAdmin(user) ? 'none' : 'inline-block';
-  _listenThreads(user);
+  if (!_threadsUnsub) _listenThreads(user);
 };
 
 window.closeIdeasPanel = function() {
