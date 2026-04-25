@@ -87,10 +87,12 @@
       Déjà un compte ?
       <span onclick="showLoginView()" style="color:var(--accent);cursor:pointer;font-weight:600;margin-left:4px">Se connecter</span>
     </div>
-    <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-      <a href="mentions-legales.html" target="_blank" style="font-size:11px;color:var(--text3);text-decoration:none">Mentions légales</a>
-      <a href="politique-confidentialite.html" target="_blank" style="font-size:11px;color:var(--text3);text-decoration:none">Confidentialité</a>
-      <a href="cgu.html" target="_blank" style="font-size:11px;color:var(--text3);text-decoration:none">CGU</a>
+    <div class="login-legal">
+      <a href="mentions-legales.html" target="_blank">Mentions légales</a>
+      <span class="sep">·</span>
+      <a href="politique-confidentialite.html" target="_blank">Confidentialité</a>
+      <span class="sep">·</span>
+      <a href="cgu.html" target="_blank">CGU</a>
     </div>
   </div>
 </div>
@@ -218,10 +220,12 @@
       <span>👑</span>
       <span style="flex:1">Super Admin</span>
     </div>
-    <div style="padding:6px 12px 4px;display:flex;gap:10px;flex-wrap:wrap">
-      <a href="mentions-legales.html" target="_blank" style="font-size:10px;color:var(--text3);text-decoration:none;transition:color .15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'">Légal</a>
-      <a href="politique-confidentialite.html" target="_blank" style="font-size:10px;color:var(--text3);text-decoration:none;transition:color .15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'">Confidentialité</a>
-      <a href="cgu.html" target="_blank" style="font-size:10px;color:var(--text3);text-decoration:none;transition:color .15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'">CGU</a>
+    <div class="sidebar-legal">
+      <a href="mentions-legales.html" target="_blank">Légal</a>
+      <span class="sep">·</span>
+      <a href="politique-confidentialite.html" target="_blank">Confidentialité</a>
+      <span class="sep">·</span>
+      <a href="cgu.html" target="_blank">CGU</a>
     </div>
     <div class="sidebar-user">
       <div class="user-card" onclick="openProfilModal()" style="cursor:pointer" title="Mon profil">
