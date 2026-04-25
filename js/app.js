@@ -7331,7 +7331,7 @@ function _renderMessages(docs, user) {
       + replyBtn
       + '<div style="max-width:75%;border-radius:' + (mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px') + ';overflow:hidden;border:1px solid ' + (mine ? 'transparent' : 'var(--border)') + '">'
       + replyHtml
-      + (d.image ? '<img src="' + d.image + '" style="max-width:100%;display:block">' : '')
+      + (d.image ? '<img src="' + d.image + '" onclick="openLightbox(this.src)" style="max-width:100%;display:block;cursor:pointer;border-radius:6px" title="Cliquer pour agrandir">' : '')
       + (d.text ? '<div style="padding:9px 13px;background:' + (mine ? 'var(--accent)' : 'var(--s2)') + ';color:' + (mine ? '#fff' : 'var(--text)') + ';font-size:13px;line-height:1.5;white-space:pre-wrap">' + _escHtml(d.text) + '</div>' : '')
       + '</div></div>'
       + '<div style="display:flex;align-items:center;gap:3px;margin-top:3px">'
@@ -7362,6 +7362,32 @@ function _renderMessages(docs, user) {
     el.scrollTop = el.scrollHeight;
   }
 }
+
+// ── Lightbox ────────────────────────────────────────────────
+window.openLightbox = function(src) {
+  document.getElementById('chat-lightbox-img').src = src;
+  const lb = document.getElementById('chat-lightbox');
+  lb.style.display = 'flex';
+};
+window.closeLightbox = function() {
+  document.getElementById('chat-lightbox').style.display = 'none';
+  document.getElementById('chat-lightbox-img').src = '';
+};
+window.downloadLightboxImg = function() {
+  const src = document.getElementById('chat-lightbox-img').src;
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = 'photo-chat.jpg';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const lb = document.getElementById('chat-lightbox');
+    if (lb && lb.style.display !== 'none') closeLightbox();
+  }
+});
 
 // ── Emoji picker ───────────────────────────────────────────
 const EMOJIS = ['😊','😂','👍','❤️','🔥','✅','💡','🚀','🎉','👀','🤔','😅','💪','🙏','⚡','💬','📊','📈','💰','🐂','🐻','💎','🛠️','🐛','❌','⚠️','📌','🔄','👏','😎'];
