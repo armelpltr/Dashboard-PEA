@@ -7076,7 +7076,7 @@ function _memberRow(name, email, role, threadId, canRemove) {
     + '<div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(name) + '</div>'
     + '<div style="font-size:10px;color:' + roleColor + '">' + roleIcon + ' ' + role + '</div>'
     + '</div>'
-    + (canRemove ? '<button onclick="removeMemberFromThread(\'' + threadId + '\',\'' + _escAttr(email) + '\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;flex-shrink:0" title="Retirer">✕</button>' : '')
+    + (canRemove ? '<button onclick="removeMemberFromThread(\'' + threadId + '\',\'' + _escAttr(email) + '\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;flex-shrink:0;transition:color .15s" onmouseenter="this.style.color=\'var(--negative)\'" onmouseleave="this.style.color=\'var(--text3)\'" title="Retirer">✕</button>' : '')
     + '</div>';
 }
 
