@@ -7316,6 +7316,23 @@ window.openThread = async function(threadId) {
       readEl.textContent  = isRead ? '✓✓' : '✓';
     }
 
+    // Refresh panneau membres si memberEmails a changé
+    const membersPanel = document.getElementById('chat-members-panel');
+    if (membersPanel && membersPanel.style.display !== 'none' && isSuperAdmin(fbAuth.currentUser)) {
+      const membersList = document.getElementById('chat-members-list');
+      if (membersList) {
+        const ownerEmail = data.userEmail || '';
+        const ownerName  = data.userName  || ownerEmail.split('@')[0] || 'Utilisateur';
+        let mhtml = '<div style="padding:4px 12px 6px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Propriétaire</div>';
+        mhtml += _memberRow(ownerName, ownerEmail, 'user', threadId, false);
+        if (data.memberEmails && data.memberEmails.length) {
+          mhtml += '<div style="padding:10px 12px 6px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Invités</div>';
+          mhtml += data.memberEmails.map(e => _memberRow(e.split('@')[0], e, (data.memberRoles && data.memberRoles[e]) || 'user', threadId, true)).join('');
+        }
+        membersList.innerHTML = mhtml;
+      }
+    }
+
     // Typing indicator
     const uid = fbAuth.currentUser.uid;
     const now = Date.now();
@@ -7412,7 +7429,11 @@ function _renderMessages(docs, user) {
 
     parts.push(
       '<div class="chat-msg-wrap" style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + '" id="msg-' + doc.id + '">'
-      + (!mine ? '<span style="font-size:10px;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text3)') + ';margin-bottom:3px;font-weight:' + (isAdminMsg ? '600' : '400') + '">' + (isAdminMsg ? '⚡ ' : '') + _escHtml(d.senderName || '') + '</span>' : '')
+      + (!mine ? '<span style="font-size:10px;margin-bottom:3px;display:inline-flex;align-items:center;gap:4px">'
+          + '<span style="color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text3)') + ';font-weight:' + (isAdminMsg ? '600' : '400') + '">' + (isAdminMsg ? '⚡ ' : '') + _escHtml(d.senderName || '') + '</span>'
+          + (isSuperAdmin(fbAuth.currentUser) && d.senderEmail ? '<span style="color:var(--text3);font-weight:400">' + _escHtml(d.senderEmail) + '</span>' : '')
+          + (isSuperAdmin(fbAuth.currentUser) && d.senderRole ? '<span style="font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:4px;background:var(--s3);color:var(--text3)">' + _escHtml(d.senderRole) + '</span>' : '')
+          + '</span>' : '')
       + '<div style="display:flex;align-items:flex-end;gap:4px' + (mine ? ';flex-direction:row-reverse' : '') + '">'
       + replyBtn
       + '<div style="max-width:75%;border-radius:' + (mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px') + ';overflow:hidden;border:1px solid ' + (mine ? 'transparent' : 'var(--border)') + '">'
@@ -7547,9 +7568,10 @@ window.sendChatMessage = async function() {
   const msgData = {
     text:       text || '',
     image:      _pendingChatImage || null,
-    senderUid:  user.uid,
-    senderName: user.displayName || user.email.split('@')[0],
-    senderRole: currentUserRole,
+    senderUid:   user.uid,
+    senderName:  user.displayName || user.email.split('@')[0],
+    senderEmail: user.email || '',
+    senderRole:  currentUserRole,
     createdAt:  serverTimestamp(),
     replyTo:    _replyTo || null,
   };
