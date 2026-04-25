@@ -6938,6 +6938,7 @@ let _threadsUnsub  = null;
 let _chatUnsub     = null;
 let _threadDocUnsub = null;
 let _activeThread  = null;
+let _avatarCache   = {}; // email → avatarUrl
 let _chatMsgCount  = 0;
 let _replyTo       = null;
 let _typingActive  = false;
@@ -7270,6 +7271,24 @@ window.openThread = async function(threadId) {
   const isClosed = d.status === 'closed';
   const isSA = isSuperAdmin(fbAuth.currentUser);
 
+  // Pré-charger avatars depuis roles (owner + membres invités)
+  _avatarCache = {};
+  (async () => {
+    const emails = [d.userEmail, ...(d.memberEmails || []), fbAuth.currentUser.email].filter(Boolean);
+    await Promise.all([...new Set(emails)].map(async e => {
+      try {
+        const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'roles'), firestoreWhere('email', '==', e)));
+        if (!snap.empty) {
+          const rd = snap.docs[0].data();
+          _avatarCache[e] = rd.avatarBase64 || rd.photoURL || null;
+        }
+      } catch(e) {}
+    }));
+    // aussi l'avatar local du user courant
+    const me = fbAuth.currentUser;
+    if (me) _avatarCache[me.email] = getUserSettings(me.uid).avatarBase64 || me.photoURL || _avatarCache[me.email] || null;
+  })();
+
   // Header
   document.getElementById('ideas-chat-header').innerHTML =
     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
@@ -7454,9 +7473,10 @@ function _renderMessages(docs, user) {
     // Reply button
     const replyBtn = '<button class="reply-btn" onclick="setReply(\'' + doc.id + '\',\'' + _escAttr(d.senderName||'') + '\',\'' + _escAttr((d.text||'').slice(0,80)) + '\')" style="opacity:0;transition:opacity .15s;background:none;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px;border-radius:6px;flex-shrink:0" title="Répondre">↩</button>';
 
+    const senderAvatarSrc = (d.senderEmail && _avatarCache[d.senderEmail]) || d.senderAvatar || null;
     const avatarHtml = !mine
-      ? (d.senderAvatar
-          ? '<img src="' + _escHtml(d.senderAvatar) + '" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end;margin-bottom:18px">'
+      ? (senderAvatarSrc
+          ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;align-self:flex-end;margin-bottom:18px">'
           : '<div style="width:28px;height:28px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0;align-self:flex-end;margin-bottom:18px">' + _escHtml((d.senderName||'?')[0].toUpperCase()) + '</div>')
       : '';
 
