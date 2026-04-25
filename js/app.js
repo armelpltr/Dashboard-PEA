@@ -6973,8 +6973,7 @@ window.openIdeasPanel = function() {
 
 window.closeIdeasPanel = function() {
   document.getElementById('ideas-overlay').style.display = 'none';
-  if (_threadsUnsub) { _threadsUnsub(); _threadsUnsub = null; }
-  if (_chatUnsub)    { _chatUnsub();    _chatUnsub    = null; }
+  if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
   _activeThread = null;
 };
 
