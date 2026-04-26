@@ -260,11 +260,15 @@ async function sendEmail({ to, toName, subject, html }) {
 
 // ─── MAIN ─────────────────────────────────────────────────────
 async function main() {
-  console.log(`\n🚀 Démarrage récap quotidien — ${today}\n`);
+  const targetEmail = (process.env.TARGET_EMAIL || '').trim().toLowerCase();
+  console.log(`\n🚀 Démarrage récap quotidien — ${today}`);
+  if (targetEmail) console.log(`🎯 Cible : ${targetEmail}\n`);
+  else console.log(`📢 Envoi à tous les utilisateurs\n`);
 
   // 1. Récupérer tous les utilisateurs
-  const users = await getAllUsers();
-  console.log(`👥 ${users.length} utilisateur(s) trouvé(s)`);
+  let users = await getAllUsers();
+  if (targetEmail) users = users.filter(u => u.email.toLowerCase() === targetEmail);
+  console.log(`👥 ${users.length} utilisateur(s) traité(s)`);
 
   for (const user of users) {
     console.log(`\n📊 Traitement de ${user.name} (${user.email})...`);

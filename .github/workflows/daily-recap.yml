@@ -5,7 +5,12 @@ on:
     # 18h00 heure Paris = 16h00 UTC (heure d'été) / 17h00 UTC (heure d'hiver)
     # On lance à 16h00 UTC pour couvrir les deux cas
     - cron: '0 16 * * 1-5'  # Lundi-Vendredi uniquement
-  workflow_dispatch:  # Permet de lancer manuellement pour tester
+  workflow_dispatch:
+    inputs:
+      target_email:
+        description: 'Email spécifique (vide = tous les users)'
+        required: false
+        default: ''
 
 jobs:
   send-recap:
@@ -29,6 +34,7 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          TARGET_EMAIL: ${{ github.event.inputs.target_email }}
         run: |
           cd scripts
           node daily-recap.js
