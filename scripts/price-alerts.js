@@ -128,13 +128,18 @@ async function main() {
   console.log(`👥 ${users.length} utilisateur(s)`);
 
   for (const user of users) {
+    console.log(`\n👤 ${user.name} (${user.email}) — uid: ${user.uid}`);
     const alerts = await getUserAlerts(user.uid);
-    const active = alerts.filter(a => a.active && !a.triggeredAt);
-    if (!active.length) continue;
+    console.log(`  📋 ${alerts.length} alerte(s) totale(s) en Firestore`);
+    alerts.forEach((a, i) => console.log(`     [${i}] ${a.ticker} ${a.direction === 'above' ? '>=' : '<='} ${a.targetPrice}€ | active=${a.active} | triggeredAt=${a.triggeredAt || 'null'}`));
 
-    console.log(`\n📊 ${user.name} — ${active.length} alerte(s) active(s)`);
+    const active = alerts.filter(a => a.active && !a.triggeredAt);
+    if (!active.length) { console.log(`  — Aucune alerte active, skip`); continue; }
+
+    console.log(`  ✅ ${active.length} alerte(s) active(s)`);
 
     const settings = await getUserSettings(user.uid);
+    console.log(`  ⚙️  notifSettings.priceAlerts = ${settings.notifSettings?.priceAlerts}`);
     if (settings.notifSettings?.priceAlerts === false) {
       console.log(`  🔕 Alertes prix désactivées`);
       continue;
@@ -142,10 +147,12 @@ async function main() {
 
     // Fetch prix uniques
     const tickers = [...new Set(active.map(a => a.ticker))];
+    console.log(`  🔍 Fetch prix pour: ${tickers.join(', ')}`);
     const prices = {};
     await Promise.all(tickers.map(async t => {
       const data = await fetchPrice(t);
-      if (data) prices[t] = data;
+      if (data) { prices[t] = data; console.log(`  💹 ${t} = ${data.price}€`); }
+      else console.log(`  ⚠️  ${t} — prix indisponible`);
     }));
 
     const triggered = [];
