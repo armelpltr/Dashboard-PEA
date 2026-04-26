@@ -36,5 +36,6 @@ jobs:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           TARGET_EMAIL: ${{ github.event.inputs.target_email }}
         run: |
+          echo "TARGET_EMAIL=$TARGET_EMAIL"
           cd scripts
           node daily-recap.js
