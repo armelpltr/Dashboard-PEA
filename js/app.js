@@ -6967,7 +6967,7 @@ function _dateLabel(date) {
   if (+d === +yest)  return 'Hier';
   return date.toLocaleDateString('fr-FR', {day:'numeric',month:'long',year:'numeric'});
 }
-const _baseTitle = document.title || 'PEA Dashboard';
+const _baseTitle = document.title || 'CapitalView';
 function _updateFavicon(count) {
   document.title = count > 0
     ? _baseTitle + ' — ' + count + ' message' + (count > 1 ? 's' : '') + ' non lu' + (count > 1 ? 's' : '')
@@ -8020,7 +8020,7 @@ window.exportThread = async function(threadId) {
     const fmt = ts => ts && ts.toDate ? ts.toDate().toLocaleString('fr-FR') : '?';
     const sep = '─'.repeat(60);
 
-    let txt = 'CONVERSATION EXPORTÉE — PEA Dashboard\n'
+    let txt = 'CONVERSATION EXPORTÉE — CapitalView\n'
       + sep + '\n'
       + 'Sujet    : ' + (t.title || '—') + '\n'
       + 'Utilisateur : ' + (t.userName || '') + ' <' + (t.userEmail || '') + '>\n'
