@@ -7382,10 +7382,36 @@ window.openThread = async function(threadId) {
     }
   });
 
+  // Reset pill + attach scroll-to-read listener
+  const msgsEl = document.getElementById('ideas-messages');
+  if (msgsEl) {
+    const pill = document.getElementById('chat-new-msg-pill');
+    if (pill) pill.style.display = 'none';
+    msgsEl.onscroll = () => {
+      if (msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight < 80) {
+        _resetUnreadCurrent();
+      }
+    };
+  }
+
   // Messages listener
   const msgCol = firestoreCollection(db, 'ideas', threadId, 'messages');
   const q = firestoreQuery(msgCol, firestoreOrderBy('createdAt', 'asc'));
   _chatUnsub = onSnapshot(q, snap => _renderMessages(snap.docs, user));
+};
+
+function _resetUnreadCurrent() {
+  if (!_activeThread || !fbAuth.currentUser) return;
+  const field = isAdmin(fbAuth.currentUser) ? { unreadAdmin: 0 } : { unreadUser: 0 };
+  setFirestoreDoc(firestoreDoc(db, 'ideas', _activeThread), field, { merge: true }).catch(() => {});
+  const pill = document.getElementById('chat-new-msg-pill');
+  if (pill) pill.style.display = 'none';
+}
+
+window._scrollToNewMsg = function() {
+  const el = document.getElementById('ideas-messages');
+  if (el) el.scrollTop = el.scrollHeight;
+  _resetUnreadCurrent();
 };
 
 function _renderMessages(docs, user) {
@@ -7590,6 +7616,20 @@ function _renderMessages(docs, user) {
     else el.scrollTop = el.scrollHeight;
   } else if (wasAtBottom || prevCount === 0) {
     el.scrollTop = el.scrollHeight;
+  }
+
+  // Auto-read / pill logic for incoming messages while thread is open
+  const isNewFromOther = prevCount > 0 && docs.length > prevCount
+    && docs[docs.length - 1].data().senderUid !== fbAuth.currentUser.uid;
+
+  if (isNewFromOther) {
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (atBottom) {
+      _resetUnreadCurrent();
+    } else {
+      const pill = document.getElementById('chat-new-msg-pill');
+      if (pill) pill.style.display = 'block';
+    }
   }
 }
 
