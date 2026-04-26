@@ -831,13 +831,13 @@ function renderPortfolio() {
   const totalVersements = versements.reduce((s, v) => s + v.amount, 0);
   document.getElementById('stat-versements').textContent = fmt(totalVersements);
 
-  // Cash = versements - total achats + total ventes (from tx log)
-  let totalAchats = 0, totalVentes = 0;
+  // Cash = versements - total achats + total ventes - frais (from tx log)
+  let totalAchats = 0, totalVentes = 0, totalFrais = 0;
   txs.forEach(tx => {
-    if (tx.type === 'buy') totalAchats += tx.qty * tx.price;
-    if (tx.type === 'sell') totalVentes += tx.qty * tx.price;
+    if (tx.type === 'buy')  { totalAchats += tx.qty * tx.price; totalFrais += tx.frais || 0; }
+    if (tx.type === 'sell') { totalVentes += tx.qty * tx.price; totalFrais += tx.frais || 0; }
   });
-  const cash = totalVersements - totalAchats + totalVentes;
+  const cash = totalVersements - totalAchats + totalVentes - totalFrais;
   const cashEl = document.getElementById('stat-cash');
   cashEl.textContent = fmt(cash);
   cashEl.style.color = cash >= 0 ? 'var(--positive)' : 'var(--negative)';
@@ -914,8 +914,9 @@ function openEditModal(i) {
   var el  = document.getElementById('edit-cur-pnl');
   el.textContent = (pnl >= 0 ? '+' : '') + fmt(pnl);
   el.style.color = pnl >= 0 ? 'var(--positive)' : 'var(--negative)';
-  document.getElementById('edit-qty').value   = '';
-  document.getElementById('edit-price').value = '';
+  document.getElementById('edit-qty').value    = '';
+  document.getElementById('edit-price').value  = '';
+  document.getElementById('edit-frais').value  = '';
   setEditTab('buy');
   document.getElementById('edit-modal-overlay').classList.add('open');
 }
@@ -958,21 +959,22 @@ function confirmEdit() {
   if (!qty || qty <= 0) { alert('Quantite invalide.'); return; }
   var txDate = document.getElementById('edit-date').value;
   if (!txDate) { alert("Veuillez renseigner la date."); return; }
+  var frais = parseFloat(document.getElementById('edit-frais').value) || 0;
   if (editTab === 'buy') {
     var price = parseFloat(document.getElementById('edit-price').value);
     if (!price || price <= 0) { alert('Prix invalide.'); return; }
     var newQty = row.qty + qty;
     row.buyPrice = Math.round(((row.qty * row.buyPrice + qty * price) / newQty) * 10000) / 10000;
     row.qty      = Math.round(newQty * 10000) / 10000;
-    logTransaction(currentUser, { type:'buy', ticker: row.ticker, name: row.name, qty, price, date: txDate });
+    logTransaction(currentUser, { type:'buy', ticker: row.ticker, name: row.name, qty, price, date: txDate, frais });
   } else {
     if (qty > row.qty) { alert('Quantite superieure a la position.'); return; }
     var sellPrice = parseFloat(document.getElementById('edit-sell-price').value);
     if (!sellPrice || sellPrice <= 0) { alert('Prix de vente invalide.'); return; }
     ensureBuyTxExists(currentUser, row);
-    // Calculate realized P&L for this sell
-    var realizedPnl = (sellPrice - row.buyPrice) * qty;
-    logTransaction(currentUser, { type:'sell', ticker: row.ticker, name: row.name, qty, price: sellPrice, date: txDate, buyPrice: row.buyPrice, realizedPnl: Math.round(realizedPnl * 100) / 100 });
+    // Calculate realized P&L for this sell, deduct brokerage fees
+    var realizedPnl = (sellPrice - row.buyPrice) * qty - frais;
+    logTransaction(currentUser, { type:'sell', ticker: row.ticker, name: row.name, qty, price: sellPrice, date: txDate, buyPrice: row.buyPrice, realizedPnl: Math.round(realizedPnl * 100) / 100, frais });
     if (qty === row.qty) {
       data.splice(editRowIndex, 1);
       savePortfolio(currentUser, data);
@@ -1175,6 +1177,7 @@ function openModal() {
   document.getElementById('modal-ticker').value = '';
   document.getElementById('modal-qty').value = '';
   document.getElementById('modal-buy-price').value = '';
+  document.getElementById('modal-buy-frais').value = '';
   document.getElementById('search-result').classList.remove('visible');
   document.getElementById('res-logo').innerHTML = '';
   document.getElementById('search-status').innerHTML = '';
@@ -1676,6 +1679,7 @@ function confirmAdd() {
   const qty     = parseFloat(document.getElementById('modal-qty').value);
   const buyPrice= parseFloat(document.getElementById('modal-buy-price').value);
   const buyDate = document.getElementById('modal-buy-date').value;
+  const frais   = parseFloat(document.getElementById('modal-buy-frais').value) || 0;
 
   if (!foundPrice || !qty || qty <= 0 || !buyPrice || buyPrice <= 0) {
     alert('Veuillez remplir tous les champs correctement.');
@@ -1703,7 +1707,7 @@ function confirmAdd() {
     addedAt:      new Date().toISOString()
   });
   // Log transaction for portfolio history
-  logTransaction(currentUser, { type:'buy', ticker: foundTicker||'', name: foundName||'', qty, price: buyPrice, date: buyDate });
+  logTransaction(currentUser, { type:'buy', ticker: foundTicker||'', name: foundName||'', qty, price: buyPrice, date: buyDate, frais });
   savePortfolio(currentUser, data);
   closeModal();
   renderPortfolio();
@@ -3970,11 +3974,12 @@ function exportVersementsCSV() {
 function exportTransactionsCSV() {
   const txs = getTransactions(currentUser);
   if (!txs.length) { alert('Aucune transaction.'); return; }
-  const header = 'Date,Type,Ticker,Nom,Quantité,Prix,Montant,PnL Réalisé\n';
+  const header = 'Date,Type,Ticker,Nom,Quantité,Prix,Montant,Frais,PnL Réalisé\n';
   const rows = txs.sort((a,b) => (a.date||'').localeCompare(b.date||'')).map(t => {
     const montant = (t.qty * t.price).toFixed(2);
+    const frais = t.frais != null && t.frais > 0 ? t.frais.toFixed(2) : '';
     const pnl = t.realizedPnl != null ? t.realizedPnl.toFixed(2) : '';
-    return [t.date, t.type, t.ticker, (t.name||'').replace(/,/g,' '), t.qty, t.price.toFixed(2), montant, pnl].join(',');
+    return [t.date, t.type, t.ticker, (t.name||'').replace(/,/g,' '), t.qty, t.price.toFixed(2), montant, frais, pnl].join(',');
   }).join('\n');
   const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
