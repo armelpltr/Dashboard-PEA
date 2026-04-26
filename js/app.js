@@ -406,6 +406,8 @@ async function startApp(user) {
   if (!window.autoRefreshInterval) window.toggleAutoRefresh();
   // Badge idées en arrière-plan
   _listenThreads(user);
+  _startPresenceHeartbeat(user);
+  if (isSuperAdmin(user)) _startPresenceListener();
 
   // Preload des données lourdes (Benchmark + Performance + Watchlist)
   // en arrière-plan, pour que les pages s'affichent instantanément quand
@@ -415,6 +417,7 @@ async function startApp(user) {
 }
 
 function stopApp() {
+  _stopPresenceHeartbeat(currentUser);
   currentUser = null;
   window.currentUser = null;
   document.getElementById('app').style.display = 'none';
@@ -6942,6 +6945,9 @@ let _avatarCache   = {}; // email → avatarUrl
 let _chatMsgCount  = 0;
 let _replyTo       = null;
 let _typingActive  = false;
+let _presenceInterval = null;
+let _presenceUnsub    = null;
+let _presenceMap      = {}; // uid → { online, email }
 let _typingTimer   = null;
 let _searchQuery   = '';
 let _lastThreadDocs = null;
@@ -7072,6 +7078,78 @@ window.closeIdeasPanel = function() {
   _activeThread = null;
 };
 
+// ─── PRÉSENCE ────────────────────────────────────────────
+function _startPresenceHeartbeat(user) {
+  const ref = firestoreDoc(db, 'presence', user.uid);
+  const update = (online) => setFirestoreDoc(ref, {
+    online,
+    lastSeen: serverTimestamp(),
+    email: user.email,
+    name: user.displayName || user.email.split('@')[0],
+  }, { merge: true }).catch(() => {});
+
+  update(true);
+  _presenceInterval = setInterval(() => update(true), 30000);
+
+  document.addEventListener('visibilitychange', _onPresenceVisibility);
+  window.addEventListener('beforeunload', () => update(false));
+}
+
+function _onPresenceVisibility() {
+  if (!fbAuth.currentUser || !db) return;
+  const ref = firestoreDoc(db, 'presence', fbAuth.currentUser.uid);
+  setFirestoreDoc(ref, { online: !document.hidden, lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
+}
+
+function _stopPresenceHeartbeat(uid) {
+  clearInterval(_presenceInterval);
+  _presenceInterval = null;
+  document.removeEventListener('visibilitychange', _onPresenceVisibility);
+  if (uid && db) {
+    setFirestoreDoc(firestoreDoc(db, 'presence', uid), { online: false }, { merge: true }).catch(() => {});
+  }
+  if (_presenceUnsub) { _presenceUnsub(); _presenceUnsub = null; }
+  _presenceMap = {};
+}
+
+function _startPresenceListener() {
+  if (_presenceUnsub) return;
+  _presenceUnsub = onSnapshot(firestoreCollection(db, 'presence'), snap => {
+    const now = Date.now();
+    snap.docs.forEach(doc => {
+      const d = doc.data();
+      const lastSeen = d.lastSeen && d.lastSeen.toMillis ? d.lastSeen.toMillis() : 0;
+      _presenceMap[doc.id] = { online: !!d.online && (now - lastSeen) < 90000, email: d.email || '' };
+    });
+    _updatePresenceDots();
+  });
+}
+
+function _isOnlineByEmail(email) {
+  return Object.values(_presenceMap).some(p => p.email === email && p.online);
+}
+
+function _presenceDot(email) {
+  const online = _isOnlineByEmail(email);
+  return '<span data-presence-email="' + _escAttr(email) + '" title="' + (online ? 'En ligne' : 'Hors ligne') + '" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:' + (online ? 'var(--positive)' : 'var(--text3)') + ';opacity:' + (online ? '1' : '0.4') + '"></span>';
+}
+
+function _updatePresenceDots() {
+  const now = Date.now();
+  // Rebuild online set
+  Object.keys(_presenceMap).forEach(uid => {
+    const p = _presenceMap[uid];
+    if (p._lastSeen) p.online = p.online && (now - p._lastSeen) < 90000;
+  });
+  document.querySelectorAll('[data-presence-email]').forEach(el => {
+    const email = el.dataset.presenceEmail;
+    const online = _isOnlineByEmail(email);
+    el.style.background = online ? 'var(--positive)' : 'var(--text3)';
+    el.style.opacity    = online ? '1' : '0.4';
+    el.title = online ? 'En ligne' : 'Hors ligne';
+  });
+}
+
 async function _renderMembersPanel(d, threadId, el) {
   // Récupère photoURL depuis roles pour chaque email
   const emails = [d.userEmail, ...(d.memberEmails || [])].filter(Boolean);
@@ -7109,7 +7187,10 @@ function _memberRow(name, email, role, threadId, canRemove, photoURL) {
     : '<div style="width:28px;height:28px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0">' + _escHtml(initial) + '</div>';
   return '<div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:6px;margin:0 4px" '
     + 'onmouseenter="this.style.background=\'var(--s2)\'" onmouseleave="this.style.background=\'\'">'
+    + '<div style="position:relative;flex-shrink:0">'
     + avatarEl
+    + '<span data-presence-email="' + _escAttr(email) + '" title="' + (_isOnlineByEmail(email) ? 'En ligne' : 'Hors ligne') + '" style="position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;border:2px solid var(--s1);background:' + (_isOnlineByEmail(email) ? 'var(--positive)' : 'var(--text3)') + ';opacity:' + (_isOnlineByEmail(email) ? '1' : '0.4') + '"></span>'
+    + '</div>'
     + '<div style="flex:1;min-width:0">'
     + '<div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(name) + '</div>'
     + '<div style="font-size:10px;color:' + roleColor + '">' + roleIcon + ' ' + role + '</div>'
@@ -7237,7 +7318,9 @@ function _renderThreads(docs, user) {
       + closedLabel
       + (unread ? '<span style="background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;flex-shrink:0">' + unread + '</span>' : '')
       + '</div>'
-      + (isAdmin(user) ? '<div style="font-size:10px;color:var(--text3)">' + _escHtml(d.userName || d.userEmail || '') + '</div>' : '')
+      + (isAdmin(user) ? '<div style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px">'
+        + (isSuperAdmin(user) && d.userEmail ? '<span data-presence-email="' + _escAttr(d.userEmail) + '" title="' + (_isOnlineByEmail(d.userEmail) ? 'En ligne' : 'Hors ligne') + '" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:' + (_isOnlineByEmail(d.userEmail) ? 'var(--positive)' : 'var(--text3)') + ';opacity:' + (_isOnlineByEmail(d.userEmail) ? '1' : '0.4') + '"></span>' : '')
+        + _escHtml(d.userName || d.userEmail || '') + '</div>' : '')
       + '<div style="font-size:10px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(d.lastMessage || '—') + '</div>'
       + '</div>';
   }).join('');
