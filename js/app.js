@@ -430,6 +430,7 @@ async function startApp(user) {
   // Ne bloque pas l'affichage : lancé après le rendu du portefeuille.
   setTimeout(() => { preloadAll().catch(e => console.warn('Preload:', e)); }, 200);
   _updateNotifBadge();
+  _listenBroadcast();
   if (Notification.permission === 'granted') initPush(user.uid).catch(() => {});
 }
 
@@ -694,8 +695,9 @@ function updateRoleBadges() {
   if (btnSAm) btnSAm.style.display = isSA ? 'flex' : 'none';
 }
 
-window.openSuperAdminPanel = function() {
+window.openSuperAdminPanel = async function() {
   document.getElementById('superadmin-overlay').style.display = 'flex';
+  await _saLoadAll();
 };
 window.closeSuperAdminPanel = function() {
   document.getElementById('superadmin-overlay').style.display = 'none';
@@ -8090,6 +8092,170 @@ function _cleanExpiredThreads(docs) {
 
 window.grantAdmin  = async function() { await _setRoleByEmail('admin'); };
 window.revokeAdmin = async function() { await _setRoleByEmail('user'); };
+
+// ── Super Admin panel ───────────────────────────────────────
+
+async function _saLoadAll() {
+  document.getElementById('sa-subtitle').textContent = 'Chargement…';
+  try {
+    const [rolesSnap, presenceSnap] = await Promise.all([
+      getDocs(firestoreCollection(db, 'roles')),
+      getDocs(firestoreCollection(db, 'presence')),
+    ]);
+
+    const presence = {};
+    presenceSnap.forEach(d => { presence[d.id] = d.data(); });
+
+    const users = [];
+    const portfolioFetches = rolesSnap.docs.map(async d => {
+      const role = d.data();
+      const uid  = d.id;
+      const [portSnap, alertsSnap] = await Promise.all([
+        getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'portfolio')).catch(() => null),
+        getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'alerts')).catch(() => null),
+      ]);
+      const positions = portSnap?.exists() ? (portSnap.data().items || []).length : 0;
+      const alerts    = alertsSnap?.exists() ? (alertsSnap.data().items || []).filter(a => a.active && !a.triggeredAt).length : 0;
+      users.push({ uid, email: role.email || '', role: role.role || 'user', positions, alerts, presence: presence[uid] || null });
+    });
+    await Promise.all(portfolioFetches);
+
+    const online = users.filter(u => u.presence?.online).length;
+    const active7 = users.filter(u => {
+      if (!u.presence?.lastSeen) return false;
+      const d = u.presence.lastSeen.toDate ? u.presence.lastSeen.toDate() : new Date(u.presence.lastSeen);
+      return (Date.now() - d.getTime()) < 7 * 24 * 3600 * 1000;
+    }).length;
+    const totalAlerts = users.reduce((s, u) => s + u.alerts, 0);
+    const totalPos    = users.reduce((s, u) => s + u.positions, 0);
+
+    document.getElementById('sa-subtitle').textContent = `${users.length} utilisateurs · ${online} en ligne`;
+    document.getElementById('sa-online-count').textContent = `· ${online} en ligne`;
+
+    // Stats cards
+    const statsEl = document.getElementById('sa-stats');
+    const stats = [
+      { label: 'Utilisateurs', value: users.length, icon: '👥' },
+      { label: 'Actifs 7j',    value: active7,       icon: '📅' },
+      { label: 'En ligne',     value: online,         icon: '🟢' },
+      { label: 'Alertes actives', value: totalAlerts, icon: '🎯' },
+      { label: 'Positions totales', value: totalPos,  icon: '💼' },
+    ];
+    statsEl.innerHTML = stats.map(s =>
+      `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+        <div style="font-size:18px;margin-bottom:4px">${s.icon}</div>
+        <div style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--mono)">${s.value}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${s.label}</div>
+      </div>`
+    ).join('');
+
+    // Users table
+    users.sort((a, b) => (b.presence?.online ? 1 : 0) - (a.presence?.online ? 1 : 0));
+    document.getElementById('sa-users-tbody').innerHTML = users.map(u => {
+      const isOnline = u.presence?.online;
+      const lastSeen = u.presence?.lastSeen ? (() => {
+        const d = u.presence.lastSeen.toDate ? u.presence.lastSeen.toDate() : new Date(u.presence.lastSeen);
+        return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+      })() : '—';
+      const roleColor = u.role === 'superadmin' ? '#fbbf24' : u.role === 'admin' ? 'var(--accent)' : 'var(--text3)';
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 10px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${isOnline ? 'var(--positive)' : 'var(--border2)'}" title="${isOnline ? 'En ligne' : 'Hors ligne'}"></span></td>
+        <td style="padding:8px 10px;font-size:12px;color:var(--text)">${u.email}</td>
+        <td style="padding:8px 10px;font-size:11px;color:${roleColor};font-weight:600">${u.role}</td>
+        <td style="padding:8px 10px;font-size:12px;color:var(--text2);font-family:var(--mono);text-align:center">${u.positions}</td>
+        <td style="padding:8px 10px;font-size:12px;color:${u.alerts > 0 ? 'var(--accent)' : 'var(--text3)'};font-family:var(--mono);text-align:center">${u.alerts}</td>
+        <td style="padding:8px 10px;font-size:11px;color:var(--text3)">${lastSeen}</td>
+        <td style="padding:8px 10px">
+          <button onclick="saDeleteUser('${u.uid}','${u.email}')" style="background:none;border:1px solid rgba(255,77,106,0.3);color:var(--negative);border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer" title="Supprimer données">🗑</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // Recap buttons
+    document.getElementById('sa-recap-btns').innerHTML = users.map(u =>
+      `<button onclick="saForceRecap('${u.email}')" style="text-align:left;background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer">▶ ${u.email}</button>`
+    ).join('');
+
+  } catch(e) {
+    document.getElementById('sa-subtitle').textContent = 'Erreur : ' + e.message;
+  }
+}
+
+async function saBroadcast() {
+  const msg = document.getElementById('sa-broadcast-msg').value.trim();
+  const st  = document.getElementById('sa-broadcast-status');
+  if (!msg) return;
+  try {
+    await setFirestoreDoc(firestoreDoc(db, 'config', 'broadcast'), { message: msg, active: true, createdAt: serverTimestamp() });
+    st.style.color = 'var(--positive)';
+    st.textContent = '✓ Bandeau envoyé';
+    document.getElementById('sa-broadcast-msg').value = '';
+    setTimeout(() => { st.textContent = ''; }, 3000);
+  } catch(e) { st.style.color = 'var(--negative)'; st.textContent = 'Erreur : ' + e.message; }
+}
+
+async function saClearBroadcast() {
+  const st = document.getElementById('sa-broadcast-status');
+  try {
+    await setFirestoreDoc(firestoreDoc(db, 'config', 'broadcast'), { active: false, message: '' });
+    st.style.color = 'var(--text3)';
+    st.textContent = 'Bandeau effacé';
+    setTimeout(() => { st.textContent = ''; }, 2000);
+  } catch(e) { st.style.color = 'var(--negative)'; st.textContent = 'Erreur : ' + e.message; }
+}
+
+async function saForceRecap(email) {
+  const token = document.getElementById('sa-github-token').value.trim();
+  const st    = document.getElementById('sa-recap-status');
+  if (!token) { st.style.color = 'var(--negative)'; st.textContent = 'Entre le GitHub PAT d\'abord'; return; }
+  st.style.color = 'var(--text3)'; st.textContent = `Envoi recap pour ${email}…`;
+  try {
+    const res = await fetch('https://api.github.com/repos/armelpltr/Dashboard-PEA/actions/workflows/daily-recap.yml/dispatches', {
+      method: 'POST',
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: 'main' }),
+    });
+    if (res.ok || res.status === 204) {
+      st.style.color = 'var(--positive)'; st.textContent = `✓ Recap déclenché (tous les users recevront le mail)`;
+    } else {
+      const err = await res.text();
+      st.style.color = 'var(--negative)'; st.textContent = `Erreur GitHub ${res.status}: ${err}`;
+    }
+  } catch(e) { st.style.color = 'var(--negative)'; st.textContent = 'Erreur : ' + e.message; }
+}
+
+async function saDeleteUser(uid, email) {
+  if (!confirm(`Supprimer toutes les données de ${email} ?\n\nLe compte Auth reste actif mais le portfolio, transactions et paramètres seront effacés.`)) return;
+  try {
+    const cols = ['portfolio', 'transactions', 'versements', 'watchlist', 'dailyValues', 'alerts', 'notifHistory', 'settings'];
+    await Promise.all(cols.map(c => deleteFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', c)).catch(() => {})));
+    await deleteFirestoreDoc(firestoreDoc(db, 'roles', uid)).catch(() => {});
+    alert(`✓ Données de ${email} supprimées.`);
+    await _saLoadAll();
+  } catch(e) { alert('Erreur : ' + e.message); }
+}
+
+function _listenBroadcast() {
+  onSnapshot(firestoreDoc(db, 'config', 'broadcast'), snap => {
+    const banner = document.getElementById('broadcast-banner');
+    if (!banner) return;
+    const data = snap.exists() ? snap.data() : null;
+    if (data?.active && data.message) {
+      document.getElementById('broadcast-text').textContent = data.message;
+      banner.style.display = 'flex';
+      document.body.style.paddingTop = '44px';
+    } else {
+      banner.style.display = 'none';
+      document.body.style.paddingTop = '';
+    }
+  });
+}
+
+function dismissBroadcast() {
+  const banner = document.getElementById('broadcast-banner');
+  if (banner) banner.style.display = 'none';
+  document.body.style.paddingTop = '';
+}
 
 async function _setRoleByEmail(role) {
   const email = document.getElementById('input-admin-email').value.trim().toLowerCase();

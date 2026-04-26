@@ -100,6 +100,15 @@
 <!-- ═══ APP ═════════════════════════════════════════ -->
 <div id="app" style="display:none">
 
+  <!-- ─── BROADCAST BANNER ──────────────────────────── -->
+  <div id="broadcast-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:2000;background:linear-gradient(90deg,#7c6df5,#5b8dee);padding:10px 20px;display:none;align-items:center;justify-content:space-between;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px;flex:1">
+      <span style="font-size:16px">📢</span>
+      <span id="broadcast-text" style="font-size:13px;font-weight:600;color:#fff"></span>
+    </div>
+    <button onclick="dismissBroadcast()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>
+  </div>
+
   <!-- ─── MOBILE HEADER ───────────────────────────── -->
   <header class="mobile-header" id="mobile-header">
     <div class="mobile-header-logo">
@@ -1237,28 +1246,83 @@
 
 <!-- ═══ MODAL SUPER ADMIN ═════════════════════════════ -->
 <div id="superadmin-overlay" onclick="if(event.target===this)closeSuperAdminPanel()" style="
-  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1300;
-  align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
-  <div style="
-    width:500px;max-width:100%;background:var(--s1);border-radius:18px;
-    border:1px solid rgba(251,191,36,0.3);box-shadow:0 24px 60px rgba(0,0,0,0.5);
-    overflow:hidden">
-    <div style="padding:18px 22px;border-bottom:1px solid rgba(251,191,36,0.2);display:flex;align-items:center;gap:10px;background:rgba(251,191,36,0.05)">
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1300;
+  align-items:flex-start;justify-content:center;padding:20px;box-sizing:border-box;overflow-y:auto">
+  <div style="width:860px;max-width:100%;background:var(--s1);border-radius:18px;border:1px solid rgba(251,191,36,0.3);box-shadow:0 24px 60px rgba(0,0,0,0.6);overflow:hidden;margin:auto">
+
+    <!-- Header -->
+    <div style="padding:18px 24px;border-bottom:1px solid rgba(251,191,36,0.2);display:flex;align-items:center;gap:10px;background:rgba(251,191,36,0.05)">
       <span style="font-size:20px">👑</span>
       <div style="flex:1">
         <div style="font-weight:700;font-size:15px;font-family:var(--display);color:#fbbf24">Super Admin</div>
-        <div style="font-size:11px;color:var(--text3)">Gestion des rôles et des accès</div>
+        <div style="font-size:11px;color:var(--text3)" id="sa-subtitle">Chargement…</div>
       </div>
       <button onclick="closeSuperAdminPanel()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px">✕</button>
     </div>
-    <div style="padding:22px">
-      <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px">Gérer les administrateurs</div>
-      <div style="display:flex;gap:8px;margin-bottom:10px">
-        <input id="input-admin-email" type="email" placeholder="Email de l'utilisateur" class="form-input" style="flex:1;font-size:13px">
-        <button onclick="grantAdmin()" style="padding:8px 14px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">+ Admin</button>
-        <button onclick="revokeAdmin()" style="padding:8px 14px;background:var(--s3);border:1px solid var(--border);color:var(--negative);border-radius:8px;font-size:12px;cursor:pointer">Retirer</button>
+
+    <div style="padding:24px;display:flex;flex-direction:column;gap:24px">
+
+      <!-- Stats globales -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Stats globales</div>
+        <div id="sa-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px"></div>
       </div>
-      <div id="admin-role-status" style="font-size:12px;font-family:var(--mono);min-height:16px;color:var(--positive)"></div>
+
+      <!-- Users en ligne + liste -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Utilisateurs <span id="sa-online-count" style="color:var(--positive)"></span></div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="color:var(--text3);text-align:left">
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Statut</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Email</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Rôle</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Positions</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Alertes</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Dernière activité</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sa-users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Broadcast -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Broadcast — bandeau annonce</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="sa-broadcast-msg" type="text" placeholder="Message à afficher à tous les utilisateurs…" class="form-input" style="flex:1;font-size:13px">
+          <button onclick="saBroadcast()" style="padding:8px 16px;background:#fbbf24;border:none;color:#000;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">📢 Envoyer</button>
+          <button onclick="saClearBroadcast()" style="padding:8px 12px;background:var(--s3);border:1px solid var(--border);color:var(--negative);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap">✕ Effacer</button>
+        </div>
+        <div id="sa-broadcast-status" style="font-size:12px;color:var(--text3);min-height:16px"></div>
+      </div>
+
+      <!-- Forcer recap + Gestion rôles -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Forcer recap email</div>
+          <div style="display:flex;gap:8px;margin-bottom:6px">
+            <input id="sa-github-token" type="password" placeholder="GitHub PAT (scope: workflow)" class="form-input" style="flex:1;font-size:12px">
+          </div>
+          <div id="sa-recap-btns" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto"></div>
+          <div id="sa-recap-status" style="font-size:12px;color:var(--text3);margin-top:6px;min-height:16px"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Gérer les rôles</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input id="input-admin-email" type="email" placeholder="Email utilisateur" class="form-input" style="flex:1;font-size:12px">
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button onclick="grantAdmin()" style="flex:1;padding:7px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer">+ Admin</button>
+            <button onclick="revokeAdmin()" style="flex:1;padding:7px;background:var(--s3);border:1px solid var(--border);color:var(--negative);border-radius:8px;font-size:11px;cursor:pointer">Retirer</button>
+          </div>
+          <div id="admin-role-status" style="font-size:12px;font-family:var(--mono);min-height:16px;color:var(--positive)"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
