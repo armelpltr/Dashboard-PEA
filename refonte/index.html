@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CapitalView</title>
+<link rel="icon" type="image/svg+xml" href="../icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CapitalView">
+<meta name="theme-color" content="#0c0c0c">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══════════════════════════════════════ -->
+<div id="login-screen" style="display:none">
+  <div class="login-bg"></div>
+  <div class="login-grid"></div>
+
+  <!-- VUE CONNEXION -->
+  <div class="login-card" id="login-view">
+    <div class="login-logo">
+      <div class="logo-icon">📈</div>
+      <div class="login-title">CapitalView</div>
+      <div class="login-subtitle">Suivi de portefeuille</div>
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="input-email" placeholder="vous@exemple.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input type="password" class="form-input" id="input-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="btn-login-submit" onclick="doLogin()">Connexion</button>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
+      Pas encore de compte ?
+      <span onclick="showRegisterView()" style="color:var(--accent);cursor:pointer;font-weight:600;margin-left:4px">Créer un compte</span>
+    </div>
+  </div>
+
+  <!-- VUE INSCRIPTION -->
+  <div class="login-card" id="register-view" style="display:none">
+    <div class="login-logo">
+      <div class="logo-icon">📈</div>
+      <div class="login-title">Créer un compte</div>
+      <div class="login-subtitle">CapitalView</div>
+    </div>
+    <div class="login-error" id="register-error"></div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="reg-email" placeholder="vous@exemple.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input type="password" class="form-input" id="reg-pass" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirmer le mot de passe</label>
+      <input type="password" class="form-input" id="reg-pass2" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:12px 14px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.2);border-radius:10px;cursor:pointer" onclick="document.getElementById('reg-recap').click()">
+      <input type="checkbox" id="reg-recap" checked style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">Récap quotidien par mail</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Recevez chaque soir à 18h un résumé de la performance de votre PEA.</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;cursor:pointer" onclick="document.getElementById('reg-rgpd').click()">
+      <input type="checkbox" id="reg-rgpd" style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">J'accepte les CGU et la politique de confidentialité <span style="color:#e55">*</span></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">En créant un compte, vous acceptez nos <a href="../cgu.html" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent)">CGU</a> et notre <a href="../politique-confidentialite.html" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent)">politique de confidentialité</a>.</div>
+      </div>
+    </div>
+    <div id="register-rgpd-error" style="display:none;color:#e55;font-size:12px;margin-bottom:10px;text-align:center">Vous devez accepter les CGU pour créer un compte.</div>
+    <button class="btn-login" id="btn-register-submit" onclick="doRegister()">Créer le compte</button>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
+      Déjà un compte ?
+      <span onclick="showLoginView()" style="color:var(--accent);cursor:pointer;font-weight:600;margin-left:4px">Se connecter</span>
+    </div>
+    <div class="login-legal">
+      <a href="../mentions-legales.html" target="_blank">Mentions légales</a>
+      <span class="sep">·</span>
+      <a href="../politique-confidentialite.html" target="_blank">Confidentialité</a>
+      <span class="sep">·</span>
+      <a href="../cgu.html" target="_blank">CGU</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ APP ═════════════════════════════════════════ -->
+<div id="app" style="display:none">
+
+  <!-- ─── BROADCAST BANNER ──────────────────────────── -->
+  <div id="broadcast-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:2000;background:linear-gradient(90deg,#7c6df5,#5b8dee);padding:10px 20px;display:none;align-items:center;justify-content:space-between;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px;flex:1">
+      <span style="font-size:16px">📢</span>
+      <span id="broadcast-text" style="font-size:13px;font-weight:600;color:#fff"></span>
+    </div>
+    <button onclick="dismissBroadcast()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>
+  </div>
+
+  <!-- ─── MOBILE HEADER ───────────────────────────── -->
+  <header class="mobile-header" id="mobile-header">
+    <div class="mobile-header-logo">
+      <div class="mobile-header-icon">📈</div>
+      <div class="mobile-header-title">CapitalView</div>
+    </div>
+    <div class="mobile-header-actions">
+      <div class="mobile-header-btn" onclick="openMobileDrawer()" title="Plus">☰</div>
+      <div class="mobile-header-btn" onclick="openProfilModal()" id="mobile-avatar-btn" title="Profil">
+        <span id="mobile-avatar-letter" style="font-size:13px;font-weight:700;font-family:var(--display)">?</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ─── MOBILE BOTTOM NAV ───────────────────────── -->
+  <nav class="mobile-nav">
+    <div class="mobile-nav-inner">
+      <button class="mobile-nav-item active" data-mob="portfolio" onclick="showPageMobile('portfolio')">
+        <span>💼</span>PEA
+      </button>
+      <button class="mobile-nav-item" data-mob="watchlist" onclick="showPageMobile('watchlist')">
+        <span>👁</span>Watch
+      </button>
+      <button class="mobile-nav-item" data-mob="dividendes" onclick="showPageMobile('dividendes')">
+        <span>💰</span>Divid.
+      </button>
+      <button class="mobile-nav-item" onclick="openMobileDrawer()">
+        <span>⋯</span>Plus
+      </button>
+    </div>
+  </nav>
+
+  <!-- ─── MOBILE DRAWER ───────────────────────────── -->
+  <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" onclick="if(event.target===this)closeMobileDrawer()">
+    <div class="mobile-drawer">
+      <div class="mobile-drawer-handle"></div>
+      <div class="mobile-drawer-section">Navigation</div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('portfolio');closeMobileDrawer()" data-mob="portfolio">
+        <span class="mobile-drawer-icon">💼</span>Portefeuille
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('watchlist');closeMobileDrawer()" data-mob="watchlist">
+        <span class="mobile-drawer-icon">👁</span>Watchlist
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('notifications');closeMobileDrawer()" data-mob="notifications">
+        <span class="mobile-drawer-icon">🔔</span>Notifications
+        <span id="notif-drawer-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('benchmark');closeMobileDrawer()" data-mob="benchmark">
+        <span class="mobile-drawer-icon">🎯</span>Benchmark
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('projections');closeMobileDrawer()" data-mob="projections">
+        <span class="mobile-drawer-icon">🔭</span>Projections
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('dividendes');closeMobileDrawer()" data-mob="dividendes">
+        <span class="mobile-drawer-icon">💰</span>Dividendes
+      </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('performance');closeMobileDrawer()" data-mob="performance">
+        <span class="mobile-drawer-icon">📊</span>Performance
+      </div>
+      <div class="mobile-drawer-section">Compte</div>
+      <div class="mobile-drawer-item" onclick="openIdeasPanel();closeMobileDrawer()">
+        <span class="mobile-drawer-icon">💬</span>Chat support
+        <span id="ideas-badge-mobile" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto;animation:pulse-glow 1.5s ease-in-out infinite"></span>
+      </div>
+      <div class="mobile-drawer-item" id="btn-superadmin-mobile" onclick="openSuperAdminPanel();closeMobileDrawer()" style="display:none;color:#fbbf24">
+        <span class="mobile-drawer-icon">👑</span>Super Admin
+      </div>
+      <div class="mobile-drawer-item" onclick="openProfilModal();closeMobileDrawer()">
+        <span class="mobile-drawer-icon">👤</span>Mon profil
+      </div>
+      <div style="height:1px;background:var(--border);margin:8px 20px"></div>
+      <div class="mobile-drawer-item" onclick="doLogout()" style="color:var(--negative)">
+        <span class="mobile-drawer-icon">⏻</span>Déconnexion
+      </div>
+    </div>
+  </div>
+
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">◀</button>
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">📈</div>
+      <div>
+        <div class="sidebar-logo-title">CapitalView</div>
+        <div class="sidebar-logo-sub">beta</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <div class="nav-item active" onclick="showPage('portfolio')">
+        <span class="nav-icon">💼</span> Portefeuille
+      </div>
+      <div class="nav-item" onclick="showPage('watchlist')">
+        <span class="nav-icon">👁</span> Watchlist
+      </div>
+      <div class="nav-item" onclick="showPage('notifications')" id="nav-notifications">
+        <span class="nav-icon">🔔</span> Notifications
+        <span id="notif-nav-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
+      </div>
+      <div class="nav-item" onclick="showPage('benchmark')">
+        <span class="nav-icon">🎯</span> Benchmark
+      </div>
+      <div class="nav-item" onclick="showPage('projections')">
+        <span class="nav-icon">🔭</span> Projections
+      </div>
+      <div class="nav-item" onclick="showPage('dividendes')">
+        <span class="nav-icon">💰</span> Dividendes
+      </div>
+      <div class="nav-item" onclick="showPage('performance')">
+        <span class="nav-icon">📊</span> Performance
+      </div>
+    </nav>
+    <div onclick="openIdeasPanel()" id="btn-ideas" title="Chat support" style="
+      margin:0 12px 4px;padding:9px 14px;border-radius:10px;cursor:pointer;
+      display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2);
+      background:var(--s2);border:1px solid var(--border);transition:background .15s">
+      <span>💬</span>
+      <span style="flex:1">Chat support</span>
+      <span id="ideas-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;animation:pulse-glow 1.5s ease-in-out infinite"></span>
+    </div>
+    <div id="btn-superadmin" onclick="openSuperAdminPanel()" title="Super Admin" style="
+      display:none;margin:8px 12px 8px;padding:9px 14px;border-radius:10px;cursor:pointer;
+      display:none;align-items:center;gap:10px;font-size:13px;color:#fbbf24;
+      background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);transition:background .15s">
+      <span>👑</span>
+      <span style="flex:1">Super Admin</span>
+    </div>
+    <div class="sidebar-legal">
+      <a href="../mentions-legales.html" target="_blank">Légal</a>
+      <span class="sep">·</span>
+      <a href="../politique-confidentialite.html" target="_blank">Confidentialité</a>
+      <span class="sep">·</span>
+      <a href="../cgu.html" target="_blank">CGU</a>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-card" onclick="openProfilModal()" style="cursor:pointer" title="Mon profil">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div style="flex:1;min-width:0">
+          <span class="user-name" id="user-name-display" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</span>
+        </div>
+        <button class="btn-refresh" onclick="event.stopPropagation();refreshAll()" title="Rafraîchir les données" id="btn-refresh-data">↻</button>
+        <button class="btn-logout" onclick="event.stopPropagation();doLogout()" title="Déconnexion">⏻</button>
+      </div>
+      <div id="sidebar-role-badge" style="display:none;padding:4px 4px 0 4px"></div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- PORTFOLIO PAGE -->
+    <div class="page active" id="page-portfolio">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Portefeuille</div>
+          <div class="page-subtitle" id="portfolio-date">Mis à jour aujourd'hui</div>
+        </div>
+      </div>
+
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card">
+          <div class="stat-label">Évaluation des titres</div>
+          <div class="stat-value" id="stat-total">— €</div>
+          <div class="stat-change" id="stat-total-change">—</div>
+          <canvas class="stat-sparkline" id="spark-total"></canvas>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">+/- Value latente</div>
+          <div style="display:flex;align-items:baseline;gap:10px">
+            <div class="stat-value" id="stat-pnl">— €</div>
+            <div class="stat-value" id="stat-pnl-pct" style="font-size:16px">—</div>
+          </div>
+          <div class="stat-change neg">Latente sur titres en portefeuille</div>
+          <canvas class="stat-sparkline" id="spark-pnl"></canvas>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">P&L réalisé</div>
+          <div class="stat-value" id="stat-realized">— €</div>
+          <div class="stat-change" id="stat-realized-sub">Gains/pertes clôturés</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Cumul versements</div>
+          <div class="stat-value" id="stat-versements">— €</div>
+          <div class="stat-change pos" id="stat-versements-sub">Total versé sur le PEA</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Solde espèces</div>
+          <div class="stat-value" id="stat-cash">— €</div>
+          <div class="stat-change" id="stat-cash-sub">Disponible</div>
+          <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
+            <button class="btn-add" onclick="openVersementModal()" style="font-size:10px;padding:5px 10px">＋ Versement</button>
+            <button onclick="toggleVersementsList()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;font-family:var(--sans);text-decoration:underline">Voir / modifier</button>
+          </div>
+          <div id="versements-list" style="display:none;margin-top:8px;max-height:200px;overflow-y:auto"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Investi (titres)</div>
+          <div class="stat-value" id="stat-invested">— €</div>
+          <canvas class="stat-sparkline" id="spark-invested"></canvas>
+        </div>
+      </div>
+
+      <!-- Graphique évolution portefeuille -->
+      <div class="section-card" id="portfolio-chart-card" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+          <div class="section-title" style="margin-bottom:0">Évolution du portefeuille</div>
+          <div class="period-bar" id="portfolio-period-bar" style="margin-bottom:0">
+            <button class="period-btn" onclick="setPortfolioPeriod('1d')" data-pp="1d">1J</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('5d')" data-pp="5d">5J</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('1mo')" data-pp="1mo">1M</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('3mo')" data-pp="3mo">3M</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('6mo')" data-pp="6mo">6M</button>
+            <button class="period-btn active" onclick="setPortfolioPeriod('1y')" data-pp="1y">1A</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('3y')" data-pp="3y">3A</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('5y')" data-pp="5y">5A</button>
+            <button class="period-btn" onclick="setPortfolioPeriod('max')" data-pp="max">Max</button>
+          </div>
+        </div>
+        <div id="portfolio-chart-sub" style="font-size:11px;color:var(--text2);margin-bottom:14px">Valeur totale dans le temps</div>
+        <div class="chart-wrap"><canvas id="chart-portfolio" height="60"></canvas></div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header">
+          <span class="table-title">Mes actions</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span class="refresh-badge" id="refresh-badge" style="display:none"><span class="refresh-dot"></span> Auto 60s</span>
+            <button class="btn-add" onclick="document.getElementById('csv-import-input').click()" style="background:rgba(245,183,49,0.08);border-color:rgba(245,183,49,0.2);color:var(--gold)">📥 Importer CSV</button>
+            <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importCSV(event)">
+            <button class="btn-add" onclick="openModal()">＋ Ajouter une ligne</button>
+          </div>
+        </div>
+        <div class="toolbar" id="portfolio-toolbar">
+          <input class="toolbar-input" id="table-search" placeholder="🔍 Filtrer…" oninput="filterTable()">
+          <select class="toolbar-select" id="table-sort" onchange="sortTable()">
+            <option value="">Tri : ordre ajout</option>
+            <option value="name-asc">Nom A→Z</option>
+            <option value="name-desc">Nom Z→A</option>
+            <option value="val-desc">Valeur ↓</option>
+            <option value="val-asc">Valeur ↑</option>
+            <option value="perf-desc">Perf ↓</option>
+            <option value="perf-asc">Perf ↑</option>
+          </select>
+          <button class="toolbar-btn" onclick="exportCSV()">📄 CSV</button>
+          <button class="toolbar-btn" onclick="toggleAutoRefresh()" id="btn-auto-refresh">⟳ Auto-refresh</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Qté</th>
+              <th class="hide-mobile">Prix achat</th>
+              <th>Prix actuel</th>
+              <th>Valeur</th>
+              <th>+/- Value</th>
+              <th>Perf. jour</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="portfolio-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-text">Aucune action dans le portefeuille.<br>Ajoutez votre première ligne.</div>
+        </div>
+      </div>
+
+      <!-- Transaction History -->
+      <div class="table-container" style="margin-top:18px" id="tx-history-card">
+        <div class="table-header">
+          <span class="table-title">📜 Historique des transactions</span>
+          <span style="font-size:11px;color:var(--text3);font-family:var(--mono)" id="tx-count">0 opérations</span>
+        </div>
+        <div style="max-height:400px;overflow-y:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Opération</th>
+              <th>Action</th>
+              <th>Qté</th>
+              <th>Prix unit.</th>
+              <th>Montant</th>
+              <th>P&L réalisé</th>
+            </tr>
+          </thead>
+          <tbody id="tx-history-tbody"></tbody>
+        </table>
+        </div>
+        <div class="empty-state" id="tx-empty" style="display:none">
+          <div class="empty-icon">📜</div>
+          <div class="empty-text">Aucune transaction enregistrée.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WATCHLIST PAGE -->
+    <div class="page" id="page-watchlist">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Watchlist</div>
+          <div class="page-subtitle">Suivez des actions sans les acheter</div>
+        </div>
+      </div>
+      <div class="table-container">
+        <div class="table-header">
+          <span class="table-title">Actions suivies</span>
+          <button class="btn-add" onclick="openWatchlistModal()">＋ Ajouter</button>
+        </div>
+        <table>
+          <thead><tr>
+            <th style="text-align:left">Action</th>
+            <th>Prix actuel</th>
+            <th>Variation jour</th>
+            <th>30 jours</th>
+            <th>Depuis ajout</th>
+            <th>Rendement</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="watchlist-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="watchlist-empty">
+          <div class="empty-icon">👁</div>
+          <div class="empty-text">Aucune action dans la watchlist.<br>Ajoutez-en pour suivre leur cours.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         BENCHMARK PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-benchmark">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Benchmark</div>
+          <div class="page-subtitle">Votre PEA face aux grands indices — performance comparée en base 100</div>
+        </div>
+      </div>
+
+      <!-- Sélecteur de période -->
+      <div class="bench-period-bar">
+        <button class="bench-period-btn" data-p="1D">1J</button>
+        <button class="bench-period-btn" data-p="1W">1S</button>
+        <button class="bench-period-btn" data-p="1M">1M</button>
+        <button class="bench-period-btn" data-p="3M">3M</button>
+        <button class="bench-period-btn" data-p="6M" class="active">6M</button>
+        <button class="bench-period-btn" data-p="YTD">YTD</button>
+        <button class="bench-period-btn" data-p="1Y">1A</button>
+        <button class="bench-period-btn" data-p="3Y">3A</button>
+        <button class="bench-period-btn" data-p="5Y">5A</button>
+        <button class="bench-period-btn" data-p="10Y">10A</button>
+        <button class="bench-period-btn active" data-p="MAX">Max</button>
+      </div>
+
+      <!-- KPIs de perf par indice pour la période -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px;gap:10px" id="bench-kpis"></div>
+
+      <!-- Graphique comparaison multi-indices -->
+      <div class="section-card" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="section-title" style="margin:0">Évolution comparée — base 100</div>
+          <span id="bench-status" style="font-size:11px;color:var(--text3)"></span>
+        </div>
+        <div style="position:relative;height:420px">
+          <canvas id="chart-benchmark"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         PROJECTIONS PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-projections">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Projections</div>
+          <div class="page-subtitle">Simulation patrimoniale long terme avec intérêts composés</div>
+        </div>
+      </div>
+
+      <div class="section-card" style="margin-bottom:18px">
+        <div class="section-title" style="margin-bottom:16px">Paramètres de simulation</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px">
+          <div>
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Valeur actuelle (€)</label>
+            <input type="number" id="proj-base" value="0" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Apport mensuel (€)</label>
+            <input type="number" id="proj-monthly" value="" placeholder="0" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Rendement estimé (%)</label>
+            <input type="number" id="proj-cagr" value="" placeholder="0" step="0.5" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+          </div>
+          <div style="background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;justify-content:center">
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">Livret A benchmark</div>
+            <div style="font-size:18px;font-weight:700;color:var(--text2);font-family:var(--mono);margin-top:3px">2,5 % / an</div>
+          </div>
+        </div>
+        <div style="position:relative;height:320px">
+          <canvas id="chart-projections"></canvas>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header"><span class="table-title">Tableau des projections</span></div>
+        <table>
+          <thead><tr>
+            <th>Horizon</th>
+            <th>Patrimoine total</th>
+            <th>Apports cumulés</th>
+            <th>Plus-values</th>
+            <th>Ratio PV / Apports</th>
+            <th>Livret A équiv.</th>
+            <th>Avantage vs LA</th>
+          </tr></thead>
+          <tbody id="proj-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         DIVIDENDES PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-dividendes">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dividendes</div>
+          <div class="page-subtitle">Historique des versements par action détenue</div>
+        </div>
+      </div>
+
+      <!-- KPI row -->
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px" id="div-kpis"></div>
+
+      <!-- Tableau par action -->
+      <div class="section-card" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div class="section-title" style="margin:0">Suivi par action</div>
+          <span style="font-size:11px;color:var(--text3)">Dividendes versés pendant et avant la période de détention</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th style="text-align:left">Action</th>
+              <th>Détenu depuis</th>
+              <th>Quantité</th>
+              <th>Total reçu</th>
+              <th>Dernier div./action</th>
+              <th>Prochain estimé</th>
+              <th>Pendant détention</th>
+            </tr></thead>
+            <tbody id="div-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Historique complet -->
+      <div class="section-card">
+        <div style="margin-bottom:14px">
+          <div class="section-title" style="margin:0">Historique complet</div>
+        </div>
+        <div id="div-history"></div>
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--s3);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <span style="font-size:12px;color:var(--text3)">Il vous manque un dividende ? Saisissez-le manuellement.</span>
+          <button onclick="openDivModal()"
+            style="background:var(--accent);border:none;color:#fff;border-radius:8px;padding:6px 13px;cursor:pointer;font-size:12px;font-weight:600">
+            + Saisir un dividende reçu
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         PERFORMANCE PAGE
+         ══════════════════════════════════════════════ -->
+    <div class="page" id="page-performance">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Performance</div>
+          <div class="page-subtitle">Rendement TWR annuel — broker si CSV importé, sinon Yahoo Finance</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button onclick="document.getElementById('input-daily-csv').click()" class="btn-outline" style="font-size:11px;padding:6px 12px;background:rgba(120,180,255,0.08)">⬆ Importer valorisation broker (CSV)</button>
+          <input type="file" id="input-daily-csv" accept=".csv" style="display:none" onchange="importDailyValuesCSV(event)">
+          <button onclick="clearDailyValues()" class="btn-outline" style="font-size:11px;padding:6px 12px" id="btn-clear-daily" title="Repasser au calcul Yahoo">✕ Vider</button>
+          <span id="daily-status" style="font-size:11px;color:var(--text3);margin-right:8px"></span>
+          <button onclick="exportVersementsCSV()" class="btn-outline" style="font-size:11px;padding:6px 12px">⬇ Versements CSV</button>
+          <button onclick="exportTransactionsCSV()" class="btn-outline" style="font-size:11px;padding:6px 12px">⬇ Transactions CSV</button>
+          <button onclick="exportDebugData()" class="btn-outline" style="font-size:11px;padding:6px 12px">⬇ Debug JSON</button>
+        </div>
+      </div>
+
+      <!-- KPI résumé -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:18px" id="perf-kpis"></div>
+
+      <!-- Graphique barres -->
+      <div class="section-card" style="margin-bottom:18px">
+        <div class="section-title">Performance par année</div>
+        <div style="position:relative;height:320px">
+          <canvas id="chart-perf-annual"></canvas>
+        </div>
+      </div>
+
+      <!-- Tableau détaillé -->
+      <div class="section-card">
+        <div class="section-title">Détail annuel</div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align:left">Année</th>
+                <th>Investi début</th>
+                <th>Gain</th>
+                <th>Perf %</th>
+              </tr>
+            </thead>
+            <tbody id="perf-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS PAGE -->
+    <div class="page" id="page-notifications">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Notifications</div>
+          <div class="page-subtitle">Alertes prix · Push · Historique</div>
+        </div>
+        <button onclick="requestPushPermission()" class="btn-outline" id="btn-enable-push" style="font-size:12px;padding:7px 14px">🔔 Activer les push</button>
+      </div>
+
+      <!-- Paramètres -->
+      <div class="section-card" style="margin-bottom:18px">
+        <div class="section-title">Paramètres</div>
+        <div id="notif-settings-list"></div>
+      </div>
+
+      <!-- Alertes prix -->
+      <div class="section-card" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="section-title" style="margin:0">Alertes prix</div>
+          <button class="btn-add" onclick="openAddAlertModal()" style="font-size:11px;padding:6px 12px">＋ Nouvelle alerte</button>
+        </div>
+        <div id="alerts-list"></div>
+        <div id="alerts-empty" style="color:var(--text3);font-size:13px;text-align:center;padding:20px 0">Aucune alerte configurée</div>
+      </div>
+
+      <!-- Historique -->
+      <div class="section-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="section-title" style="margin:0">Historique</div>
+          <button onclick="clearNotifHistory()" class="btn-outline" style="font-size:11px;padding:5px 10px">Effacer</button>
+        </div>
+        <div id="notif-history-list"></div>
+        <div id="notif-history-empty" style="color:var(--text3);font-size:13px;text-align:center;padding:20px 0">Aucune notification</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+
+<!-- ═══ MODAL CONFIRM RECAP ════════════════════════ -->
+<div id="confirm-recap-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1400;align-items:center;justify-content:center">
+  <div style="background:var(--s1);border:1px solid rgba(251,191,36,0.3);border-radius:16px;padding:28px;width:380px;max-width:90%;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:fadeInScale .15s ease">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:36px;margin-bottom:10px">📧</div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Envoyer le récap</div>
+      <div style="font-size:13px;color:var(--text3)">Vous allez envoyer le récap quotidien à</div>
+      <div id="confirm-recap-email" style="font-size:14px;font-weight:700;color:#fbbf24;margin-top:6px;padding:8px 14px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;word-break:break-all"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closeConfirmRecap()" style="flex:1;padding:10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:10px;font-size:13px;cursor:pointer;font-family:var(--sans)">Annuler</button>
+      <button onclick="confirmRecapSend()" style="flex:1;padding:10px;background:linear-gradient(135deg,#fbbf24,#f59e0b);border:none;color:#000;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)">✓ Envoyer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL ALERTE PRIX ══════════════════════════ -->
+<div class="modal-overlay" id="alert-modal-overlay" onclick="if(event.target===this)closeAlertModal()">
+  <div class="modal">
+    <div class="modal-title">Nouvelle alerte prix</div>
+    <div class="form-group">
+      <label class="form-label">Action / ETF</label>
+      <select class="form-input" id="alert-ticker-select" style="background:var(--s2);color:var(--text)"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Condition</label>
+      <select class="form-input" id="alert-direction" style="background:var(--s2);color:var(--text)">
+        <option value="above">Prix ≥ (alerte hausse)</option>
+        <option value="below">Prix ≤ (alerte baisse / stop-loss)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Prix cible (€)</label>
+      <input type="number" class="form-input" id="alert-price" placeholder="150.00" min="0" step="any">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeAlertModal()">Annuler</button>
+      <button class="btn-primary" onclick="confirmAddAlert()">Créer l'alerte</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL PROFIL ════════════════════════════════ -->
+<div class="modal-overlay" id="profil-modal-overlay" onclick="if(event.target===this)closeProfilModal()" style="z-index:1100">
+  <div class="modal" style="width:440px;max-height:85vh;overflow-y:auto">
+
+    <!-- Header avec avatar -->
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
+      <div id="profil-avatar-big" onclick="document.getElementById('profil-avatar-input').click()" title="Changer la photo" style="
+        width:60px;height:60px;border-radius:16px;flex-shrink:0;
+        background:linear-gradient(135deg,var(--accent),var(--accent2));
+        display:grid;place-items:center;font-size:24px;font-weight:700;color:#fff;
+        font-family:var(--display);box-shadow:0 6px 20px rgba(124,109,245,0.3);
+        overflow:hidden;position:relative;cursor:pointer;">
+        <span id="profil-avatar-letter">?</span>
+        <img id="profil-avatar-img" src="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.35);display:grid;place-items:center;opacity:0;transition:opacity .15s" id="profil-avatar-overlay">
+          <span style="font-size:16px">📷</span>
+        </div>
+      </div>
+      <input type="file" id="profil-avatar-input" accept="image/*" style="display:none" onchange="uploadProfilAvatar(event)">
+      <div style="flex:1">
+        <div id="profil-display-name" style="font-family:var(--display);font-size:18px;font-weight:700">—</div>
+        <div id="profil-email" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:3px">—</div>
+        <div id="profil-provider-badge" style="margin-top:6px"></div>
+        <div id="profil-role-badge" style="margin-top:4px"></div>
+      </div>
+      <button onclick="closeProfilModal()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:4px;border-radius:6px;line-height:1" title="Fermer">✕</button>
+    </div>
+
+    <!-- Avatars prédéfinis -->
+    <div style="margin-bottom:18px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Choisir un avatar prédéfini</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <img src="../assets/avatars/bull.svg"      title="Taureau"   onclick="selectPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="../assets/avatars/bear.svg"      title="Ours"      onclick="selectPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="../assets/avatars/chart.svg"     title="Graphique" onclick="selectPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="../assets/avatars/diamond.svg"   title="Diamant"   onclick="selectPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="../assets/avatars/rocket.svg"    title="Fusée"     onclick="selectPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="../assets/avatars/coin.svg"      title="Pièce"     onclick="selectPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="../assets/avatars/shield.svg"    title="Bouclier"  onclick="selectPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="../assets/avatars/globe.svg"     title="Globe"     onclick="selectPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <img src="../assets/avatars/lightning.svg" title="Éclair"    onclick="selectPresetAvatar(this)" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:border-color .15s" class="preset-avatar">
+        <div onclick="document.getElementById('profil-avatar-input').click()" title="Importer une image" style="width:40px;height:40px;border-radius:10px;cursor:pointer;border:2px dashed var(--border);display:grid;place-items:center;color:var(--text3);font-size:18px;transition:border-color .15s;flex-shrink:0">+</div>
+      </div>
+      <span id="avatar-status" style="font-size:11px;font-family:var(--mono);min-height:16px;color:var(--positive)"></span>
+    </div>
+
+    <!-- Nom d'affichage -->
+    <div class="form-group">
+      <label class="form-label">Nom d'affichage</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" class="form-input" id="profil-name-input" placeholder="Votre prénom ou pseudo" style="flex:1">
+        <button onclick="saveDisplayName()" style="
+          padding:0 16px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.25);
+          color:var(--accent);border-radius:10px;font-size:12px;font-weight:600;
+          cursor:pointer;white-space:nowrap;font-family:var(--sans);">
+          Sauvegarder
+        </button>
+      </div>
+      <div id="profil-name-status" style="font-size:11px;font-family:var(--mono);margin-top:6px;min-height:16px"></div>
+    </div>
+
+    <!-- Section changer mot de passe -->
+    <div id="profil-password-section">
+      <div style="height:1px;background:var(--border);margin:4px 0 18px"></div>
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">🔒 Changer le mot de passe</div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe actuel</label>
+        <input type="password" class="form-input" id="profil-old-pass" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nouveau mot de passe</label>
+        <input type="password" class="form-input" id="profil-new-pass" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirmer</label>
+        <input type="password" class="form-input" id="profil-new-pass2" placeholder="••••••••">
+      </div>
+      <div id="profil-pass-status" style="font-size:11px;font-family:var(--mono);margin-bottom:10px;min-height:16px"></div>
+      <button onclick="saveNewPassword()" style="
+        padding:9px 18px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.25);
+        color:var(--accent);border-radius:10px;font-size:12px;font-weight:600;
+        cursor:pointer;font-family:var(--sans);">
+        Mettre à jour le mot de passe
+      </button>
+    </div>
+
+    <!-- Notifications -->
+    <div style="height:1px;background:var(--border);margin:18px 0"></div>
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">📬 Récap par mail</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--text3)">Fréquence d'envoi du résumé de performance</div>
+      <select id="select-recap-freq" onchange="saveRecapFreq(this.value)" style="
+        background:var(--s2);border:1px solid var(--border);color:var(--text);
+        border-radius:8px;padding:6px 10px;font-size:12px;font-family:var(--sans);cursor:pointer;flex-shrink:0">
+        <option value="never">Jamais</option>
+        <option value="daily">Tous les jours</option>
+        <option value="weekly">Toutes les semaines</option>
+        <option value="monthly">Tous les mois</option>
+        <option value="3months">Tous les 3 mois</option>
+        <option value="6months">Tous les 6 mois</option>
+        <option value="1year">Tous les ans</option>
+        <option value="3years">Tous les 3 ans</option>
+        <option value="5years">Tous les 5 ans</option>
+      </select>
+    </div>
+    <span id="recap-freq-status" style="font-size:11px;font-family:var(--mono);color:var(--positive)"></span>
+
+    <!-- Sauvegarde / restauration -->
+    <div style="height:1px;background:var(--border);margin:18px 0"></div>
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">💾 Sauvegarde / Restauration</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">
+      Exportez toutes vos données (portefeuille, transactions, versements, watchlist, valorisations) dans un fichier JSON, ou restaurez-les depuis une sauvegarde précédente.
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button onclick="exportAllUserData()" class="btn-outline" style="flex:1;min-width:150px;justify-content:center">
+        ⬇ Exporter mes données
+      </button>
+      <button onclick="document.getElementById('input-restore-json').click()" class="btn-outline" style="flex:1;min-width:150px;justify-content:center">
+        ⬆ Importer une sauvegarde
+      </button>
+      <input type="file" id="input-restore-json" accept=".json,application/json" style="display:none" onchange="importAllUserData(event)">
+    </div>
+
+    <!-- Danger zone -->
+    <div style="height:1px;background:rgba(255,77,106,0.15);margin:18px 0"></div>
+    <button onclick="confirmDeleteAccount()" style="
+      width:100%;padding:9px;background:var(--negative-d);border:1px solid rgba(255,77,106,0.2);
+      color:var(--negative);border-radius:10px;font-size:12px;font-weight:600;
+      cursor:pointer;font-family:var(--sans);">
+      ⚠️ Supprimer mon compte
+    </button>
+
+  </div>
+</div>
+
+<!-- ═══ MODAL DIVIDENDE ═════════════════════════════ -->
+<div class="modal-overlay" id="div-modal-overlay" onclick="closeDivModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">Saisir un dividende reçu</div>
+    <div class="modal-sub">Enregistrez un dividende perçu sur une de vos actions.</div>
+    <div class="form-group">
+      <label class="form-label">Action</label>
+      <select class="form-input" id="div-modal-ticker"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Montant reçu (€)</label>
+      <input type="number" step="0.01" class="form-input" id="div-modal-amount" placeholder="ex: 12.50">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date de versement</label>
+      <input type="date" class="form-input" id="div-modal-date">
+    </div>
+    <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:6px">
+      <button onclick="closeDivModal()" style="background:var(--s3);border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px">Annuler</button>
+      <button onclick="confirmDividende()" style="background:var(--gold);border:none;color:#000;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:13px">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL AJOUT ════════════════════════════════ -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">Ajouter une action</div>
+    <div class="modal-sub">Entrez le nom ou le ticker pour trouver le cours actuel.</div>
+
+    <div class="form-group">
+      <label class="form-label">Nom ou ticker <span class="price-tag">auto prix</span></label>
+      <input type="text" class="form-input" id="modal-ticker" placeholder="ex: LVMH, Apple, TotalEnergies…" oninput="onTickerInput()" onkeydown="onTickerKeydown(event)" autocomplete="off">
+      <div id="search-dropdown" class="search-dropdown"></div>
+      <div id="search-status"></div>
+      <div class="search-result" id="search-result">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="res-logo"></div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <div class="search-result-name" id="res-name">—</div>
+              <div class="search-result-price" id="res-price">—</div>
+            </div>
+            <div class="search-result-info" id="res-info">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Quantité</label>
+      <input type="number" class="form-input" id="modal-qty" placeholder="10" min="0.001" step="any">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Prix d'achat (€)</label>
+      <input type="number" class="form-input" id="modal-buy-price" placeholder="150.00" min="0" step="any">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Date d'achat</label>
+      <input type="date" class="form-input" id="modal-buy-date" style="color-scheme:dark">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn-primary" id="btn-confirm" onclick="confirmAdd()" disabled>Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL EDITION ══════════════════════════════ -->
+<div class="modal-overlay" id="edit-modal-overlay" onclick="closeEditModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title" id="edit-modal-title">Modifier</div>
+    <div class="modal-sub" id="edit-modal-sub">—</div>
+    <div class="edit-tabs">
+      <button class="edit-tab active-buy" id="tab-buy"  onclick="setEditTab('buy')">+ Acheter</button>
+      <button class="edit-tab"            id="tab-sell" onclick="setEditTab('sell')">- Vendre</button>
+    </div>
+    <div class="edit-info">
+      <div class="edit-info-item"><label>Position</label><span id="edit-cur-qty">-</span></div>
+      <div class="edit-info-item"><label>PRU</label><span id="edit-cur-pru">-</span></div>
+      <div class="edit-info-item"><label>Prix actuel</label><span id="edit-cur-price">-</span></div>
+      <div class="edit-info-item"><label>+/- Value</label><span id="edit-cur-pnl">-</span></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" id="edit-qty-label">Quantite a acheter</label>
+      <input type="number" class="form-input" id="edit-qty" placeholder="10" min="0.001" step="any">
+    </div>
+    <div class="form-group" id="edit-price-group">
+      <label class="form-label">Prix (EUR)</label>
+      <input type="number" class="form-input" id="edit-price" placeholder="150.00" min="0" step="any">
+    </div>
+    <div class="form-group" id="edit-date-group">
+      <label class="form-label">Date de l'opération</label>
+      <input type="date" class="form-input" id="edit-date" style="color-scheme:dark">
+    </div>
+    <div class="form-group" id="edit-sell-price-group" style="display:none">
+      <label class="form-label">Prix de vente (EUR)</label>
+      <input type="number" class="form-input" id="edit-sell-price" placeholder="150.00" min="0" step="any">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeEditModal()">Annuler</button>
+      <button class="btn-primary" id="btn-edit-confirm" onclick="confirmEdit()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL WATCHLIST ════════════════════════════ -->
+<div class="modal-overlay" id="watchlist-modal-overlay" onclick="if(event.target===this)closeWatchlistModal()">
+  <div class="modal">
+    <div class="modal-title">Ajouter à la watchlist</div>
+    <div class="modal-sub">Recherchez une action à suivre.</div>
+    <div class="form-group">
+      <label class="form-label">Nom ou ticker</label>
+      <input type="text" class="form-input" id="wl-ticker" placeholder="ex: AAPL, LVMH…" oninput="onWlInput()" onkeydown="onWlKeydown(event)" autocomplete="off">
+      <div id="wl-dropdown" class="search-dropdown"></div>
+      <div id="wl-status"></div>
+      <div class="search-result" id="wl-result">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="wl-logo"></div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <div class="search-result-name" id="wl-res-name">—</div>
+              <div class="search-result-price" id="wl-res-price">—</div>
+            </div>
+            <div class="search-result-info" id="wl-res-info">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeWatchlistModal()">Annuler</button>
+      <button class="btn-primary" id="btn-wl-confirm" onclick="confirmWatchlistAdd()" disabled>Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL VERSEMENT ════════════════════════════ -->
+<div class="modal-overlay" id="versement-modal-overlay" onclick="if(event.target===this)closeVersementModal()">
+  <div class="modal">
+    <div class="modal-title">Ajouter un versement</div>
+    <div class="modal-sub">Enregistrez un virement vers votre PEA.</div>
+    <div class="form-group">
+      <label class="form-label">Montant (€)</label>
+      <input type="number" class="form-input" id="versement-amount" placeholder="100.00" min="0" step="any">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input type="date" class="form-input" id="versement-date" style="color-scheme:dark">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeVersementModal()">Annuler</button>
+      <button class="btn-primary" onclick="confirmVersement()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL IMPORT CSV ═══════════════════════════ -->
+<div class="modal-overlay" id="csv-import-modal" onclick="if(event.target===this)closeImportModal()">
+  <div class="modal" style="width:560px">
+    <div class="modal-title">📥 Importer des transactions</div>
+    <div class="modal-sub">Vérifiez les opérations détectées puis confirmez l'import.</div>
+    <div style="max-height:350px;overflow-y:auto;margin:14px 0">
+      <table style="width:100%">
+        <thead><tr><th style="font-size:8px">Date</th><th style="font-size:8px">Type</th><th style="font-size:8px">Ticker</th><th style="font-size:8px">Nom</th><th style="font-size:8px">Qté</th><th style="font-size:8px">Prix</th></tr></thead>
+        <tbody id="csv-preview-tbody"></tbody>
+      </table>
+    </div>
+    <div id="csv-import-status" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-bottom:8px"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeImportModal()">Annuler</button>
+      <button class="btn-primary" id="btn-csv-confirm" onclick="confirmImport()">Importer tout</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CHAT IDÉES ════════════════════════════════════ -->
+<div id="ideas-overlay" style="
+  display:none;position:fixed;inset:0;background:var(--s1);z-index:1200;
+  flex-direction:column;box-sizing:border-box">
+  <div style="
+    width:100%;height:100%;background:var(--s1);
+    border-radius:0;border:none;display:flex;flex-direction:column;
+    overflow:hidden">
+
+    <!-- Header -->
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:15px;font-family:var(--display)">💬 Chat support</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:1px">
+          <span id="ideas-panel-subtitle" style="font-size:11px;color:var(--text3)">Envoyez un message ou une idée</span>
+          <span id="ideas-role-badge"></span>
+        </div>
+      </div>
+      <!-- Superadmin: gestion des rôles -->
+      <button onclick="closeIdeasPanel()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;flex-shrink:0">✕</button>
+    </div>
+
+    <!-- Corps : liste threads (gauche) + chat (droite) -->
+    <div style="display:flex;flex:1;overflow:hidden">
+
+      <!-- Liste des conversations -->
+      <div style="width:220px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column">
+        <div style="padding:10px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Conversations</span>
+          <button id="btn-new-thread" onclick="newIdeasThread()" style="
+            background:var(--accent-d);border:1px solid rgba(124,109,245,0.25);color:var(--accent);
+            border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;cursor:pointer">+ Nouveau</button>
+        </div>
+        <div id="chat-search-zone" style="display:none;padding:6px 10px;border-bottom:1px solid var(--border)">
+          <input id="chat-search-input" type="text" placeholder="Rechercher…" oninput="_filterThreads(this.value)"
+            style="width:100%;background:var(--s2);border:1px solid var(--border);color:var(--text);
+            border-radius:8px;padding:5px 9px;font-size:12px;font-family:var(--sans);box-sizing:border-box;outline:none">
+        </div>
+        <div id="ideas-threads" style="flex:1;overflow-y:auto"></div>
+      </div>
+
+      <!-- Chat actif -->
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+        <div id="ideas-chat-empty" style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px">
+          Sélectionnez une conversation
+        </div>
+        <div id="ideas-chat-view" style="display:none;flex:1;flex-direction:row;overflow:hidden">
+
+          <!-- Colonne chat principale -->
+          <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative">
+          <!-- Thread header -->
+          <div id="ideas-chat-header" style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;flex-shrink:0"></div>
+          <!-- Messages -->
+          <div id="ideas-messages" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column"></div>
+          <!-- New message pill -->
+          <div id="chat-new-msg-pill" onclick="window._scrollToNewMsg()" style="display:none;position:absolute;bottom:72px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:12px;font-weight:700;padding:6px 18px;border-radius:20px;cursor:pointer;box-shadow:0 4px 16px rgba(124,109,245,0.4);z-index:10;white-space:nowrap;user-select:none">↓ Nouveau message</div>
+          <!-- Typing indicator -->
+          <div id="chat-typing" style="display:none;padding:2px 16px;font-size:11px;color:var(--text3);font-style:italic;flex-shrink:0"></div>
+          <!-- Emoji picker -->
+          <div id="emoji-picker" style="display:none;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:4px;background:var(--s2);max-height:120px;overflow-y:auto"></div>
+          <!-- Reply preview -->
+          <div id="chat-reply-preview" style="display:none;padding:6px 16px 0;flex-shrink:0">
+            <div style="background:var(--s2);border-left:3px solid var(--accent);border-radius:6px;padding:6px 10px;display:flex;align-items:center;gap:8px">
+              <div style="flex:1;min-width:0">
+                <div id="chat-reply-name" style="font-size:11px;font-weight:700;color:var(--accent)"></div>
+                <div id="chat-reply-text" style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+              </div>
+              <button onclick="clearReply()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;flex-shrink:0">✕</button>
+            </div>
+          </div>
+          <!-- Input -->
+          <div id="ideas-input-zone" style="padding:10px 16px;border-top:1px solid var(--border);background:var(--s1);flex-shrink:0">
+            <!-- Image preview -->
+            <div id="chat-img-preview" style="display:none;margin-bottom:8px;position:relative;width:fit-content">
+              <img id="chat-img-thumb" style="max-height:80px;border-radius:8px;border:1px solid var(--border)">
+              <button onclick="clearChatImage()" style="position:absolute;top:-6px;right:-6px;background:var(--negative);border:none;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px;text-align:center">✕</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-end">
+              <button onclick="toggleEmojiPicker()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:6px;border-radius:8px;color:var(--text2);flex-shrink:0" title="Emoji">😊</button>
+              <label style="cursor:pointer;padding:6px;border-radius:8px;font-size:16px;color:var(--text2);flex-shrink:0" title="Photo">
+                📎<input type="file" id="chat-img-input" accept="image/*" onchange="chatImageSelected(event)" style="display:none">
+              </label>
+              <textarea id="ideas-msg-input" placeholder="Votre message…" rows="2" onkeydown="ideasMsgKeydown(event)" oninput="_onChatTyping()" style="
+                flex:1;background:var(--s2);border:1px solid var(--border);color:var(--text);
+                border-radius:10px;padding:9px 12px;font-size:13px;font-family:var(--sans);resize:none"></textarea>
+              <button onclick="sendChatMessage()" style="
+                padding:0 16px;height:42px;background:var(--accent);border:none;color:#fff;
+                border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0">↑</button>
+            </div>
+          </div>
+          </div><!-- /colonne chat -->
+
+          <!-- Panneau membres (SA only) -->
+          <div id="chat-members-panel" style="display:none;width:170px;flex-shrink:0;border-left:1px solid var(--border);flex-direction:column;overflow:hidden">
+            <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Membres</span>
+              <button id="btn-add-member-panel" onclick="" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:16px;padding:0;line-height:1" title="Ajouter un membre">＋</button>
+            </div>
+            <div id="chat-members-list" style="flex:1;overflow-y:auto;padding:8px 0"></div>
+          </div>
+
+        </div><!-- /ideas-chat-view -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL NOUVEAU THREAD ════════════════════════ -->
+<div id="new-thread-overlay" onclick="if(event.target===this)closeNewThread()" style="
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1400;
+  align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+  <div style="width:420px;max-width:100%;background:var(--s1);border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.5)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;font-family:var(--display)">💬 Nouvelle conversation</div>
+    <div style="padding:20px">
+      <label class="form-label">Titre de votre sujet</label>
+      <input id="new-thread-title" type="text" class="form-input" placeholder="Ex: Idée fonctionnalité, Bug, Question…"
+        onkeydown="if(event.key==='Enter')confirmNewThread()" style="margin-bottom:16px">
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="closeNewThread()" style="padding:8px 16px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:8px;font-size:13px;cursor:pointer">Annuler</button>
+        <button onclick="confirmNewThread()" style="padding:8px 20px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Créer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL RETIRER MEMBRE ══════════════════════════ -->
+<div id="remove-member-overlay" onclick="if(event.target===this)closeRemoveMember()" style="
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1400;
+  align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+  <div style="width:380px;max-width:100%;background:var(--s1);border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.5)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">🗑</span>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px;font-family:var(--display)">Retirer le membre</div>
+        <div id="remove-member-subtitle" style="font-size:11px;color:var(--text3);margin-top:1px"></div>
+      </div>
+    </div>
+    <div style="padding:20px">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Ce membre n'aura plus accès à la conversation.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="closeRemoveMember()" style="padding:8px 16px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:8px;font-size:13px;cursor:pointer">Annuler</button>
+        <button id="remove-member-btn" onclick="confirmRemoveMember()" style="padding:8px 20px;background:var(--negative);border:none;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Retirer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL AJOUTER MEMBRE ══════════════════════════ -->
+<div id="add-member-overlay" onclick="if(event.target===this)closeAddMember()" style="
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1400;
+  align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+  <div style="width:420px;max-width:100%;background:var(--s1);border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.5)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">👤</span>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px;font-family:var(--display)">Ajouter un membre</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:1px">L'utilisateur accède à cette conversation</div>
+      </div>
+    </div>
+    <div style="padding:20px">
+      <label class="form-label">Adresse email</label>
+      <input id="add-member-email" type="email" class="form-input" placeholder="utilisateur@email.com"
+        onkeydown="if(event.key==='Enter')confirmAddMember()" style="margin-bottom:8px">
+      <div id="add-member-status" style="min-height:18px;font-size:12px;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="closeAddMember()" style="padding:8px 16px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:8px;font-size:13px;cursor:pointer">Annuler</button>
+        <button id="add-member-btn" onclick="confirmAddMember()" style="padding:8px 20px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Ajouter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOAST CHAT ═════════════════════════════════════ -->
+<div id="chat-toast" style="
+  display:none;position:fixed;top:20px;right:20px;z-index:3000;
+  background:var(--s1);border:1px solid var(--border);border-radius:14px;
+  box-shadow:0 8px 30px rgba(0,0,0,0.4);overflow:hidden;
+  cursor:pointer;max-width:300px;min-width:220px;
+  animation:toast-in .25s ease">
+  <div onclick="_chatToastClick()" style="padding:12px 16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="chat-toast-icon" style="font-size:20px;flex-shrink:0">💬</span>
+      <div style="flex:1;min-width:0">
+        <div id="chat-toast-title" style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+        <div id="chat-toast-msg" style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      </div>
+      <button onclick="event.stopPropagation();_dismissChatToast()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;line-height:1;flex-shrink:0">✕</button>
+    </div>
+  </div>
+  <div style="height:3px;background:var(--s3)">
+    <div id="chat-toast-bar" style="height:100%;background:var(--accent);width:100%;transform-origin:left"></div>
+  </div>
+</div>
+<style>
+@keyframes toast-in { from { opacity:0;transform:translateX(20px) } to { opacity:1;transform:translateX(0) } }
+@keyframes toast-bar { from { width:100% } to { width:0% } }
+.chat-msg-wrap:hover .reply-btn { opacity:1 !important; }
+</style>
+
+<!-- ═══ LIGHTBOX IMAGE CHAT ═══════════════════════════ -->
+<div id="chat-lightbox" onclick="if(event.target===this)closeLightbox()" style="
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:4000;
+  align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:20px;box-sizing:border-box">
+  <div style="display:flex;gap:10px;flex-shrink:0">
+    <button onclick="downloadLightboxImg()" style="
+      padding:7px 18px;background:var(--accent);border:none;color:#fff;
+      border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">⬇ Télécharger</button>
+    <button onclick="closeLightbox()" style="
+      padding:7px 14px;background:var(--s2);border:1px solid var(--border);color:var(--text2);
+      border-radius:8px;font-size:13px;cursor:pointer">✕ Fermer</button>
+  </div>
+  <img id="chat-lightbox-img" style="max-width:100%;max-height:calc(100vh - 100px);border-radius:10px;object-fit:contain">
+</div>
+
+<!-- ═══ MODAL CONFIRMATION ════════════════════════════ -->
+<div id="confirm-modal" style="
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:2000;
+  align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+  <div style="width:380px;max-width:100%;background:var(--s1);border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.55)">
+    <div id="confirm-modal-header" style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <span id="confirm-modal-icon" style="font-size:20px"></span>
+      <span id="confirm-modal-title" style="font-weight:700;font-size:14px;font-family:var(--display)"></span>
+    </div>
+    <div style="padding:18px 20px">
+      <p id="confirm-modal-msg" style="margin:0 0 20px;font-size:13px;color:var(--text2);line-height:1.6"></p>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="_confirmModalCancel()" style="padding:8px 16px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:8px;font-size:13px;cursor:pointer">Annuler</button>
+        <button id="confirm-modal-btn" onclick="_confirmModalOk()" style="padding:8px 20px;border:none;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL SUPER ADMIN ═════════════════════════════ -->
+<div id="superadmin-overlay" onclick="if(event.target===this)closeSuperAdminPanel()" style="
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1300;
+  align-items:flex-start;justify-content:center;padding:20px;box-sizing:border-box;overflow-y:auto">
+  <div style="width:860px;max-width:100%;background:var(--s1);border-radius:18px;border:1px solid rgba(251,191,36,0.3);box-shadow:0 24px 60px rgba(0,0,0,0.6);overflow:hidden;margin:auto">
+
+    <!-- Header -->
+    <div style="padding:18px 24px;border-bottom:1px solid rgba(251,191,36,0.2);display:flex;align-items:center;gap:10px;background:rgba(251,191,36,0.05)">
+      <span style="font-size:20px">👑</span>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:15px;font-family:var(--display);color:#fbbf24">Super Admin</div>
+        <div style="font-size:11px;color:var(--text3)" id="sa-subtitle">Chargement…</div>
+      </div>
+      <button onclick="closeSuperAdminPanel()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px">✕</button>
+    </div>
+
+    <div style="padding:24px;display:flex;flex-direction:column;gap:24px">
+
+      <!-- Stats globales -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Stats globales</div>
+        <div id="sa-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px"></div>
+      </div>
+
+      <!-- Users en ligne + liste -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px">Utilisateurs <span id="sa-online-count" style="color:var(--positive)"></span></div>
+          <input id="sa-user-search" type="text" placeholder="🔍 Rechercher un utilisateur…" oninput="saFilterUsers(this.value)" style="font-size:12px;padding:6px 12px;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);width:240px;outline:none">
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="color:var(--text3);text-align:left">
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Statut</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Email</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Rôle</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Positions</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Alertes</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Dernière activité</th>
+                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sa-users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Broadcast -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Broadcast — bandeau annonce</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="sa-broadcast-msg" type="text" placeholder="Message à afficher à tous les utilisateurs…" class="form-input" style="flex:1;font-size:13px">
+          <button onclick="saBroadcast()" style="padding:8px 16px;background:#fbbf24;border:none;color:#000;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">📢 Envoyer</button>
+          <button onclick="saClearBroadcast()" style="padding:8px 12px;background:var(--s3);border:1px solid var(--border);color:var(--negative);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap">✕ Effacer</button>
+        </div>
+        <div id="sa-broadcast-status" style="font-size:12px;color:var(--text3);min-height:16px"></div>
+      </div>
+
+      <!-- Forcer recap + Gestion rôles -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Forcer recap email</div>
+          <div style="display:flex;gap:8px;margin-bottom:6px">
+            <input id="sa-github-token" type="password" placeholder="GitHub PAT (scope: workflow)" class="form-input" style="flex:1;font-size:12px">
+            <button onclick="saSaveGithubToken()" style="padding:7px 12px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">💾 Sauver</button>
+          </div>
+          <div id="sa-recap-btns" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto"></div>
+          <div id="sa-recap-status" style="font-size:12px;color:var(--text3);margin-top:6px;min-height:16px"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Gérer les rôles</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input id="input-admin-email" type="email" placeholder="Email utilisateur" class="form-input" style="flex:1;font-size:12px">
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button onclick="grantAdmin()" style="flex:1;padding:7px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer">+ Admin</button>
+            <button onclick="revokeAdmin()" style="flex:1;padding:7px;background:var(--s3);border:1px solid var(--border);color:var(--negative);border-radius:8px;font-size:11px;cursor:pointer">Retirer</button>
+          </div>
+          <div id="admin-role-status" style="font-size:12px;font-family:var(--mono);min-height:16px;color:var(--positive)"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+</body>
+</html>
