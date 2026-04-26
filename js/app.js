@@ -8171,6 +8171,14 @@ async function _saLoadAll() {
       </tr>`;
     }).join('');
 
+    // Charger token GitHub depuis Firestore
+    try {
+      const tokSnap = await getFirestoreDoc(firestoreDoc(db, 'config', 'githubToken'));
+      if (tokSnap.exists() && tokSnap.data().token) {
+        document.getElementById('sa-github-token').value = tokSnap.data().token;
+      }
+    } catch(e) {}
+
     // Recap buttons
     document.getElementById('sa-recap-btns').innerHTML = users.map(u =>
       `<button onclick="saForceRecap('${u.email}')" style="text-align:left;background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer">▶ ${u.email}</button>`
@@ -8204,10 +8212,27 @@ async function saClearBroadcast() {
   } catch(e) { st.style.color = 'var(--negative)'; st.textContent = 'Erreur : ' + e.message; }
 }
 
-async function saForceRecap(email) {
+async function saSaveGithubToken() {
   const token = document.getElementById('sa-github-token').value.trim();
   const st    = document.getElementById('sa-recap-status');
-  if (!token) { st.style.color = 'var(--negative)'; st.textContent = 'Entre le GitHub PAT d\'abord'; return; }
+  if (!token) return;
+  try {
+    await setFirestoreDoc(firestoreDoc(db, 'config', 'githubToken'), { token });
+    st.style.color = 'var(--positive)'; st.textContent = '✓ Token sauvegardé';
+    setTimeout(() => { st.textContent = ''; }, 2000);
+  } catch(e) { st.style.color = 'var(--negative)'; st.textContent = 'Erreur : ' + e.message; }
+}
+
+async function saForceRecap(email) {
+  const st = document.getElementById('sa-recap-status');
+  let token = document.getElementById('sa-github-token').value.trim();
+  if (!token) {
+    try {
+      const snap = await getFirestoreDoc(firestoreDoc(db, 'config', 'githubToken'));
+      token = snap.exists() ? snap.data().token : '';
+    } catch(e) {}
+  }
+  if (!token) { st.style.color = 'var(--negative)'; st.textContent = 'Aucun GitHub PAT configuré'; return; }
   st.style.color = 'var(--text3)'; st.textContent = `Envoi recap pour ${email}…`;
   try {
     const res = await fetch('https://api.github.com/repos/armelpltr/Dashboard-PEA/actions/workflows/daily-recap.yml/dispatches', {
