@@ -11,7 +11,7 @@ let fbApp, fbAuth, db,
 
 let fcmMessaging = null, getFCMToken, onFCMMessage;
 // VAPID key : Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Generate key pair
-const VAPID_KEY = 'YOUR_VAPID_KEY_HERE';
+const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vNXI1EL2xQKA1Nr6tmKaSX5hcGJY';
 
 (async function initFirebase() {
   const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
