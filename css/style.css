@@ -1085,7 +1085,8 @@ tr.drag-over td { border-top: 2px solid var(--accent) !important; }
 .sidebar.collapsed .user-name,
 .sidebar.collapsed .setting-label,
 .sidebar.collapsed .color-dots,
-.sidebar.collapsed .sidebar-settings { display: none; }
+.sidebar.collapsed .sidebar-settings,
+.sidebar.collapsed #sidebar-role-badge { display: none; }
 .sidebar.collapsed .nav-item { justify-content: center; padding: 10px 0; gap: 0; font-size: 0; }
 .sidebar.collapsed .nav-icon { font-size: 17px; width: auto; }
 .sidebar.collapsed .nav-item.active::before { left: 0; }

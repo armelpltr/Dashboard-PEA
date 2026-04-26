@@ -656,14 +656,15 @@ function syncMobileNav(id) {
 
 function _roleBadgeHtml(role, size) {
   const s = size || '9px';
-  if (role === 'superadmin') return `<span style="font-size:${s};font-family:var(--mono);font-weight:700;padding:1px 7px;border-radius:4px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">👑 Super Admin</span>`;
-  if (role === 'admin')      return `<span style="font-size:${s};font-family:var(--mono);font-weight:700;padding:1px 7px;border-radius:4px;background:rgba(124,109,245,0.15);color:var(--accent);border:1px solid rgba(124,109,245,0.25)">⚡ Admin</span>`;
-  return `<span style="font-size:${s};font-family:var(--mono);padding:1px 7px;border-radius:4px;background:var(--s3);color:var(--text3)">Utilisateur</span>`;
+  const base = `display:inline-block;white-space:nowrap;font-size:${s};font-family:var(--mono);font-weight:700;padding:1px 7px;border-radius:4px;`;
+  if (role === 'superadmin') return `<span style="${base}background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">👑 Super Admin</span>`;
+  if (role === 'admin')      return `<span style="${base}background:rgba(124,109,245,0.15);color:var(--accent);border:1px solid rgba(124,109,245,0.25)">⚡ Admin</span>`;
+  return `<span style="${base}background:var(--s3);color:var(--text3)">Utilisateur</span>`;
 }
 
 function updateRoleBadges() {
   const sb = document.getElementById('sidebar-role-badge');
-  if (sb) { sb.style.display = 'inline'; sb.innerHTML = _roleBadgeHtml(currentUserRole, '9px'); }
+  if (sb) { sb.style.display = 'block'; sb.innerHTML = _roleBadgeHtml(currentUserRole, '9px'); }
   const pb = document.getElementById('profil-role-badge');
   if (pb) pb.innerHTML = _roleBadgeHtml(currentUserRole, '10px');
   const ib = document.getElementById('ideas-role-badge');
