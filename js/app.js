@@ -8181,7 +8181,7 @@ async function _saLoadAll() {
 
     // Recap buttons
     document.getElementById('sa-recap-btns').innerHTML = users.map(u =>
-      `<button onclick="saForceRecap('${u.email}')" style="text-align:left;background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer">▶ ${u.email}</button>`
+      `<button onclick="saOpenConfirmRecap('${u.email}')" style="text-align:left;background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer">▶ ${u.email}</button>`
     ).join('');
 
   } catch(e) {
@@ -8223,6 +8223,33 @@ async function saSaveGithubToken() {
   } catch(e) { st.style.color = 'var(--negative)'; st.textContent = 'Erreur : ' + e.message; }
 }
 
+let _saAllUsers = [];
+
+function saFilterUsers(query) {
+  const q = query.toLowerCase();
+  const rows = document.querySelectorAll('#sa-users-tbody tr');
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = (!q || text.includes(q)) ? '' : 'none';
+  });
+}
+
+let _saConfirmEmail = null;
+function saOpenConfirmRecap(email) {
+  _saConfirmEmail = email;
+  document.getElementById('confirm-recap-email').textContent = email;
+  document.getElementById('confirm-recap-overlay').style.display = 'flex';
+}
+function closeConfirmRecap() {
+  document.getElementById('confirm-recap-overlay').style.display = 'none';
+  _saConfirmEmail = null;
+}
+async function confirmRecapSend() {
+  const email = _saConfirmEmail;
+  closeConfirmRecap();
+  if (email) await saForceRecap(email);
+}
+
 async function saForceRecap(email) {
   const st = document.getElementById('sa-recap-status');
   let token = document.getElementById('sa-github-token').value.trim();
@@ -8234,13 +8261,11 @@ async function saForceRecap(email) {
   }
   if (!token) { st.style.color = 'var(--negative)'; st.textContent = 'Aucun GitHub PAT configuré'; return; }
   st.style.color = 'var(--text3)'; st.textContent = `Envoi recap pour ${email}…`;
-  const payload = { ref: 'main', inputs: { target_email: email } };
-  console.log('GitHub dispatch payload:', JSON.stringify(payload));
   try {
     const res = await fetch('https://api.github.com/repos/armelpltr/Dashboard-PEA/actions/workflows/daily-recap.yml/dispatches', {
       method: 'POST',
       headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ref: 'main', inputs: { target_email: email } }),
     });
     if (res.ok || res.status === 204) {
       st.style.color = 'var(--positive)'; st.textContent = `✓ Recap déclenché (tous les users recevront le mail)`;

@@ -672,6 +672,22 @@
 </div>
 
 
+<!-- ═══ MODAL CONFIRM RECAP ════════════════════════ -->
+<div id="confirm-recap-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1400;align-items:center;justify-content:center">
+  <div style="background:var(--s1);border:1px solid rgba(251,191,36,0.3);border-radius:16px;padding:28px;width:380px;max-width:90%;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:fadeInScale .15s ease">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:36px;margin-bottom:10px">📧</div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Envoyer le récap</div>
+      <div style="font-size:13px;color:var(--text3)">Vous allez envoyer le récap quotidien à</div>
+      <div id="confirm-recap-email" style="font-size:14px;font-weight:700;color:#fbbf24;margin-top:6px;padding:8px 14px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;word-break:break-all"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closeConfirmRecap()" style="flex:1;padding:10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:10px;font-size:13px;cursor:pointer;font-family:var(--sans)">Annuler</button>
+      <button onclick="confirmRecapSend()" style="flex:1;padding:10px;background:linear-gradient(135deg,#fbbf24,#f59e0b);border:none;color:#000;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)">✓ Envoyer</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL ALERTE PRIX ══════════════════════════ -->
 <div class="modal-overlay" id="alert-modal-overlay" onclick="if(event.target===this)closeAlertModal()">
   <div class="modal">
@@ -1270,7 +1286,10 @@
 
       <!-- Users en ligne + liste -->
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Utilisateurs <span id="sa-online-count" style="color:var(--positive)"></span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px">Utilisateurs <span id="sa-online-count" style="color:var(--positive)"></span></div>
+          <input id="sa-user-search" type="text" placeholder="🔍 Rechercher un utilisateur…" oninput="saFilterUsers(this.value)" style="font-size:12px;padding:6px 12px;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);width:240px;outline:none">
+        </div>
         <div style="overflow-x:auto">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead>
