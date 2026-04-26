@@ -262,6 +262,7 @@ async function sendEmail({ to, toName, subject, html }) {
 async function main() {
   const targetEmail = (process.env.TARGET_EMAIL || '').trim().toLowerCase();
   console.log(`\n🚀 Démarrage récap quotidien — ${today}`);
+  console.log(`🔍 TARGET_EMAIL brut: "${process.env.TARGET_EMAIL}"`);
   if (targetEmail) console.log(`🎯 Cible : ${targetEmail}\n`);
   else console.log(`📢 Envoi à tous les utilisateurs\n`);
 
