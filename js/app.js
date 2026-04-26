@@ -7296,6 +7296,7 @@ window.openThread = async function(threadId) {
     + '<div style="margin-left:auto;display:flex;gap:6px">'
     + (!isClosed ? '<button onclick="closeThread(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:10px;cursor:pointer">Terminer la conversation</button>' : '')
     + (isClosed && isAdmin(user) ? '<button onclick="reopenThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:var(--positive);border-radius:6px;font-size:10px;cursor:pointer">Rouvrir</button>' : '')
+    + (isSA ? '<button onclick="exportThread(\'' + threadId + '\')" style="padding:3px 10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:10px;cursor:pointer">⬇ Exporter</button>' : '')
     + (isSA ? '<button onclick="deleteThread(\'' + threadId + '\')" style="padding:3px 10px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);color:var(--negative);border-radius:6px;font-size:10px;cursor:pointer">🗑 Supprimer</button>' : '')
     + '</div></div>';
 
@@ -7913,6 +7914,55 @@ window.deleteThread = function(threadId) {
       _showChatToast({ icon: '🗑', title: 'Conversation supprimée', msg: 'La conversation a été supprimée.', threadId: null, duration: 3000 });
     },
   });
+};
+
+window.exportThread = async function(threadId) {
+  if (!isSuperAdmin(fbAuth.currentUser)) return;
+  try {
+    const threadSnap = await getFirestoreDoc(firestoreDoc(db, 'ideas', threadId));
+    const t = threadSnap.data();
+    const msgSnap = await getDocs(firestoreQuery(
+      firestoreCollection(db, 'ideas', threadId, 'messages'),
+      firestoreOrderBy('createdAt', 'asc')
+    ));
+
+    const fmt = ts => ts && ts.toDate ? ts.toDate().toLocaleString('fr-FR') : '?';
+    const sep = '─'.repeat(60);
+
+    let txt = 'CONVERSATION EXPORTÉE — PEA Dashboard\n'
+      + sep + '\n'
+      + 'Sujet    : ' + (t.title || '—') + '\n'
+      + 'Utilisateur : ' + (t.userName || '') + ' <' + (t.userEmail || '') + '>\n'
+      + 'Statut   : ' + (t.status || '?') + '\n'
+      + 'Exporté  : ' + new Date().toLocaleString('fr-FR') + '\n'
+      + sep + '\n\n';
+
+    msgSnap.docs.forEach(doc => {
+      const m = doc.data();
+      if (m.type === 'system') {
+        txt += '[' + fmt(m.createdAt) + '] 🔔 ' + (m.text || '') + '\n\n';
+        return;
+      }
+      const who = (m.senderName || m.senderEmail || '?') + ' (' + (m.senderRole || 'user') + ')';
+      txt += '[' + fmt(m.createdAt) + '] ' + who + '\n';
+      if (m.text) txt += m.text + '\n';
+      if (m.image) txt += '[image]\n';
+      txt += '\n';
+    });
+
+    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const slug = (t.title || threadId).replace(/[^a-z0-9]/gi, '-').toLowerCase().slice(0, 40);
+    a.href     = url;
+    a.download = 'conv-' + slug + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Erreur export : ' + e.message);
+  }
 };
 
 // Nettoyage auto 48h côté client au chargement des threads
