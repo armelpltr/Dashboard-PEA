@@ -407,7 +407,7 @@ async function startApp(user) {
   // Badge idées en arrière-plan
   _listenThreads(user);
   _startPresenceHeartbeat(user);
-  if (isSuperAdmin(user)) _startPresenceListener();
+  if (isAdmin(user)) _startPresenceListener();
 
   // Preload des données lourdes (Benchmark + Performance + Watchlist)
   // en arrière-plan, pour que les pages s'affichent instantanément quand
@@ -7114,15 +7114,19 @@ function _stopPresenceHeartbeat(uid) {
 
 function _startPresenceListener() {
   if (_presenceUnsub) return;
-  _presenceUnsub = onSnapshot(firestoreCollection(db, 'presence'), snap => {
-    const now = Date.now();
-    snap.docs.forEach(doc => {
-      const d = doc.data();
-      const lastSeen = d.lastSeen && d.lastSeen.toMillis ? d.lastSeen.toMillis() : 0;
-      _presenceMap[doc.id] = { online: !!d.online && (now - lastSeen) < 90000, email: d.email || '' };
-    });
-    _updatePresenceDots();
-  });
+  _presenceUnsub = onSnapshot(
+    firestoreCollection(db, 'presence'),
+    snap => {
+      const now = Date.now();
+      snap.docs.forEach(doc => {
+        const d = doc.data();
+        const lastSeen = d.lastSeen && d.lastSeen.toMillis ? d.lastSeen.toMillis() : 0;
+        _presenceMap[doc.id] = { online: !!d.online && (now - lastSeen) < 90000, email: d.email || '' };
+      });
+      _updatePresenceDots();
+    },
+    err => console.warn('[presence] listener error — vérifie les règles Firestore:', err.message)
+  );
 }
 
 function _isOnlineByEmail(email) {
@@ -7606,8 +7610,11 @@ function _renderMessages(docs, user) {
     const avatarImg = senderAvatarSrc
       ? '<img src="' + _escHtml(senderAvatarSrc) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover' + avatarRing + '" title="' + _escHtml(d0.senderName || '') + '">'
       : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--s4),var(--muted2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text2)' + avatarRing + '">' + _escHtml((d0.senderName||'?')[0].toUpperCase()) + '</div>';
+    const presenceDotHtml = d0.senderEmail
+      ? '<span data-presence-email="' + _escAttr(d0.senderEmail) + '" title="' + (_isOnlineByEmail(d0.senderEmail) ? 'En ligne' : 'Hors ligne') + '" style="position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;border:2px solid var(--s1);background:' + (_isOnlineByEmail(d0.senderEmail) ? 'var(--positive)' : 'var(--text3)') + ';opacity:' + (_isOnlineByEmail(d0.senderEmail) ? '1' : '0.4') + '"></span>'
+      : '';
     const avatarEl = '<div style="display:flex;flex-direction:column;align-items:center;align-self:flex-end;flex-shrink:0;min-width:36px;gap:2px">'
-      + avatarImg
+      + '<div style="position:relative;flex-shrink:0">' + avatarImg + presenceDotHtml + '</div>'
       + '<span style="font-size:10px;font-weight:600;color:' + (isAdminMsg ? 'var(--accent)' : 'var(--text2)') + ';white-space:nowrap;text-align:center">' + _escHtml(d0.senderName || '') + '</span>'
       + roleBadge
       + '</div>';
