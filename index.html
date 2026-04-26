@@ -143,6 +143,10 @@
       <div class="mobile-drawer-item" onclick="showPageMobile('watchlist');closeMobileDrawer()" data-mob="watchlist">
         <span class="mobile-drawer-icon">👁</span>Watchlist
       </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('notifications');closeMobileDrawer()" data-mob="notifications">
+        <span class="mobile-drawer-icon">🔔</span>Notifications
+        <span id="notif-drawer-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
+      </div>
       <div class="mobile-drawer-item" onclick="showPageMobile('benchmark');closeMobileDrawer()" data-mob="benchmark">
         <span class="mobile-drawer-icon">🎯</span>Benchmark
       </div>
@@ -189,6 +193,10 @@
       </div>
       <div class="nav-item" onclick="showPage('watchlist')">
         <span class="nav-icon">👁</span> Watchlist
+      </div>
+      <div class="nav-item" onclick="showPage('notifications')" id="nav-notifications">
+        <span class="nav-icon">🔔</span> Notifications
+        <span id="notif-nav-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
       </div>
       <div class="nav-item" onclick="showPage('benchmark')">
         <span class="nav-icon">🎯</span> Benchmark
@@ -614,9 +622,72 @@
       </div>
     </div>
 
+    <!-- NOTIFICATIONS PAGE -->
+    <div class="page" id="page-notifications">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Notifications</div>
+          <div class="page-subtitle">Alertes prix · Push · Historique</div>
+        </div>
+        <button onclick="requestPushPermission()" class="btn-outline" id="btn-enable-push" style="font-size:12px;padding:7px 14px">🔔 Activer les push</button>
+      </div>
+
+      <!-- Paramètres -->
+      <div class="section-card" style="margin-bottom:18px">
+        <div class="section-title">Paramètres</div>
+        <div id="notif-settings-list"></div>
+      </div>
+
+      <!-- Alertes prix -->
+      <div class="section-card" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="section-title" style="margin:0">Alertes prix</div>
+          <button class="btn-add" onclick="openAddAlertModal()" style="font-size:11px;padding:6px 12px">＋ Nouvelle alerte</button>
+        </div>
+        <div id="alerts-list"></div>
+        <div id="alerts-empty" style="color:var(--text3);font-size:13px;text-align:center;padding:20px 0">Aucune alerte configurée</div>
+      </div>
+
+      <!-- Historique -->
+      <div class="section-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="section-title" style="margin:0">Historique</div>
+          <button onclick="clearNotifHistory()" class="btn-outline" style="font-size:11px;padding:5px 10px">Effacer</button>
+        </div>
+        <div id="notif-history-list"></div>
+        <div id="notif-history-empty" style="color:var(--text3);font-size:13px;text-align:center;padding:20px 0">Aucune notification</div>
+      </div>
+    </div>
+
   </main>
 </div>
 
+
+<!-- ═══ MODAL ALERTE PRIX ══════════════════════════ -->
+<div class="modal-overlay" id="alert-modal-overlay" onclick="if(event.target===this)closeAlertModal()">
+  <div class="modal">
+    <div class="modal-title">Nouvelle alerte prix</div>
+    <div class="form-group">
+      <label class="form-label">Action / ETF</label>
+      <select class="form-input" id="alert-ticker-select" style="background:var(--s2);color:var(--text)"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Condition</label>
+      <select class="form-input" id="alert-direction" style="background:var(--s2);color:var(--text)">
+        <option value="above">Prix ≥ (alerte hausse)</option>
+        <option value="below">Prix ≤ (alerte baisse / stop-loss)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Prix cible (€)</label>
+      <input type="number" class="form-input" id="alert-price" placeholder="150.00" min="0" step="any">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeAlertModal()">Annuler</button>
+      <button class="btn-primary" onclick="confirmAddAlert()">Créer l'alerte</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ MODAL PROFIL ════════════════════════════════ -->
 <div class="modal-overlay" id="profil-modal-overlay" onclick="if(event.target===this)closeProfilModal()" style="z-index:1100">

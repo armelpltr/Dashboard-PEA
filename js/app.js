@@ -9,6 +9,10 @@ let fbApp, fbAuth, db,
     addFirestoreDoc, onSnapshot, firestoreQuery, firestoreWhere, firestoreOrderBy, serverTimestamp,
     firestoreArrayUnion, firestoreArrayRemove, firestoreOr, firestoreDeleteField;
 
+let fcmMessaging = null, getFCMToken, onFCMMessage;
+// VAPID key : Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Generate key pair
+const VAPID_KEY = 'YOUR_VAPID_KEY_HERE';
+
 (async function initFirebase() {
   const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
   const auth = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
@@ -49,6 +53,13 @@ let fbApp, fbAuth, db,
   fbAuth = auth.getAuth(fbApp);
   db     = firestore.getFirestore(fbApp);
 
+  try {
+    const msg = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js");
+    getFCMToken  = msg.getToken;
+    onFCMMessage = msg.onMessage;
+    fcmMessaging = msg.getMessaging(fbApp);
+  } catch(e) { console.warn('FCM unavailable:', e.message); }
+
   // Google Sign-In désactivé : plus besoin de gérer getRedirectResult.
 
   auth.onAuthStateChanged(fbAuth, user => {
@@ -84,7 +95,7 @@ async function loadAllUserData(uid) {
   // Enregistrer l'email pour la recherche par email (gestion des rôles)
   const _u = fbAuth.currentUser;
   if (_u) setFirestoreDoc(firestoreDoc(db, 'users', uid), { email: _u.email }, { merge: true }).catch(() => {});
-  const cols = ['portfolio', 'transactions', 'versements', 'watchlist', 'dailyValues'];
+  const cols = ['portfolio', 'transactions', 'versements', 'watchlist', 'dailyValues', 'alerts', 'notifHistory'];
   await Promise.all(cols.map(async col => {
     try {
       const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', col));
@@ -132,6 +143,10 @@ function saveTransactions(user, data) { _perfCache = null; _fsWrite(user||curren
 function saveVersements(user, data)   { _perfCache = null; _fsWrite(user||currentUser, 'versements',   data); }
 function saveWatchlist(user, data)    { _fsWrite(user||currentUser, 'watchlist',    data); }
 function saveDailyValues(user, data)  { _perfCache = null; _fsWrite(user||currentUser, 'dailyValues', data); }
+function getAlerts(user)       { return _localCache[(user||currentUser) + '_alerts']       || []; }
+function getNotifHistory(user) { return _localCache[(user||currentUser) + '_notifHistory']  || []; }
+function saveAlerts(user, data)       { _fsWrite(user||currentUser, 'alerts',       data); }
+function saveNotifHistory(user, data) { _fsWrite(user||currentUser, 'notifHistory',  data); }
 
 // ─────────────────────────────────────────────────────────────────
 //  EXPORT / IMPORT — sauvegarde complète d'un compte en JSON
@@ -414,6 +429,8 @@ async function startApp(user) {
   // l'utilisateur clique dessus.
   // Ne bloque pas l'affichage : lancé après le rendu du portefeuille.
   setTimeout(() => { preloadAll().catch(e => console.warn('Preload:', e)); }, 200);
+  _updateNotifBadge();
+  if (Notification.permission === 'granted') initPush(user.uid).catch(() => {});
 }
 
 function stopApp() {
@@ -4392,12 +4409,14 @@ renderPortfolio = function() {
 const _origShowPage = showPage;
 showPage = function(id) {
   _origShowPage(id);
-  if (id === 'watchlist') renderWatchlist();
+  if (id === 'watchlist')     renderWatchlist();
+  if (id === 'notifications') renderNotificationsPage();
 };
 const _origShowPageMobile = showPageMobile;
 showPageMobile = function(id) {
   _origShowPageMobile(id);
-  if (id === 'watchlist') renderWatchlist();
+  if (id === 'watchlist')     renderWatchlist();
+  if (id === 'notifications') renderNotificationsPage();
 };
 // ═══════════════════════════════════════════════════
 //  BASE 100
@@ -4596,6 +4615,7 @@ async function refreshAll() {
       if (id === 'watchlist')    { try { renderWatchlist(); }  catch(e){} }
       if (id === 'portfolio')    { try { renderPortfolio(); }  catch(e){} }
     }
+    checkPriceAlerts();
   } finally {
     if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
   }
@@ -6997,7 +7017,7 @@ function _requestNotifPermission() {
 function _showBrowserNotif(title, body, threadId) {
   if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
   try {
-    const n = new Notification('Dashboard PEA — ' + title, { body, icon: '/favicon-32.png' });
+    const n = new Notification('CapitalView — ' + title, { body, icon: '/favicon-32.png' });
     n.onclick = () => { window.focus(); openIdeasPanel(); if (threadId) openThread(threadId); n.close(); };
     setTimeout(() => n.close(), 8000);
   } catch(e) {}
@@ -8200,3 +8220,243 @@ window.confirmRemoveMember = async function() {
     alert('Erreur : ' + e.message);
   }
 };
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATIONS — FCM, alertes prix, historique
+// ═══════════════════════════════════════════════════════════════
+
+async function initPush(uid) {
+  if (!fcmMessaging || !('serviceWorker' in navigator) || VAPID_KEY === 'YOUR_VAPID_KEY_HERE') return;
+  try {
+    const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    const token = await getFCMToken(fcmMessaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
+    if (token) setFirestoreDoc(firestoreDoc(db, 'roles', uid), { fcmToken: token }, { merge: true }).catch(() => {});
+    onFCMMessage(fcmMessaging, payload => {
+      const { title, body } = payload.notification || {};
+      _logNotifHistory(payload.data?.type || 'push', title || 'CapitalView', body || '');
+      _showChatToast({ icon: '🔔', title: title || 'CapitalView', msg: body || '' });
+      renderNotificationsPage();
+    });
+  } catch(e) { console.warn('FCM init:', e.message); }
+}
+
+async function requestPushPermission() {
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') await initPush(currentUser);
+  updatePushBtn();
+}
+
+function _logNotifHistory(type, title, body) {
+  if (!currentUser) return;
+  const history = getNotifHistory(currentUser);
+  history.unshift({ id: Date.now(), type, title, body, timestamp: new Date().toISOString(), read: false });
+  if (history.length > 50) history.splice(50);
+  saveNotifHistory(currentUser, history);
+  _updateNotifBadge();
+}
+
+function _updateNotifBadge() {
+  const unread = currentUser ? getNotifHistory(currentUser).filter(n => !n.read).length : 0;
+  ['notif-nav-badge', 'notif-drawer-badge'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = unread > 0 ? 'inline' : 'none';
+    el.textContent = unread > 9 ? '9+' : String(unread);
+  });
+}
+
+function checkPriceAlerts() {
+  if (!currentUser) return;
+  const settings = getUserSettings(currentUser);
+  if (settings.notifSettings?.priceAlerts === false) return;
+  const alerts = getAlerts(currentUser);
+  if (!alerts.length) return;
+  const allItems = [
+    ...getPortfolio(currentUser).map(p => ({ ticker: p.ticker, price: p.currentPrice })),
+    ...getWatchlist(currentUser).map(w => ({ ticker: w.ticker, price: w.price }))
+  ];
+  let changed = false;
+  alerts.forEach(alert => {
+    if (!alert.active || alert.triggeredAt) return;
+    const item = allItems.find(i => i.ticker === alert.ticker);
+    if (!item || !item.price) return;
+    const hit = alert.direction === 'above' ? item.price >= alert.targetPrice : item.price <= alert.targetPrice;
+    if (hit) {
+      alert.triggeredAt = new Date().toISOString();
+      alert.active = false;
+      const dir = alert.direction === 'above' ? '>=' : '<=';
+      const body = alert.name + ' (' + alert.ticker + ') ' + dir + ' ' + alert.targetPrice + 'EUR — cours : ' + item.price.toFixed(2) + 'EUR';
+      _logNotifHistory('price_alert', 'Alerte prix declenchee', body);
+      _showBrowserNotif('Alerte prix', body);
+      changed = true;
+    }
+  });
+  if (changed) {
+    saveAlerts(currentUser, alerts);
+    if (document.getElementById('page-notifications')?.classList.contains('active')) renderNotificationsPage();
+  }
+}
+
+function renderNotificationsPage() {
+  renderAlertsList();
+  renderNotifSettings();
+  renderNotifHistory();
+  updatePushBtn();
+}
+
+function updatePushBtn() {
+  const btn = document.getElementById('btn-enable-push');
+  if (!btn) return;
+  const perm = 'Notification' in window ? Notification.permission : 'denied';
+  if (VAPID_KEY === 'YOUR_VAPID_KEY_HERE') {
+    btn.textContent = 'Cle VAPID non configuree';
+    btn.disabled = true;
+  } else if (perm === 'granted') {
+    btn.textContent = 'Push actives';
+    btn.disabled = true;
+  } else if (perm === 'denied') {
+    btn.textContent = 'Push bloques (parametres navigateur)';
+    btn.disabled = true;
+  } else {
+    btn.textContent = 'Activer les push';
+    btn.disabled = false;
+  }
+}
+
+function renderNotifSettings() {
+  const el = document.getElementById('notif-settings-list');
+  if (!el) return;
+  const settings = getUserSettings(currentUser);
+  const ns = settings.notifSettings || { chat: true, dividends: true, priceAlerts: true };
+  const toggles = [
+    { key: 'chat',        icon: '💬', label: 'Messages chat support', sub: 'Notification a la reception d un message' },
+    { key: 'dividends',   icon: '💰', label: 'Dividendes recus',      sub: 'Notification lors de l enregistrement d un dividende' },
+    { key: 'priceAlerts', icon: '🎯', label: 'Alertes prix',          sub: 'Notification quand un seuil de prix est atteint' },
+  ];
+  el.innerHTML = toggles.map(t => {
+    const checked = ns[t.key] !== false;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<span style="font-size:18px">' + t.icon + '</span>' +
+        '<div>' +
+          '<div style="font-size:13px;font-weight:600;color:var(--text)">' + t.label + '</div>' +
+          '<div style="font-size:11px;color:var(--text3)">' + t.sub + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div onclick="toggleNotifSetting(\'' + t.key + '\',' + !checked + ')" style="cursor:pointer;width:40px;height:22px;border-radius:22px;background:' + (checked ? 'var(--accent)' : 'var(--border2)') + ';position:relative;transition:background .2s;flex-shrink:0">' +
+        '<div style="position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:' + (checked ? '21px' : '3px') + ';transition:left .2s"></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function toggleNotifSetting(key, value) {
+  const settings = getUserSettings(currentUser);
+  const ns = Object.assign({ chat: true, dividends: true, priceAlerts: true }, settings.notifSettings || {});
+  ns[key] = value;
+  await saveUserSettings(currentUser, { notifSettings: ns });
+  renderNotifSettings();
+}
+
+function renderAlertsList() {
+  const list = document.getElementById('alerts-list');
+  const empty = document.getElementById('alerts-empty');
+  if (!list) return;
+  const alerts = getAlerts(currentUser);
+  if (!alerts.length) { list.innerHTML = ''; if (empty) empty.style.display = 'block'; return; }
+  if (empty) empty.style.display = 'none';
+  list.innerHTML = alerts.map((a, i) => {
+    const dir = a.direction === 'above' ? '>=' : '<=';
+    const status = a.triggeredAt
+      ? '<span style="color:var(--accent);font-size:11px">Declenchee</span>'
+      : '<span style="color:var(--positive);font-size:11px">Active</span>';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">' +
+      '<div>' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text)">' + a.name + ' <span style="color:var(--text3);font-weight:400">(' + a.ticker + ')</span></div>' +
+        '<div style="font-size:12px;color:var(--text2);margin-top:2px">Prix ' + dir + ' ' + a.targetPrice + 'EUR &nbsp;&middot;&nbsp; ' + status + '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;align-items:center">' +
+        (a.triggeredAt ? '<button onclick="resetAlert(' + i + ')" style="background:none;border:1px solid var(--border2);color:var(--text3);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer">Reactiver</button>' : '') +
+        '<button onclick="deleteAlert(' + i + ')" style="background:none;border:1px solid rgba(255,77,106,0.3);color:var(--negative);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer">Suppr.</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderNotifHistory() {
+  const list = document.getElementById('notif-history-list');
+  const empty = document.getElementById('notif-history-empty');
+  if (!list) return;
+  const history = getNotifHistory(currentUser);
+  if (!history.length) { list.innerHTML = ''; if (empty) empty.style.display = 'block'; return; }
+  if (empty) empty.style.display = 'none';
+  let changed = false;
+  history.forEach(n => { if (!n.read) { n.read = true; changed = true; } });
+  if (changed) { saveNotifHistory(currentUser, history); _updateNotifBadge(); }
+  list.innerHTML = history.slice(0, 30).map(n => {
+    const d = new Date(n.timestamp);
+    const dateStr = d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+    const icon = n.type === 'price_alert' ? '🎯' : n.type === 'dividend' ? '💰' : '💬';
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
+      '<span style="font-size:18px;flex-shrink:0">' + icon + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text)">' + n.title + '</div>' +
+        '<div style="font-size:12px;color:var(--text2);margin-top:2px;word-break:break-word">' + n.body + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:4px">' + dateStr + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function clearNotifHistory() {
+  saveNotifHistory(currentUser, []);
+  renderNotifHistory();
+  _updateNotifBadge();
+}
+
+function openAddAlertModal() {
+  const seen = new Set();
+  const items = [];
+  [...getPortfolio(currentUser), ...getWatchlist(currentUser)].forEach(r => {
+    if (!seen.has(r.ticker)) { seen.add(r.ticker); items.push({ ticker: r.ticker, name: r.name || r.ticker }); }
+  });
+  if (!items.length) { alert('Ajoutez des actions au portefeuille ou a la watchlist.'); return; }
+  const sel = document.getElementById('alert-ticker-select');
+  sel.innerHTML = items.map(i => '<option value="' + i.ticker + '">' + i.name + ' (' + i.ticker + ')</option>').join('');
+  document.getElementById('alert-price').value = '';
+  document.getElementById('alert-direction').value = 'below';
+  document.getElementById('alert-modal-overlay').classList.add('open');
+}
+
+function closeAlertModal() {
+  document.getElementById('alert-modal-overlay').classList.remove('open');
+}
+
+function confirmAddAlert() {
+  const sel = document.getElementById('alert-ticker-select');
+  const ticker = sel.value;
+  const name = (sel.options[sel.selectedIndex]?.text || ticker).split(' (')[0];
+  const direction = document.getElementById('alert-direction').value;
+  const targetPrice = parseFloat(document.getElementById('alert-price').value);
+  if (!ticker || !targetPrice || targetPrice <= 0) { alert('Veuillez remplir tous les champs.'); return; }
+  const alerts = getAlerts(currentUser);
+  alerts.push({ id: Date.now(), ticker, name, direction, targetPrice, active: true, createdAt: new Date().toISOString() });
+  saveAlerts(currentUser, alerts);
+  closeAlertModal();
+  renderAlertsList();
+}
+
+function deleteAlert(i) {
+  const alerts = getAlerts(currentUser);
+  alerts.splice(i, 1);
+  saveAlerts(currentUser, alerts);
+  renderAlertsList();
+}
+
+function resetAlert(i) {
+  const alerts = getAlerts(currentUser);
+  alerts[i].active = true;
+  delete alerts[i].triggeredAt;
+  saveAlerts(currentUser, alerts);
+  renderAlertsList();
+}

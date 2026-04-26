@@ -6,6 +6,7 @@
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore }        from 'firebase-admin/firestore';
 import { getAuth }             from 'firebase-admin/auth';
+import { getMessaging }        from 'firebase-admin/messaging';
 import fetch                   from 'node-fetch';
 import { Mistral }             from '@mistralai/mistralai';
 
@@ -15,9 +16,10 @@ const BREVO_KEY      = process.env.BREVO_API_KEY;
 const MISTRAL_KEY    = process.env.MISTRAL_API_KEY;
 
 initializeApp({ credential: cert(serviceAccount) });
-const db      = getFirestore();
-const fbAuth  = getAuth();
-const mistral = new Mistral({ apiKey: MISTRAL_KEY });
+const db        = getFirestore();
+const fbAuth    = getAuth();
+const messaging = getMessaging();
+const mistral   = new Mistral({ apiKey: MISTRAL_KEY });
 
 // ─── HELPERS ─────────────────────────────────────────────────
 const fmt  = n => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
@@ -221,6 +223,19 @@ function buildEmailHtml({ userName, lines, totalValue, totalPnl, totalPnlPct, to
 </html>`;
 }
 
+// ─── ENVOYER PUSH FCM ────────────────────────────────────────
+async function sendFcmPush(uid, title, body) {
+  try {
+    const roleSnap = await db.doc(`roles/${uid}`).get();
+    const token = roleSnap.exists ? roleSnap.data().fcmToken : null;
+    if (!token) return;
+    await messaging.send({ token, notification: { title, body }, data: { type: 'daily_recap' } });
+    console.log(`  📲 Push FCM envoyé à ${uid}`);
+  } catch(e) {
+    console.warn(`  ⚠️  Push FCM échoué pour ${uid}:`, e.message);
+  }
+}
+
 // ─── ENVOYER AVEC BREVO ──────────────────────────────────────
 async function sendEmail({ to, toName, subject, html }) {
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -324,10 +339,11 @@ async function main() {
       aiComment,
     });
 
-    // 9. Envoyer
+    // 9. Envoyer email + push FCM
     const daySign   = totalDayPct >= 0 ? '▲' : '▼';
     const subject   = `${daySign} Récap PEA ${today} — ${fmtp(totalDayPct)}`;
     await sendEmail({ to: user.email, toName: user.name, subject, html });
+    await sendFcmPush(user.uid, `Récap du ${today}`, `Portefeuille : ${fmt(totalValue)} (${fmtp(totalDayPct)} aujourd'hui)`);
   }
 
   console.log('\n✅ Récap quotidien terminé\n');
