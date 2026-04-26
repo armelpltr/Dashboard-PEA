@@ -8234,11 +8234,13 @@ async function saForceRecap(email) {
   }
   if (!token) { st.style.color = 'var(--negative)'; st.textContent = 'Aucun GitHub PAT configuré'; return; }
   st.style.color = 'var(--text3)'; st.textContent = `Envoi recap pour ${email}…`;
+  const payload = { ref: 'main', inputs: { target_email: email } };
+  console.log('GitHub dispatch payload:', JSON.stringify(payload));
   try {
     const res = await fetch('https://api.github.com/repos/armelpltr/Dashboard-PEA/actions/workflows/daily-recap.yml/dispatches', {
       method: 'POST',
       headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ref: 'main', inputs: { target_email: email } }),
+      body: JSON.stringify(payload),
     });
     if (res.ok || res.status === 204) {
       st.style.color = 'var(--positive)'; st.textContent = `✓ Recap déclenché (tous les users recevront le mail)`;
