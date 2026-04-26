@@ -1,0 +1,38 @@
+FEATURES A IMPLEMENTER — Dashboard PEA
+=======================================
+
+== DONNEES REELLES (priorite haute) ==
+- Historique prix reel : graphique portefeuille genere aleatoirement → brancher Yahoo Finance History endpoint
+- Dividendes auto-sync : dividendes.json statique/manuel → fetch API (financialmodelingprep ou similaire)
+- Benchmark reel : indices CAC/MSCI/S&P hardcodes → donnees live
+
+== PERFORMANCE & CALCULS ==
+- IRR (taux de rendement interne) — complete le TWR existant
+- Frais de courtage — pas tracke du tout, fausse le P&L
+- Yield on cost — dividendes / prix d'achat original
+- DCA tracking — suivi du cout moyen automatique
+- Fiscalite PEA — exoneration apres 5 ans, simulation imposition
+
+== ALERTES & NOTIFICATIONS ==
+- Alertes prix sur watchlist (acheter a X€, stop-loss a Y€)
+- Push notifications : chat + dividendes recus + alertes prix
+- Email recap plus riche (base existante)
+
+== ANALYSE AVANCEE ==
+- Monte Carlo projections — remplace CAGR constant par simulation stochastique
+- Sharpe / Sortino / Calmar ratios sur page Performance
+- Attribution de performance — contribution de chaque action
+- Screener — filtrer actions par criteres (PE, rendement, secteur)
+- Style box — value/growth/blend pour ETFs
+
+== UX & INTERFACE ==
+- Sparklines reelles sur stat cards (donnees vides actuellement)
+- Mode hors-ligne — PWA complete avec service worker
+- Import broker auto — Degiro/IBKR CSV recurring
+- Historique modifications — audit log des changements
+
+== TECH / PERF ==
+- Code splitting — app.js 370KB monolithique → modules lazy-loaded
+- Cache invalidation intelligente — Firestore queries stales
+- 2FA authentification
+- Chiffrement E2E pour le chat
