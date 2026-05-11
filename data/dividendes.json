@@ -1,38 +1,38 @@
 {
-  "generated_at": "2026-05-04",
+  "generated_at": "2026-05-11",
   "dividends": {
     "AI.PA": {
       "ticker": "AI.PA",
       "name": "Air Liquide",
       "history": [
         {
-          "date": "2025-05-07",
+          "date": "2025-05-09",
           "amount": 3.2,
           "label": "Dividende 2025"
         },
         {
-          "date": "2024-05-08",
+          "date": "2024-05-10",
           "amount": 3.0,
           "label": "Dividende 2024"
         },
         {
-          "date": "2023-05-10",
+          "date": "2023-05-12",
           "amount": 2.9,
           "label": "Dividende 2023"
         },
         {
-          "date": "2022-05-11",
+          "date": "2022-05-13",
           "amount": 2.7,
           "label": "Dividende 2022"
         },
         {
-          "date": "2021-05-12",
+          "date": "2021-05-14",
           "amount": 2.6,
           "label": "Dividende 2021"
         }
       ],
       "next": {
-        "date": "2026-05-06",
+        "date": "2026-05-08",
         "amount_estimated": 3.3,
         "confirmed": false
       }
@@ -79,33 +79,33 @@
       "history": [
         {
           "date": "2025-05-07",
-          "amount": 5.0,
+          "amount": 4.5,
           "label": "Dividende 2025"
         },
         {
           "date": "2024-05-08",
-          "amount": 4.5,
+          "amount": 4.3,
           "label": "Dividende 2024"
         },
         {
           "date": "2023-05-10",
-          "amount": 4.0,
+          "amount": 4.1,
           "label": "Dividende 2023"
         },
         {
           "date": "2022-05-11",
-          "amount": 3.5,
+          "amount": 3.9,
           "label": "Dividende 2022"
         },
         {
           "date": "2021-05-12",
-          "amount": 3.0,
+          "amount": 3.7,
           "label": "Dividende 2021"
         }
       ],
       "next": {
         "date": "2026-05-06",
-        "amount_estimated": 5.25,
+        "amount_estimated": 4.7,
         "confirmed": false
       }
     },
@@ -139,11 +139,7 @@
           "label": "Dividende 2021"
         }
       ],
-      "next": {
-        "date": "2026-05-14",
-        "amount_estimated": 0.85,
-        "confirmed": false
-      }
+      "next": null
     },
     "SAN.PA": {
       "ticker": "SAN.PA",
@@ -151,27 +147,27 @@
       "history": [
         {
           "date": "2025-05-07",
-          "amount": 3.72,
+          "amount": 3.68,
           "label": "Dividende 2025"
         },
         {
           "date": "2024-05-08",
-          "amount": 3.72,
+          "amount": 3.68,
           "label": "Dividende 2024"
         },
         {
           "date": "2023-05-10",
-          "amount": 3.68,
+          "amount": 3.33,
           "label": "Dividende 2023"
         },
         {
           "date": "2022-05-11",
-          "amount": 3.68,
+          "amount": 3.33,
           "label": "Dividende 2022"
         },
         {
           "date": "2021-05-12",
-          "amount": 3.33,
+          "amount": 3.15,
           "label": "Dividende 2021"
         }
       ],
@@ -183,69 +179,65 @@
       "history": [
         {
           "date": "2025-05-07",
-          "amount": 1.75,
+          "amount": 1.7,
           "label": "Dividende 2025"
         },
         {
           "date": "2024-05-08",
-          "amount": 1.6,
+          "amount": 1.55,
           "label": "Dividende 2024"
         },
         {
           "date": "2023-05-10",
-          "amount": 1.5,
+          "amount": 1.4,
           "label": "Dividende 2023"
         },
         {
           "date": "2022-05-11",
-          "amount": 1.4,
+          "amount": 1.25,
           "label": "Dividende 2022"
         },
         {
           "date": "2021-05-12",
-          "amount": 1.3,
+          "amount": 1.1,
           "label": "Dividende 2021"
         }
       ],
-      "next": {
-        "date": "2026-05-06",
-        "amount_estimated": 1.85,
-        "confirmed": false
-      }
+      "next": null
     },
     "MC.PA": {
       "ticker": "MC.PA",
       "name": "LVMH",
       "history": [
         {
-          "date": "2026-04-24",
+          "date": "2026-04-23",
           "amount": 12.5,
           "label": "Dividende 2025"
         },
         {
-          "date": "2025-04-25",
-          "amount": 12.0,
+          "date": "2025-04-24",
+          "amount": 11.5,
           "label": "Dividende 2024"
         },
         {
-          "date": "2024-04-26",
-          "amount": 11.5,
+          "date": "2024-04-25",
+          "amount": 10.5,
           "label": "Dividende 2023"
         },
         {
-          "date": "2023-04-28",
-          "amount": 10.5,
+          "date": "2023-04-27",
+          "amount": 9.5,
           "label": "Dividende 2022"
         },
         {
-          "date": "2022-04-29",
-          "amount": 9.5,
+          "date": "2022-04-28",
+          "amount": 8.5,
           "label": "Dividende 2021"
         }
       ],
       "next": {
         "date": "2027-04-23",
-        "amount_estimated": 13.0,
+        "amount_estimated": 13.5,
         "confirmed": false
       }
     },
@@ -255,17 +247,17 @@
       "history": [
         {
           "date": "2025-05-15",
-          "amount": 0.8,
+          "amount": 0.66,
           "label": "Dividende 2025"
         },
         {
           "date": "2024-05-16",
-          "amount": 0.8,
+          "amount": 0.66,
           "label": "Dividende 2024"
         },
         {
           "date": "2023-05-18",
-          "amount": 0.8,
+          "amount": 0.66,
           "label": "Dividende 2023"
         },
         {
@@ -275,7 +267,7 @@
         },
         {
           "date": "2021-05-20",
-          "amount": 0.8,
+          "amount": 0.7,
           "label": "Dividende 2021"
         }
       ],
@@ -286,33 +278,33 @@
       "name": "Vinci",
       "history": [
         {
-          "date": "2025-05-07",
+          "date": "2025-05-09",
           "amount": 3.2,
           "label": "Dividende 2025"
         },
         {
-          "date": "2024-05-08",
+          "date": "2024-05-10",
           "amount": 3.1,
           "label": "Dividende 2024"
         },
         {
-          "date": "2023-05-10",
+          "date": "2023-05-12",
           "amount": 3.0,
           "label": "Dividende 2023"
         },
         {
-          "date": "2022-05-11",
+          "date": "2022-05-13",
           "amount": 2.9,
           "label": "Dividende 2022"
         },
         {
-          "date": "2021-05-12",
-          "amount": 2.8,
+          "date": "2021-05-14",
+          "amount": 2.7,
           "label": "Dividende 2021"
         }
       ],
       "next": {
-        "date": "2026-05-06",
+        "date": "2026-05-08",
         "amount_estimated": 3.3,
         "confirmed": false
       }
@@ -323,126 +315,130 @@
       "history": [
         {
           "date": "2025-05-07",
-          "amount": 0.88,
+          "amount": 3.4,
           "label": "Dividende 2025"
         },
         {
           "date": "2024-05-08",
-          "amount": 0.83,
+          "amount": 3.1,
           "label": "Dividende 2024"
         },
         {
           "date": "2023-05-10",
-          "amount": 0.78,
+          "amount": 2.9,
           "label": "Dividende 2023"
         },
         {
           "date": "2022-05-11",
-          "amount": 0.75,
+          "amount": 2.6,
           "label": "Dividende 2022"
         },
         {
           "date": "2021-05-12",
-          "amount": 0.7,
+          "amount": 2.4,
           "label": "Dividende 2021"
         }
       ],
-      "next": null
+      "next": {
+        "date": "2026-05-06",
+        "amount_estimated": 3.6,
+        "confirmed": false
+      }
     },
     "RI.PA": {
       "ticker": "RI.PA",
       "name": "Pernod Ricard",
       "history": [
         {
-          "date": "2025-11-06",
-          "amount": 3.7,
+          "date": "2025-11-13",
+          "amount": 3.75,
           "label": "Dividende 2025"
         },
         {
-          "date": "2024-11-07",
-          "amount": 3.55,
+          "date": "2024-11-14",
+          "amount": 3.5,
           "label": "Dividende 2024"
         },
         {
-          "date": "2023-11-09",
-          "amount": 3.4,
+          "date": "2023-11-16",
+          "amount": 3.25,
           "label": "Dividende 2023"
         },
         {
-          "date": "2022-11-10",
-          "amount": 3.25,
+          "date": "2022-11-17",
+          "amount": 3.0,
           "label": "Dividende 2022"
         },
         {
-          "date": "2021-11-11",
-          "amount": 3.1,
+          "date": "2021-11-18",
+          "amount": 2.75,
           "label": "Dividende 2021"
         }
       ],
-      "next": null
+      "next": {
+        "date": "2026-11-19",
+        "amount_estimated": 3.9,
+        "confirmed": false
+      }
     },
     "CAP.PA": {
       "ticker": "CAP.PA",
       "name": "Capgemini",
       "history": [
         {
-          "date": "2025-05-23",
+          "date": "2025-05-15",
           "amount": 1.2,
           "label": "Dividende 2025"
         },
         {
-          "date": "2024-05-24",
+          "date": "2024-05-16",
           "amount": 1.1,
           "label": "Dividende 2024"
         },
         {
-          "date": "2023-05-26",
+          "date": "2023-05-18",
           "amount": 1.0,
           "label": "Dividende 2023"
         },
         {
-          "date": "2022-05-27",
+          "date": "2022-05-19",
           "amount": 0.9,
           "label": "Dividende 2022"
         },
         {
-          "date": "2021-05-28",
+          "date": "2021-05-20",
           "amount": 0.8,
           "label": "Dividende 2021"
         }
       ],
-      "next": {
-        "date": "2026-05-22",
-        "amount_estimated": 1.3,
-        "confirmed": false
-      }
+      "next": null
     },
     "KER.PA": {
       "ticker": "KER.PA",
       "name": "Kering",
       "history": [
         {
-          "date": "2025-05-07",
+          "date": "2025-05-15",
           "amount": 10.0,
           "label": "Dividende 2025"
         },
         {
-          "date": "2024-05-08",
+          "date": "2024-05-16",
           "amount": 9.0,
           "label": "Dividende 2024"
         },
         {
-          "date": "2023-05-10",
-          "amount": 9.0,
+          "date": "2023-05-18",
+          "amount": 16.5,
           "label": "Dividende 2023"
         },
         {
-          "date": "2022-05-11",
+          "date": "2022-05-19",
           "amount": 16.5,
           "label": "Dividende 2022"
         },
         {
-          "date": "2021-05-12",
+          "date": "2021-05-20",
           "amount": 10.0,
           "label": "Dividende 2021"
         }
@@ -454,34 +450,34 @@
       "name": "Safran",
       "history": [
         {
-          "date": "2025-05-07",
+          "date": "2025-05-09",
           "amount": 0.8,
+          "label": "Dividende 2025"
+        },
+        {
+          "date": "2024-05-10",
+          "amount": 0.75,
           "label": "Dividende 2024"
         },
         {
-          "date": "2024-05-08",
-          "amount": 0.72,
+          "date": "2023-05-12",
+          "amount": 0.7,
           "label": "Dividende 2023"
         },
         {
-          "date": "2023-05-10",
-          "amount": 0.64,
+          "date": "2022-05-13",
+          "amount": 0.65,
           "label": "Dividende 2022"
         },
         {
-          "date": "2022-05-11",
-          "amount": 0.56,
+          "date": "2021-05-14",
+          "amount": 0.6,
           "label": "Dividende 2021"
-        },
-        {
-          "date": "2021-05-12",
-          "amount": 0.5,
-          "label": "Dividende 2020"
         }
       ],
       "next": {
-        "date": "2026-05-06",
-        "amount_estimated": 0.88,
+        "date": "2026-05-08",
+        "amount_estimated": 0.85,
         "confirmed": false
       }
     },
@@ -490,27 +486,27 @@
       "name": "AXA",
       "history": [
         {
-          "date": "2025-05-07",
+          "date": "2025-05-15",
           "amount": 1.7,
           "label": "Dividende 2025"
         },
         {
-          "date": "2024-05-08",
+          "date": "2024-05-16",
           "amount": 1.6,
           "label": "Dividende 2024"
         },
         {
-          "date": "2023-05-10",
+          "date": "2023-05-18",
           "amount": 1.5,
           "label": "Dividende 2023"
         },
         {
-          "date": "2022-05-11",
+          "date": "2022-05-19",
           "amount": 1.4,
           "label": "Dividende 2022"
         },
         {
-          "date": "2021-05-12",
+          "date": "2021-05-20",
           "amount": 1.3,
           "label": "Dividende 2021"
         }
