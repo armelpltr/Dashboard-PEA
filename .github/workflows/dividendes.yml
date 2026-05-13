@@ -24,8 +24,9 @@ jobs:
           if not api_key:
             print("❌ FMP_API_KEY manquant — arrêt sans modifier le fichier")
             raise SystemExit(1)
-          today   = datetime.date.today().isoformat()
-          in_1y   = (datetime.date.today() + datetime.timedelta(days=365)).isoformat()
+
+          today = datetime.date.today().isoformat()
+          in_1y = (datetime.date.today() + datetime.timedelta(days=365)).isoformat()
 
           TICKERS = [
             {"ticker": "AI.PA",   "name": "Air Liquide"},
@@ -45,7 +46,15 @@ jobs:
             {"ticker": "CS.PA",   "name": "AXA"},
           ]
 
-          # Fetch dividend calendar for the next 12 months
+          # Lire JSON existant pour préserver les entrées confirmées
+          existing = {}
+          try:
+            with open("data/dividendes.json", "r", encoding="utf-8") as f:
+              existing = json.load(f).get("dividends", {})
+          except Exception:
+            pass
+
+          # Fetch calendrier dividendes 12 mois
           print("Fetching dividend calendar from FMP...")
           calendar = {}
           try:
@@ -65,9 +74,14 @@ jobs:
           for stock in TICKERS:
             ticker = stock["ticker"]
             name   = stock["name"]
+            prev   = existing.get(ticker, {})
+            prev_next = prev.get("next")
 
-            next_div = None
-            if ticker in calendar:
+            # Préserver next confirmé avec date passée (Yahoo pas encore indexé)
+            if prev_next and prev_next.get("confirmed") and prev_next.get("date", "") <= today:
+              next_div = prev_next
+              print(f"  ↩ {ticker}: next confirmé passé préservé ({prev_next['date']})")
+            elif ticker in calendar:
               e = calendar[ticker]
               pay_date = e.get("paymentDate") or e.get("date") or e.get("declarationDate")
               amount   = e.get("dividend") or e.get("adjDividend")
@@ -79,15 +93,13 @@ jobs:
                 }
                 print(f"  ✓ {ticker}: prochain {pay_date} — {amount}")
               else:
+                next_div = None
                 print(f"  – {ticker}: dans calendrier mais données incomplètes")
             else:
+              next_div = None
               print(f"  – {ticker}: absent du calendrier FMP")
 
-            results[ticker] = {
-              "ticker": ticker,
-              "name":   name,
-              "next":   next_div,
-            }
+            results[ticker] = {"ticker": ticker, "name": name, "next": next_div}
 
           output = {"generated_at": today, "dividends": results}
           os.makedirs("data", exist_ok=True)
