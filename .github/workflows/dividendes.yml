@@ -84,23 +84,28 @@ jobs:
               if not amount:
                 return None
 
-              # Cherche date de paiement dans une fenêtre après "paiement" / "mise en paiement"
+              # Cherche date de paiement via c-event-card (structure HTML Boursorama)
+              MONTHS = {'janvier':1,'février':2,'fevrier':2,'mars':3,'avril':4,'mai':5,
+                        'juin':6,'juillet':7,'août':8,'aout':8,'septembre':9,
+                        'octobre':10,'novembre':11,'décembre':12,'decembre':12}
               payment_date = None
-              for kw in ['mise en paiement', 'paiement']:
-                idx = text.lower().find(kw)
-                if idx >= 0:
-                  window = text[idx:idx+200]
-                  for d in re.findall(r'\d{2}/\d{2}/\d{2,4}', window):
-                    pd = parse_bourso_date(d)
-                    if pd and pd >= today:
-                      payment_date = pd
-                      break
-                if payment_date:
-                  break
-              if payment_date and payment_date >= today:
-                final_date = payment_date
-              else:
-                final_date = ex_div_date
+              for card in soup.select('.c-event-card'):
+                label = card.select_one('.c-event-card__text')
+                if not label or 'paiement' not in label.get_text().lower():
+                  continue
+                day_el   = card.select_one('.c-event-card__day')
+                month_el = card.select_one('.c-event-card__month')
+                if not day_el or not month_el:
+                  continue
+                day_n   = int(day_el.get_text(strip=True))
+                month_n = MONTHS.get(month_el.get_text(strip=True).lower())
+                if not month_n:
+                  continue
+                today_dt = datetime.date.fromisoformat(today)
+                year = today_dt.year if (month_n > today_dt.month or (month_n == today_dt.month and day_n >= today_dt.day)) else today_dt.year + 1
+                payment_date = datetime.date(year, month_n, day_n).isoformat()
+                break
+              final_date = payment_date if payment_date else ex_div_date
 
               return {"date": final_date, "amount_estimated": amount, "confirmed": True}
 
