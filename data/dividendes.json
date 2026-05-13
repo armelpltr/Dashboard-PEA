@@ -1,20 +1,80 @@
 {
   "generated_at": "2026-05-13",
   "dividends": {
-    "AI.PA":   { "ticker": "AI.PA",   "name": "Air Liquide",        "next": { "date": "2026-05-08", "amount_estimated": 3.7, "confirmed": true } },
-    "TTE.PA":  { "ticker": "TTE.PA",  "name": "TotalEnergies",      "next": null },
-    "BNP.PA":  { "ticker": "BNP.PA",  "name": "BNP Paribas",        "next": null },
-    "ACA.PA":  { "ticker": "ACA.PA",  "name": "Crédit Agricole",    "next": null },
-    "SAN.PA":  { "ticker": "SAN.PA",  "name": "Sanofi",             "next": null },
-    "OR.PA":   { "ticker": "OR.PA",   "name": "L'Oréal",            "next": null },
-    "MC.PA":   { "ticker": "MC.PA",   "name": "LVMH",               "next": { "date": "2027-04-23", "amount_estimated": 13.5, "confirmed": false } },
-    "ENGI.PA": { "ticker": "ENGI.PA", "name": "Engie",              "next": null },
-    "DG.PA":   { "ticker": "DG.PA",   "name": "Vinci",              "next": null },
-    "SU.PA":   { "ticker": "SU.PA",   "name": "Schneider Electric", "next": null },
-    "RI.PA":   { "ticker": "RI.PA",   "name": "Pernod Ricard",      "next": { "date": "2026-11-19", "amount_estimated": 3.9, "confirmed": false } },
-    "CAP.PA":  { "ticker": "CAP.PA",  "name": "Capgemini",          "next": null },
-    "KER.PA":  { "ticker": "KER.PA",  "name": "Kering",             "next": null },
-    "SAF.PA":  { "ticker": "SAF.PA",  "name": "Safran",             "next": null },
-    "CS.PA":   { "ticker": "CS.PA",   "name": "AXA",                "next": null }
+    "AI.PA": {
+      "ticker": "AI.PA",
+      "name": "Air Liquide",
+      "next": null
+    },
+    "TTE.PA": {
+      "ticker": "TTE.PA",
+      "name": "TotalEnergies",
+      "next": null
+    },
+    "BNP.PA": {
+      "ticker": "BNP.PA",
+      "name": "BNP Paribas",
+      "next": null
+    },
+    "ACA.PA": {
+      "ticker": "ACA.PA",
+      "name": "Crédit Agricole",
+      "next": null
+    },
+    "SAN.PA": {
+      "ticker": "SAN.PA",
+      "name": "Sanofi",
+      "next": null
+    },
+    "OR.PA": {
+      "ticker": "OR.PA",
+      "name": "L'Oréal",
+      "next": null
+    },
+    "MC.PA": {
+      "ticker": "MC.PA",
+      "name": "LVMH",
+      "next": null
+    },
+    "ENGI.PA": {
+      "ticker": "ENGI.PA",
+      "name": "Engie",
+      "next": null
+    },
+    "DG.PA": {
+      "ticker": "DG.PA",
+      "name": "Vinci",
+      "next": null
+    },
+    "SU.PA": {
+      "ticker": "SU.PA",
+      "name": "Schneider Electric",
+      "next": null
+    },
+    "RI.PA": {
+      "ticker": "RI.PA",
+      "name": "Pernod Ricard",
+      "next": null
+    },
+    "CAP.PA": {
+      "ticker": "CAP.PA",
+      "name": "Capgemini",
+      "next": null
+    },
+    "KER.PA": {
+      "ticker": "KER.PA",
+      "name": "Kering",
+      "next": null
+    },
+    "SAF.PA": {
+      "ticker": "SAF.PA",
+      "name": "Safran",
+      "next": null
+    },
+    "CS.PA": {
+      "ticker": "CS.PA",
+      "name": "AXA",
+      "next": null
+    }
   }
 }
