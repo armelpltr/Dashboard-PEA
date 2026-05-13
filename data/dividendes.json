@@ -4,7 +4,7 @@
     "AI.PA": {
       "ticker": "AI.PA",
       "name": "Air Liquide",
-      "next": { "date": "2026-05-08", "amount_estimated": 3.7, "confirmed": true }
+      "next": null
     },
     "TTE.PA": {
       "ticker": "TTE.PA",
