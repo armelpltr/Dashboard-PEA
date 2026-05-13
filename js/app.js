@@ -5785,9 +5785,11 @@ async function refreshDividendes() {
 
 // Cache dividendes fetchés automatiquement
 // Cache dividendes depuis le fichier JSON généré par GitHub Actions
-let _divHistoryCache = {};
-let _divJsonLoaded   = false;
-let _divJsonData     = {};
+let _divHistoryCache  = {};
+let _divJsonLoaded    = false;
+let _divJsonData      = {};
+let _divAllEntries    = [];
+let _divShowAll       = false;
 
 async function loadDivJson() {
   if (_divJsonLoaded) return;
@@ -6035,47 +6037,64 @@ function initDividendes() {
       });
     });
     allEntries.sort((a,b) => b.date.localeCompare(a.date));
+    _divAllEntries = allEntries;
+    _divShowAll    = false;
 
-    if (histEl) {
-      if (!allEntries.length) {
-        histEl.innerHTML = '<div class="cal-empty">Aucun historique disponible.</div>';
-      } else {
-        histEl.innerHTML = `<table style="width:100%">
-          <thead><tr>
-            <th>Date</th><th style="text-align:left">Action</th>
-            <th>Montant total</th><th>Par action</th><th>Période</th><th>Source</th>
-          </tr></thead><tbody>
-          ${allEntries.map(e => {
-            const ds = e.date ? new Date(e.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
-            const periodBadge = e.duringHolding
-              ? '<span style="background:rgba(0,224,158,0.12);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">Pendant détention</span>'
-              : '<span style="background:var(--s3);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Avant achat</span>';
-            const srcBadge = e.source==='reçu'
-              ? '<span style="background:rgba(124,109,245,0.15);color:#a89cf7;font-size:10px;padding:1px 7px;border-radius:4px">✓ Saisi</span>'
-              : e.source==='reçu-auto'
-              ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px" title="Montant exact Yahoo Finance">✓ Reçu · Yahoo</span>'
-              : e.source==='estimé'
-              ? '<span style="background:rgba(245,183,49,0.15);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px" title="Estimé par Mistral AI">⏳ Estimé · ✦ IA</span>'
-              : '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Yahoo Finance</span>';
-            return `<tr>
-              <td class="mono" style="font-size:12px;color:var(--text2)">${ds}</td>
-              <td><div style="display:flex;align-items:center;gap:6px">${logoHtml(e.ticker||'',20,'ticker-icon')}
-                <div><span style="font-size:12px">${e.name||e.ticker}</span>
-                ${e.label?`<div style="font-size:10px;color:var(--text3)">${e.label}</div>`:''}</div></div></td>
-              <td class="mono" style="font-weight:600;color:var(--gold)">${e.amount.toFixed(2)} €</td>
-              <td class="mono" style="font-size:11px;color:var(--text3)">${e.perShare.toFixed(3)} €/action</td>
-              <td>${periodBadge}</td>
-              <td>${srcBadge}</td>
-            </tr>`;
-          }).join('')}
-          </tbody></table>`;
-      }
-    }
+    if (histEl) renderDivHistory(histEl);
   }).catch(err => {
     console.error('initDividendes error:', err);
     if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--negative);padding:24px">⚠️ Erreur lors du chargement des dividendes</td></tr>';
     if (histEl) histEl.innerHTML = '<div class="cal-empty">⚠️ Erreur lors du chargement</div>';
   });
+}
+
+function renderDivHistory(histEl) {
+  if (!histEl) return;
+  const entries  = _divShowAll ? _divAllEntries : _divAllEntries.filter(e => e.duringHolding);
+  const hiddenN  = _divAllEntries.filter(e => !e.duringHolding).length;
+  if (!_divAllEntries.length) {
+    histEl.innerHTML = '<div class="cal-empty">Aucun historique disponible.</div>';
+    return;
+  }
+  const toggleBtn = hiddenN > 0
+    ? `<button onclick="toggleDivHistory()" style="background:var(--s3);border:none;border-radius:6px;padding:4px 12px;font-size:11px;color:var(--text2);cursor:pointer;margin-bottom:8px">
+        ${_divShowAll ? '▲ Masquer avant achat' : `▼ Avant achat (${hiddenN})`}
+       </button>`
+    : '';
+  const rows = entries.map(e => {
+    const ds = e.date ? new Date(e.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const periodBadge = e.duringHolding
+      ? '<span style="background:rgba(0,224,158,0.12);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">Pendant détention</span>'
+      : '<span style="background:var(--s3);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Avant achat</span>';
+    const srcBadge = e.source==='reçu'
+      ? '<span style="background:rgba(124,109,245,0.15);color:#a89cf7;font-size:10px;padding:1px 7px;border-radius:4px">✓ Saisi</span>'
+      : e.source==='reçu-auto'
+      ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px" title="Montant exact Yahoo Finance">✓ Reçu · Yahoo</span>'
+      : e.source==='estimé'
+      ? '<span style="background:rgba(245,183,49,0.15);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px" title="Estimé par Mistral AI">⏳ Estimé · ✦ IA</span>'
+      : '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Yahoo Finance</span>';
+    return `<tr>
+      <td class="mono" style="font-size:12px;color:var(--text2)">${ds}</td>
+      <td><div style="display:flex;align-items:center;gap:6px">${logoHtml(e.ticker||'',20,'ticker-icon')}
+        <div><span style="font-size:12px">${e.name||e.ticker}</span>
+        ${e.label?`<div style="font-size:10px;color:var(--text3)">${e.label}</div>`:''}</div></div></td>
+      <td class="mono" style="font-weight:600;color:var(--gold)">${e.amount.toFixed(2)} €</td>
+      <td class="mono" style="font-size:11px;color:var(--text3)">${e.perShare.toFixed(3)} €/action</td>
+      <td>${periodBadge}</td>
+      <td>${srcBadge}</td>
+    </tr>`;
+  }).join('');
+  const emptyMsg = !entries.length ? '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Aucun dividende pendant la période de détention</td></tr>' : rows;
+  histEl.innerHTML = `${toggleBtn}<table style="width:100%">
+    <thead><tr>
+      <th>Date</th><th style="text-align:left">Action</th>
+      <th>Montant total</th><th>Par action</th><th>Période</th><th>Source</th>
+    </tr></thead><tbody>${emptyMsg}</tbody></table>`;
+}
+
+function toggleDivHistory() {
+  _divShowAll = !_divShowAll;
+  renderDivHistory(document.getElementById('div-history'));
 }
 
 function openDivModal() {
