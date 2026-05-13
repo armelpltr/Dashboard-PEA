@@ -3,7 +3,7 @@ name: Mise à jour dividendes
 on:
   schedule:
     - cron: '0 6 * * 1'  # Tous les lundis à 6h UTC
-  workflow_dispatch:       # Déclenchement manuel possible
+  workflow_dispatch:
 
 jobs:
   update-dividends:
@@ -13,18 +13,17 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Appel Mistral pour les dividendes
+      - name: Fetch dividendes via FMP
         env:
-          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
         run: |
           python3 << 'EOF'
           import os, json, requests, datetime
 
-          api_key = os.environ["MISTRAL_API_KEY"]
+          api_key = os.environ["FMP_API_KEY"]
           today   = datetime.date.today().isoformat()
+          in_1y   = (datetime.date.today() + datetime.timedelta(days=365)).isoformat()
 
-          # Liste des tickers à suivre (actions françaises courantes sur PEA)
-          # Tu peux en ajouter selon ton portefeuille
           TICKERS = [
             {"ticker": "AI.PA",   "name": "Air Liquide"},
             {"ticker": "TTE.PA",  "name": "TotalEnergies"},
@@ -43,75 +42,53 @@ jobs:
             {"ticker": "CS.PA",   "name": "AXA"},
           ]
 
-          results = {}
+          # Fetch dividend calendar for the next 12 months
+          print("Fetching dividend calendar from FMP...")
+          calendar = {}
+          try:
+            url = f"https://financialmodelingprep.com/api/v3/stock_dividend_calendar?from={today}&to={in_1y}&apikey={api_key}"
+            r = requests.get(url, timeout=30)
+            r.raise_for_status()
+            for entry in r.json():
+              sym = entry.get("symbol", "")
+              if sym not in calendar:
+                calendar[sym] = entry
+            print(f"  ✓ {len(calendar)} tickers dans le calendrier")
+          except Exception as e:
+            print(f"  ✗ Erreur calendrier: {e}")
 
+          results = {}
           for stock in TICKERS:
             ticker = stock["ticker"]
             name   = stock["name"]
-            print(f"Fetching dividends for {name} ({ticker})...")
 
-            prompt = f"""Tu es un assistant financier expert des marchés français.
-          Donne-moi l'historique complet des dividendes versés par {name} (ticker: {ticker}) sur les 5 dernières années, ainsi que le prochain dividende prévu si connu.
+            next_div = None
+            if ticker in calendar:
+              e = calendar[ticker]
+              pay_date = e.get("paymentDate") or e.get("date") or e.get("declarationDate")
+              amount   = e.get("dividend") or e.get("adjDividend")
+              if pay_date and amount:
+                next_div = {
+                  "date":             pay_date,
+                  "amount_estimated": round(float(amount), 4),
+                  "confirmed":        bool(e.get("paymentDate")),
+                }
+                print(f"  ✓ {ticker}: prochain {pay_date} — {amount}")
+              else:
+                print(f"  – {ticker}: dans calendrier mais données incomplètes")
+            else:
+              print(f"  – {ticker}: absent du calendrier FMP")
 
-          Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ou après, au format exactement suivant:
-          {{
-            "ticker": "{ticker}",
-            "name": "{name}",
-            "history": [
-              {{"date": "YYYY-MM-DD", "amount": 0.00, "label": "Dividende AAAA"}},
-              ...
-            ],
-            "next": {{
-              "date": "YYYY-MM-DD",
-              "amount_estimated": 0.00,
-              "confirmed": false
-            }}
-          }}
+            results[ticker] = {
+              "ticker": ticker,
+              "name":   name,
+              "next":   next_div,
+            }
 
-          Les dates doivent être les dates de versement (paiement) réelles, pas les dates de détachement.
-          Trie l'historique du plus récent au plus ancien.
-          Si le prochain dividende n'est pas connu, mets next à null.
-          Aujourd'hui nous sommes le {today}."""
-
-            try:
-              response = requests.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                  "Authorization": f"Bearer {api_key}",
-                  "Content-Type": "application/json"
-                },
-                json={
-                  "model": "mistral-small-latest",
-                  "messages": [{"role": "user", "content": prompt}],
-                  "temperature": 0.1,
-                  "max_tokens": 1000,
-                },
-                timeout=30
-              )
-              response.raise_for_status()
-              content = response.json()["choices"][0]["message"]["content"].strip()
-              # Nettoyer les éventuels backticks markdown
-              if content.startswith("```"):
-                content = content.split("```")[1]
-                if content.startswith("json"):
-                  content = content[4:]
-              data = json.loads(content.strip())
-              results[ticker] = data
-              print(f"  ✓ {len(data.get('history', []))} dividendes trouvés")
-            except Exception as e:
-              print(f"  ✗ Erreur pour {ticker}: {e}")
-              results[ticker] = {"ticker": ticker, "name": name, "history": [], "next": None, "error": str(e)}
-
-          # Écrire le fichier JSON final
-          output = {
-            "generated_at": today,
-            "dividends": results
-          }
-
+          output = {"generated_at": today, "dividends": results}
           os.makedirs("data", exist_ok=True)
           with open("data/dividendes.json", "w", encoding="utf-8") as f:
             json.dump(output, f, ensure_ascii=False, indent=2)
-
           print(f"\n✅ dividendes.json généré avec {len(results)} actions")
           EOF
 
