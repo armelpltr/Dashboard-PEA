@@ -6032,7 +6032,7 @@ function initDividendes() {
         allEntries.push({
           date: d.date, ticker: r.ticker, name: r.name,
           amount: d.amount * qtyForAmount, perShare: d.amount,
-          label: d.label||'', source: isAutoReceived ? 'reçu-auto' : (d.next ? 'estimé' : 'référence'),
+          label: d.label||'', source: isAutoReceived ? 'reçu-auto' : (d.next ? 'annoncé' : 'référence'),
           duringHolding: during || (d.next && firstBuyDate && d.date >= firstBuyDate),
         });
       });
@@ -6070,9 +6070,9 @@ function renderDivHistory(histEl) {
     const srcBadge = e.source==='reçu'
       ? '<span style="background:rgba(124,109,245,0.15);color:#a89cf7;font-size:10px;padding:1px 7px;border-radius:4px">✓ Saisi</span>'
       : e.source==='reçu-auto'
-      ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px" title="Montant exact Yahoo Finance">✓ Reçu · Yahoo</span>'
-      : e.source==='estimé'
-      ? '<span style="background:rgba(245,183,49,0.15);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px" title="Estimé par Mistral AI">⏳ Estimé · ✦ IA</span>'
+      ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">✓ Reçu</span>'
+      : e.source==='annoncé'
+      ? `<span style="background:rgba(245,183,49,0.12);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px">⏳ Annoncé · versement ${ds}</span>`
       : '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Yahoo Finance</span>';
     return `<tr>
       <td class="mono" style="font-size:12px;color:var(--text2)">${ds}</td>
