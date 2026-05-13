@@ -84,9 +84,19 @@ jobs:
               if not amount:
                 return None
 
-              # Cherche date de paiement après "Paiement"
-              pay_match = re.search(r'[Pp]aiement[^/\d]{0,100}(\d{2}/\d{2}/\d{2,4})', text, re.IGNORECASE)
-              payment_date = parse_bourso_date(pay_match.group(1)) if pay_match else None
+              # Cherche date de paiement dans une fenêtre après "paiement" / "mise en paiement"
+              payment_date = None
+              for kw in ['mise en paiement', 'paiement']:
+                idx = text.lower().find(kw)
+                if idx >= 0:
+                  window = text[idx:idx+200]
+                  for d in re.findall(r'\d{2}/\d{2}/\d{2,4}', window):
+                    pd = parse_bourso_date(d)
+                    if pd and pd >= today:
+                      payment_date = pd
+                      break
+                if payment_date:
+                  break
               if payment_date and payment_date >= today:
                 final_date = payment_date
               else:
