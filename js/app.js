@@ -5962,7 +5962,8 @@ function initDividendes() {
 
     const totalRecu     = allReceived.reduce((s, t) => s + t.qty * t.price, 0);
     const duringHolding = firstBuy ? history.filter(d => !d.next && d.date >= firstBuy && d.date <= today) : [];
-    const nextEstim     = calcNextDivDate(history);
+    const nextEntry     = history.find(d => d.next === true);
+    const nextEstim     = nextEntry ? new Date(nextEntry.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
     const lastKnown     = history.find(d => !d.next) || null;
     return { r, history, buyDate: firstBuy, allReceived, totalRecu, duringHolding, nextEstim, lastKnown };
   })).then(rows => {
@@ -6008,7 +6009,7 @@ function initDividendes() {
             <td class="mono">${r.qty}</td>
             <td class="mono" style="color:var(--gold);font-weight:600">${totalRecu > 0 ? totalRecu.toFixed(2)+' €' : '—'}</td>
             <td class="mono" style="color:var(--text2)">${lastKnown ? lastKnown.amount.toFixed(2)+' €/action' : '—'}</td>
-            <td style="font-size:11px;color:var(--text2)">${nextEstim !== '—' ? nextEstim + ' <span style="color:var(--accent);font-size:9px">✦ IA</span>' : '—'}</td>
+            <td style="font-size:11px;color:var(--text2)">${nextEstim !== '—' ? nextEstim : '—'}</td>
             <td>${holdingBadge}</td>
           </tr>`;
         }).join('');
