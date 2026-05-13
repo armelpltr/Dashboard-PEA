@@ -5,7 +5,7 @@
       "ticker": "AI.PA",
       "name": "Air Liquide",
       "next": {
-        "date": "2026-05-18",
+        "date": "2026-05-20",
         "amount_estimated": 3.7,
         "confirmed": true
       }
@@ -23,7 +23,7 @@
       "ticker": "BNP.PA",
       "name": "BNP Paribas",
       "next": {
-        "date": "2026-05-18",
+        "date": "2026-05-20",
         "amount_estimated": 2.57,
         "confirmed": true
       }
@@ -32,7 +32,7 @@
       "ticker": "ACA.PA",
       "name": "Crédit Agricole",
       "next": {
-        "date": "2026-05-26",
+        "date": "2026-05-28",
         "amount_estimated": 1.13,
         "confirmed": true
       }
@@ -76,7 +76,7 @@
       "ticker": "CAP.PA",
       "name": "Capgemini",
       "next": {
-        "date": "2026-06-02",
+        "date": "2026-06-04",
         "amount_estimated": 3.4,
         "confirmed": true
       }
@@ -85,7 +85,7 @@
       "ticker": "KER.PA",
       "name": "Kering",
       "next": {
-        "date": "2026-06-02",
+        "date": "2026-06-04",
         "amount_estimated": 2.75,
         "confirmed": true
       }
@@ -94,7 +94,7 @@
       "ticker": "SAF.PA",
       "name": "Safran",
       "next": {
-        "date": "2026-05-26",
+        "date": "2026-05-28",
         "amount_estimated": 3.35,
         "confirmed": true
       }
