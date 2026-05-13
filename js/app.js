@@ -6033,7 +6033,7 @@ function initDividendes() {
           date: d.date, ticker: r.ticker, name: r.name,
           amount: d.amount * qtyForAmount, perShare: d.amount,
           label: d.label||'', source: isAutoReceived ? 'reçu-auto' : (d.next ? 'annoncé' : 'référence'),
-          duringHolding: during || (d.next && firstBuyDate && d.date >= firstBuyDate),
+          duringHolding: during || (d.next && (!firstBuyDate || d.date >= firstBuyDate)),
         });
       });
     });
