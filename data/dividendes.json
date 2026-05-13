@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-05-13",
   "dividends": {
-    "AI.PA":   { "ticker": "AI.PA",   "name": "Air Liquide",        "next": null },
+    "AI.PA":   { "ticker": "AI.PA",   "name": "Air Liquide",        "next": { "date": "2026-05-08", "amount_estimated": 3.7, "confirmed": true } },
     "TTE.PA":  { "ticker": "TTE.PA",  "name": "TotalEnergies",      "next": null },
     "BNP.PA":  { "ticker": "BNP.PA",  "name": "BNP Paribas",        "next": null },
     "ACA.PA":  { "ticker": "ACA.PA",  "name": "Crédit Agricole",    "next": null },
