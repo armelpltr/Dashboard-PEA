@@ -59,6 +59,7 @@ jobs:
             print(f"  ✓ {len(calendar)} tickers dans le calendrier")
           except Exception as e:
             print(f"  ✗ Erreur calendrier: {e}")
+            raise SystemExit(1)
 
           results = {}
           for stock in TICKERS:
