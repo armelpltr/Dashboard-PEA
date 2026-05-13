@@ -13,40 +13,77 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Fetch dividendes via FMP
-        env:
-          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
+
+      - name: Scrape dividendes Boursorama
         run: |
           python3 << 'EOF'
-          import os, json, requests, datetime
-
-          api_key = os.environ.get("FMP_API_KEY", "").strip()
-          if not api_key:
-            print("❌ FMP_API_KEY manquant — arrêt sans modifier le fichier")
-            raise SystemExit(1)
+          import re, json, requests, datetime
+          from bs4 import BeautifulSoup
 
           today = datetime.date.today().isoformat()
-          in_1y = (datetime.date.today() + datetime.timedelta(days=365)).isoformat()
 
           TICKERS = [
-            {"ticker": "AI.PA",   "name": "Air Liquide"},
-            {"ticker": "TTE.PA",  "name": "TotalEnergies"},
-            {"ticker": "BNP.PA",  "name": "BNP Paribas"},
-            {"ticker": "ACA.PA",  "name": "Crédit Agricole"},
-            {"ticker": "SAN.PA",  "name": "Sanofi"},
-            {"ticker": "OR.PA",   "name": "L'Oréal"},
-            {"ticker": "MC.PA",   "name": "LVMH"},
-            {"ticker": "ENGI.PA", "name": "Engie"},
-            {"ticker": "DG.PA",   "name": "Vinci"},
-            {"ticker": "SU.PA",   "name": "Schneider Electric"},
-            {"ticker": "RI.PA",   "name": "Pernod Ricard"},
-            {"ticker": "CAP.PA",  "name": "Capgemini"},
-            {"ticker": "KER.PA",  "name": "Kering"},
-            {"ticker": "SAF.PA",  "name": "Safran"},
-            {"ticker": "CS.PA",   "name": "AXA"},
+            {"ticker": "AI.PA",   "name": "Air Liquide",        "bourso": "1rPAI"},
+            {"ticker": "TTE.PA",  "name": "TotalEnergies",      "bourso": "1rPTTE"},
+            {"ticker": "BNP.PA",  "name": "BNP Paribas",        "bourso": "1rPBNP"},
+            {"ticker": "ACA.PA",  "name": "Crédit Agricole",    "bourso": "1rPACA"},
+            {"ticker": "SAN.PA",  "name": "Sanofi",             "bourso": "1rPSAN"},
+            {"ticker": "OR.PA",   "name": "L'Oréal",            "bourso": "1rPOR"},
+            {"ticker": "MC.PA",   "name": "LVMH",               "bourso": "1rPMC"},
+            {"ticker": "ENGI.PA", "name": "Engie",              "bourso": "1rPENGI"},
+            {"ticker": "DG.PA",   "name": "Vinci",              "bourso": "1rPDG"},
+            {"ticker": "SU.PA",   "name": "Schneider Electric", "bourso": "1rPSU"},
+            {"ticker": "RI.PA",   "name": "Pernod Ricard",      "bourso": "1rPRI"},
+            {"ticker": "CAP.PA",  "name": "Capgemini",          "bourso": "1rPCAP"},
+            {"ticker": "KER.PA",  "name": "Kering",             "bourso": "1rPKER"},
+            {"ticker": "SAF.PA",  "name": "Safran",             "bourso": "1rPSAF"},
+            {"ticker": "CS.PA",   "name": "AXA",                "bourso": "1rPCS"},
           ]
 
-          # Lire JSON existant pour préserver les entrées confirmées
+          HEADERS = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+            "Accept-Language": "fr-FR,fr;q=0.9",
+          }
+
+          def parse_bourso_date(d):
+            """18/05/26 ou 18/05/2026 → 2026-05-18"""
+            parts = d.strip().split("/")
+            if len(parts) != 3:
+              return None
+            day, month, year = parts
+            if len(year) == 2:
+              year = "20" + year
+            return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+
+          def scrape_next_dividend(bourso_ticker):
+            url = f"https://www.boursorama.com/cours/{bourso_ticker}/"
+            try:
+              r = requests.get(url, headers=HEADERS, timeout=15)
+              r.raise_for_status()
+              soup = BeautifulSoup(r.text, "lxml")
+              text = soup.get_text(" ", strip=True)
+
+              # Cherche pattern: "X,XX EUR (JJ/MM/AA)" ou "X,XX € (JJ/MM/AA)"
+              pattern = r'(\d+[,\.]\d+)\s*(?:EUR|€)\s*\((\d{2}/\d{2}/\d{2,4})\)'
+              matches = re.findall(pattern, text)
+
+              future = []
+              for amount_str, date_str in matches:
+                iso = parse_bourso_date(date_str)
+                if iso and iso >= today:
+                  amount = float(amount_str.replace(",", "."))
+                  future.append({"date": iso, "amount": amount})
+
+              if future:
+                future.sort(key=lambda x: x["date"])
+                return {"date": future[0]["date"], "amount_estimated": future[0]["amount"], "confirmed": True}
+            except Exception as e:
+              print(f"  ✗ Erreur scraping {bourso_ticker}: {e}")
+            return None
+
+          # Lire JSON existant
           existing = {}
           try:
             with open("data/dividendes.json", "r", encoding="utf-8") as f:
@@ -54,54 +91,31 @@ jobs:
           except Exception:
             pass
 
-          # Fetch calendrier dividendes 12 mois
-          print("Fetching dividend calendar from FMP...")
-          calendar = {}
-          try:
-            url = f"https://financialmodelingprep.com/api/v3/stock_dividend_calendar?from={today}&to={in_1y}&apikey={api_key}"
-            r = requests.get(url, timeout=30)
-            r.raise_for_status()
-            for entry in r.json():
-              sym = entry.get("symbol", "")
-              if sym not in calendar:
-                calendar[sym] = entry
-            print(f"  ✓ {len(calendar)} tickers dans le calendrier")
-          except Exception as e:
-            print(f"  ✗ Erreur calendrier: {e}")
-            raise SystemExit(1)
-
           results = {}
           for stock in TICKERS:
-            ticker = stock["ticker"]
-            name   = stock["name"]
-            prev   = existing.get(ticker, {})
-            prev_next = prev.get("next")
+            ticker  = stock["ticker"]
+            name    = stock["name"]
+            bourso  = stock["bourso"]
+            print(f"Scraping {name} ({bourso})...")
 
-            # Préserver next confirmé avec date passée (Yahoo pas encore indexé)
-            if prev_next and prev_next.get("confirmed") and prev_next.get("date", "") <= today:
-              next_div = prev_next
-              print(f"  ↩ {ticker}: next confirmé passé préservé ({prev_next['date']})")
-            elif ticker in calendar:
-              e = calendar[ticker]
-              pay_date = e.get("paymentDate") or e.get("date") or e.get("declarationDate")
-              amount   = e.get("dividend") or e.get("adjDividend")
-              if pay_date and amount:
-                next_div = {
-                  "date":             pay_date,
-                  "amount_estimated": round(float(amount), 4),
-                  "confirmed":        bool(e.get("paymentDate")),
-                }
-                print(f"  ✓ {ticker}: prochain {pay_date} — {amount}")
-              else:
-                next_div = None
-                print(f"  – {ticker}: dans calendrier mais données incomplètes")
+            next_div = scrape_next_dividend(bourso)
+
+            if next_div:
+              print(f"  ✓ Prochain: {next_div['date']} — {next_div['amount_estimated']} €")
             else:
-              next_div = None
-              print(f"  – {ticker}: absent du calendrier FMP")
+              # Préserver next confirmé passé (dividende détaché pas encore sur Yahoo)
+              prev = existing.get(ticker, {})
+              prev_next = prev.get("next")
+              if prev_next and prev_next.get("confirmed") and prev_next.get("date", "") <= today:
+                next_div = prev_next
+                print(f"  ↩ Préservé: {next_div['date']} — {next_div['amount_estimated']} €")
+              else:
+                print(f"  – Aucun dividende futur trouvé")
 
             results[ticker] = {"ticker": ticker, "name": name, "next": next_div}
 
           output = {"generated_at": today, "dividends": results}
+          import os
           os.makedirs("data", exist_ok=True)
           with open("data/dividendes.json", "w", encoding="utf-8") as f:
             json.dump(output, f, ensure_ascii=False, indent=2)
