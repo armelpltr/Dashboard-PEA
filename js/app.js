@@ -5818,7 +5818,7 @@ async function fetchDivHistory(ticker) {
     const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
       encodeURIComponent(yahooTicker) + '?interval=1mo&range=10y&events=div';
     const raw = await fetchWithFallback(url);
-    const json = raw.contents ? JSON.parse(raw.contents) : raw;
+    const json = JSON.parse(raw);
     const divEvents = json?.chart?.result?.[0]?.events?.dividends;
     if (divEvents) {
       history = Object.values(divEvents).map(d => ({
@@ -6071,6 +6071,10 @@ function initDividendes() {
           </tbody></table>`;
       }
     }
+  }).catch(err => {
+    console.error('initDividendes error:', err);
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--negative);padding:24px">⚠️ Erreur lors du chargement des dividendes</td></tr>';
+    if (histEl) histEl.innerHTML = '<div class="cal-empty">⚠️ Erreur lors du chargement</div>';
   });
 }
 
