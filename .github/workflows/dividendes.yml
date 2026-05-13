@@ -20,7 +20,10 @@ jobs:
           python3 << 'EOF'
           import os, json, requests, datetime
 
-          api_key = os.environ["FMP_API_KEY"]
+          api_key = os.environ.get("FMP_API_KEY", "").strip()
+          if not api_key:
+            print("❌ FMP_API_KEY manquant — arrêt sans modifier le fichier")
+            raise SystemExit(1)
           today   = datetime.date.today().isoformat()
           in_1y   = (datetime.date.today() + datetime.timedelta(days=365)).isoformat()
 
