@@ -65,20 +65,29 @@ jobs:
               soup = BeautifulSoup(r.text, "lxml")
               text = soup.get_text(" ", strip=True)
 
-              # Cherche pattern: "X,XX EUR (JJ/MM/AA)" ou "X,XX € (JJ/MM/AA)"
-              pattern = r'(\d+[,\.]\d+)\s*(?:EUR|€)\s*\((\d{2}/\d{2}/\d{2,4})\)'
-              matches = re.findall(pattern, text)
+              # Montant: "X,XX EUR (JJ/MM/AA)"
+              amount_pattern = r'(\d+[,\.]\d+)\s*(?:EUR|€)\s*\((\d{2}/\d{2}/\d{2,4})\)'
+              amount_match = re.search(amount_pattern, text)
+              amount = float(amount_match.group(1).replace(",", ".")) if amount_match else None
 
-              future = []
-              for amount_str, date_str in matches:
-                iso = parse_bourso_date(date_str)
-                if iso and iso >= today:
-                  amount = float(amount_str.replace(",", "."))
-                  future.append({"date": iso, "amount": amount})
+              # Date paiement: cherche "Paiement dividende" puis date JJ/MM/AA ou JJ/MM/AAAA
+              pay_pattern = r'[Pp]aiement\s+(?:du\s+)?dividende[s]?\s+.*?(\d{2}/\d{2}/\d{2,4})'
+              pay_match = re.search(pay_pattern, text, re.IGNORECASE | re.DOTALL)
 
-              if future:
-                future.sort(key=lambda x: x["date"])
-                return {"date": future[0]["date"], "amount_estimated": future[0]["amount"], "confirmed": True}
+              # Fallback: cherche date après "Paiement" dans les 50 caractères
+              if not pay_match:
+                pay_pattern2 = r'[Pp]aiement[^/\d]{0,50}(\d{2}/\d{2}/\d{2,4})'
+                pay_match = re.search(pay_pattern2, text, re.IGNORECASE)
+
+              payment_date = parse_bourso_date(pay_match.group(1)) if pay_match else None
+
+              # Si pas de date paiement, utilise la date du montant
+              if not payment_date and amount_match:
+                payment_date = parse_bourso_date(amount_match.group(2))
+
+              if payment_date and payment_date >= today and amount:
+                return {"date": payment_date, "amount_estimated": amount, "confirmed": True}
+
             except Exception as e:
               print(f"  ✗ Erreur scraping {bourso_ticker}: {e}")
             return None
