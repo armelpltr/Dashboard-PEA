@@ -5843,12 +5843,14 @@ async function fetchDivHistory(ticker) {
   const jsonData = _divJsonData[ticker];
   if (jsonData?.next?.date) {
     const alreadyIn = history.find(h => h.date === jsonData.next.date);
+    const todayStr  = new Date().toISOString().slice(0, 10);
+    const isPast    = jsonData.next.date <= todayStr;
     if (!alreadyIn) {
       history.unshift({
         date:   jsonData.next.date,
         amount: jsonData.next.amount_estimated || 0,
-        label:  jsonData.next.confirmed ? 'Prochain (confirmé)' : 'Prochain (estimé)',
-        next:   true,
+        label:  jsonData.next.confirmed ? 'Prochain (confirmé)' : (isPast ? 'Dividende' : 'Prochain (estimé)'),
+        next:   !isPast,
       });
     }
   }
