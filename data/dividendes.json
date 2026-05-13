@@ -4,38 +4,22 @@
     "AI.PA": {
       "ticker": "AI.PA",
       "name": "Air Liquide",
-      "next": {
-        "date": "2026-05-18",
-        "amount_estimated": 3.7,
-        "confirmed": true
-      }
+      "next": null
     },
     "TTE.PA": {
       "ticker": "TTE.PA",
       "name": "TotalEnergies",
-      "next": {
-        "date": "2026-06-30",
-        "amount_estimated": 0.85,
-        "confirmed": true
-      }
+      "next": null
     },
     "BNP.PA": {
       "ticker": "BNP.PA",
       "name": "BNP Paribas",
-      "next": {
-        "date": "2026-05-18",
-        "amount_estimated": 2.57,
-        "confirmed": true
-      }
+      "next": null
     },
     "ACA.PA": {
       "ticker": "ACA.PA",
       "name": "Crédit Agricole",
-      "next": {
-        "date": "2026-05-26",
-        "amount_estimated": 1.13,
-        "confirmed": true
-      }
+      "next": null
     },
     "SAN.PA": {
       "ticker": "SAN.PA",
@@ -75,29 +59,17 @@
     "CAP.PA": {
       "ticker": "CAP.PA",
       "name": "Capgemini",
-      "next": {
-        "date": "2026-06-02",
-        "amount_estimated": 3.4,
-        "confirmed": true
-      }
+      "next": null
     },
     "KER.PA": {
       "ticker": "KER.PA",
       "name": "Kering",
-      "next": {
-        "date": "2026-06-02",
-        "amount_estimated": 2.75,
-        "confirmed": true
-      }
+      "next": null
     },
     "SAF.PA": {
       "ticker": "SAF.PA",
       "name": "Safran",
-      "next": {
-        "date": "2026-05-26",
-        "amount_estimated": 3.35,
-        "confirmed": true
-      }
+      "next": null
     },
     "CS.PA": {
       "ticker": "CS.PA",
