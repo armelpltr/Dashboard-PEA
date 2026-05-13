@@ -6067,12 +6067,15 @@ function renderDivHistory(histEl) {
     const periodBadge = e.duringHolding
       ? '<span style="background:rgba(0,224,158,0.12);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">Pendant détention</span>'
       : '<span style="background:var(--s3);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Avant achat</span>';
-    const srcBadge = e.source==='reçu'
-      ? '<span style="background:rgba(124,109,245,0.15);color:#a89cf7;font-size:10px;padding:1px 7px;border-radius:4px">✓ Saisi</span>'
-      : e.source==='reçu-auto'
-      ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">✓ Reçu</span>'
-      : e.source==='annoncé'
+    const statutBadge = e.source==='annoncé'
       ? `<span style="background:rgba(245,183,49,0.12);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px">⏳ Annoncé · versement ${ds}</span>`
+      : e.source==='reçu' || e.source==='reçu-auto'
+      ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">✓ Reçu</span>'
+      : '';
+    const srcBadge = e.source==='reçu'
+      ? '<span style="background:rgba(124,109,245,0.15);color:#a89cf7;font-size:10px;padding:1px 7px;border-radius:4px">Manuel</span>'
+      : e.source==='annoncé'
+      ? '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Boursorama</span>'
       : '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Yahoo Finance</span>';
     return `<tr>
       <td class="mono" style="font-size:12px;color:var(--text2)">${ds}</td>
@@ -6082,14 +6085,15 @@ function renderDivHistory(histEl) {
       <td class="mono" style="font-weight:600;color:var(--gold)">${e.amount.toFixed(2)} €</td>
       <td class="mono" style="font-size:11px;color:var(--text3)">${e.perShare.toFixed(3)} €/action</td>
       <td>${periodBadge}</td>
+      <td>${statutBadge}</td>
       <td>${srcBadge}</td>
     </tr>`;
   }).join('');
-  const emptyMsg = !entries.length ? '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Aucun dividende pendant la période de détention</td></tr>' : rows;
+  const emptyMsg = !entries.length ? '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Aucun dividende pendant la période de détention</td></tr>' : rows;
   histEl.innerHTML = `${toggleBtn}<table style="width:100%">
     <thead><tr>
       <th>Date</th><th style="text-align:left">Action</th>
-      <th>Montant total</th><th>Par action</th><th>Période</th><th>Source</th>
+      <th>Montant total</th><th>Par action</th><th>Période</th><th>Statut</th><th>Source</th>
     </tr></thead><tbody>${emptyMsg}</tbody></table>`;
 }
 
