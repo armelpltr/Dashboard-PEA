@@ -6,6 +6,11 @@
       "name": "Air Liquide",
       "history": [
         {
+          "date": "2026-05-08",
+          "amount": 3.7,
+          "label": "Dividende 2026"
+        },
+        {
           "date": "2025-05-09",
           "amount": 3.2,
           "label": "Dividende 2025"
@@ -31,11 +36,7 @@
           "label": "Dividende 2021"
         }
       ],
-      "next": {
-        "date": "2026-05-08",
-        "amount_estimated": 3.3,
-        "confirmed": false
-      }
+      "next": null
     },
     "TTE.PA": {
       "ticker": "TTE.PA",
