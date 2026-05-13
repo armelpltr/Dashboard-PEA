@@ -5831,13 +5831,6 @@ async function fetchDivHistory(ticker) {
     console.warn('fetchDivHistory Yahoo error for', ticker, e);
   }
 
-  // Fallback to JSON if Yahoo returned nothing
-  if (history.length === 0) {
-    await loadDivJson();
-    const data = _divJsonData[ticker];
-    if (data?.history) history = [...data.history];
-  }
-
   // Inject next dividend from JSON (estimated/confirmed) — Yahoo doesn't have future events
   await loadDivJson();
   const jsonData = _divJsonData[ticker];
