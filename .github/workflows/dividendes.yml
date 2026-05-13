@@ -62,31 +62,37 @@ jobs:
             try:
               r = requests.get(url, headers=HEADERS, timeout=15)
               r.raise_for_status()
+              # Vérif anti-captcha
+              if 'dividende' not in r.text.lower() and 'dividend' not in r.text.lower():
+                print(f"  ✗ Page bloquée ou sans dividende pour {bourso_ticker}")
+                return None
               soup = BeautifulSoup(r.text, "lxml")
               text = soup.get_text(" ", strip=True)
 
-              # Montant: "X,XX EUR (JJ/MM/AA)"
+              # Montant + date ex-div: "X,XX EUR (JJ/MM/AA)"
               amount_pattern = r'(\d+[,\.]\d+)\s*(?:EUR|€)\s*\((\d{2}/\d{2}/\d{2,4})\)'
-              amount_match = re.search(amount_pattern, text)
-              amount = float(amount_match.group(1).replace(",", ".")) if amount_match else None
+              matches = re.findall(amount_pattern, text)
+              amount = None
+              ex_div_date = None
+              for amount_str, date_str in matches:
+                iso = parse_bourso_date(date_str)
+                if iso and iso >= today:
+                  amount = float(amount_str.replace(",", "."))
+                  ex_div_date = iso
+                  break
 
-              # Date paiement: cherche "Paiement dividende" puis date JJ/MM/AA ou JJ/MM/AAAA
-              pay_pattern = r'[Pp]aiement\s+(?:du\s+)?dividende[s]?\s+.*?(\d{2}/\d{2}/\d{2,4})'
-              pay_match = re.search(pay_pattern, text, re.IGNORECASE | re.DOTALL)
+              if not amount:
+                return None
 
-              # Fallback: cherche date après "Paiement" dans les 50 caractères
-              if not pay_match:
-                pay_pattern2 = r'[Pp]aiement[^/\d]{0,50}(\d{2}/\d{2}/\d{2,4})'
-                pay_match = re.search(pay_pattern2, text, re.IGNORECASE)
-
+              # Cherche date de paiement après "Paiement"
+              pay_match = re.search(r'[Pp]aiement[^/\d]{0,100}(\d{2}/\d{2}/\d{2,4})', text, re.IGNORECASE)
               payment_date = parse_bourso_date(pay_match.group(1)) if pay_match else None
+              if payment_date and payment_date >= today:
+                final_date = payment_date
+              else:
+                final_date = ex_div_date
 
-              # Si pas de date paiement, utilise la date du montant
-              if not payment_date and amount_match:
-                payment_date = parse_bourso_date(amount_match.group(2))
-
-              if payment_date and payment_date >= today and amount:
-                return {"date": payment_date, "amount_estimated": amount, "confirmed": True}
+              return {"date": final_date, "amount_estimated": amount, "confirmed": True}
 
             except Exception as e:
               print(f"  ✗ Erreur scraping {bourso_ticker}: {e}")
