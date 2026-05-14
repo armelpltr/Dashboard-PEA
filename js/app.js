@@ -419,7 +419,7 @@ async function startApp(user) {
   window.renderPortfolio();
   window.fetchAllLogos();
   if (!window.autoRefreshInterval) window.toggleAutoRefresh();
-  setTimeout(initStatCardsScroll, 800);
+  setTimeout(initStatCardsScroll, 1500);
   // Badge idées en arrière-plan
   _listenThreads(user);
   _startPresenceHeartbeat(user);
@@ -3835,33 +3835,28 @@ function countUp(el, target, duration, prefix, suffix) {
   requestAnimationFrame(tick);
 }
 
-let _statScrollRaf = null;
+let _statScrollTimer = null;
 function initStatCardsScroll() {
   if (window.innerWidth > 768) return;
-  const grid = document.querySelector('.stats-scroll-wrap .stats-grid');
-  if (!grid || grid.scrollWidth <= grid.clientWidth) return;
+  if (_statScrollTimer) { clearInterval(_statScrollTimer); _statScrollTimer = null; }
 
-  if (_statScrollRaf) { cancelAnimationFrame(_statScrollRaf); _statScrollRaf = null; }
+  const grid = document.querySelector('.stats-scroll-wrap .stats-grid');
+  if (!grid) return;
 
   let paused = false;
-  const speed = 0.35;
-
-  function step() {
-    if (!paused) {
-      grid.scrollLeft += speed;
-      if (grid.scrollLeft >= grid.scrollWidth - grid.clientWidth - 1) {
-        grid.scrollLeft = 0;
-      }
-    }
-    _statScrollRaf = requestAnimationFrame(step);
-  }
 
   grid.addEventListener('touchstart', () => { paused = true; }, { passive: true });
   grid.addEventListener('touchend',   () => { setTimeout(() => { paused = false; }, 2500); }, { passive: true });
   grid.addEventListener('mouseenter', () => { paused = true; });
   grid.addEventListener('mouseleave', () => { paused = false; });
 
-  _statScrollRaf = requestAnimationFrame(step);
+  _statScrollTimer = setInterval(() => {
+    if (paused) return;
+    grid.scrollLeft += 1;
+    if (grid.scrollLeft >= grid.scrollWidth - grid.clientWidth - 1) {
+      grid.scrollLeft = 0;
+    }
+  }, 30);
 }
 
 // Apply countUp to stat cards after render
