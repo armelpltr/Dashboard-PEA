@@ -1345,8 +1345,8 @@ body.sb-collapsed .main { margin-left: 58px; }
 
   /* Typographie */
   .page-title { font-size: 22px; }
-  .stat-value { font-size: 17px; }
-  .stat-label { font-size: 9px; }
+  .stat-value { font-size: 15px; }
+  .stat-label { font-size: 9px; letter-spacing: 0.3px; }
 
   /* Login */
   .login-card { width: 92vw; padding: 32px 20px; }
@@ -1362,8 +1362,11 @@ body.sb-collapsed .main { margin-left: 58px; }
   /* Masquer colonnes moins importantes sur mobile */
   .hide-mobile { display: none !important; }
 
-  /* Stat cards — 1 colonne sur très petit */
-  .stat-card { padding: 14px 14px; }
+  /* Stat cards — compactes sur mobile */
+  .stat-card { padding: 10px 12px; }
+  .stat-sparkline { display: none; }
+  .stat-change { display: none; }
+  .stat-card .stat-value + .stat-value { font-size: 13px; }
 
   /* Section cards */
   .section-card { padding: 16px 14px; }
