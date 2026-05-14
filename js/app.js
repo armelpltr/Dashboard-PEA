@@ -699,8 +699,8 @@ function syncMobileNav(id) {
 function _roleBadgeHtml(role, size) {
   const s = size || '9px';
   const base = `display:inline-block;white-space:nowrap;font-size:${s};font-family:var(--mono);font-weight:700;padding:1px 7px;border-radius:4px;`;
-  if (role === 'superadmin') return `<span style="${base}background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">' + IC.crown + ' Super Admin</span>';
-  if (role === 'admin')      return `<span style="${base}background:rgba(124,109,245,0.15);color:var(--accent);border:1px solid rgba(124,109,245,0.25)">' + IC.zap + ' Admin</span>';
+  if (role === 'superadmin') return `<span style="${base}background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">${IC.crown} Super Admin</span>`;
+  if (role === 'admin')      return `<span style="${base}background:rgba(124,109,245,0.15);color:var(--accent);border:1px solid rgba(124,109,245,0.25)">${IC.zap} Admin</span>`;
   return `<span style="${base}background:var(--s3);color:var(--text3)">Utilisateur</span>`;
 }
 
