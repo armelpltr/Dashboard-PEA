@@ -3304,15 +3304,24 @@ async function renderPortfolioChart() {
       return;
     }
 
-    const first = dataset[0].valeurTotale;
-    const last  = dataset[dataset.length - 1].valeurTotale;
-    const isUp  = last >= first;
-    const pct   = first > 0 ? ((last - first) / first * 100).toFixed(2) : '0.00';
-    const sign  = pct >= 0 ? '+' : '';
+    // Plus-value latente = valeur actuelle - coût de revient
+    let totalVal = 0, totalInvested = 0;
+    data.forEach(r => { totalVal += r.qty * r.currentPrice; totalInvested += r.qty * r.buyPrice; });
+    const totalPnl = totalVal - totalInvested;
+    const isUp  = totalPnl >= 0;
+    const pct   = totalInvested > 0 ? (totalPnl / totalInvested * 100).toFixed(2) : '0.00';
+    const sign  = totalPnl >= 0 ? '+' : '';
     const color = isUp ? '#00e09e' : '#ff4d6a';
 
     const pctEl = document.getElementById('portf-pct-display');
-    if (pctEl) { pctEl.textContent = sign + pct + '%'; pctEl.style.color = color; }
+    if (pctEl) {
+      pctEl.dataset.pct = sign + pct + '%';
+      pctEl.dataset.eur = (totalPnl >= 0 ? '+' : '') + totalPnl.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+      pctEl.textContent = pctEl.dataset.pct;
+      pctEl.style.color = color;
+      pctEl.style.cursor = 'pointer';
+      pctEl.onclick = () => { pctEl.textContent = pctEl.textContent === pctEl.dataset.pct ? pctEl.dataset.eur : pctEl.dataset.pct; };
+    }
 
     const daysDuration = (now - graphStart) / 86400;
     const labels = dataset.map(p => {
