@@ -3454,9 +3454,8 @@ async function renderPortfolioChart() {
             position: 'right',
             beginAtZero: true,
             grid:   { color: 'rgba(255,255,255,0.03)' },
-            ticks:  { color: '#8892a8', font: { family: 'JetBrains Mono', size: 10 },
-                      callback: v => v.toLocaleString('fr-FR', { notation: 'compact', maximumFractionDigits: 1 }) + ' €' },
-            border: { color: 'rgba(255,255,255,0.04)' }
+            ticks:  { display: false },
+            border: { display: false }
           }
         }
       }
