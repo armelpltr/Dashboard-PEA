@@ -783,6 +783,12 @@ function renderPortfolio() {
       const abbr = (row.name || row.ticker || '?').substring(0, 3).toUpperCase();
       const isPos = pnl >= 0;
 
+      const chg = row.changePct || 0;
+      const dayVal = row.qty * row.currentPrice * chg / 100;
+      const perfJourHtml = chg !== 0
+        ? `<span class="${chg >= 0 ? 'badge-pos' : 'badge-neg'}">${chg >= 0 ? '▲ +' : '▼ '}${Math.abs(chg).toFixed(2)}% (${chg >= 0 ? '+' : ''}${dayVal.toFixed(2)} €)</span>`
+        : `<span style="color:var(--text3);font-size:11px">—</span>`;
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>
@@ -794,28 +800,46 @@ function renderPortfolio() {
             </div>
           </div>
         </td>
-        <td class="mono">${row.qty}</td>
+        <td class="mono hide-mobile">${row.qty}</td>
         <td class="mono hide-mobile">${fmt(row.buyPrice)}</td>
         <td class="mono hide-mobile">${fmt(row.currentPrice)}</td>
-        <td class="mono hide-mobile" style="font-weight:500">${fmt(val)}</td>
-        <td>
+        <td class="mono" style="font-weight:500">${fmt(val)}</td>
+        <td class="hide-mobile">
           <span class="${isPos ? 'badge-pos' : 'badge-neg'}">
             ${isPos ? '▲' : '▼'} ${fmt(Math.abs(pnl))} (${isPos ? '+' : ''}${pct.toFixed(2)}%)
           </span>
         </td>
-        <td class="hide-mobile">${(() => {
-          const chg = row.changePct || 0;
-          const dayVal = row.qty * row.currentPrice * chg / 100;
-          const cls = chg >= 0 ? 'badge-pos' : 'badge-neg';
-          return chg !== 0
-            ? `<span class="${cls}">${chg >= 0 ? '▲ +' : '▼ '}${Math.abs(chg).toFixed(2)}% (${chg >= 0 ? '+' : ''}${dayVal.toFixed(2)} €)</span>`
-            : `<span style="color:var(--text3);font-size:11px">—</span>`;
-        })()}</td>
-        <td style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
-          <button class="btn-edit" onclick="openEditModal(${i})" title="Modifier">✏</button>
-          <button class="btn-del" onclick="deleteRow(${i})" title="Supprimer">✕</button></td>
+        <td>${perfJourHtml}</td>
+        <td>
+          <div class="btn-portfolio-actions" style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
+            <button class="btn-edit" onclick="openEditModal(${i})" title="Modifier">✏</button>
+            <button class="btn-del" onclick="deleteRow(${i})" title="Supprimer">✕</button>
+          </div>
+          <button class="btn-voir-plus" onclick="togglePortfolioDetail(${i})" title="Voir plus">▾</button>
+        </td>
       `;
       tbody.appendChild(tr);
+
+      const detailTr = document.createElement('tr');
+      detailTr.className = 'mobile-detail-row';
+      detailTr.id = 'portfolio-detail-' + i;
+      detailTr.innerHTML = `
+        <td colspan="8">
+          <div class="portfolio-detail-content">
+            <div class="portfolio-detail-grid">
+              <span><label>Qté</label>${row.qty}</span>
+              <span><label>PRU</label>${fmt(row.buyPrice)}</span>
+              <span><label>Cours</label>${fmt(row.currentPrice)}</span>
+              <span><label>+/- Value</label><span class="${isPos ? 'badge-pos' : 'badge-neg'}">${isPos ? '▲' : '▼'} ${fmt(Math.abs(pnl))} (${isPos ? '+' : ''}${pct.toFixed(2)}%)</span></span>
+            </div>
+            <div class="portfolio-detail-actions">
+              <button class="btn-edit" onclick="openEditModal(${i})">✏ Modifier</button>
+              <button class="btn-del" onclick="deleteRow(${i})">✕ Supprimer</button>
+            </div>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(detailTr);
     });
   }
 
@@ -919,6 +943,13 @@ function renderTxHistory() {
   }).join('');
 }
 let editRowIndex = -1;
+function togglePortfolioDetail(i) {
+  const detail = document.getElementById('portfolio-detail-' + i);
+  const btn = detail.previousElementSibling.querySelector('.btn-voir-plus');
+  const open = detail.classList.toggle('open');
+  if (btn) btn.textContent = open ? '▴' : '▾';
+}
+
 let editTab = 'buy';
 
 function openEditModal(i) {

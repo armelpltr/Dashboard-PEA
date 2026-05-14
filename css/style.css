@@ -1285,6 +1285,10 @@ body.sb-collapsed .main { margin-left: 58px; }
   padding: 8px 20px 4px; font-family: var(--mono);
 }
 
+/* Portfolio accordéon mobile — desktop: tout caché */
+.mobile-detail-row { display: none !important; }
+.btn-voir-plus { display: none !important; }
+
 @media (max-width: 768px) {
   /* Masquer sidebar desktop */
   .sidebar { display: none !important; }
@@ -1294,6 +1298,29 @@ body.sb-collapsed .main { margin-left: 58px; }
   .ticker-sym { display: none; }
   .ticker-name .badge-action,
   .ticker-name .badge-etf { display: none; }
+
+  /* Portfolio accordéon mobile */
+  .mobile-detail-row { display: none; }
+  .mobile-detail-row.open { display: table-row !important; }
+  .btn-voir-plus {
+    display: inline-flex !important;
+    align-items: center; justify-content: center;
+    width: 28px; height: 28px;
+    border-radius: 6px; border: 1px solid var(--s3);
+    background: var(--s2); color: var(--text2);
+    font-size: 14px; cursor: pointer;
+  }
+  .btn-portfolio-actions { display: none !important; }
+  .portfolio-detail-content { padding: 10px 8px 14px; }
+  .portfolio-detail-grid {
+    display: flex; flex-wrap: wrap; gap: 10px 24px;
+    font-size: 12px; margin-bottom: 12px;
+  }
+  .portfolio-detail-grid label {
+    display: block; font-size: 10px;
+    color: var(--text3); margin-bottom: 2px;
+  }
+  .portfolio-detail-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
   /* Afficher éléments mobile */
   .mobile-header { display: flex; }
