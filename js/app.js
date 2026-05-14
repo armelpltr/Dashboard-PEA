@@ -788,7 +788,9 @@ function renderPortfolio() {
       const perfJourHtml = chg !== 0
         ? `<span class="perf-jour-cell ${chg >= 0 ? 'perf-pos' : 'perf-neg'}"
               data-pct="${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%"
-              data-eur="${chg >= 0 ? '+' : ''}${dayVal.toFixed(2)} €">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>`
+              data-eur="${chg >= 0 ? '+' : ''}${dayVal.toFixed(2)} €"
+              onclick="togglePerfJourMode()"
+              style="cursor:pointer">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>`
         : `<span style="color:var(--text3);font-size:11px">—</span>`;
 
       const tr = document.createElement('tr');
