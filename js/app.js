@@ -419,7 +419,7 @@ async function startApp(user) {
   window.renderPortfolio();
   window.fetchAllLogos();
   if (!window.autoRefreshInterval) window.toggleAutoRefresh();
-  initStatCardsScroll();
+  setTimeout(initStatCardsScroll, 800);
   // Badge idées en arrière-plan
   _listenThreads(user);
   _startPresenceHeartbeat(user);
@@ -822,8 +822,8 @@ function renderPortfolio() {
           </span>
         </td>
         <td>${perfJourHtml}</td>
-        <td style="padding-right:16px">
-          <div class="btn-portfolio-actions" style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
+        <td style="text-align:right;padding-right:18px;white-space:nowrap">
+          <div class="btn-portfolio-actions" style="display:inline-flex;gap:6px;align-items:center">
             <button class="btn-edit" onclick="openEditModal(${i})" title="Modifier">✏</button>
             <button class="btn-del" onclick="deleteRow(${i})" title="Supprimer">✕</button>
           </div>
@@ -3835,12 +3835,15 @@ function countUp(el, target, duration, prefix, suffix) {
   requestAnimationFrame(tick);
 }
 
+let _statScrollRaf = null;
 function initStatCardsScroll() {
   if (window.innerWidth > 768) return;
   const grid = document.querySelector('.stats-scroll-wrap .stats-grid');
-  if (!grid) return;
+  if (!grid || grid.scrollWidth <= grid.clientWidth) return;
+
+  if (_statScrollRaf) { cancelAnimationFrame(_statScrollRaf); _statScrollRaf = null; }
+
   let paused = false;
-  let rafId = null;
   const speed = 0.35;
 
   function step() {
@@ -3850,7 +3853,7 @@ function initStatCardsScroll() {
         grid.scrollLeft = 0;
       }
     }
-    rafId = requestAnimationFrame(step);
+    _statScrollRaf = requestAnimationFrame(step);
   }
 
   grid.addEventListener('touchstart', () => { paused = true; }, { passive: true });
@@ -3858,8 +3861,7 @@ function initStatCardsScroll() {
   grid.addEventListener('mouseenter', () => { paused = true; });
   grid.addEventListener('mouseleave', () => { paused = false; });
 
-  if (rafId) cancelAnimationFrame(rafId);
-  rafId = requestAnimationFrame(step);
+  _statScrollRaf = requestAnimationFrame(step);
 }
 
 // Apply countUp to stat cards after render
