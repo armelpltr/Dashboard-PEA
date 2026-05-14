@@ -825,6 +825,35 @@ tr:hover td { background: rgba(255,255,255,0.018); }
 .chart-wrap { position: relative; height: 220px; }
 #portfolio-chart-card .chart-wrap { height: 200px; }
 
+/* ── Portfolio chart hyper-clean ── */
+.portf-chart-card {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+.portf-chart-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 16px 20px 4px;
+}
+.portf-chart-pct {
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--positive);
+  line-height: 1;
+}
+.portf-chart-since {
+  font-size: 11px;
+  color: var(--text2);
+}
+.portf-canvas-wrap {
+  position: relative;
+  height: 130px;
+  width: 100%;
+}
+
 .chart-select {
   background: var(--s2); border: 1px solid var(--border2); color: var(--text);
   padding: 7px 12px; border-radius: 8px; font-size: 12px; font-family: var(--mono);

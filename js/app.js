@@ -3311,7 +3311,8 @@ async function renderPortfolioChart() {
     const sign  = pct >= 0 ? '+' : '';
     const color = isUp ? '#00e09e' : '#ff4d6a';
 
-    sub.textContent = sign + pct + '% depuis le début';
+    const pctEl = document.getElementById('portf-pct-display');
+    if (pctEl) { pctEl.textContent = sign + pct + '%'; pctEl.style.color = color; }
 
     const daysDuration = (now - graphStart) / 86400;
     const labels = dataset.map(p => {
@@ -3361,17 +3362,17 @@ async function renderPortfolioChart() {
           {
             label: 'Portefeuille',
             data: dataValues,
-            borderColor: 'rgba(124,109,245,0.9)',
+            borderColor: color,
             borderWidth: 2,
             pointRadius: 0,
             pointHoverRadius: 4,
-            pointHoverBackgroundColor: '#7c6df5',
+            pointHoverBackgroundColor: color,
             tension: 0.2,
             fill: true,
             spanGaps: true,
             backgroundColor: (ctx2) => {
-              const g = ctx2.chart.ctx.createLinearGradient(0, 0, 0, 250);
-              g.addColorStop(0, 'rgba(124,109,245,0.15)');
+              const g = ctx2.chart.ctx.createLinearGradient(0, 0, 0, 130);
+              g.addColorStop(0, isUp ? 'rgba(0,224,158,0.18)' : 'rgba(255,77,106,0.18)');
               g.addColorStop(1, 'rgba(0,0,0,0)');
               return g;
             },
@@ -3410,21 +3411,7 @@ async function renderPortfolioChart() {
         animation: { duration: 1200, easing: "easeOutQuart" },
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: {
-            display: true,
-            position: 'top',
-            align: 'end',
-            labels: {
-              color: '#8892a8',
-              font: { family: 'JetBrains Mono', size: 10 },
-              padding: 12,
-              boxWidth: 8,
-              boxHeight: 8,
-              usePointStyle: true,
-              pointStyle: 'circle',
-              filter: item => item.text !== 'Portefeuille'
-            }
-          },
+          legend: { display: false },
           tooltip: {
             backgroundColor: '#10121c',
             borderColor: 'rgba(255,255,255,0.06)',
@@ -3445,18 +3432,8 @@ async function renderPortfolioChart() {
           }
         },
         scales: {
-          x: {
-            grid:   { color: 'rgba(255,255,255,0.03)' },
-            ticks:  { display: false },
-            border: { color: 'rgba(255,255,255,0.04)' }
-          },
-          y: {
-            position: 'right',
-            beginAtZero: true,
-            grid:   { color: 'rgba(255,255,255,0.03)' },
-            ticks:  { display: false },
-            border: { display: false }
-          }
+          x: { display: false },
+          y: { display: false, beginAtZero: false }
         }
       }
     });
