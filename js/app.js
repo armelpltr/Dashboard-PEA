@@ -3837,7 +3837,6 @@ function countUp(el, target, duration, prefix, suffix) {
 
 let _statScrollTimer = null;
 function initStatCardsScroll() {
-  if (window.innerWidth > 768) return;
   if (_statScrollTimer) { clearInterval(_statScrollTimer); _statScrollTimer = null; }
 
   const grid = document.querySelector('.stats-scroll-wrap .stats-grid');
