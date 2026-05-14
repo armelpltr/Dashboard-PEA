@@ -2864,7 +2864,7 @@ async function renderHistChart() {
 
 // ─── GRAPHIQUE ÉVOLUTION PORTEFEUILLE ────────────────────
 let chartPortfolio    = null;
-let portfolioPeriod   = '1y';
+let portfolioPeriod   = 'max';
 
 const PORTFOLIO_PERIOD_CONFIG = {
   '1d':  { range:'1d',   interval:'5m'  },
