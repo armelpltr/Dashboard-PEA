@@ -796,8 +796,8 @@ function renderPortfolio() {
         </td>
         <td class="mono">${row.qty}</td>
         <td class="mono hide-mobile">${fmt(row.buyPrice)}</td>
-        <td class="mono">${fmt(row.currentPrice)}</td>
-        <td class="mono" style="font-weight:500">${fmt(val)}</td>
+        <td class="mono hide-mobile">${fmt(row.currentPrice)}</td>
+        <td class="mono hide-mobile" style="font-weight:500">${fmt(val)}</td>
         <td>
           <span class="${isPos ? 'badge-pos' : 'badge-neg'}">
             ${isPos ? '▲' : '▼'} ${fmt(Math.abs(pnl))} (${isPos ? '+' : ''}${pct.toFixed(2)}%)
