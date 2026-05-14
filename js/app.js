@@ -1,25 +1,22 @@
-// ─── ICON SYSTEM ──────────────────────────────────────
-const IC = (() => {
-  const s = (w,h,b) => `<svg width="${w}" height="${h}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${b}</svg>`;
-  return {
-    briefcase: s(14,14,'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>'),
-    bell:      s(14,14,'<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'),
-    target:    s(14,14,'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>'),
-    wallet:    s(14,14,'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z"/>'),
-    barchart:  s(14,14,'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'),
-    gift:      s(14,14,'<polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>'),
-    trophy:    s(14,14,'<line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M7 4H4v7a5 5 0 0 0 10 0V4H7z"/><path d="M17 4h3v7a5 5 0 0 1-5 5"/>'),
-    trending:  s(14,14,'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>'),
-    clock:     s(13,13,'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
-    zap:       s(13,13,'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'),
-    calendar:  s(13,13,'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'),
-    crown:     s(13,13,'<path d="M2 20h20"/><path d="m4 20 4-12 4 7 4-10 4 15"/>'),
-    user:      s(13,13,'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
-    message:   s(13,13,'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
-    dotGreen:  '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#00e09e"/></svg>',
-    dotRed:    '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#ff4d6a"/></svg>',
-  };
-})();
+// ─── ICON SYSTEM (colored SVG) ─────────────────────────
+const IC = {
+  briefcase: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c6df5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>',
+  bell:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+  target:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5b8dee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+  wallet:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00e09e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z"/></svg>',
+  barchart:  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5b8dee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  gift:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
+  trophy:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M7 4H4v7a5 5 0 0 0 10 0V4H7z"/><path d="M17 4h3v7a5 5 0 0 1-5 5"/></svg>',
+  trending:  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00e09e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+  clock:     '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  zap:       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c6df5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+  calendar:  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  crown:     '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="m4 20 4-12 4 7 4-10 4 15"/></svg>',
+  user:      '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  message:   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7c6df5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  dotGreen:  '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#00e09e"/></svg>',
+  dotRed:    '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#ff4d6a"/></svg>',
+};
 
 // ─── FIREBASE AUTH ────────────────────────────────────
 // ─── FIREBASE (chargement dynamique, compatible sans bundler) ─────
