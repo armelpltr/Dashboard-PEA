@@ -1,3 +1,26 @@
+// ─── ICON SYSTEM ──────────────────────────────────────
+const IC = (() => {
+  const s = (w,h,b) => `<svg width="${w}" height="${h}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${b}</svg>`;
+  return {
+    briefcase: s(14,14,'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>'),
+    bell:      s(14,14,'<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'),
+    target:    s(14,14,'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>'),
+    wallet:    s(14,14,'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z"/>'),
+    barchart:  s(14,14,'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'),
+    gift:      s(14,14,'<polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>'),
+    trophy:    s(14,14,'<line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M7 4H4v7a5 5 0 0 0 10 0V4H7z"/><path d="M17 4h3v7a5 5 0 0 1-5 5"/>'),
+    trending:  s(14,14,'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>'),
+    clock:     s(13,13,'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
+    zap:       s(13,13,'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'),
+    calendar:  s(13,13,'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'),
+    crown:     s(13,13,'<path d="M2 20h20"/><path d="m4 20 4-12 4 7 4-10 4 15"/>'),
+    user:      s(13,13,'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
+    message:   s(13,13,'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+    dotGreen:  '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#00e09e"/></svg>',
+    dotRed:    '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#ff4d6a"/></svg>',
+  };
+})();
+
 // ─── FIREBASE AUTH ────────────────────────────────────
 // ─── FIREBASE (chargement dynamique, compatible sans bundler) ─────
 let fbApp, fbAuth, db,
@@ -676,8 +699,8 @@ function syncMobileNav(id) {
 function _roleBadgeHtml(role, size) {
   const s = size || '9px';
   const base = `display:inline-block;white-space:nowrap;font-size:${s};font-family:var(--mono);font-weight:700;padding:1px 7px;border-radius:4px;`;
-  if (role === 'superadmin') return `<span style="${base}background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">👑 Super Admin</span>`;
-  if (role === 'admin')      return `<span style="${base}background:rgba(124,109,245,0.15);color:var(--accent);border:1px solid rgba(124,109,245,0.25)">⚡ Admin</span>`;
+  if (role === 'superadmin') return `<span style="${base}background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">' + IC.crown + ' Super Admin</span>';
+  if (role === 'admin')      return `<span style="${base}background:rgba(124,109,245,0.15);color:var(--accent);border:1px solid rgba(124,109,245,0.25)">' + IC.zap + ' Admin</span>';
   return `<span style="${base}background:var(--s3);color:var(--text3)">Utilisateur</span>`;
 }
 
@@ -2062,7 +2085,7 @@ function populateHero(d) {
     const fs = d.fundamentalScore;
     updateHeroScore(fs.score100, fs.verdict);
     const sublabel = document.getElementById('hero-mistral-sublabel');
-    if (sublabel) sublabel.textContent = '📊 ' + fs.total.toFixed(1) + '/25 · ' + fs.conviction;
+    if (sublabel) sublabel.textContent = IC.barchart + ' ' + fs.total.toFixed(1) + '/25 · ' + fs.conviction;
   } else {
     resetHeroScore();
   }
@@ -3434,7 +3457,7 @@ async function renderPortfolioChart() {
                 if (ctx.datasetIndex === 0)
                   return ' ' + ctx.parsed.y.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
                 if (ctx.parsed.y === null) return null;
-                const label = ctx.datasetIndex === 1 ? '🟢 Achat' : '🔴 Vente';
+                const label = ctx.datasetIndex === 1 ? IC.dotGreen + ' Achat' : IC.dotRed + ' Vente';
                 return ' ' + label + ' · ' + ctx.parsed.y.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
               }
             }
@@ -5587,9 +5610,9 @@ function initBilan() {
 //  TROPHÉES
 // ═══════════════════════════════════════════════════
 const TROPHIES = {
-  patrimoine: { label: '💼 Patrimoine',  key: 'patrimoine', paliers: [500,1000,1500,2000,2500,3000,3500,4000,4500,5000] },
-  rendement:  { label: '📈 Plus-value',  key: 'rendement',  paliers: [50,100,150,200,250,300,350,400,450,500] },
-  dividendes: { label: '🎁 Dividendes',  key: 'dividendes', paliers: [10,20,30,40,50,60,70,80,90,100] },
+  patrimoine: { label: IC.briefcase + ' Patrimoine',  key: 'patrimoine', paliers: [500,1000,1500,2000,2500,3000,3500,4000,4500,5000] },
+  rendement:  { label: IC.trending + ' Plus-value',  key: 'rendement',  paliers: [50,100,150,200,250,300,350,400,450,500] },
+  dividendes: { label: IC.gift + ' Dividendes',  key: 'dividendes', paliers: [10,20,30,40,50,60,70,80,90,100] },
 };
 
 function initTrophees() {
@@ -5786,7 +5809,7 @@ function renderCalendrier() {
     const dayEvents = allEvents.filter(e => e.date === dateStr);
 
     const dots = dayEvents.slice(0, 3).map(e =>
-      `<div class="cal-dot ${e.type}">${e.type === 'buy' ? '▲ ' : e.type === 'dividend' ? '💰 ' : '➕ '}${e.label}</div>`
+      `<div class="cal-dot ${e.type}">${e.type === 'buy' ? '▲ ' : e.type === 'dividend' ? IC.wallet + ' ' : '➕ '}${e.label}</div>`
     ).join('');
     const more = dayEvents.length > 3
       ? `<div style="font-size:9px;color:var(--text3);margin-top:1px">+${dayEvents.length - 3} autres</div>` : '';
@@ -5999,7 +6022,7 @@ function initDividendes() {
   // Afficher un état de chargement
   const tbody = document.getElementById('div-tbody');
   const histEl = document.getElementById('div-history');
-  if (tbody)  tbody.innerHTML  = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">⏳ Chargement des dividendes…</td></tr>';
+  if (tbody)  tbody.innerHTML  = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Chargement des dividendes…</td></tr>';
   if (histEl) histEl.innerHTML = '<div class="cal-empty">⏳ Récupération de l\'historique…</div>';
 
   // KPIs immédiats
@@ -6166,7 +6189,7 @@ function renderDivHistory(histEl) {
       ? '<span style="background:rgba(0,224,158,0.12);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">Pendant détention</span>'
       : '<span style="background:var(--s3);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Avant achat</span>';
     const statutBadge = e.source==='annoncé'
-      ? `<span style="background:rgba(245,183,49,0.12);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px">⏳ Annoncé · versement ${ds}</span>`
+      ? `<span style="background:rgba(245,183,49,0.12);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px">' + IC.clock + ' Annoncé · versement ${ds}</span>`
       : e.source==='reçu' || e.source==='reçu-auto'
       ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">✓ Reçu</span>'
       : '';
@@ -7327,7 +7350,7 @@ async function _renderMembersPanel(d, threadId, el) {
 
 function _memberRow(name, email, role, threadId, canRemove, photoURL) {
   const roleColor = role === 'superadmin' ? '#fbbf24' : role === 'admin' ? 'var(--accent)' : 'var(--text3)';
-  const roleIcon  = role === 'superadmin' ? '👑' : role === 'admin' ? '⚡' : '👤';
+  const roleIcon  = role === 'superadmin' ? IC.crown : role === 'admin' ? IC.zap : IC.user;
   const initial   = (name || '?')[0].toUpperCase();
   const avatarEl  = photoURL
     ? '<img src="' + _escHtml(photoURL) + '" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0">'
@@ -7375,7 +7398,7 @@ function _handleThreadsSnap(snap, user) {
       if (_activeThread !== tid) {
         _playSound('message');
         const toastMsg = (d.lastSenderName ? d.lastSenderName + ' : ' : '') + (d.lastMessage || '📷 Photo');
-        _showChatToast({ icon: '💬', title: d.title || 'Nouveau message', msg: toastMsg, threadId: tid });
+        _showChatToast({ icon: IC.message, title: d.title || 'Nouveau message', msg: toastMsg, threadId: tid });
         _showBrowserNotif(d.title || 'Nouveau message', toastMsg, tid);
       }
     }
@@ -8257,10 +8280,10 @@ async function _saLoadAll() {
     const statsEl = document.getElementById('sa-stats');
     const stats = [
       { label: 'Utilisateurs', value: users.length, icon: '👥' },
-      { label: 'Actifs 7j',    value: active7,       icon: '📅' },
-      { label: 'En ligne',     value: online,         icon: '🟢' },
-      { label: 'Alertes actives', value: totalAlerts, icon: '🎯' },
-      { label: 'Positions totales', value: totalPos,  icon: '💼' },
+      { label: 'Actifs 7j',    value: active7,       icon: IC.calendar },
+      { label: 'En ligne',     value: online,         icon: IC.dotGreen },
+      { label: 'Alertes actives', value: totalAlerts, icon: IC.target },
+      { label: 'Positions totales', value: totalPos,  icon: IC.briefcase },
     ];
     statsEl.innerHTML = stats.map(s =>
       `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
@@ -8668,9 +8691,9 @@ function renderNotifSettings() {
   const settings = getUserSettings(currentUser);
   const ns = settings.notifSettings || { chat: true, dividends: true, priceAlerts: true };
   const toggles = [
-    { key: 'chat',        icon: '💬', label: 'Messages chat support', sub: 'Notification a la reception d un message' },
-    { key: 'dividends',   icon: '💰', label: 'Dividendes recus',      sub: 'Notification lors de l enregistrement d un dividende' },
-    { key: 'priceAlerts', icon: '🎯', label: 'Alertes prix',          sub: 'Notification quand un seuil de prix est atteint' },
+    { key: 'chat',        icon: IC.message, label: 'Messages chat support', sub: 'Notification a la reception d un message' },
+    { key: 'dividends',   icon: IC.wallet, label: 'Dividendes recus',      sub: 'Notification lors de l enregistrement d un dividende' },
+    { key: 'priceAlerts', icon: IC.target, label: 'Alertes prix',          sub: 'Notification quand un seuil de prix est atteint' },
   ];
   el.innerHTML = toggles.map(t => {
     const checked = ns[t.key] !== false;
@@ -8735,7 +8758,7 @@ function renderNotifHistory() {
   list.innerHTML = history.slice(0, 30).map(n => {
     const d = new Date(n.timestamp);
     const dateStr = d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
-    const icon = n.type === 'price_alert' ? '🎯' : n.type === 'dividend' ? '💰' : '💬';
+    const icon = n.type === 'price_alert' ? IC.target : n.type === 'dividend' ? IC.wallet : IC.message;
     return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
       '<span style="font-size:18px;flex-shrink:0">' + icon + '</span>' +
       '<div style="flex:1;min-width:0">' +

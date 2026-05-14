@@ -238,7 +238,8 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
   width: 3px; height: 18px; border-radius: 0 3px 3px 0;
   background: var(--accent);
 }
-.nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+.nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.nav-icon svg, .mobile-drawer-icon svg, .stat-label svg { vertical-align: middle; display: inline-block; }
 
 .sidebar-user { padding: 12px; border-top: 1px solid var(--border); }
 .user-card {
