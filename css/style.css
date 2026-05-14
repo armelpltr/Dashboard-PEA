@@ -822,7 +822,8 @@ tr:hover td { background: rgba(255,255,255,0.018); }
   color: var(--text); margin-bottom: 4px;
 }
 .chart-sub { font-size: 11px; color: var(--text2); margin-bottom: 18px; }
-.chart-wrap { position: relative; }
+.chart-wrap { position: relative; height: 220px; }
+#portfolio-chart-card .chart-wrap { height: 200px; }
 
 .chart-select {
   background: var(--s2); border: 1px solid var(--border2); color: var(--text);

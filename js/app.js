@@ -3349,7 +3349,7 @@ async function renderPortfolioChart() {
     });
 
     // Create point arrays: show colored dots only at buy/sell dates
-    const dataValues = dataset.map(p => p.valeurTotale);
+    const dataValues = dataset.map(p => p.valeurTotale > 0 ? p.valeurTotale : null);
     const buyData = dataValues.map((v, i) => buyPoints.includes(i) ? v : null);
     const sellData = dataValues.map((v, i) => sellPoints.includes(i) ? v : null);
 
@@ -3406,6 +3406,7 @@ async function renderPortfolioChart() {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         animation: { duration: 1200, easing: "easeOutQuart" },
         interaction: { mode: 'index', intersect: false },
         plugins: {
