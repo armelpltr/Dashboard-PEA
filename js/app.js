@@ -4514,6 +4514,7 @@ renderPortfolio = function() {
     animateStatCards();
     initTiltCards();
   }, 60);
+  setTimeout(initStatCardsScroll, 300);
 };
 
 // Initialize watchlist on page show
