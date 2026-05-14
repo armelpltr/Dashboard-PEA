@@ -786,7 +786,9 @@ function renderPortfolio() {
       const chg = row.changePct || 0;
       const dayVal = row.qty * row.currentPrice * chg / 100;
       const perfJourHtml = chg !== 0
-        ? `<span class="${chg >= 0 ? 'badge-pos' : 'badge-neg'}">${chg >= 0 ? '▲ +' : '▼ '}${Math.abs(chg).toFixed(2)}% (${chg >= 0 ? '+' : ''}${dayVal.toFixed(2)} €)</span>`
+        ? `<span class="perf-jour-cell ${chg >= 0 ? 'perf-pos' : 'perf-neg'}"
+              data-pct="${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%"
+              data-eur="${chg >= 0 ? '+' : ''}${dayVal.toFixed(2)} €">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>`
         : `<span style="color:var(--text3);font-size:11px">—</span>`;
 
       const tr = document.createElement('tr');
@@ -943,6 +945,16 @@ function renderTxHistory() {
   }).join('');
 }
 let editRowIndex = -1;
+let _perfJourMode = 'pct';
+function togglePerfJourMode() {
+  _perfJourMode = _perfJourMode === 'pct' ? 'eur' : 'pct';
+  document.querySelectorAll('.perf-jour-cell').forEach(el => {
+    el.textContent = el.dataset[_perfJourMode];
+  });
+  const th = document.getElementById('th-perf-jour');
+  if (th) th.textContent = _perfJourMode === 'pct' ? 'Perf. jour %' : 'Perf. jour €';
+}
+
 function togglePortfolioDetail(i) {
   const detail = document.getElementById('portfolio-detail-' + i);
   const btn = detail.previousElementSibling.querySelector('.btn-voir-plus');
