@@ -4482,6 +4482,7 @@ renderPortfolio = function() {
   // Add stagger animations
   const rows = document.querySelectorAll('#portfolio-tbody tr');
   rows.forEach((tr, i) => {
+    if (tr.classList.contains('mobile-detail-row')) return;
     tr.classList.add('stagger-row');
     tr.style.animationDelay = (i * 0.04) + 's';
     // Add drag handle
@@ -4492,11 +4493,12 @@ renderPortfolio = function() {
     tr.addEventListener('drop', e => onDrop(e, i));
     // Prepend drag handle to first cell
     const firstTd = tr.querySelector('td');
-    if (firstTd && !firstTd.querySelector('.drag-handle')) {
+    const tickerCell = firstTd && firstTd.querySelector('.ticker-cell');
+    if (tickerCell && !firstTd.querySelector('.drag-handle')) {
       const handle = document.createElement('span');
       handle.className = 'drag-handle';
       handle.textContent = '⠿';
-      firstTd.querySelector('.ticker-cell').prepend(handle);
+      tickerCell.prepend(handle);
     }
   });
   // Update sparklines
