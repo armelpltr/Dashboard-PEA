@@ -945,7 +945,7 @@ function renderTxHistory() {
       ? '<span style="color:' + (tx.realizedPnl >= 0 ? 'var(--positive)' : 'var(--negative)') + ';font-weight:600">' + (tx.realizedPnl >= 0 ? '+' : '') + tx.realizedPnl.toFixed(2) + ' €</span>'
       : '<span style="color:var(--text3)">—</span>';
     return '<tr>' +
-      '<td class="mono" style="font-size:12px">' + dateStr + '</td>' +
+      '<td class="mono" style="font-size:10px;white-space:nowrap">' + dateStr + '</td>' +
       '<td><span class="' + (isBuy ? 'badge-pos' : 'badge-neg') + '" style="font-size:11px;padding:3px 10px">' + (isBuy ? '▲ ACHAT' : '▼ VENTE') + '</span></td>' +
       '<td style="font-size:12px">' + (tx.name || tx.ticker || '—') + '</td>' +
       '<td class="mono" style="font-size:12px">' + tx.qty + '</td>' +
