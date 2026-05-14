@@ -352,6 +352,7 @@
           </select>
           <button class="toolbar-btn" onclick="exportCSV()">📄 CSV</button>
           <button class="toolbar-btn" onclick="toggleAutoRefresh()" id="btn-auto-refresh">⟳ Auto-refresh</button>
+          <button class="toolbar-btn show-mobile-inline" onclick="openReorderModal()">↕ Réorganiser</button>
         </div>
         <table>
           <thead>
@@ -1343,6 +1344,18 @@
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reorder-modal-overlay" onclick="if(event.target===this)closeReorderModal()">
+  <div class="modal" style="width:340px;max-height:80vh;overflow-y:auto">
+    <div class="modal-title">Réorganiser le portefeuille</div>
+    <div class="modal-sub">Utilisez les flèches pour changer l'ordre d'affichage.</div>
+    <div id="reorder-list" style="margin:16px 0;display:flex;flex-direction:column;gap:8px"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeReorderModal()">Annuler</button>
+      <button class="btn-primary" onclick="saveReorder()">Valider</button>
     </div>
   </div>
 </div>

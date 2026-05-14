@@ -1288,6 +1288,7 @@ body.sb-collapsed .main { margin-left: 58px; }
 /* Portfolio accordéon mobile — desktop: tout caché */
 .mobile-detail-row { display: none !important; }
 .btn-voir-plus { display: none !important; }
+.show-mobile-inline { display: none !important; }
 
 @media (max-width: 768px) {
   /* Masquer sidebar desktop */
@@ -1298,6 +1299,11 @@ body.sb-collapsed .main { margin-left: 58px; }
   .ticker-sym { display: none; }
   .ticker-name .badge-action,
   .ticker-name .badge-etf { display: none; }
+
+  /* Boutons mobile only */
+  .show-mobile-inline { display: inline-flex !important; }
+  /* Drag handles cachés sur mobile */
+  .drag-handle { display: none !important; }
 
   /* Portfolio accordéon mobile */
   .mobile-detail-row { display: none; }

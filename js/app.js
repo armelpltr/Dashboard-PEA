@@ -950,6 +950,39 @@ function togglePortfolioDetail(i) {
   if (btn) btn.textContent = open ? '▴' : '▾';
 }
 
+let _reorderTmp = [];
+function openReorderModal() {
+  _reorderTmp = getPortfolio(currentUser).map(r => ({ ticker: r.ticker, name: r.name }));
+  renderReorderList();
+  document.getElementById('reorder-modal-overlay').style.display = 'flex';
+}
+function closeReorderModal() {
+  document.getElementById('reorder-modal-overlay').style.display = 'none';
+}
+function renderReorderList() {
+  const list = document.getElementById('reorder-list');
+  list.innerHTML = _reorderTmp.map((r, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:8px;border:1px solid var(--s3)">
+      <span style="flex:1;font-size:13px;font-weight:500">${r.name || r.ticker}</span>
+      <button onclick="moveReorderItem(${i},-1)" ${i===0?'disabled':''} style="width:28px;height:28px;border-radius:6px;border:1px solid var(--s3);background:var(--s1);color:var(--text2);cursor:pointer;font-size:14px">▲</button>
+      <button onclick="moveReorderItem(${i},1)" ${i===_reorderTmp.length-1?'disabled':''} style="width:28px;height:28px;border-radius:6px;border:1px solid var(--s3);background:var(--s1);color:var(--text2);cursor:pointer;font-size:14px">▼</button>
+    </div>
+  `).join('');
+}
+function moveReorderItem(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= _reorderTmp.length) return;
+  [_reorderTmp[idx], _reorderTmp[newIdx]] = [_reorderTmp[newIdx], _reorderTmp[idx]];
+  renderReorderList();
+}
+function saveReorder() {
+  const data = getPortfolio(currentUser);
+  const ordered = _reorderTmp.map(r => data.find(d => d.ticker === r.ticker)).filter(Boolean);
+  savePortfolio(currentUser, ordered);
+  renderPortfolio();
+  closeReorderModal();
+}
+
 let editTab = 'buy';
 
 function openEditModal(i) {
