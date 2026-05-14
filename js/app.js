@@ -807,14 +807,17 @@ function renderPortfolio() {
         <td class="mono hide-mobile">${row.qty}</td>
         <td class="mono hide-mobile">${fmt(row.buyPrice)}</td>
         <td class="mono hide-mobile">${fmt(row.currentPrice)}</td>
-        <td class="mono" style="font-weight:500">${fmt(val)}</td>
+        <td class="mono">
+          <div style="font-weight:500">${fmt(val)}</div>
+          <div class="perf-total-sub ${isPos ? 'perf-pos' : 'perf-neg'}">${isPos ? '+' : ''}${pct.toFixed(2)}%</div>
+        </td>
         <td class="hide-mobile">
           <span class="${isPos ? 'badge-pos' : 'badge-neg'}">
             ${isPos ? '▲' : '▼'} ${fmt(Math.abs(pnl))} (${isPos ? '+' : ''}${pct.toFixed(2)}%)
           </span>
         </td>
         <td>${perfJourHtml}</td>
-        <td>
+        <td style="padding-right:12px">
           <div class="btn-portfolio-actions" style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
             <button class="btn-edit" onclick="openEditModal(${i})" title="Modifier">✏</button>
             <button class="btn-del" onclick="deleteRow(${i})" title="Supprimer">✕</button>

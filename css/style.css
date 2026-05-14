@@ -1288,6 +1288,7 @@ body.sb-collapsed .main { margin-left: 58px; }
 .perf-jour-cell { font-weight: 600; font-size: 12px; font-family: var(--mono); }
 .perf-pos { color: var(--positive); }
 .perf-neg { color: var(--negative); }
+.perf-total-sub { font-size: 10px; font-weight: 600; margin-top: 2px; font-family: var(--mono); }
 
 /* Portfolio accordéon mobile — desktop: tout caché */
 .mobile-detail-row { display: none !important; }
