@@ -3311,8 +3311,7 @@ async function renderPortfolioChart() {
     const sign  = pct >= 0 ? '+' : '';
     const color = isUp ? '#00e09e' : '#ff4d6a';
 
-    sub.textContent = 'Valeur totale · ' + sign + pct + '% sur la période · '
-      + last.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+    sub.textContent = sign + pct + '% depuis le début';
 
     const daysDuration = (now - graphStart) / 86400;
     const labels = dataset.map(p => {
@@ -3448,7 +3447,7 @@ async function renderPortfolioChart() {
         scales: {
           x: {
             grid:   { color: 'rgba(255,255,255,0.03)' },
-            ticks:  { color: '#495068', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 10 },
+            ticks:  { display: false },
             border: { color: 'rgba(255,255,255,0.04)' }
           },
           y: {
