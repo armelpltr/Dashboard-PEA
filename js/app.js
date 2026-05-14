@@ -795,7 +795,7 @@ function renderPortfolio() {
           </div>
         </td>
         <td class="mono">${row.qty}</td>
-        <td class="mono">${fmt(row.buyPrice)}</td>
+        <td class="mono hide-mobile">${fmt(row.buyPrice)}</td>
         <td class="mono">${fmt(row.currentPrice)}</td>
         <td class="mono" style="font-weight:500">${fmt(val)}</td>
         <td>
@@ -803,7 +803,7 @@ function renderPortfolio() {
             ${isPos ? '▲' : '▼'} ${fmt(Math.abs(pnl))} (${isPos ? '+' : ''}${pct.toFixed(2)}%)
           </span>
         </td>
-        <td>${(() => {
+        <td class="hide-mobile">${(() => {
           const chg = row.changePct || 0;
           const dayVal = row.qty * row.currentPrice * chg / 100;
           const cls = chg >= 0 ? 'badge-pos' : 'badge-neg';
@@ -912,9 +912,9 @@ function renderTxHistory() {
       '<td><span class="' + (isBuy ? 'badge-pos' : 'badge-neg') + '" style="font-size:11px;padding:3px 10px">' + (isBuy ? '▲ ACHAT' : '▼ VENTE') + '</span></td>' +
       '<td style="font-size:12px">' + (tx.name || tx.ticker || '—') + '</td>' +
       '<td class="mono" style="font-size:12px">' + tx.qty + '</td>' +
-      '<td class="mono" style="font-size:12px">' + tx.price.toFixed(2) + ' €</td>' +
+      '<td class="mono hide-mobile" style="font-size:12px">' + tx.price.toFixed(2) + ' €</td>' +
       '<td class="mono" style="font-size:12px">' + montant + ' €</td>' +
-      '<td class="mono" style="font-size:12px">' + pnlHtml + '</td>' +
+      '<td class="mono hide-mobile" style="font-size:12px">' + pnlHtml + '</td>' +
       '</tr>';
   }).join('');
 }

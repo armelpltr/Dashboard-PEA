@@ -1330,9 +1330,9 @@ body.sb-collapsed .main { margin-left: 58px; }
   /* Section cards */
   .section-card { padding: 16px 14px; }
 
-  /* Table container scroll horizontal */
-  .table-container { overflow-x: auto; }
-  .table-container table { min-width: 480px; }
+  /* Table container — no horizontal scroll */
+  .table-container { overflow-x: hidden; }
+  .table-container table { min-width: 0; width: 100%; }
 
   /* Modales plein écran sur mobile */
   .modal { width: 92vw !important; max-height: 85vh; overflow-y: auto; }
