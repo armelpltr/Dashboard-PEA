@@ -939,7 +939,8 @@ function renderTxHistory() {
   tbody.innerHTML = sorted.map(tx => {
     const isBuy = tx.type === 'buy';
     const montant = (tx.qty * tx.price).toFixed(2);
-    const dateStr = tx.date ? new Date(tx.date + 'T12:00:00').toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+    const _d = tx.date ? new Date(tx.date + 'T12:00:00') : null;
+    const dateStr = _d ? String(_d.getDate()).padStart(2,'0') + '/' + String(_d.getMonth()+1).padStart(2,'0') + '/' + String(_d.getFullYear()).slice(-2) : '—';
     const pnlHtml = tx.type === 'sell' && tx.realizedPnl != null
       ? '<span style="color:' + (tx.realizedPnl >= 0 ? 'var(--positive)' : 'var(--negative)') + ';font-weight:600">' + (tx.realizedPnl >= 0 ? '+' : '') + tx.realizedPnl.toFixed(2) + ' €</span>'
       : '<span style="color:var(--text3)">—</span>';
@@ -949,7 +950,7 @@ function renderTxHistory() {
       '<td style="font-size:12px">' + (tx.name || tx.ticker || '—') + '</td>' +
       '<td class="mono" style="font-size:12px">' + tx.qty + '</td>' +
       '<td class="mono hide-mobile" style="font-size:12px">' + tx.price.toFixed(2) + ' €</td>' +
-      '<td class="mono" style="font-size:12px">' + montant + ' €</td>' +
+      '<td class="mono" style="font-size:12px;white-space:nowrap">' + montant + ' €</td>' +
       '<td class="mono hide-mobile" style="font-size:12px">' + pnlHtml + '</td>' +
       '</tr>';
   }).join('');
