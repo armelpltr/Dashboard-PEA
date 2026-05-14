@@ -1383,7 +1383,6 @@ body.sb-collapsed .main { margin-left: 58px; }
     display: flex !important;
     flex-direction: row !important;
     overflow-x: auto !important;
-    scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     gap: 8px !important;
@@ -1395,7 +1394,6 @@ body.sb-collapsed .main { margin-left: 58px; }
     min-width: 148px !important;
     max-width: 148px !important;
     flex-shrink: 0 !important;
-    scroll-snap-align: start;
     padding: 14px 14px !important;
   }
   .stat-label {

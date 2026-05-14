@@ -419,6 +419,7 @@ async function startApp(user) {
   window.renderPortfolio();
   window.fetchAllLogos();
   if (!window.autoRefreshInterval) window.toggleAutoRefresh();
+  initStatCardsScroll();
   // Badge idées en arrière-plan
   _listenThreads(user);
   _startPresenceHeartbeat(user);
@@ -3832,6 +3833,33 @@ function countUp(el, target, duration, prefix, suffix) {
     if (progress < 1) requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
+}
+
+function initStatCardsScroll() {
+  if (window.innerWidth > 768) return;
+  const grid = document.querySelector('.stats-scroll-wrap .stats-grid');
+  if (!grid) return;
+  let paused = false;
+  let rafId = null;
+  const speed = 0.35;
+
+  function step() {
+    if (!paused) {
+      grid.scrollLeft += speed;
+      if (grid.scrollLeft >= grid.scrollWidth - grid.clientWidth - 1) {
+        grid.scrollLeft = 0;
+      }
+    }
+    rafId = requestAnimationFrame(step);
+  }
+
+  grid.addEventListener('touchstart', () => { paused = true; }, { passive: true });
+  grid.addEventListener('touchend',   () => { setTimeout(() => { paused = false; }, 2500); }, { passive: true });
+  grid.addEventListener('mouseenter', () => { paused = true; });
+  grid.addEventListener('mouseleave', () => { paused = false; });
+
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(step);
 }
 
 // Apply countUp to stat cards after render
