@@ -809,7 +809,11 @@ function renderPortfolio() {
         <td class="mono hide-mobile">${fmt(row.currentPrice)}</td>
         <td class="mono">
           <div style="font-weight:500">${fmt(val)}</div>
-          <div class="perf-total-sub ${isPos ? 'perf-pos' : 'perf-neg'}">${isPos ? '+' : ''}${pct.toFixed(2)}%</div>
+          <div class="perf-total-sub ${isPos ? 'perf-pos' : 'perf-neg'}"
+               data-pct="${isPos ? '+' : ''}${pct.toFixed(2)}%"
+               data-eur="${isPos ? '+' : ''}${fmt(Math.abs(pnl))}"
+               onclick="this.textContent=this.textContent===this.dataset.pct?this.dataset.eur:this.dataset.pct"
+               style="cursor:pointer">${isPos ? '+' : ''}${pct.toFixed(2)}%</div>
         </td>
         <td class="hide-mobile">
           <span class="${isPos ? 'badge-pos' : 'badge-neg'}">
@@ -817,7 +821,7 @@ function renderPortfolio() {
           </span>
         </td>
         <td>${perfJourHtml}</td>
-        <td style="padding-right:12px">
+        <td style="padding-right:16px">
           <div class="btn-portfolio-actions" style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
             <button class="btn-edit" onclick="openEditModal(${i})" title="Modifier">✏</button>
             <button class="btn-del" onclick="deleteRow(${i})" title="Supprimer">✕</button>
