@@ -7374,7 +7374,7 @@ function _updateFavicon(count) {
   try {
     const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
     const ctx = canvas.getContext('2d');
-    const img = new Image(); img.src = '/logo.png';
+    const img = new Image(); img.src = 'logo.png';
     img.onload = () => {
       ctx.drawImage(img, 0, 0, 32, 32);
       if (count > 0) {
@@ -7397,7 +7397,7 @@ function _requestNotifPermission() {
 function _showBrowserNotif(title, body, threadId) {
   if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
   try {
-    const n = new Notification('CapitalView — ' + title, { body, icon: '/logo.png' });
+    const n = new Notification('CapitalView — ' + title, { body, icon: 'logo.png' });
     n.onclick = () => { window.focus(); openIdeasPanel(); if (threadId) openThread(threadId); n.close(); };
     setTimeout(() => n.close(), 8000);
   } catch(e) {}
@@ -8824,7 +8824,7 @@ window.confirmRemoveMember = async function() {
 async function initPush(uid) {
   if (!fcmMessaging || !('serviceWorker' in navigator) || VAPID_KEY === 'YOUR_VAPID_KEY_HERE') return;
   try {
-    const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    const swReg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
     const token = await getFCMToken(fcmMessaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
     if (token) setFirestoreDoc(firestoreDoc(db, 'roles', uid), { fcmToken: token }, { merge: true }).catch(() => {});
     onFCMMessage(fcmMessaging, payload => {
