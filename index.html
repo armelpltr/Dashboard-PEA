@@ -592,62 +592,64 @@
           <div class="page-title">Performance</div>
           <div class="page-subtitle">Rendement TWR annuel — broker si CSV importé, sinon Yahoo Finance</div>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      </div>
 
-          <!-- Broker + import -->
-          <div style="display:flex;align-items:center;gap:0;border:1px solid var(--s3);border-radius:10px;overflow:hidden;background:var(--s2)">
-            <select id="broker-select"
-              style="font-size:11px;padding:7px 10px;background:transparent;color:var(--text2);border:none;outline:none;cursor:pointer;max-width:180px"
-              onchange="onBrokerSelectChange()">
-              <option value="">Votre broker…</option>
-              <option value="boursorama">Boursorama</option>
-              <option value="fortuneo">Fortuneo</option>
-              <option value="saxo">Saxo</option>
-              <option value="degiro">Degiro</option>
-              <option value="trade-republic">Trade Republic</option>
-              <option value="autre">Autre</option>
-            </select>
-            <div style="width:1px;height:18px;background:var(--s3)"></div>
-            <button onclick="onImportCSVClick()" id="btn-import-csv"
-              style="font-size:11px;padding:7px 12px;background:transparent;color:var(--text3);border:none;cursor:not-allowed;white-space:nowrap;opacity:0.45;display:flex;align-items:center;gap:5px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Importer CSV
-            </button>
-          </div>
+      <!-- Barre d'outils -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:18px">
 
-          <input type="file" id="input-daily-csv" accept=".csv" style="display:none" onchange="importDailyValuesCSV(event)">
-
-          <!-- Vider -->
-          <button onclick="clearDailyValues()" id="btn-clear-daily"
-            style="font-size:11px;padding:7px 11px;background:var(--s2);color:var(--text3);border:1px solid var(--s3);border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap"
-            title="Repasser au calcul Yahoo">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
-            Réinitialiser
+        <!-- Broker + import -->
+        <div style="display:flex;align-items:center;gap:0;border:1px solid var(--s3);border-radius:10px;overflow:hidden;background:var(--s2)">
+          <select id="broker-select"
+            style="font-size:11px;padding:7px 10px;background:transparent;color:var(--text2);border:none;outline:none;cursor:pointer;max-width:180px"
+            onchange="onBrokerSelectChange()">
+            <option value="">Votre broker…</option>
+            <option value="boursorama">Boursorama</option>
+            <option value="fortuneo">Fortuneo</option>
+            <option value="saxo">Saxo</option>
+            <option value="degiro">Degiro</option>
+            <option value="trade-republic">Trade Republic</option>
+            <option value="autre">Autre</option>
+          </select>
+          <div style="width:1px;height:18px;background:var(--s3)"></div>
+          <button onclick="onImportCSVClick()" id="btn-import-csv"
+            style="font-size:11px;padding:7px 12px;background:transparent;color:var(--text3);border:none;cursor:not-allowed;white-space:nowrap;opacity:0.45;display:flex;align-items:center;gap:5px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importer CSV
           </button>
-
-          <span id="daily-status" style="font-size:11px;color:var(--text3)"></span>
-
-          <!-- Exports -->
-          <div style="display:flex;align-items:center;gap:0;border:1px solid var(--s3);border-radius:10px;overflow:hidden;background:var(--s2);margin-left:4px">
-            <button onclick="exportVersementsCSV()"
-              style="font-size:11px;padding:7px 11px;background:transparent;color:var(--text3);border:none;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Versements
-            </button>
-            <div style="width:1px;height:18px;background:var(--s3)"></div>
-            <button onclick="exportTransactionsCSV()"
-              style="font-size:11px;padding:7px 11px;background:transparent;color:var(--text3);border:none;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Transactions
-            </button>
-            <div style="width:1px;height:18px;background:var(--s3)"></div>
-            <button onclick="exportDebugData()"
-              style="font-size:11px;padding:7px 11px;background:transparent;color:var(--text3);border:none;cursor:pointer;white-space:nowrap">
-              Debug
-            </button>
-          </div>
-
         </div>
+
+        <input type="file" id="input-daily-csv" accept=".csv" style="display:none" onchange="importDailyValuesCSV(event)">
+
+        <!-- Vider -->
+        <button onclick="clearDailyValues()" id="btn-clear-daily"
+          style="font-size:11px;padding:7px 11px;background:var(--s2);color:var(--text3);border:1px solid var(--s3);border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap"
+          title="Repasser au calcul Yahoo">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+          Réinitialiser
+        </button>
+
+        <span id="daily-status" style="font-size:11px;color:var(--text3)"></span>
+
+        <!-- Exports -->
+        <div style="display:flex;align-items:center;gap:0;border:1px solid var(--s3);border-radius:10px;overflow:hidden;background:var(--s2);margin-left:auto">
+          <button onclick="exportVersementsCSV()"
+            style="font-size:11px;padding:7px 11px;background:transparent;color:var(--text3);border:none;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Versements
+          </button>
+          <div style="width:1px;height:18px;background:var(--s3)"></div>
+          <button onclick="exportTransactionsCSV()"
+            style="font-size:11px;padding:7px 11px;background:transparent;color:var(--text3);border:none;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Transactions
+          </button>
+          <div style="width:1px;height:18px;background:var(--s3)"></div>
+          <button onclick="exportDebugData()"
+            style="font-size:11px;padding:7px 11px;background:transparent;color:var(--text3);border:none;cursor:pointer;white-space:nowrap">
+            Debug
+          </button>
+        </div>
+
       </div>
 
       <!-- KPI résumé -->
