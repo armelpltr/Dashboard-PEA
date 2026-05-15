@@ -309,6 +309,29 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .btn-outline:active {
   transform: translateY(1px);
 }
+.perf-action-btn {
+  font-size: 11px; padding: 7px 11px;
+  border-radius: 10px; cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+  white-space: nowrap; font-family: var(--sans);
+  font-weight: 500; border: 1px solid var(--s3);
+  background: var(--s2); color: var(--text3);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.perf-action-btn:hover { background: var(--s3); color: var(--text1); }
+.perf-btn-danger:hover { background: rgba(255,77,106,0.1); color: #ff4d6a; border-color: rgba(255,77,106,0.3); }
+
+.perf-export-btn {
+  font-size: 11px; padding: 7px 11px;
+  background: transparent; color: var(--text3);
+  border: none; cursor: pointer;
+  white-space: nowrap; display: flex;
+  align-items: center; gap: 5px;
+  font-family: var(--sans); font-weight: 500;
+  transition: color 0.15s, background 0.15s;
+}
+.perf-export-btn:hover { color: var(--text1); background: var(--s3); }
+
 .broker-opt {
   display: flex;
   align-items: center;

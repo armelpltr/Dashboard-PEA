@@ -644,9 +644,7 @@
         <input type="file" id="input-daily-csv" accept=".csv" style="display:none" onchange="importDailyValuesCSV(event)">
 
         <!-- Vider -->
-        <button onclick="clearDailyValues()" id="btn-clear-daily"
-          style="font-size:11px;padding:7px 11px;background:var(--s2);color:var(--text3);border:1px solid var(--s3);border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap"
-          title="Repasser au calcul Yahoo">
+        <button onclick="clearDailyValues()" id="btn-clear-daily" class="perf-action-btn perf-btn-danger">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
           Réinitialiser
         </button>
@@ -655,21 +653,14 @@
 
         <!-- Exports -->
         <div style="display:flex;align-items:center;gap:0;border:1px solid var(--s3);border-radius:10px;overflow:hidden;background:var(--s2);margin-left:auto">
-          <button onclick="exportVersementsCSV()"
-            style="font-size:11px;padding:7px 11px;background:transparent;color:var(--text3);border:none;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
+          <button onclick="exportVersementsCSV()" class="perf-export-btn">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Versements
           </button>
           <div style="width:1px;height:18px;background:var(--s3)"></div>
-          <button onclick="exportTransactionsCSV()"
-            style="font-size:11px;padding:7px 11px;background:transparent;color:var(--text3);border:none;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
+          <button onclick="exportTransactionsCSV()" class="perf-export-btn">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Transactions
-          </button>
-          <div style="width:1px;height:18px;background:var(--s3)"></div>
-          <button onclick="exportDebugData()"
-            style="font-size:11px;padding:7px 11px;background:transparent;color:var(--text3);border:none;cursor:pointer;white-space:nowrap">
-            Debug
           </button>
         </div>
 
