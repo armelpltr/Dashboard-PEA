@@ -593,7 +593,16 @@
           <div class="page-subtitle">Rendement TWR annuel — broker si CSV importé, sinon Yahoo Finance</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <button onclick="document.getElementById('input-daily-csv').click()" class="btn-outline" style="font-size:11px;padding:6px 12px;background:rgba(120,180,255,0.08)">⬆ Importer valorisation broker (CSV)</button>
+          <select id="broker-select" style="font-size:11px;padding:5px 10px;border-radius:8px;background:var(--s2);color:var(--text1);border:1px solid var(--s3);cursor:pointer" onchange="onBrokerSelectChange()">
+            <option value="">— Sélectionner votre broker —</option>
+            <option value="boursorama">Boursorama ✅ opérationnel</option>
+            <option value="fortuneo">Fortuneo (bientôt)</option>
+            <option value="saxo">Saxo (bientôt)</option>
+            <option value="degiro">Degiro (bientôt)</option>
+            <option value="trade-republic">Trade Republic (bientôt)</option>
+            <option value="autre">Autre</option>
+          </select>
+          <button onclick="onImportCSVClick()" class="btn-outline" id="btn-import-csv" style="font-size:11px;padding:6px 12px;background:rgba(120,180,255,0.08);opacity:0.4;pointer-events:none">⬆ Importer CSV</button>
           <input type="file" id="input-daily-csv" accept=".csv" style="display:none" onchange="importDailyValuesCSV(event)">
           <button onclick="clearDailyValues()" class="btn-outline" style="font-size:11px;padding:6px 12px" id="btn-clear-daily" title="Repasser au calcul Yahoo">✕ Vider</button>
           <span id="daily-status" style="font-size:11px;color:var(--text3);margin-right:8px"></span>

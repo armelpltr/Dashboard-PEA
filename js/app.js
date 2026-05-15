@@ -6585,6 +6585,29 @@ let _perfCache = null; // évite de refetch à chaque clic
 //    - Boursorama : "Date","Valorisation portefeuille","Perf période portefeuille","Perf cumulée portefeuille"
 //    - Générique  : Date,Valeur (séparateur , ou ;)
 // ─────────────────────────────────────────────────────────────────
+function onBrokerSelectChange() {
+  const sel = document.getElementById('broker-select');
+  const btn = document.getElementById('btn-import-csv');
+  const operational = ['boursorama'];
+  const chosen = sel.value;
+  if (!chosen) {
+    btn.style.opacity = '0.4'; btn.style.pointerEvents = 'none'; return;
+  }
+  if (operational.includes(chosen)) {
+    btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+  } else {
+    btn.style.opacity = '0.4'; btn.style.pointerEvents = 'none';
+    alert('Support ' + sel.options[sel.selectedIndex].text.replace(' (bientôt)','') + ' en cours de développement.\n\nSeul Boursorama est opérationnel pour le moment.');
+    sel.value = '';
+  }
+}
+
+function onImportCSVClick() {
+  const sel = document.getElementById('broker-select');
+  if (!sel.value) return;
+  document.getElementById('input-daily-csv').click();
+}
+
 function importDailyValuesCSV(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
