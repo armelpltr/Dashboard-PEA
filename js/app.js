@@ -4616,8 +4616,10 @@ async function enrichWatchlistRow(w, i) {
     const closes = (res.indicators && res.indicators.quote && res.indicators.quote[0].close) || [];
 
     const livePrice = meta.regularMarketPrice;
-    const prevClose = meta.chartPreviousClose != null ? meta.chartPreviousClose
-                    : (meta.previousClose != null ? meta.previousClose : null);
+    // closes[n-2] = close d'hier (chartPreviousClose = début du range 2mo, pas hier)
+    const dailyCloses = closes.filter(Boolean);
+    const prevClose = dailyCloses.length >= 2 ? dailyCloses[dailyCloses.length - 2]
+                    : (meta.previousClose ?? meta.chartPreviousClose ?? null);
     const dayChgPct = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
 
     // Prix live converti en €
