@@ -4440,8 +4440,7 @@ async function loadWlChart(i, ticker, period) {
 
     const meta   = res.meta || {};
     const ts     = res.timestamp || [];
-    const adjCloses = res.indicators && res.indicators.adjclose && res.indicators.adjclose[0] && res.indicators.adjclose[0].adjclose;
-    const closes = adjCloses || (res.indicators && res.indicators.quote && res.indicators.quote[0].close) || [];
+    const closes = (res.indicators && res.indicators.quote && res.indicators.quote[0].close) || [];
 
     const pts = [], labels = [];
     const isIntraday = interval === '5m' || interval === '15m';
