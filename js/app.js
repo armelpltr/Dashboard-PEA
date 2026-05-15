@@ -6723,26 +6723,29 @@ function importDailyValuesCSV(event) {
   reader.readAsText(file);
 }
 
-let _clearDailyTimer = null;
-function confirmClearDaily(btn) {
-  if (btn.dataset.step === '0') {
-    btn.dataset.step = '1';
-    document.getElementById('btn-clear-label').textContent = 'Confirmer ?';
-    btn.style.background = 'rgba(255,77,106,0.15)';
-    btn.style.color = '#ff4d6a';
-    btn.style.borderColor = 'rgba(255,77,106,0.4)';
-    _clearDailyTimer = setTimeout(() => {
-      btn.dataset.step = '0';
-      document.getElementById('btn-clear-label').textContent = 'Réinitialiser';
-      btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = '';
-    }, 3000);
-  } else {
-    clearTimeout(_clearDailyTimer);
-    btn.dataset.step = '0';
-    document.getElementById('btn-clear-label').textContent = 'Réinitialiser';
-    btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = '';
-    clearDailyValues();
-  }
+function confirmClearDaily() {
+  showConfirmModal({
+    icon: '🗑️',
+    title: 'Réinitialiser les données broker ?',
+    body: 'Toutes les valorisations importées seront supprimées.\nLa performance sera recalculée depuis Yahoo Finance.',
+    onConfirm: clearDailyValues,
+    danger: true
+  });
+}
+
+function showConfirmModal({ icon, title, body, onConfirm, danger = false }) {
+  const modal = document.getElementById('confirm-modal');
+  document.getElementById('confirm-modal-icon').textContent = icon || '';
+  document.getElementById('confirm-modal-title').textContent = title;
+  document.getElementById('confirm-modal-body').textContent = body;
+  const okBtn = document.getElementById('confirm-modal-ok');
+  okBtn.style.background = danger ? '#ff4d6a' : '#7c6df5';
+  okBtn.onclick = () => { closeConfirmModal(); onConfirm(); };
+  modal.style.display = 'flex';
+}
+
+function closeConfirmModal() {
+  document.getElementById('confirm-modal').style.display = 'none';
 }
 
 function clearDailyValues() {
