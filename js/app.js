@@ -4458,7 +4458,6 @@ async function loadWlChart(i, ticker, period) {
     const livePrice  = meta.regularMarketPrice;
     const prevClose  = meta.chartPreviousClose || meta.previousClose;
     const livePriceEur = livePrice != null ? toEur(livePrice, meta.currency) : null;
-    const isIntraday = interval === '5m' || interval === '15m';
 
     // Pour 1J/1S → variation jour. Pour les autres → perf sur la période (premier point → maintenant)
     let displayPct = null;
