@@ -4458,11 +4458,11 @@ async function loadWlChart(i, ticker, period) {
     const livePrice  = meta.regularMarketPrice;
     const prevClose  = meta.chartPreviousClose || meta.previousClose;
     const dayChgPct  = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
-    const ccy        = meta.currency === 'USD' ? ' $' : ' €';
+    const livePriceEur = livePrice != null ? toEur(livePrice, meta.currency) : null;
     const isUp       = pts.length >= 2 ? pts[pts.length - 1] >= pts[0] : true;
     const lineColor  = isUp ? '#00e09e' : '#ff4d6a';
 
-    if (elPrice)  elPrice.textContent  = livePrice != null ? livePrice.toFixed(2) + ccy : '—';
+    if (elPrice)  elPrice.textContent  = livePriceEur != null ? livePriceEur.toFixed(2) + ' €' : '—';
     if (elChange && dayChgPct != null) {
       elChange.textContent  = (dayChgPct >= 0 ? '+' : '') + dayChgPct.toFixed(2) + ' %';
       elChange.style.color  = dayChgPct >= 0 ? 'var(--positive)' : 'var(--negative)';
@@ -4512,7 +4512,7 @@ async function loadWlChart(i, ticker, period) {
             padding: 10,
             cornerRadius: 8,
             callbacks: {
-              label: ctx2 => ' ' + ctx2.parsed.y.toFixed(2) + ccy,
+              label: ctx2 => ' ' + toEur(ctx2.parsed.y, meta.currency).toFixed(2) + ' €',
             }
           }
         },
@@ -4572,11 +4572,11 @@ async function enrichWatchlistRow(w, i) {
     const prevClose = meta.chartPreviousClose != null ? meta.chartPreviousClose
                     : (meta.previousClose != null ? meta.previousClose : null);
     const dayChgPct = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
-    const ccy = meta.currency === 'USD' ? ' $' : ' €';
 
-    // Prix live
+    // Prix live converti en €
     if (elPrice) {
-      elPrice.textContent = livePrice != null ? livePrice.toFixed(2) + ccy : '—';
+      const priceEur = livePrice != null ? toEur(livePrice, meta.currency) : null;
+      elPrice.textContent = priceEur != null ? priceEur.toFixed(2) + ' €' : '—';
     }
 
     // Variation jour
