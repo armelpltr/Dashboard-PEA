@@ -4478,8 +4478,9 @@ async function loadWlChart(i, ticker, period) {
       const refCached = _wlChartPeriodCache[refKey];
       let refRaw = (refCached && (Date.now() - refCached.ts) < _WL_PERIOD_CACHE_TTL) ? refCached.raw : null;
       if (!refRaw) {
+        const cb5j = Math.floor(Date.now() / 300000);
         const refUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/'
-          + encodeURIComponent(yt5j) + '?interval=1d&range=1mo';
+          + encodeURIComponent(yt5j) + '?interval=1d&range=1mo&_=' + cb5j;
         refRaw = await fetchWithFallback(refUrl);
         _wlChartPeriodCache[refKey] = { raw: refRaw, ts: Date.now() };
       }
