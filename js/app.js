@@ -4323,11 +4323,10 @@ async function renderWatchlist() {
         '<td class="mono wl-daychg" style="text-align:right;color:var(--text2)">…</td>' +
         '<td class="wl-spark" style="min-width:120px;width:120px;padding:0 8px"><div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px">…</div></td>' +
         '<td class="mono wl-since" style="text-align:right;color:var(--text2)" title="Depuis le ' + (w.addedAt ? w.addedAt.slice(0,10) : '?') + ' @ ' + (addedPrice ? addedPrice.toFixed(2) + ' €' : '?') + '">…</td>' +
-        '<td class="mono wl-yield" style="text-align:right;color:var(--text2)">…</td>' +
         '<td style="text-align:right"><button class="btn-del" onclick="event.stopPropagation();removeFromWatchlist(' + i + ')" title="Retirer">✕</button></td>' +
       '</tr>' +
       '<tr id="wl-chart-row-' + i + '" class="wl-chart-row" style="display:none">' +
-        '<td colspan="7">' +
+        '<td colspan="6">' +
           '<div class="wl-chart-wrap">' +
             '<div class="wl-chart-header">' +
               '<div class="wl-chart-info">' +
