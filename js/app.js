@@ -6423,7 +6423,7 @@ function renderDivHistory(histEl) {
       ? '<span style="background:rgba(0,224,158,0.12);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">Pendant détention</span>'
       : '<span style="background:var(--s3);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Avant achat</span>';
     const statutBadge = e.source==='annoncé'
-      ? `<span style="background:rgba(245,183,49,0.12);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px">' + IC.clock + ' Annoncé · versement ${ds}</span>`
+      ? `<span style="background:rgba(245,183,49,0.12);color:var(--gold);font-size:10px;padding:1px 7px;border-radius:4px">${IC.clock} Versement annoncé le ${ds}</span>`
       : e.source==='reçu' || e.source==='reçu-auto'
       ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">✓ Reçu</span>'
       : '';
