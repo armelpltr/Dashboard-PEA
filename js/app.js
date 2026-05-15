@@ -4161,7 +4161,7 @@ async function refreshPrices() {
     setTimeout(pulseBadges, 200);
     const d = new Date();
     document.getElementById('portfolio-date').textContent =
-      'Mis à jour à ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+      'Valorisation au ' + d.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
   }
 }
 
