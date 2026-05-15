@@ -6585,22 +6585,44 @@ let _perfCache = null; // évite de refetch à chaque clic
 //    - Boursorama : "Date","Valorisation portefeuille","Perf période portefeuille","Perf cumulée portefeuille"
 //    - Générique  : Date,Valeur (séparateur , ou ;)
 // ─────────────────────────────────────────────────────────────────
-function onBrokerSelectChange() {
-  const sel = document.getElementById('broker-select');
-  const btn = document.getElementById('btn-import-csv');
-  const operational = ['boursorama'];
-  const chosen = sel.value;
-  if (!chosen) {
-    btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed'; btn.style.color = 'var(--text3)'; return;
-  }
-  if (operational.includes(chosen)) {
-    btn.style.opacity = '1'; btn.style.cursor = 'pointer'; btn.style.color = 'var(--text1)';
-  } else {
-    btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed'; btn.style.color = 'var(--text3)';
-    alert('Support ' + sel.options[sel.selectedIndex].text + ' en cours de développement.\n\nSeul Boursorama est opérationnel pour le moment.');
-    sel.value = '';
-  }
+function toggleBrokerDropdown() {
+  const menu = document.getElementById('broker-menu');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
 }
+
+function selectBroker(el) {
+  const value = el.dataset.value;
+  const label = el.dataset.label;
+  const logo  = el.dataset.logo;
+  const operational = ['boursorama'];
+
+  document.getElementById('broker-menu').style.display = 'none';
+
+  if (!operational.includes(value)) {
+    alert('Support ' + label + ' en cours de développement.\n\nSeul Boursorama est opérationnel pour le moment.');
+    return;
+  }
+
+  document.getElementById('broker-select').value = value;
+  document.getElementById('broker-trigger-label').textContent = label;
+  const iconWrap = document.getElementById('broker-trigger-icon');
+  document.getElementById('broker-trigger-img').src = logo;
+  iconWrap.style.display = 'inline-flex';
+  document.getElementById('broker-trigger').style.color = 'var(--text1)';
+
+  const btn = document.getElementById('btn-import-csv');
+  btn.style.opacity = '1'; btn.style.cursor = 'pointer'; btn.style.color = 'var(--text1)';
+}
+
+document.addEventListener('click', e => {
+  const dd = document.getElementById('broker-dropdown');
+  if (dd && !dd.contains(e.target)) {
+    const menu = document.getElementById('broker-menu');
+    if (menu) menu.style.display = 'none';
+  }
+});
+
+function onBrokerSelectChange() {} // legacy no-op
 
 function onImportCSVClick() {
   const sel = document.getElementById('broker-select');
