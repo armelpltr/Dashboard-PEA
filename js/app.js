@@ -4465,8 +4465,17 @@ async function loadWlChart(i, ticker, period) {
       );
     }
 
-    const livePrice  = meta.regularMarketPrice;
+    let livePrice  = meta.regularMarketPrice;
     const prevClose  = meta.chartPreviousClose || meta.previousClose;
+    // Sparkline cache a le prix frais (fetché par enrichWatchlistRow) → override si dispo
+    const sparkCached = _wlChartCache[ticker];
+    if (sparkCached && interval !== '5m') {
+      try {
+        const sp = JSON.parse(sparkCached.raw);
+        const spPrice = sp.chart?.result?.[0]?.meta?.regularMarketPrice;
+        if (spPrice != null) livePrice = spPrice;
+      } catch(e) {}
+    }
     const livePriceEur = livePrice != null ? toEur(livePrice, meta.currency) : null;
 
     // Pour 5J : référence = close d'exactement 5 jours de trading en arrière (pas dans range=5d)
