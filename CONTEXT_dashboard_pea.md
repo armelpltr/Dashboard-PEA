@@ -6,13 +6,11 @@
 
 ## En cours (2026-05-15) — à reprendre
 
-### Watchlist inline chart — % période pas encore calé sur Yahoo Finance
+### Watchlist inline chart — ✅ Résolu (2026-05-15)
 - Feature implémentée : clic sur ligne watchlist → chart Chart.js inline avec boutons 1J/1S/1M/3M/6M/1A/Max
 - Prix converti en € via `toEur()` (Yahoo retourne parfois USD pour .PA via CORS proxy)
 - Max = `period1=946886400` (jan 2000) + params Yahoo exacts, comme reverse-engineered depuis Network tab
-- **Problème ouvert** : % affiché sur "Max" ne colle pas à Yahoo Finance (625% vs 578% sur AI.PA)
-- Dernière tentative : `open[0]` comme prix de départ au lieu de `close[0]` → non confirmé
-- Piste suivante : vérifier si Yahoo calcule le % depuis `chartPreviousClose` du premier point, ou via une autre méthode
+- **% période calé sur Yahoo Finance** — problème résolu
 - Fonctions concernées : `loadWlChart()` dans `js/app.js` (~ligne 4410)
 
 ## État du projet (2026-05-14)
