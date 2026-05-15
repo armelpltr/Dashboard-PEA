@@ -4335,7 +4335,7 @@ async function renderWatchlist() {
                 '<div class="wl-chart-change" id="wl-cchange-' + i + '"></div>' +
               '</div>' +
               '<div class="wl-period-bar" id="wl-pbar-' + i + '">' +
-                ['1J','1S','1M','3M','6M','1A','Max'].map((p, pi) =>
+                ['1J','5J','1M','6M','AAJ','1A','5A','ALL'].map((p, pi) =>
                   '<button class="wl-period-btn' + (pi === 2 ? ' active' : '') + '" onclick="event.stopPropagation();wlSetPeriod(' + i + ',\'' + w.ticker + '\',\'' + p + '\',this)">' + p + '</button>'
                 ).join('') +
               '</div>' +
@@ -4377,12 +4377,13 @@ const _WL_PERIOD_CACHE_TTL = 5 * 60 * 1000;
 
 const WL_PERIODS = {
   '1J':  { range: '1d',  interval: '5m'  },
-  '1S':  { range: '5d',  interval: '15m' },
+  '5J':  { range: '5d',  interval: '15m' },
   '1M':  { range: '1mo', interval: '1d'  },
-  '3M':  { range: '3mo', interval: '1d'  },
   '6M':  { range: '6mo', interval: '1d'  },
+  'AAJ': { range: 'ytd', interval: '1d'  },
   '1A':  { range: '1y',  interval: '1d'  },
-  'Max': { period1: 946886400,            interval: '1mo' }, // Yahoo "Tous" = depuis jan 2000
+  '5A':  { range: '5y',  interval: '1wk' },
+  'ALL': { period1: 946886400,            interval: '1mo' },
 };
 
 function toggleWatchlistChart(i, ticker) {
@@ -4468,7 +4469,7 @@ async function loadWlChart(i, ticker, period) {
     const prevClose  = meta.chartPreviousClose || meta.previousClose;
     const livePriceEur = livePrice != null ? toEur(livePrice, meta.currency) : null;
 
-    // Pour 1J/1S → variation jour. Pour les autres → perf sur la période (premier point → maintenant)
+    // Pour 1J/5J → variation jour. Pour les autres → perf sur la période (premier point → maintenant)
     let displayPct = null;
     if (isIntraday) {
       displayPct = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
