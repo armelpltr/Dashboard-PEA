@@ -3344,6 +3344,42 @@ async function renderPortfolioChart() {
       pctEl.onclick = () => { pctEl.textContent = pctEl.textContent === pctEl.dataset.pct ? pctEl.dataset.eur : pctEl.dataset.pct; };
     }
 
+    // ── Tagline dynamique ────────────────────────────────────────────────────
+    const taglineEl = document.getElementById('portf-tagline');
+    if (taglineEl) {
+      const nDays  = Math.round((now - oldestTs) / 86400);
+      const xEur   = (totalPnl >= 0 ? '+' : '') + totalPnl.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+      const oldestDate = new Date(oldestTs * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+      const positives = [
+        `${xEur} générés en ${nDays} jours · patience récompensée`,
+        `${nDays} jours investis · votre discipline paie`,
+        `+${pct}% · vous faites mieux que la majorité des épargnants`,
+        `${xEur} de plus · chaque jour investi compte`,
+        `+${pct}% · votre PEA travaille pendant que vous dormez`,
+        `${nDays} jours de cap maintenu · bravo`,
+        `${xEur} · c'est ça, l'effet du temps en bourse`,
+        `"Le risque vient de ne pas savoir ce qu'on fait" — Warren Buffett`,
+        `"L'investissement est simple, mais pas facile" — Warren Buffett`,
+        `"En bourse, le temps est votre meilleur ami" — Warren Buffett`,
+      ];
+      const negatives = [
+        `Tout investisseur connaît des jours comme celui-ci`,
+        `La patience est la première vertu de l'investisseur`,
+        `Chaque grand portefeuille a traversé des tempêtes`,
+        `Ce n'est qu'une étape · votre cap reste le bon`,
+        `Le temps est le seul allié qui ne trahit jamais`,
+        `Les plus belles hausses succèdent aux baisses`,
+        `Même les meilleurs investisseurs ont connu ça`,
+        `Rester investi, c'est déjà gagner sur le long terme`,
+        `"La bourse transfère l'argent des impatients aux patients" — Warren Buffett`,
+        `"Ne testez jamais la profondeur d'un fleuve avec les deux pieds" — W. Buffett`,
+      ];
+      const pool = isUp ? positives : negatives;
+      // Phrase du jour — change chaque jour, stable dans la journée
+      const dayIndex = Math.floor(Date.now() / 86400000) % pool.length;
+      taglineEl.textContent = pool[dayIndex];
+    }
+
     const daysDuration = (now - graphStart) / 86400;
     const labels = dataset.map(p => {
       const dt = new Date(p.ts * 1000);
