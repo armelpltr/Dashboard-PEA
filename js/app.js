@@ -6386,10 +6386,12 @@ function initDividendes() {
       const oneYearAgo = new Date(); oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
       const oneYearAgoStr = oneYearAgo.toISOString().slice(0, 10);
       const projRows = rows.map(({ r, history, lastKnown }) => {
-        if (!lastKnown) return null;
+        const nextEntry = history.find(d => d.next === true);
+        const refDiv = nextEntry || lastKnown;
+        if (!refDiv) return null;
         const freq = Math.max(history.filter(d => !d.next && d.date >= oneYearAgoStr).length, 1);
-        const annual = lastKnown.amount * r.qty * freq;
-        return { ticker: r.ticker, name: r.name, amount: lastKnown.amount, qty: r.qty, freq, annual };
+        const annual = refDiv.amount * r.qty * freq;
+        return { ticker: r.ticker, name: r.name, amount: refDiv.amount, qty: r.qty, freq, annual, announced: !!nextEntry };
       }).filter(Boolean).sort((a, b) => b.annual - a.annual);
 
       const totalAnnual  = projRows.reduce((s, x) => s + x.annual, 0);
@@ -6415,7 +6417,7 @@ function initDividendes() {
                 <div style="width:${(p.annual / maxAnnual * 100).toFixed(1)}%;height:100%;background:var(--gold);border-radius:4px;transition:width 0.4s"></div>
               </div>
               <div style="font-family:var(--mono);font-size:12px;color:var(--gold);font-weight:600;width:70px;text-align:right">${p.annual.toFixed(2)} €</div>
-              <div style="font-size:10px;color:var(--text3);width:80px;text-align:right">${p.freq}×/an · ${p.amount.toFixed(2)}€/act</div>
+              <div style="font-size:10px;color:var(--text3);width:80px;text-align:right">${p.freq}×/an · ${p.amount.toFixed(2)}€/act${p.announced ? ' <span style="color:var(--gold)">·&nbsp;annoncé</span>' : ''}</div>
             </div>`).join('')}
         </div>`;
     }
