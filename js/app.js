@@ -6751,6 +6751,17 @@ function closeConfirmModal() {
 function clearDailyValues() {
   saveDailyValues(currentUser, []);
   _perfCache = null;
+  // Reset broker dropdown
+  const brokerInput = document.getElementById('broker-select');
+  const triggerLabel = document.getElementById('broker-trigger-label');
+  const triggerIcon  = document.getElementById('broker-trigger-icon');
+  const triggerEl    = document.getElementById('broker-trigger');
+  const importBtn    = document.getElementById('btn-import-csv');
+  if (brokerInput)  brokerInput.value = '';
+  if (triggerLabel) triggerLabel.textContent = 'Votre broker…';
+  if (triggerIcon)  triggerIcon.style.display = 'none';
+  if (triggerEl)    triggerEl.style.color = 'var(--text3)';
+  if (importBtn)    { importBtn.style.opacity = '0.45'; importBtn.style.cursor = 'not-allowed'; importBtn.style.color = 'var(--text3)'; }
   updateDailyStatus();
   if (typeof initPerformance === 'function') initPerformance();
 }
