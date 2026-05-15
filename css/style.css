@@ -1485,3 +1485,46 @@ body.sb-collapsed .main { margin-left: 58px; }
 }
 
 @keyframes fadeInScale { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
+
+/* ═══════════════════════════════════════════════════
+   WATCHLIST INLINE CHART
+   ═══════════════════════════════════════════════════ */
+.wl-row-clickable { cursor: pointer; }
+.wl-row-clickable:hover td { background: rgba(255,255,255,0.025) !important; }
+.wl-row-clickable.expanded td { background: rgba(124,109,245,0.04) !important; border-bottom: none !important; }
+
+.wl-chart-row td { padding: 0 !important; border-bottom: 1px solid var(--border) !important; }
+.wl-chart-wrap {
+  padding: 16px 20px 20px;
+  background: rgba(10,12,20,0.6);
+  border-top: 1px solid rgba(124,109,245,0.12);
+  animation: wl-expand 0.28s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes wl-expand { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+
+.wl-chart-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px; flex-wrap: wrap; gap: 10px;
+}
+.wl-chart-info { display: flex; flex-direction: column; gap: 2px; }
+.wl-chart-price {
+  font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--text);
+  letter-spacing: -0.5px;
+}
+.wl-chart-change {
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+}
+.wl-period-bar { display: flex; gap: 3px; }
+.wl-period-btn {
+  padding: 5px 10px; border-radius: 7px; border: 1px solid var(--border);
+  background: transparent; color: var(--text3); font-size: 11px;
+  font-family: var(--mono); cursor: pointer; transition: all 0.15s;
+  font-weight: 500;
+}
+.wl-period-btn:hover { border-color: var(--border2); color: var(--text); background: var(--s2); }
+.wl-period-btn.active { background: var(--accent-d); border-color: rgba(124,109,245,0.25); color: var(--accent); }
+.wl-chart-canvas-wrap { position: relative; height: 180px; }
+.wl-chart-loading {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--text3); font-size: 11px; font-family: var(--mono);
+}

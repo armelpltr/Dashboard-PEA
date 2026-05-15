@@ -4315,7 +4315,7 @@ async function renderWatchlist() {
     const rowId = 'wl-row-' + i;
     const addedPrice = w.addedPrice || w.price; // compat données existantes
     return (
-      '<tr id="' + rowId + '">' +
+      '<tr id="' + rowId + '" class="wl-row-clickable" onclick="toggleWatchlistChart(' + i + ',\'' + w.ticker + '\')">' +
         '<td><div class="ticker-cell">' + logoHtml(w.ticker, 26, 'ticker-icon') +
           '<div><div class="ticker-name">' + (w.name || w.ticker) + '</div>' +
           '<div class="ticker-sym">' + w.ticker + '</div></div></div></td>' +
@@ -4324,7 +4324,28 @@ async function renderWatchlist() {
         '<td class="wl-spark" style="min-width:120px;width:120px;padding:0 8px"><div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px">…</div></td>' +
         '<td class="mono wl-since" style="text-align:right;color:var(--text2)" title="Depuis le ' + (w.addedAt ? w.addedAt.slice(0,10) : '?') + ' @ ' + (addedPrice ? addedPrice.toFixed(2) + ' €' : '?') + '">…</td>' +
         '<td class="mono wl-yield" style="text-align:right;color:var(--text2)">…</td>' +
-        '<td style="text-align:right"><button class="btn-del" onclick="removeFromWatchlist(' + i + ')" title="Retirer">✕</button></td>' +
+        '<td style="text-align:right"><button class="btn-del" onclick="event.stopPropagation();removeFromWatchlist(' + i + ')" title="Retirer">✕</button></td>' +
+      '</tr>' +
+      '<tr id="wl-chart-row-' + i + '" class="wl-chart-row" style="display:none">' +
+        '<td colspan="7">' +
+          '<div class="wl-chart-wrap">' +
+            '<div class="wl-chart-header">' +
+              '<div class="wl-chart-info">' +
+                '<div class="wl-chart-price" id="wl-cprice-' + i + '">—</div>' +
+                '<div class="wl-chart-change" id="wl-cchange-' + i + '"></div>' +
+              '</div>' +
+              '<div class="wl-period-bar" id="wl-pbar-' + i + '">' +
+                ['1J','1S','1M','3M','6M','1A','Max'].map((p, pi) =>
+                  '<button class="wl-period-btn' + (pi === 2 ? ' active' : '') + '" onclick="event.stopPropagation();wlSetPeriod(' + i + ',\'' + w.ticker + '\',\'' + p + '\',this)">' + p + '</button>'
+                ).join('') +
+              '</div>' +
+            '</div>' +
+            '<div class="wl-chart-canvas-wrap">' +
+              '<div class="wl-chart-loading" id="wl-cloading-' + i + '">Chargement…</div>' +
+              '<canvas id="wl-canvas-' + i + '" style="display:none"></canvas>' +
+            '</div>' +
+          '</div>' +
+        '</td>' +
       '</tr>'
     );
   }).join('');
@@ -4347,6 +4368,180 @@ async function fetchWatchlistChart(ticker) {
   );
   _wlChartCache[ticker] = { ts: now, raw };
   return raw;
+}
+
+// ─── WATCHLIST INLINE CHART ───────────────────────
+const _wlChartInstances = {};
+const _wlChartPeriodCache = {};
+
+const WL_PERIODS = {
+  '1J':  { range: '1d',  interval: '5m'  },
+  '1S':  { range: '5d',  interval: '15m' },
+  '1M':  { range: '1mo', interval: '1d'  },
+  '3M':  { range: '3mo', interval: '1d'  },
+  '6M':  { range: '6mo', interval: '1d'  },
+  '1A':  { range: '1y',  interval: '1d'  },
+  'Max': { range: '5y',  interval: '1wk' },
+};
+
+function toggleWatchlistChart(i, ticker) {
+  const chartRow = document.getElementById('wl-chart-row-' + i);
+  const dataRow  = document.getElementById('wl-row-' + i);
+  if (!chartRow) return;
+  const isOpen = chartRow.style.display !== 'none';
+  if (isOpen) {
+    chartRow.style.display = 'none';
+    dataRow.classList.remove('expanded');
+  } else {
+    chartRow.style.display = '';
+    dataRow.classList.add('expanded');
+    if (!_wlChartInstances[i]) {
+      loadWlChart(i, ticker, '1M');
+    }
+  }
+}
+
+function wlSetPeriod(i, ticker, period, btn) {
+  const bar = document.getElementById('wl-pbar-' + i);
+  if (bar) bar.querySelectorAll('.wl-period-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  loadWlChart(i, ticker, period);
+}
+
+async function loadWlChart(i, ticker, period) {
+  const canvas   = document.getElementById('wl-canvas-' + i);
+  const loading  = document.getElementById('wl-cloading-' + i);
+  const elPrice  = document.getElementById('wl-cprice-' + i);
+  const elChange = document.getElementById('wl-cchange-' + i);
+  if (!canvas) return;
+
+  if (loading) { loading.style.display = 'flex'; canvas.style.display = 'none'; }
+
+  const { range, interval } = WL_PERIODS[period] || WL_PERIODS['1M'];
+  const cacheKey = ticker + '_' + range + '_' + interval;
+
+  try {
+    let raw = _wlChartPeriodCache[cacheKey];
+    if (!raw) {
+      const yt = resolveToYahooTicker(ticker);
+      raw = await fetchWithFallback(
+        'https://query1.finance.yahoo.com/v8/finance/chart/'
+        + encodeURIComponent(yt) + '?interval=' + interval + '&range=' + range
+      );
+      _wlChartPeriodCache[cacheKey] = raw;
+    }
+
+    const d = JSON.parse(raw);
+    const res = d.chart && d.chart.result && d.chart.result[0];
+    if (!res) throw new Error('no data');
+
+    const meta   = res.meta || {};
+    const ts     = res.timestamp || [];
+    const closes = (res.indicators && res.indicators.quote && res.indicators.quote[0].close) || [];
+
+    const pts = [], labels = [];
+    const isIntraday = interval === '5m' || interval === '15m';
+    for (let k = 0; k < ts.length; k++) {
+      if (closes[k] == null) continue;
+      pts.push(closes[k]);
+      const dt = new Date(ts[k] * 1000);
+      labels.push(isIntraday
+        ? dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        : dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+      );
+    }
+
+    const livePrice  = meta.regularMarketPrice;
+    const prevClose  = meta.chartPreviousClose || meta.previousClose;
+    const dayChgPct  = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
+    const ccy        = meta.currency === 'USD' ? ' $' : ' €';
+    const isUp       = pts.length >= 2 ? pts[pts.length - 1] >= pts[0] : true;
+    const lineColor  = isUp ? '#00e09e' : '#ff4d6a';
+
+    if (elPrice)  elPrice.textContent  = livePrice != null ? livePrice.toFixed(2) + ccy : '—';
+    if (elChange && dayChgPct != null) {
+      elChange.textContent  = (dayChgPct >= 0 ? '+' : '') + dayChgPct.toFixed(2) + ' %';
+      elChange.style.color  = dayChgPct >= 0 ? 'var(--positive)' : 'var(--negative)';
+    }
+
+    if (_wlChartInstances[i]) { _wlChartInstances[i].destroy(); delete _wlChartInstances[i]; }
+
+    if (loading) loading.style.display = 'none';
+    canvas.style.display = 'block';
+
+    const ctx = canvas.getContext('2d');
+    _wlChartInstances[i] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: pts,
+          borderColor: lineColor,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: lineColor,
+          tension: 0.2,
+          fill: true,
+          spanGaps: true,
+          backgroundColor: (ctx2) => {
+            const g = ctx2.chart.ctx.createLinearGradient(0, 0, 0, 180);
+            g.addColorStop(0, isUp ? 'rgba(0,224,158,0.15)' : 'rgba(255,77,106,0.15)');
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            return g;
+          },
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 600, easing: 'easeOutQuart' },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#10121c',
+            borderColor: 'rgba(255,255,255,0.06)',
+            borderWidth: 1,
+            titleColor: '#8892a8',
+            bodyColor: '#edf0f7',
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: {
+              label: ctx2 => ' ' + ctx2.parsed.y.toFixed(2) + ccy,
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { display: false },
+            ticks: {
+              color: '#495068',
+              font: { family: "'JetBrains Mono', monospace", size: 10 },
+              maxTicksLimit: 6,
+              maxRotation: 0,
+            }
+          },
+          y: {
+            position: 'right',
+            grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+            border: { display: false },
+            ticks: {
+              color: '#495068',
+              font: { family: "'JetBrains Mono', monospace", size: 10 },
+              maxTicksLimit: 5,
+              callback: v => v.toFixed(2),
+            }
+          }
+        }
+      }
+    });
+
+  } catch(e) {
+    if (loading) { loading.textContent = 'Données indisponibles'; loading.style.display = 'flex'; }
+    canvas.style.display = 'none';
+  }
 }
 
 async function enrichWatchlistRow(w, i) {
