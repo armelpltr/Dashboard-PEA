@@ -4448,7 +4448,9 @@ async function loadWlChart(i, ticker, period) {
 
     const meta   = res.meta || {};
     const ts     = res.timestamp || [];
-    const closes = (res.indicators && res.indicators.quote && res.indicators.quote[0].close) || [];
+    const quote  = res.indicators && res.indicators.quote && res.indicators.quote[0];
+    const closes = (quote && quote.close) || [];
+    const opens  = (quote && quote.open)  || [];
 
     const pts = [], labels = [];
     const isIntraday = interval === '5m' || interval === '15m';
@@ -4471,8 +4473,10 @@ async function loadWlChart(i, ticker, period) {
     if (isIntraday) {
       displayPct = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
     } else if (pts.length >= 2) {
-      const endPrice = livePrice || pts[pts.length - 1];
-      displayPct = ((endPrice / pts[0]) - 1) * 100;
+      const endPrice  = livePrice || pts[pts.length - 1];
+      // Yahoo Finance utilise le prix d'ouverture du 1er mois comme référence de départ
+      const startPrice = (opens[0] != null ? opens[0] : pts[0]);
+      displayPct = ((endPrice / startPrice) - 1) * 100;
     }
 
     const isUp      = pts.length >= 2 ? pts[pts.length - 1] >= pts[0] : true;
