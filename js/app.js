@@ -4463,7 +4463,8 @@ async function loadWlChart(i, ticker, period) {
     if (isIntraday) {
       displayPct = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
     } else if (pts.length >= 2) {
-      displayPct = ((pts[pts.length - 1] / pts[0]) - 1) * 100;
+      const endPrice = livePrice || pts[pts.length - 1];
+      displayPct = ((endPrice / pts[0]) - 1) * 100;
     }
 
     const isUp      = pts.length >= 2 ? pts[pts.length - 1] >= pts[0] : true;
