@@ -4469,14 +4469,35 @@ async function loadWlChart(i, ticker, period) {
     const prevClose  = meta.chartPreviousClose || meta.previousClose;
     const livePriceEur = livePrice != null ? toEur(livePrice, meta.currency) : null;
 
-    // Pour 1J/5J → variation jour. Pour les autres → perf sur la période (premier point → maintenant)
+    // Pour 5J : référence = close d'exactement 5 jours de trading en arrière (pas dans range=5d)
+    let ref5j = null;
+    if (interval === '15m') {
+      const yt5j = resolveToYahooTicker(ticker);
+      const refKey = ticker + '_5J_ref';
+      const refCached = _wlChartPeriodCache[refKey];
+      let refRaw = (refCached && (Date.now() - refCached.ts) < _WL_PERIOD_CACHE_TTL) ? refCached.raw : null;
+      if (!refRaw) {
+        const refUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/'
+          + encodeURIComponent(yt5j) + '?interval=1d&range=1mo';
+        refRaw = await fetchWithFallback(refUrl);
+        _wlChartPeriodCache[refKey] = { raw: refRaw, ts: Date.now() };
+      }
+      const refD = JSON.parse(refRaw);
+      const refRes = refD.chart?.result?.[0];
+      if (refRes) {
+        const refCloses = (refRes.indicators.quote[0].close || []).filter(Boolean);
+        const idx = refCloses.length - 1 - 5;
+        if (idx >= 0) ref5j = refCloses[idx];
+      }
+    }
+
     let displayPct = null;
     if (isIntraday) {
       displayPct = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
     } else if (pts.length >= 2) {
       const endPrice  = livePrice || pts[pts.length - 1];
       const startPrice = interval === '15m'
-        ? pts[0]                                            // 5J → close du 1er point (5 jours)
+        ? (ref5j || pts[0])                                 // 5J → close 5 jours de trading en arrière
         : periodDef.period1
           ? (opens[0] != null ? opens[0] : pts[0])         // ALL → open[0]
           : (meta.chartPreviousClose || opens[0] || pts[0]); // autres → chartPreviousClose
