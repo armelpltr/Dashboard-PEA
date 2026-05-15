@@ -4601,8 +4601,6 @@ async function enrichWatchlistRow(w, i) {
   const elDay    = row.querySelector('.wl-daychg');
   const elSpark  = row.querySelector('.wl-spark');
   const elSince  = row.querySelector('.wl-since');
-  const elYield  = row.querySelector('.wl-yield');
-
   const setErr = el => { if (el) { el.textContent = '—'; el.style.color = 'var(--text3)'; } };
 
   try {
@@ -4658,16 +4656,8 @@ async function enrichWatchlistRow(w, i) {
       } else setErr(elSince);
     }
 
-    // Dividend yield — demande du module quoteSummary
-    fetchDividendYield(w.ticker).then(dy => {
-      if (!elYield) return;
-      if (dy == null) { setErr(elYield); return; }
-      elYield.textContent = (dy * 100).toFixed(2) + ' %';
-      elYield.style.color = 'var(--text)';
-    }).catch(() => setErr(elYield));
-
   } catch (e) {
-    setErr(elPrice); setErr(elDay); setErr(elSince); setErr(elYield);
+    setErr(elPrice); setErr(elDay); setErr(elSince);
     if (elSpark) elSpark.innerHTML = '<div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px">—</div>';
   }
 }
