@@ -4495,7 +4495,7 @@ async function loadWlChart(i, ticker, period) {
     if (isIntraday) {
       displayPct = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
     } else if (pts.length >= 2) {
-      const endPrice  = livePrice || pts[pts.length - 1];
+      const endPrice  = (interval === '5m' ? livePrice : null) || pts[pts.length - 1];
       const startPrice = interval === '15m'
         ? (ref5j || pts[0])                                 // 5J → close 5 jours de trading en arrière
         : periodDef.period1
