@@ -4479,7 +4479,6 @@ async function loadWlChart(i, ticker, period) {
         ? (opens[0] != null ? opens[0] : pts[0])
         : (meta.chartPreviousClose || opens[0] || pts[0]);
       displayPct = ((endPrice / startPrice) - 1) * 100;
-      console.log('[WL %]', period, { chartPreviousClose: meta.chartPreviousClose, opens0: opens[0], pts0: pts[0], endPrice, startPrice, displayPct });
     }
 
     const isUp      = pts.length >= 2 ? pts[pts.length - 1] >= pts[0] : true;
