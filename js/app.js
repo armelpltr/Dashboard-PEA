@@ -6380,6 +6380,46 @@ function initDividendes() {
       </div>
       <div class="stat-value" style="font-size:16px;color:var(--gold)">${nextRows[0].nextEstim}</div>`;
 
+    // ── Projection dividendes annuels ────────────────────────────────────────
+    const projEl = document.getElementById('div-projection-content');
+    if (projEl) {
+      const oneYearAgo = new Date(); oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const oneYearAgoStr = oneYearAgo.toISOString().slice(0, 10);
+      const projRows = rows.map(({ r, history, lastKnown }) => {
+        if (!lastKnown) return null;
+        const freq = Math.max(history.filter(d => !d.next && d.date >= oneYearAgoStr).length, 1);
+        const annual = lastKnown.amount * r.qty * freq;
+        return { ticker: r.ticker, name: r.name, amount: lastKnown.amount, qty: r.qty, freq, annual };
+      }).filter(Boolean).sort((a, b) => b.annual - a.annual);
+
+      const totalAnnual  = projRows.reduce((s, x) => s + x.annual, 0);
+      const totalMonthly = totalAnnual / 12;
+      const maxAnnual    = Math.max(...projRows.map(x => x.annual), 1);
+
+      projEl.innerHTML = `
+        <div style="display:flex;gap:32px;margin-bottom:20px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Annuel estimé</div>
+            <div style="font-size:28px;font-weight:700;color:var(--gold);font-family:var(--mono)">${totalAnnual.toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 })} €</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Mensuel moyen</div>
+            <div style="font-size:28px;font-weight:700;color:var(--positive);font-family:var(--mono)">${totalMonthly.toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 })} €</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${projRows.map(p => `
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:110px;font-size:12px;font-weight:600;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+              <div style="flex:1;background:var(--s2);border-radius:4px;height:6px;overflow:hidden">
+                <div style="width:${(p.annual / maxAnnual * 100).toFixed(1)}%;height:100%;background:var(--gold);border-radius:4px;transition:width 0.4s"></div>
+              </div>
+              <div style="font-family:var(--mono);font-size:12px;color:var(--gold);font-weight:600;width:70px;text-align:right">${p.annual.toFixed(2)} €</div>
+              <div style="font-size:10px;color:var(--text3);width:80px;text-align:right">${p.freq}×/an · ${p.amount.toFixed(2)}€/act</div>
+            </div>`).join('')}
+        </div>`;
+    }
+
     // Tableau
     if (tbody) tbody.innerHTML = !rows.length
       ? '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Aucune action en portefeuille</td></tr>'
