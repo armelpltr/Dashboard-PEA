@@ -4,6 +4,17 @@
 ## Notes de collaboration
 - Ne pas hésiter à proposer l'utilisation de Claude Opus pour les tâches complexes (refactoring majeur, architecture, optimisation avancée).
 
+## En cours (2026-05-15) — à reprendre
+
+### Watchlist inline chart — % période pas encore calé sur Yahoo Finance
+- Feature implémentée : clic sur ligne watchlist → chart Chart.js inline avec boutons 1J/1S/1M/3M/6M/1A/Max
+- Prix converti en € via `toEur()` (Yahoo retourne parfois USD pour .PA via CORS proxy)
+- Max = `period1=946886400` (jan 2000) + params Yahoo exacts, comme reverse-engineered depuis Network tab
+- **Problème ouvert** : % affiché sur "Max" ne colle pas à Yahoo Finance (625% vs 578% sur AI.PA)
+- Dernière tentative : `open[0]` comme prix de départ au lieu de `close[0]` → non confirmé
+- Piste suivante : vérifier si Yahoo calcule le % depuis `chartPreviousClose` du premier point, ou via une autre méthode
+- Fonctions concernées : `loadWlChart()` dans `js/app.js` (~ligne 4410)
+
 ## État du projet (2026-05-14)
 
 ### Architecture dividendes
@@ -32,3 +43,40 @@ AI.PA→1rPAI, TTE.PA→1rPTTE, BNP.PA→1rPBNP, ACA.PA→1rPACA, SAN.PA→1rPSA
 - 8 tickers (SAN, OR, MC, ENGI, DG, SU, RI, AXA) → `next: null` = dividendes 2026 déjà versés avant 14 mai. Normal.
 - Yahoo indexe nouveaux dividendes avec ~4-6 semaines de délai → JSON sert de bridge pour cette fenêtre.
 - Git push : remote avance souvent (workflow commit JSON). Toujours `git stash && git pull --rebase && git stash pop && git push`.
+
+### Design (Trade Republic style — merged main 2026-05-14)
+- Stat cards borderless : transparent bg, no border, `border-right` séparateur, `border-radius:0`, no 3D hover
+- Section cards + table containers : transparent, no border, padding réduit
+- Mobile : stat-cards restaurées avec `var(--s1)` bg + border
+- `.stats-grid` : `gap:0`, `border-top/bottom`
+- `.stat-value` : `font-size: 24px`
+
+### Système d'icônes SVG colorées
+- **IC object** dans `js/app.js` (top of file) : SVGs inline avec `stroke` hardcodé par couleur
+- Couleurs : purple `#7c6df5`, blue `#5b8dee`, gold `#f5b731`, green `#00e09e`, muted `#8892a8`, red `#ff4d6a`
+- Icônes JS : briefcase, eye, bell, target, compass, wallet, barchart, gift, trophy, trending, clock, zap, calendar, crown, user, message, dotGreen, dotRed
+- **Icônes HTML** (`index.html`) : nav sidebar + mobile drawer — `stroke` hardcodé directement dans le SVG (plus de `stroke="currentColor"`)
+  - briefcase/portfolio → `#7c6df5`
+  - eye/watchlist → `#5b8dee`
+  - bell/notifications → `#f5b731`
+  - target/benchmark → `#5b8dee`
+  - compass/projections → `#00e09e`
+  - wallet/dividendes → `#00e09e`
+  - barchart/performance → `#5b8dee`
+  - message/chat → `#7c6df5`
+  - crown/super admin → `#f5b731`
+  - user/profil → `#8892a8`
+  - power/déconnexion → `#ff4d6a`
+
+### Logo / Favicon
+- `logo.png` : logo fond sombre — utilisé dans login, register, sidebar, mobile header, favicon onglet, apple-touch-icon
+- `Hero _ transparent.png` : logo transparent (disponible mais non utilisé en prod)
+- Favicon : `<link rel="icon" type="image/png" href="logo.png">` + `<link rel="apple-touch-icon" href="logo.png">`
+
+### Chart portfolio (`#portf-chart-card`)
+- Plus-value latente affichée dans header : `totalVal - totalInvested` calculé depuis données portfolio (PRU × qty), pas depuis historique chart
+- Subtitle cliquable `depuis le début` → toggle entre % et €
+- `renderPortfolioChart()` : `legend.display: false`, axes X/Y masqués, `beginAtZero: false`, gradient + `borderColor` dynamique selon isUp/isDown
+
+### Scripts utilitaires (ne pas relancer sans vérif)
+- `fix_html_colors.py` : patchait `stroke="currentColor"` → stroke coloré dans HTML. Déjà appliqué (commit 883ec47). Ne pas relancer.
