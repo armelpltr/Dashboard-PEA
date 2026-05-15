@@ -6412,7 +6412,7 @@ function initDividendes() {
         <div style="display:flex;flex-direction:column;gap:10px">
           ${projRows.map(p => `
             <div style="display:flex;align-items:center;gap:12px">
-              <div style="width:110px;font-size:12px;font-weight:600;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+              <div style="width:130px;display:flex;align-items:center;gap:7px;min-width:0">${logoHtml(p.ticker, 22, 'ticker-icon')}<span style="font-size:12px;font-weight:600;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</span></div>
               <div style="flex:1;background:var(--s2);border-radius:4px;height:6px;overflow:hidden">
                 <div style="width:${(p.annual / maxAnnual * 100).toFixed(1)}%;height:100%;background:var(--gold);border-radius:4px;transition:width 0.4s"></div>
               </div>
