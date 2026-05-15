@@ -4454,12 +4454,12 @@ async function loadWlChart(i, ticker, period) {
     const opens  = (quote && quote.open)  || [];
 
     const pts = [], labels = [];
-    const isIntraday = interval === '5m' || interval === '15m';
+    const isIntraday = interval === '5m'; // 5J (15m) n'est pas intraday : affiche perf 5 jours
     for (let k = 0; k < ts.length; k++) {
       if (closes[k] == null) continue;
       pts.push(closes[k]);
       const dt = new Date(ts[k] * 1000);
-      labels.push(isIntraday
+      labels.push((interval === '5m' || interval === '15m')
         ? dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
         : dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
       );
@@ -4475,10 +4475,11 @@ async function loadWlChart(i, ticker, period) {
       displayPct = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
     } else if (pts.length >= 2) {
       const endPrice  = livePrice || pts[pts.length - 1];
-      // Yahoo Finance utilise le prix d'ouverture du 1er mois comme référence de départ
-      const startPrice = periodDef.period1
-        ? (opens[0] != null ? opens[0] : pts[0])
-        : (meta.chartPreviousClose || opens[0] || pts[0]);
+      const startPrice = interval === '15m'
+        ? (opens[0] != null ? opens[0] : pts[0])          // 5J → open du 1er point (5 jours)
+        : periodDef.period1
+          ? (opens[0] != null ? opens[0] : pts[0])         // ALL → open[0]
+          : (meta.chartPreviousClose || opens[0] || pts[0]); // autres → chartPreviousClose
       displayPct = ((endPrice / startPrice) - 1) * 100;
     }
 
