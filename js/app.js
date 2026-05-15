@@ -6585,7 +6585,8 @@ let _perfCache = null; // évite de refetch à chaque clic
 //    - Boursorama : "Date","Valorisation portefeuille","Perf période portefeuille","Perf cumulée portefeuille"
 //    - Générique  : Date,Valeur (séparateur , ou ;)
 // ─────────────────────────────────────────────────────────────────
-function toggleBrokerDropdown() {
+function toggleBrokerDropdown(e) {
+  e.stopPropagation();
   const menu = document.getElementById('broker-menu');
   menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
 }
@@ -6722,8 +6723,29 @@ function importDailyValuesCSV(event) {
   reader.readAsText(file);
 }
 
+let _clearDailyTimer = null;
+function confirmClearDaily(btn) {
+  if (btn.dataset.step === '0') {
+    btn.dataset.step = '1';
+    document.getElementById('btn-clear-label').textContent = 'Confirmer ?';
+    btn.style.background = 'rgba(255,77,106,0.15)';
+    btn.style.color = '#ff4d6a';
+    btn.style.borderColor = 'rgba(255,77,106,0.4)';
+    _clearDailyTimer = setTimeout(() => {
+      btn.dataset.step = '0';
+      document.getElementById('btn-clear-label').textContent = 'Réinitialiser';
+      btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = '';
+    }, 3000);
+  } else {
+    clearTimeout(_clearDailyTimer);
+    btn.dataset.step = '0';
+    document.getElementById('btn-clear-label').textContent = 'Réinitialiser';
+    btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = '';
+    clearDailyValues();
+  }
+}
+
 function clearDailyValues() {
-  if (!confirm('Supprimer toutes les valorisations broker importées ?\n\nLa performance sera recalculée depuis Yahoo Finance.')) return;
   saveDailyValues(currentUser, []);
   _perfCache = null;
   updateDailyStatus();
