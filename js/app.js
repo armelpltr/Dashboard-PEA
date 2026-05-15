@@ -4476,7 +4476,7 @@ async function loadWlChart(i, ticker, period) {
     } else if (pts.length >= 2) {
       const endPrice  = livePrice || pts[pts.length - 1];
       const startPrice = interval === '15m'
-        ? (opens[0] != null ? opens[0] : pts[0])          // 5J → open du 1er point (5 jours)
+        ? pts[0]                                            // 5J → close du 1er point (5 jours)
         : periodDef.period1
           ? (opens[0] != null ? opens[0] : pts[0])         // ALL → open[0]
           : (meta.chartPreviousClose || opens[0] || pts[0]); // autres → chartPreviousClose
