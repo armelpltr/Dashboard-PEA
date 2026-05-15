@@ -6428,10 +6428,10 @@ function renderDivHistory(histEl) {
       ? '<span style="background:rgba(0,224,158,0.15);color:var(--positive);font-size:10px;padding:1px 7px;border-radius:4px">✓ Reçu</span>'
       : '';
     const srcBadge = e.source==='reçu'
-      ? '<span style="background:rgba(124,109,245,0.15);color:#a89cf7;font-size:10px;padding:1px 7px;border-radius:4px">Manuel</span>'
+      ? '<span style="background:rgba(124,109,245,0.15);color:#a89cf7;font-size:10px;padding:1px 7px;border-radius:4px;display:inline-flex;align-items:center;gap:3px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a89cf7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Manuel</span>'
       : e.source==='annoncé'
-      ? '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Boursorama</span>'
-      : '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px">Yahoo Finance</span>';
+      ? '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px;display:inline-flex;align-items:center;gap:3px"><img src="https://www.boursorama.com/favicon.ico" width="11" height="11" style="border-radius:2px;vertical-align:middle">Boursorama</span>'
+      : '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px;display:inline-flex;align-items:center;gap:3px"><img src="https://finance.yahoo.com/favicon.ico" width="11" height="11" style="border-radius:2px;vertical-align:middle">Yahoo Finance</span>';
     return `<tr>
       <td class="mono" style="font-size:12px;color:var(--text2)">${ds}</td>
       <td><div style="display:flex;align-items:center;gap:6px">${logoHtml(e.ticker||'',20,'ticker-icon')}
