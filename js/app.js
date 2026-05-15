@@ -5021,7 +5021,6 @@ async function preloadAll() {
 
   // On attend tout en parallèle. Tout est non-bloquant pour l'UI principale.
   await Promise.allSettled(tasks);
-  console.log('✓ Preload terminé');
 }
 
 
@@ -6157,7 +6156,6 @@ async function loadDivJson() {
     // Afficher la date de génération dans le sous-titre
     const subEl = document.querySelector('#page-dividendes .page-subtitle span');
     if (subEl && json.generated_at) subEl.textContent = '✦ Données Mistral AI · mis à jour le ' + new Date(json.generated_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
-    console.log('✅ dividendes.json chargé (' + json.generated_at + ')');
   } catch(e) {
     console.warn('⚠️ dividendes.json non disponible, historique vide.', e);
     _divJsonLoaded = true;
