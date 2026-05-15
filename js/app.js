@@ -4373,6 +4373,7 @@ async function fetchWatchlistChart(ticker) {
 // ─── WATCHLIST INLINE CHART ───────────────────────
 const _wlChartInstances = {};
 const _wlChartPeriodCache = {};
+const _WL_PERIOD_CACHE_TTL = 5 * 60 * 1000;
 
 const WL_PERIODS = {
   '1J':  { range: '1d',  interval: '5m'  },
@@ -4421,14 +4422,16 @@ async function loadWlChart(i, ticker, period) {
   const cacheKey = ticker + '_' + range + '_' + interval;
 
   try {
-    let raw = _wlChartPeriodCache[cacheKey];
+    const now = Date.now();
+    const cached = _wlChartPeriodCache[cacheKey];
+    let raw = (cached && (now - cached.ts) < _WL_PERIOD_CACHE_TTL) ? cached.raw : null;
     if (!raw) {
       const yt = resolveToYahooTicker(ticker);
       raw = await fetchWithFallback(
         'https://query1.finance.yahoo.com/v8/finance/chart/'
         + encodeURIComponent(yt) + '?interval=' + interval + '&range=' + range
       );
-      _wlChartPeriodCache[cacheKey] = raw;
+      _wlChartPeriodCache[cacheKey] = { raw, ts: now };
     }
 
     const d = JSON.parse(raw);
