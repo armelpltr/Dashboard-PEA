@@ -4436,8 +4436,9 @@ async function loadWlChart(i, ticker, period) {
           + encodeURIComponent(yt) + '?period1=' + periodDef.period1 + '&period2=' + p2
           + '&interval=' + interval + '&includePrePost=true&events=div%7Csplit%7Cearn&lang=fr-FR&region=FR';
       } else {
+        const cb = Math.floor(Date.now() / 300000); // change toutes les 5 min → bypass proxy cache
         url = 'https://query1.finance.yahoo.com/v8/finance/chart/'
-          + encodeURIComponent(yt) + '?interval=' + interval + '&range=' + periodDef.range;
+          + encodeURIComponent(yt) + '?interval=' + interval + '&range=' + periodDef.range + '&_=' + cb;
       }
       raw = await fetchWithFallback(url);
       _wlChartPeriodCache[cacheKey] = { raw, ts: now };
@@ -4465,17 +4466,8 @@ async function loadWlChart(i, ticker, period) {
       );
     }
 
-    let livePrice  = meta.regularMarketPrice;
+    const livePrice  = meta.regularMarketPrice;
     const prevClose  = meta.chartPreviousClose || meta.previousClose;
-    // Sparkline cache a le prix frais (fetché par enrichWatchlistRow) → override si dispo
-    const sparkCached = _wlChartCache[ticker];
-    if (sparkCached && interval !== '5m') {
-      try {
-        const sp = JSON.parse(sparkCached.raw);
-        const spPrice = sp.chart?.result?.[0]?.meta?.regularMarketPrice;
-        if (spPrice != null) livePrice = spPrice;
-      } catch(e) {}
-    }
     const livePriceEur = livePrice != null ? toEur(livePrice, meta.currency) : null;
 
     // Pour 5J : référence = close d'exactement 5 jours de trading en arrière (pas dans range=5d)
