@@ -4382,7 +4382,7 @@ const WL_PERIODS = {
   '3M':  { range: '3mo', interval: '1d'  },
   '6M':  { range: '6mo', interval: '1d'  },
   '1A':  { range: '1y',  interval: '1d'  },
-  'Max': { range: '5y',  interval: '1wk' },
+  'Max': { range: 'max', interval: '1mo' },
 };
 
 function toggleWatchlistChart(i, ticker) {
@@ -4457,15 +4457,24 @@ async function loadWlChart(i, ticker, period) {
 
     const livePrice  = meta.regularMarketPrice;
     const prevClose  = meta.chartPreviousClose || meta.previousClose;
-    const dayChgPct  = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
     const livePriceEur = livePrice != null ? toEur(livePrice, meta.currency) : null;
-    const isUp       = pts.length >= 2 ? pts[pts.length - 1] >= pts[0] : true;
-    const lineColor  = isUp ? '#00e09e' : '#ff4d6a';
+    const isIntraday = interval === '5m' || interval === '15m';
 
-    if (elPrice)  elPrice.textContent  = livePriceEur != null ? livePriceEur.toFixed(2) + ' €' : '—';
-    if (elChange && dayChgPct != null) {
-      elChange.textContent  = (dayChgPct >= 0 ? '+' : '') + dayChgPct.toFixed(2) + ' %';
-      elChange.style.color  = dayChgPct >= 0 ? 'var(--positive)' : 'var(--negative)';
+    // Pour 1J/1S → variation jour. Pour les autres → perf sur la période (premier point → maintenant)
+    let displayPct = null;
+    if (isIntraday) {
+      displayPct = (livePrice != null && prevClose) ? ((livePrice / prevClose - 1) * 100) : null;
+    } else if (pts.length >= 2) {
+      displayPct = ((pts[pts.length - 1] / pts[0]) - 1) * 100;
+    }
+
+    const isUp      = pts.length >= 2 ? pts[pts.length - 1] >= pts[0] : true;
+    const lineColor = isUp ? '#00e09e' : '#ff4d6a';
+
+    if (elPrice) elPrice.textContent = livePriceEur != null ? livePriceEur.toFixed(2) + ' €' : '—';
+    if (elChange && displayPct != null) {
+      elChange.textContent = (displayPct >= 0 ? '+' : '') + displayPct.toFixed(2) + ' % sur la période';
+      elChange.style.color = displayPct >= 0 ? 'var(--positive)' : 'var(--negative)';
     }
 
     if (_wlChartInstances[i]) { _wlChartInstances[i].destroy(); delete _wlChartInstances[i]; }
