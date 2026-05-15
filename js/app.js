@@ -4382,7 +4382,7 @@ const WL_PERIODS = {
   '3M':  { range: '3mo', interval: '1d'  },
   '6M':  { range: '6mo', interval: '1d'  },
   '1A':  { range: '1y',  interval: '1d'  },
-  'Max': { range: 'max', interval: '1mo' },
+  'Max': { period1: 946886400,            interval: '1mo' }, // Yahoo "Tous" = depuis jan 2000
 };
 
 function toggleWatchlistChart(i, ticker) {
@@ -4418,8 +4418,9 @@ async function loadWlChart(i, ticker, period) {
 
   if (loading) { loading.style.display = 'flex'; canvas.style.display = 'none'; }
 
-  const { range, interval } = WL_PERIODS[period] || WL_PERIODS['1M'];
-  const cacheKey = ticker + '_' + range + '_' + interval;
+  const periodDef = WL_PERIODS[period] || WL_PERIODS['1M'];
+  const { interval } = periodDef;
+  const cacheKey = ticker + '_' + period;
 
   try {
     const now = Date.now();
@@ -4427,10 +4428,17 @@ async function loadWlChart(i, ticker, period) {
     let raw = (cached && (now - cached.ts) < _WL_PERIOD_CACHE_TTL) ? cached.raw : null;
     if (!raw) {
       const yt = resolveToYahooTicker(ticker);
-      raw = await fetchWithFallback(
-        'https://query1.finance.yahoo.com/v8/finance/chart/'
-        + encodeURIComponent(yt) + '?interval=' + interval + '&range=' + range
-      );
+      let url;
+      if (periodDef.period1) {
+        const p2 = Math.floor(Date.now() / 1000);
+        url = 'https://query1.finance.yahoo.com/v8/finance/chart/'
+          + encodeURIComponent(yt) + '?period1=' + periodDef.period1 + '&period2=' + p2
+          + '&interval=' + interval + '&includePrePost=true&events=div%7Csplit%7Cearn&lang=fr-FR&region=FR';
+      } else {
+        url = 'https://query1.finance.yahoo.com/v8/finance/chart/'
+          + encodeURIComponent(yt) + '?interval=' + interval + '&range=' + periodDef.range;
+      }
+      raw = await fetchWithFallback(url);
       _wlChartPeriodCache[cacheKey] = { raw, ts: now };
     }
 
