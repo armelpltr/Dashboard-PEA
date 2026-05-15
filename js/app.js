@@ -6591,13 +6591,13 @@ function onBrokerSelectChange() {
   const operational = ['boursorama'];
   const chosen = sel.value;
   if (!chosen) {
-    btn.style.opacity = '0.4'; btn.style.pointerEvents = 'none'; return;
+    btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed'; btn.style.color = 'var(--text3)'; return;
   }
   if (operational.includes(chosen)) {
-    btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+    btn.style.opacity = '1'; btn.style.cursor = 'pointer'; btn.style.color = 'var(--text1)';
   } else {
-    btn.style.opacity = '0.4'; btn.style.pointerEvents = 'none';
-    alert('Support ' + sel.options[sel.selectedIndex].text.replace(' (bientôt)','') + ' en cours de développement.\n\nSeul Boursorama est opérationnel pour le moment.');
+    btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed'; btn.style.color = 'var(--text3)';
+    alert('Support ' + sel.options[sel.selectedIndex].text + ' en cours de développement.\n\nSeul Boursorama est opérationnel pour le moment.');
     sel.value = '';
   }
 }
