@@ -1941,8 +1941,9 @@ async function fetchFullAnalyse(ticker, portfolioRow) {
     let fund = {};
     try {
       const modules = 'financialData,defaultKeyStatistics,summaryDetail';
-      const qsUrl = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/' +
+      const qsBase = 'https://query1.finance.yahoo.com/v11/finance/quoteSummary/' +
         encodeURIComponent(resolveToYahooTicker(ticker)) + '?modules=' + modules;
+      const qsUrl = qsBase;
       const qsRaw = await fetchWithFallback(qsUrl);
       const qs = JSON.parse(qsRaw);
       const r = qs && qs.quoteSummary && qs.quoteSummary.result && qs.quoteSummary.result[0];
@@ -4696,17 +4697,16 @@ async function fetchDividendYield(ticker) {
   try {
     const yt = resolveToYahooTicker(ticker);
     const raw = await fetchWithFallback(
-      'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'
+      'https://query1.finance.yahoo.com/v8/finance/chart/'
       + encodeURIComponent(yt)
-      + '?modules=summaryDetail'
+      + '?interval=1d&range=1d'
     );
-    const d = JSON.parse(raw);
-    const sd = d.quoteSummary && d.quoteSummary.result && d.quoteSummary.result[0]
-               && d.quoteSummary.result[0].summaryDetail;
+    const meta = JSON.parse(raw)?.chart?.result?.[0]?.meta;
     let dy = null;
-    if (sd) {
-      if (sd.dividendYield && sd.dividendYield.raw != null) dy = sd.dividendYield.raw;
-      else if (sd.trailingAnnualDividendYield && sd.trailingAnnualDividendYield.raw != null) dy = sd.trailingAnnualDividendYield.raw;
+    if (meta) {
+      if (meta.trailingAnnualDividendYield != null) dy = meta.trailingAnnualDividendYield;
+      else if (meta.trailingAnnualDividendRate && meta.regularMarketPrice)
+        dy = meta.trailingAnnualDividendRate / meta.regularMarketPrice;
     }
     _wlDivYieldCache[ticker] = dy;
     return dy;
@@ -7374,7 +7374,7 @@ function _updateFavicon(count) {
   try {
     const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
     const ctx = canvas.getContext('2d');
-    const img = new Image(); img.src = '/favicon-32.png';
+    const img = new Image(); img.src = '/logo.png';
     img.onload = () => {
       ctx.drawImage(img, 0, 0, 32, 32);
       if (count > 0) {
@@ -7397,7 +7397,7 @@ function _requestNotifPermission() {
 function _showBrowserNotif(title, body, threadId) {
   if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
   try {
-    const n = new Notification('CapitalView — ' + title, { body, icon: '/favicon-32.png' });
+    const n = new Notification('CapitalView — ' + title, { body, icon: '/logo.png' });
     n.onclick = () => { window.focus(); openIdeasPanel(); if (threadId) openThread(threadId); n.close(); };
     setTimeout(() => n.close(), 8000);
   } catch(e) {}
