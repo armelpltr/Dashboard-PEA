@@ -1444,17 +1444,17 @@ async function fetchWithFallback(url) {
     } catch { return false; }
   }
 
-  // Round 1 : race allorigins + corsproxy simultanément
+  // Round 1 : corsproxy en premier (allorigins trop souvent 429)
   try {
-    const raw = await Promise.any([tryAllorigins(url), tryCorsproxy(url)]);
+    const raw = await tryCorsproxy(url);
     if (isValidRaw(raw)) return raw;
   } catch {}
 
-  // Round 2 : allorigins sur query2 + cors.eu.org + codetabs séquentiels
+  // Round 2 : cors.eu.org + codetabs + allorigins en dernier recours
   const fallbacks = [
-    () => tryAllorigins(url.replace('query1.', 'query2.')),
     () => tryCorsEu(url),
     () => tryCodetabs(url),
+    () => tryAllorigins(url.replace('query1.', 'query2.')),
   ];
   for (const fn of fallbacks) {
     try {
