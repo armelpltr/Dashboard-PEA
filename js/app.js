@@ -7123,12 +7123,12 @@ function computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio) {
       // Si pas de valorisation broker pour ce jour, on garde la veille (jour férié)
       const valToday = (valByDate[d] != null) ? valByDate[d] : prevValue;
       const denom = prevValue + versToday;
-      if (denom > 0.01) {
+      // Skip si aucun capital n'est encore investi (évite twr *= 0 sur versements avant premier achat)
+      if (denom > 0.01 && (valToday > 0 || prevValue > 0)) {
         hasCapital = true;
         twr *= valToday / denom;
       }
-      prevValue = valToday;
-      valueEnd = valToday;
+      if (valToday > 0) { prevValue = valToday; valueEnd = valToday; }
     }
 
     // Pour le YTD : si la dernière dailyValue n'est pas d'aujourd'hui mais
