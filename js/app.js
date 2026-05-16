@@ -6997,11 +6997,38 @@ async function initPerformance() {
     return;
   }
 
-  kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Chargement…</div></div>';
-  tbodyEl.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">Récupération des prix historiques…</td></tr>';
-
-  // Mettre à jour l'indicateur de statut "valeurs broker importées"
   if (typeof updateDailyStatus === 'function') updateDailyStatus();
+
+  const dailyValues = getDailyValues(currentUser);
+  if (!dailyValues || dailyValues.length < 2) {
+    // Pas de CSV broker → KPIs depuis portfolio uniquement, chart + tableau = CTA
+    renderPerformancePage({ years: [] }, portfolio, txs);
+    const chartSection = document.getElementById('chart-perf-annual');
+    if (chartSection) {
+      const wrap = chartSection.closest('.section-card');
+      if (wrap) wrap.style.display = 'none';
+    }
+    tbodyEl.innerHTML = `
+      <tr><td colspan="4" style="text-align:center;padding:36px 20px">
+        <div style="color:var(--text3);font-size:13px;margin-bottom:10px">
+          Pour afficher le détail annuel, importez votre CSV broker.
+        </div>
+        <button onclick="onImportCSVClick()" style="font-size:12px;padding:8px 16px;border-radius:9px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-family:var(--sans);font-weight:600">
+          Importer CSV
+        </button>
+      </td></tr>`;
+    return;
+  }
+
+  // CSV présent : chart visible
+  const chartSection = document.getElementById('chart-perf-annual');
+  if (chartSection) {
+    const wrap = chartSection.closest('.section-card');
+    if (wrap) wrap.style.display = '';
+  }
+
+  kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Chargement…</div></div>';
+  tbodyEl.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">Calcul en cours…</td></tr>';
 
   try {
     const result = _perfCache || await computeAnnualPerformance(portfolio, txs);
