@@ -6793,6 +6793,8 @@ async function importTRTransactionsCSV(lines, parseLine) {
     let cash = 0;
     let ei = 0;
     const finalRows = [];
+    const last2025 = tradingDays.filter(d => d <= '2025-12-31').pop();
+    const lastAll  = tradingDays[tradingDays.length - 1];
 
     for (const day of tradingDays) {
       // Appliquer les événements jusqu'à ce jour
@@ -6806,13 +6808,24 @@ async function importTRTransactionsCSV(lines, parseLine) {
       }
 
       let stockValue = 0;
+      const diag = [];
       for (const [isin, qty] of Object.entries(holdings)) {
         if (qty <= 0.0000001) continue;
         const ticker = isinToTicker[isin];
         // Prix Yahoo si dispo, sinon fallback sur le prix d'exécution TR (cost basis)
         let price = ticker ? getPrice(ticker, day) : null;
-        if (price == null) price = costPriceAt(isin, day);
-        if (price) stockValue += qty * price;
+        let src = 'yahoo';
+        if (price == null) { price = costPriceAt(isin, day); src = 'TR-exec'; }
+        if (price) {
+          stockValue += qty * price;
+          if (day === last2025 || day === lastAll) {
+            diag.push(isin + ' (' + (ticker||'?') + ') qty=' + qty.toFixed(4)
+              + ' px=' + price.toFixed(3) + ' [' + src + '] → ' + (qty*price).toFixed(2) + '€');
+          }
+        }
+      }
+      if (day === last2025 || day === lastAll) {
+        console.log('[TR diag] ' + day + ' valeur=' + stockValue.toFixed(2) + '€\n  ' + diag.join('\n  '));
       }
 
       // Stock-only : exclure le cash pour éviter que les TRANSFER_IN faussent le TWR
@@ -6820,6 +6833,16 @@ async function importTRTransactionsCSV(lines, parseLine) {
       const totalValue = stockValue;
       if (totalValue > 0) finalRows.push({ date: day, value: Math.round(totalValue * 100) / 100 });
     }
+
+    // Diagnostic : cost basis (cash investi) par ISIN
+    const costByIsin = {};
+    for (const row of peaRows) {
+      if ((row.type === 'BUY' || row.type === 'SELL') && row.symbol && row.shares && row.price > 0) {
+        costByIsin[row.symbol] = (costByIsin[row.symbol] || 0) + row.shares * row.price;
+      }
+    }
+    console.log('[TR diag] cost basis (cash net investi) par ISIN:',
+      Object.entries(costByIsin).map(([k,v]) => k + '=' + v.toFixed(2) + '€').join(', '));
 
     if (!finalRows.length) { alert('Valorisations nulles — vérifiez que le fichier contient des transactions PEA avec actions.'); return; }
 
