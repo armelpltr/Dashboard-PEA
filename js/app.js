@@ -6948,6 +6948,7 @@ function importDailyValuesCSV(event) {
       const finalRows = Object.keys(byDate).sort().map(d => ({ date: d, value: byDate[d] }));
 
       saveDailyValues(currentUser, finalRows);
+      saveTRCohort(currentUser, null); // un CSV broker classique désactive le mode cohorte TR
       _perfCache = null;
 
       const successEl = document.getElementById('csv-import-success');
@@ -7286,22 +7287,19 @@ function computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio) {
       // Si pas de valorisation broker pour ce jour, on garde la veille (jour férié)
       const valToday = (valByDate[d] != null) ? valByDate[d] : prevValue;
       const denom = prevValue + versToday;
-      // Skip si aucun capital n'est encore investi (évite twr *= 0 sur versements avant premier achat)
-      if (denom > 0.01 && (valToday > 0 || prevValue > 0)) {
+      if (denom > 0.01) {
         hasCapital = true;
         twr *= valToday / denom;
       }
-      if (valToday > 0) { prevValue = valToday; valueEnd = valToday; }
+      prevValue = valToday;
+      valueEnd = valToday;
     }
 
-    // Pour le YTD : si la dernière dailyValue est ANCIENNE (CSV périmé) et qu'on a une valeur
-    // LIVE, on ajoute le ratio du jour. Si le CSV est récent (< 5 j), il fait foi → pas d'override.
+    // Pour le YTD : si la dernière dailyValue n'est pas d'aujourd'hui mais
+    // qu'on a une valeur LIVE, on ajoute le ratio du jour
     if (isYTD && liveValue != null) {
       const lastBrokerDate = yearDates.length ? yearDates[yearDates.length - 1] : null;
-      const daysStale = lastBrokerDate
-        ? (new Date(todayStr + 'T12:00:00') - new Date(lastBrokerDate + 'T12:00:00')) / 86400000
-        : 999;
-      if (lastBrokerDate && lastBrokerDate < todayStr && daysStale > 5) {
+      if (lastBrokerDate && lastBrokerDate < todayStr) {
         const versToday = versByDate[todayStr] || 0;
         const denom = prevValue + versToday;
         if (denom > 0.01) {
@@ -7312,6 +7310,8 @@ function computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio) {
       }
     }
 
+    const perfPct = hasCapital ? (twr - 1) * 100 : 0;
+
     // V_début de l'année (= valeur au 31/12 de l'année précédente)
     const valueYearStart = (y === firstYear) ? 0 : (function(){
       for (let i = sortedDates.length - 1; i >= 0; i--) {
@@ -7320,14 +7320,11 @@ function computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio) {
       return 0;
     })();
     const totalGain = valueEnd - valueYearStart - totalVersYear;
-    const base = valueYearStart + totalVersYear;
-    // Rendement simple : gain / capital investi (comme Boursorama / le suivi TR)
-    const perfPct = base > 0.01 ? (totalGain / base) * 100 : 0;
 
     yearResults.push({
       year: y,
       isYTD,
-      base: +base.toFixed(2),
+      base: +(valueYearStart + totalVersYear).toFixed(2),
       gain: +totalGain.toFixed(2),
       perfPct: +perfPct.toFixed(2),
     });
