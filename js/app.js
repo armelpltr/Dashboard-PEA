@@ -6740,18 +6740,18 @@ function confirmClearDaily() {
 }
 
 function showConfirmModal({ icon, title, body, onConfirm, danger = false }) {
-  const modal = document.getElementById('confirm-modal');
-  document.getElementById('confirm-modal-icon').textContent = icon || '';
-  document.getElementById('confirm-modal-title').textContent = title;
-  document.getElementById('confirm-modal-body').textContent = body;
-  const okBtn = document.getElementById('confirm-modal-ok');
+  const modal = document.getElementById('confirm-modal2');
+  document.getElementById('confirm-modal2-icon').textContent = icon || '';
+  document.getElementById('confirm-modal2-title').textContent = title;
+  document.getElementById('confirm-modal2-body').textContent = body;
+  const okBtn = document.getElementById('confirm-modal2-ok');
   okBtn.style.background = danger ? '#ff4d6a' : '#7c6df5';
   okBtn.onclick = () => { closeConfirmModal(); onConfirm(); };
   modal.style.display = 'flex';
 }
 
 function closeConfirmModal() {
-  document.getElementById('confirm-modal').style.display = 'none';
+  document.getElementById('confirm-modal2').style.display = 'none';
 }
 
 function clearDailyValues() {
