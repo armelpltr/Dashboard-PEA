@@ -170,10 +170,6 @@
         <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>Notifications
         <span id="notif-drawer-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
       </div>
-      <div class="mobile-drawer-item" onclick="openIdeasPanel();closeMobileDrawer()">
-        <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fd79a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>Chat support
-        <span id="ideas-badge-mobile" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto;animation:pulse-glow 1.5s ease-in-out infinite"></span>
-      </div>
       <div class="mobile-drawer-section">Compte</div>
       <div class="mobile-drawer-item" id="btn-superadmin-mobile" onclick="openSuperAdminPanel();closeMobileDrawer()" style="display:none;color:#fbbf24">
         <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e17055" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="m4 20 4-12 4 7 4-10 4 15"/></svg></span>Super Admin
@@ -222,10 +218,6 @@
       <div class="nav-item" onclick="showPage('notifications')" id="nav-notifications">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span> Notifications
         <span id="notif-nav-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
-      </div>
-      <div class="nav-item" onclick="openIdeasPanel()" id="btn-ideas" title="Chat support">
-        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fd79a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Chat support
-        <span id="ideas-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:auto;animation:pulse-glow 1.5s ease-in-out infinite"></span>
       </div>
     </nav>
     <div id="btn-superadmin" onclick="openSuperAdminPanel()" title="Super Admin" style="
@@ -1087,178 +1079,6 @@
   </div>
 </div>
 
-<!-- ═══ CHAT IDÉES ════════════════════════════════════ -->
-<div id="ideas-overlay" style="
-  display:none;position:fixed;inset:0;background:var(--s1);z-index:1200;
-  flex-direction:column;box-sizing:border-box">
-  <div style="
-    width:100%;height:100%;background:var(--s1);
-    border-radius:0;border:none;display:flex;flex-direction:column;
-    overflow:hidden">
-
-    <!-- Header -->
-    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0">
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:15px;font-family:var(--display)">💬 Chat support</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:1px">
-          <span id="ideas-panel-subtitle" style="font-size:11px;color:var(--text3)">Envoyez un message ou une idée</span>
-          <span id="ideas-role-badge"></span>
-        </div>
-      </div>
-      <!-- Superadmin: gestion des rôles -->
-      <button onclick="closeIdeasPanel()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;flex-shrink:0">✕</button>
-    </div>
-
-    <!-- Corps : liste threads (gauche) + chat (droite) -->
-    <div style="display:flex;flex:1;overflow:hidden">
-
-      <!-- Liste des conversations -->
-      <div style="width:220px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column">
-        <div style="padding:10px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
-          <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Conversations</span>
-          <button id="btn-new-thread" onclick="newIdeasThread()" style="
-            background:var(--accent-d);border:1px solid rgba(124,109,245,0.25);color:var(--accent);
-            border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;cursor:pointer">+ Nouveau</button>
-        </div>
-        <div id="chat-search-zone" style="display:none;padding:6px 10px;border-bottom:1px solid var(--border)">
-          <input id="chat-search-input" type="text" placeholder="Rechercher…" oninput="_filterThreads(this.value)"
-            style="width:100%;background:var(--s2);border:1px solid var(--border);color:var(--text);
-            border-radius:8px;padding:5px 9px;font-size:12px;font-family:var(--sans);box-sizing:border-box;outline:none">
-        </div>
-        <div id="ideas-threads" style="flex:1;overflow-y:auto"></div>
-      </div>
-
-      <!-- Chat actif -->
-      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
-        <div id="ideas-chat-empty" style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px">
-          Sélectionnez une conversation
-        </div>
-        <div id="ideas-chat-view" style="display:none;flex:1;flex-direction:row;overflow:hidden">
-
-          <!-- Colonne chat principale -->
-          <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative">
-          <!-- Thread header -->
-          <div id="ideas-chat-header" style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;flex-shrink:0"></div>
-          <!-- Messages -->
-          <div id="ideas-messages" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column"></div>
-          <!-- New message pill -->
-          <div id="chat-new-msg-pill" onclick="window._scrollToNewMsg()" style="display:none;position:absolute;bottom:72px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:12px;font-weight:700;padding:6px 18px;border-radius:20px;cursor:pointer;box-shadow:0 4px 16px rgba(124,109,245,0.4);z-index:10;white-space:nowrap;user-select:none">↓ Nouveau message</div>
-          <!-- Typing indicator -->
-          <div id="chat-typing" style="display:none;padding:2px 16px;font-size:11px;color:var(--text3);font-style:italic;flex-shrink:0"></div>
-          <!-- Emoji picker -->
-          <div id="emoji-picker" style="display:none;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:4px;background:var(--s2);max-height:120px;overflow-y:auto"></div>
-          <!-- Reply preview -->
-          <div id="chat-reply-preview" style="display:none;padding:6px 16px 0;flex-shrink:0">
-            <div style="background:var(--s2);border-left:3px solid var(--accent);border-radius:6px;padding:6px 10px;display:flex;align-items:center;gap:8px">
-              <div style="flex:1;min-width:0">
-                <div id="chat-reply-name" style="font-size:11px;font-weight:700;color:var(--accent)"></div>
-                <div id="chat-reply-text" style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-              </div>
-              <button onclick="clearReply()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;flex-shrink:0">✕</button>
-            </div>
-          </div>
-          <!-- Input -->
-          <div id="ideas-input-zone" style="padding:10px 16px;border-top:1px solid var(--border);background:var(--s1);flex-shrink:0">
-            <!-- Image preview -->
-            <div id="chat-img-preview" style="display:none;margin-bottom:8px;position:relative;width:fit-content">
-              <img id="chat-img-thumb" style="max-height:80px;border-radius:8px;border:1px solid var(--border)">
-              <button onclick="clearChatImage()" style="position:absolute;top:-6px;right:-6px;background:var(--negative);border:none;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px;text-align:center">✕</button>
-            </div>
-            <div style="display:flex;gap:8px;align-items:flex-end">
-              <button onclick="toggleEmojiPicker()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:6px;border-radius:8px;color:var(--text2);flex-shrink:0" title="Emoji">😊</button>
-              <label style="cursor:pointer;padding:6px;border-radius:8px;font-size:16px;color:var(--text2);flex-shrink:0" title="Photo">
-                📎<input type="file" id="chat-img-input" accept="image/*" onchange="chatImageSelected(event)" style="display:none">
-              </label>
-              <textarea id="ideas-msg-input" placeholder="Votre message…" rows="2" onkeydown="ideasMsgKeydown(event)" oninput="_onChatTyping()" style="
-                flex:1;background:var(--s2);border:1px solid var(--border);color:var(--text);
-                border-radius:10px;padding:9px 12px;font-size:13px;font-family:var(--sans);resize:none"></textarea>
-              <button onclick="sendChatMessage()" style="
-                padding:0 16px;height:42px;background:var(--accent);border:none;color:#fff;
-                border-radius:10px;font-size:18px;cursor:pointer;flex-shrink:0">↑</button>
-            </div>
-          </div>
-          </div><!-- /colonne chat -->
-
-          <!-- Panneau membres (SA only) -->
-          <div id="chat-members-panel" style="display:none;width:170px;flex-shrink:0;border-left:1px solid var(--border);flex-direction:column;overflow:hidden">
-            <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-              <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Membres</span>
-              <button id="btn-add-member-panel" onclick="" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:16px;padding:0;line-height:1" title="Ajouter un membre">＋</button>
-            </div>
-            <div id="chat-members-list" style="flex:1;overflow-y:auto;padding:8px 0"></div>
-          </div>
-
-        </div><!-- /ideas-chat-view -->
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL NOUVEAU THREAD ════════════════════════ -->
-<div id="new-thread-overlay" onclick="if(event.target===this)closeNewThread()" style="
-  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1400;
-  align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
-  <div style="width:420px;max-width:100%;background:var(--s1);border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.5)">
-    <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;font-family:var(--display)">💬 Nouvelle conversation</div>
-    <div style="padding:20px">
-      <label class="form-label">Titre de votre sujet</label>
-      <input id="new-thread-title" type="text" class="form-input" placeholder="Ex: Idée fonctionnalité, Bug, Question…"
-        onkeydown="if(event.key==='Enter')confirmNewThread()" style="margin-bottom:16px">
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="closeNewThread()" style="padding:8px 16px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:8px;font-size:13px;cursor:pointer">Annuler</button>
-        <button onclick="confirmNewThread()" style="padding:8px 20px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Créer</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL RETIRER MEMBRE ══════════════════════════ -->
-<div id="remove-member-overlay" onclick="if(event.target===this)closeRemoveMember()" style="
-  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1400;
-  align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
-  <div style="width:380px;max-width:100%;background:var(--s1);border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.5)">
-    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-      <span style="font-size:18px">🗑</span>
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:14px;font-family:var(--display)">Retirer le membre</div>
-        <div id="remove-member-subtitle" style="font-size:11px;color:var(--text3);margin-top:1px"></div>
-      </div>
-    </div>
-    <div style="padding:20px">
-      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Ce membre n'aura plus accès à la conversation.</div>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="closeRemoveMember()" style="padding:8px 16px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:8px;font-size:13px;cursor:pointer">Annuler</button>
-        <button id="remove-member-btn" onclick="confirmRemoveMember()" style="padding:8px 20px;background:var(--negative);border:none;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Retirer</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL AJOUTER MEMBRE ══════════════════════════ -->
-<div id="add-member-overlay" onclick="if(event.target===this)closeAddMember()" style="
-  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1400;
-  align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
-  <div style="width:420px;max-width:100%;background:var(--s1);border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.5)">
-    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-      <span style="font-size:18px">👤</span>
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:14px;font-family:var(--display)">Ajouter un membre</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:1px">L'utilisateur accède à cette conversation</div>
-      </div>
-    </div>
-    <div style="padding:20px">
-      <label class="form-label">Adresse email</label>
-      <input id="add-member-email" type="email" class="form-input" placeholder="utilisateur@email.com"
-        onkeydown="if(event.key==='Enter')confirmAddMember()" style="margin-bottom:8px">
-      <div id="add-member-status" style="min-height:18px;font-size:12px;margin-bottom:12px"></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="closeAddMember()" style="padding:8px 16px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:8px;font-size:13px;cursor:pointer">Annuler</button>
-        <button id="add-member-btn" onclick="confirmAddMember()" style="padding:8px 20px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Ajouter</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ═══ TOAST CHAT ═════════════════════════════════════ -->
 <div id="chat-toast" style="
   display:none;position:fixed;top:20px;right:20px;z-index:3000;
@@ -1283,23 +1103,7 @@
 <style>
 @keyframes toast-in { from { opacity:0;transform:translateX(20px) } to { opacity:1;transform:translateX(0) } }
 @keyframes toast-bar { from { width:100% } to { width:0% } }
-.chat-msg-wrap:hover .reply-btn { opacity:1 !important; }
 </style>
-
-<!-- ═══ LIGHTBOX IMAGE CHAT ═══════════════════════════ -->
-<div id="chat-lightbox" onclick="if(event.target===this)closeLightbox()" style="
-  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:4000;
-  align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:20px;box-sizing:border-box">
-  <div style="display:flex;gap:10px;flex-shrink:0">
-    <button onclick="downloadLightboxImg()" style="
-      padding:7px 18px;background:var(--accent);border:none;color:#fff;
-      border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">⬇ Télécharger</button>
-    <button onclick="closeLightbox()" style="
-      padding:7px 14px;background:var(--s2);border:1px solid var(--border);color:var(--text2);
-      border-radius:8px;font-size:13px;cursor:pointer">✕ Fermer</button>
-  </div>
-  <img id="chat-lightbox-img" style="max-width:100%;max-height:calc(100vh - 100px);border-radius:10px;object-fit:contain">
-</div>
 
 <!-- ═══ MODAL CONFIRMATION ════════════════════════════ -->
 <div id="confirm-modal" style="
