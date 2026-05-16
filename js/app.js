@@ -6787,6 +6787,29 @@ async function importTRTransactionsCSV(lines, parseLine) {
       return px;
     }
 
+    // 6b. Contrôle de cohérence : comparer prix Yahoo vs prix d'exécution TR sur les dates
+    //     de trade. Si Yahoo diverge fortement (mauvais ticker / mauvaise classe de parts),
+    //     on rejette Yahoo pour cet ISIN → fallback sur les prix d'exécution TR.
+    for (const isin of isins) {
+      const ticker = isinToTicker[isin];
+      if (!ticker || !priceHistory[ticker]) continue;
+      const trades = trExecPrices[isin] || [];
+      const ratios = [];
+      for (const t of trades) {
+        const yp = getPrice(ticker, t.date);
+        if (yp != null && t.price > 0) ratios.push(yp / t.price);
+      }
+      if (ratios.length >= 2) {
+        ratios.sort((a, b) => a - b);
+        const med = ratios[Math.floor(ratios.length / 2)];
+        if (med < 0.85 || med > 1.15) {
+          console.warn('[TR import] Prix Yahoo incohérent pour', isin, '(' + ticker + ')',
+            '— ratio médian Yahoo/TR =', med.toFixed(3), '→ fallback prix TR');
+          priceHistory[ticker] = {};
+        }
+      }
+    }
+
     // 7. Calculer valeur quotidienne
     showProgress('Calcul des valorisations…');
     const holdings = {};
