@@ -6654,7 +6654,7 @@ async function importTRTransactionsCSV(lines, parseLine) {
           iPrice=col('price'), iAmount=col('amount'), iFee=col('fee'), iTax=col('tax');
 
     // 1. Parser les lignes PEA : achats/ventes + dividendes
-    const trades = [];      // {date, year, isin, name, type, qty, price, cost}
+    const trades = [];      // {date, year, isin, name, type, qty, price, signedCost}
     const dividends = [];   // {date, year, amount}
     for (let i = 1; i < lines.length; i++) {
       const c = parseLine(lines[i]);
@@ -6672,10 +6672,11 @@ async function importTRTransactionsCSV(lines, parseLine) {
         const fee = iFee >= 0 ? Math.abs(parseFloat(c[iFee]) || 0) : 0;
         const tax = iTax >= 0 ? Math.abs(parseFloat(c[iTax]) || 0) : 0;
         const qty = Math.abs(shares);
-        trades.push({
-          date, year, isin, name: (c[iName] || '').trim(), type, qty, price,
-          cost: qty * price + fee + tax, // coût total achat = brut + frais + taxes
-        });
+        // signedCost = cash net déployé dans les titres : achat positif, vente négative
+        const signedCost = (type === 'BUY')
+          ? qty * price + fee + tax
+          : -(qty * price - fee - tax);
+        trades.push({ date, year, isin, name: (c[iName] || '').trim(), type, qty, price, signedCost });
       } else if (type === 'DIVIDEND' || type === 'DIVIDEND_EQUIVALENT_PAYMENT') {
         const amt = parseFloat(c[iAmount]) || 0;
         if (amt > 0) dividends.push({ date, year, amount: amt });
@@ -6701,112 +6702,149 @@ async function importTRTransactionsCSV(lines, parseLine) {
       } catch {}
     }));
 
-    // 3. Récupérer le prix ACTUEL de chaque titre
-    showProgress('Récupération des prix actuels…');
-    const currentPrice = {};
-    await Promise.all(isins.map(async isin => {
-      const ticker = isinToTicker[isin];
-      if (!ticker) return;
+    // 3. Récupérer l'historique de prix Yahoo (cours de clôture quotidiens)
+    showProgress('Récupération des prix…');
+    const firstDate = trades[0].date;
+    const p1 = Math.floor(new Date(firstDate + 'T00:00:00').getTime() / 1000);
+    const p2 = Math.floor(Date.now() / 1000) + 86400;
+    const priceHistory = {}; // ticker → { 'YYYY-MM-DD': close }
+    const uniqueTickers = [...new Set(Object.values(isinToTicker).filter(Boolean))];
+    await Promise.all(uniqueTickers.map(async ticker => {
+      priceHistory[ticker] = {};
       try {
         const raw = await fetchWithFallback(
           'https://query1.finance.yahoo.com/v8/finance/chart/'
-          + encodeURIComponent(ticker) + '?interval=1d&range=5d');
+          + encodeURIComponent(ticker) + '?interval=1d&period1=' + p1 + '&period2=' + p2);
         const res = JSON.parse(raw).chart && JSON.parse(raw).chart.result && JSON.parse(raw).chart.result[0];
-        const px = res && res.meta && res.meta.regularMarketPrice;
-        if (px) currentPrice[isin] = px;
+        if (!res || !res.timestamp) return;
+        const closes = res.indicators.quote[0].close;
+        res.timestamp.forEach((ts, i) => {
+          if (closes[i] == null) return;
+          priceHistory[ticker][new Date(ts * 1000).toISOString().slice(0, 10)] = closes[i];
+        });
       } catch {}
     }));
-    // Fallback / garde-fou : si prix Yahoo absent ou aberrant → dernier prix d'exécution TR
-    const lastExec = {};
-    for (const t of trades) lastExec[t.isin] = t.price; // trades triés → dernier écrase
+
+    // Prix d'exécution TR par ISIN (fallback si Yahoo absent / incohérent)
+    const execByIsin = {};
+    for (const t of trades) (execByIsin[t.isin] = execByIsin[t.isin] || []).push({ date: t.date, price: t.price });
+    function execPriceAt(isin, date) {
+      const list = execByIsin[isin] || [];
+      let px = list.length ? list[0].price : null;
+      for (const e of list) { if (e.date <= date) px = e.price; else break; }
+      return px;
+    }
+
+    // 3b. Contrôle de cohérence : si Yahoo diverge >15% du prix d'exécution TR → on rejette Yahoo
+    function yahooAt(ticker, date) {
+      const ph = priceHistory[ticker];
+      if (!ph) return null;
+      if (ph[date] != null) return ph[date];
+      let px = null;
+      for (const d of Object.keys(ph).sort()) { if (d <= date) px = ph[d]; else break; }
+      return px;
+    }
     for (const isin of isins) {
-      const cp = currentPrice[isin], le = lastExec[isin];
-      if (cp == null) { currentPrice[isin] = le; continue; }
-      if (le > 0 && (cp / le < 0.5 || cp / le > 2)) {
-        console.warn('[TR import] prix actuel Yahoo incohérent', isin, cp, 'vs TR', le, '→ prix TR');
-        currentPrice[isin] = le;
+      const ticker = isinToTicker[isin];
+      if (!ticker || !priceHistory[ticker]) continue;
+      const ratios = [];
+      for (const t of (execByIsin[isin] || [])) {
+        const yp = yahooAt(ticker, t.date);
+        if (yp != null && t.price > 0) ratios.push(yp / t.price);
+      }
+      if (ratios.length >= 2) {
+        ratios.sort((a, b) => a - b);
+        const med = ratios[Math.floor(ratios.length / 2)];
+        if (med < 0.85 || med > 1.15) {
+          console.warn('[TR import] prix Yahoo incohérent pour', isin, '(' + ticker + ')',
+            'ratio médian', med.toFixed(3), '→ fallback prix TR');
+          priceHistory[ticker] = {};
+        }
       }
     }
 
-    // 4. FIFO : associer chaque vente aux lots d'achat les plus anciens
-    const lotsByIsin = {}; // isin → [{date,year,qty,remaining,costPerShare,cost,soldProceeds}]
-    for (const t of trades) {
-      if (t.type === 'BUY') {
-        (lotsByIsin[t.isin] = lotsByIsin[t.isin] || []).push({
-          date: t.date, year: t.year, qty: t.qty, remaining: t.qty,
-          costPerShare: t.cost / t.qty, cost: t.cost, soldProceeds: 0,
-        });
-      }
-    }
-    for (const t of trades) {
-      if (t.type !== 'SELL') continue;
-      let toSell = t.qty;
-      for (const lot of (lotsByIsin[t.isin] || [])) {
-        if (toSell <= 0) break;
-        if (lot.remaining <= 0) continue;
-        const take = Math.min(lot.remaining, toSell);
-        lot.remaining   -= take;
-        lot.soldProceeds += take * t.price;
-        toSell          -= take;
-      }
+    // Prix d'un ISIN à une date : Yahoo si dispo, sinon prix d'exécution TR
+    function priceAt(isin, date) {
+      const ticker = isinToTicker[isin];
+      const yp = ticker ? yahooAt(ticker, date) : null;
+      return (yp != null) ? yp : execPriceAt(isin, date);
     }
 
-    // 5. Performance par millésime (cohorte) : chaque année = ses propres achats
-    const yearMap = {}; // year → {invested, value, dividends}
-    const ensureYear = y => (yearMap[y] = yearMap[y] || { invested: 0, value: 0, dividends: 0 });
-    for (const isin of isins) {
-      const cp = currentPrice[isin] || 0;
-      for (const lot of (lotsByIsin[isin] || [])) {
-        const m = ensureYear(lot.year);
-        m.invested += lot.cost;
-        m.value    += lot.remaining * cp + lot.soldProceeds;
+    // 4. Quantité détenue d'un ISIN à une date donnée
+    function heldQtyAt(isin, date) {
+      let q = 0;
+      for (const t of trades) {
+        if (t.isin !== isin || t.date > date) continue;
+        q += (t.type === 'BUY') ? t.qty : -t.qty;
       }
+      return q;
     }
-    for (const d of dividends) {
-      const m = ensureYear(d.year);
-      m.value += d.amount;
-      m.dividends += d.amount;
+    // Valeur du portefeuille à une date
+    function portfolioValueAt(date) {
+      let v = 0;
+      for (const isin of isins) {
+        const q = heldQtyAt(isin, date);
+        if (q <= 0.0000001) continue;
+        const px = priceAt(isin, date);
+        if (px) v += q * px;
+      }
+      return v;
     }
 
-    const years = Object.keys(yearMap).map(Number).sort().map(y => {
-      const m = yearMap[y];
-      const gain = m.value - m.invested;
-      return {
+    // 5. Performance calendaire année par année
+    showProgress('Calcul des performances…');
+    const today = new Date().toISOString().slice(0, 10);
+    const firstYear = trades[0].year;
+    const currentYear = new Date().getFullYear();
+    const valueNow = portfolioValueAt(today);
+
+    // Valeur du portefeuille au 31/12 de chaque année close
+    const yearEndValue = {};
+    for (let y = firstYear; y < currentYear; y++) {
+      yearEndValue[y] = portfolioValueAt(y + '-12-31');
+    }
+
+    const years = [];
+    for (let y = firstYear; y <= currentYear; y++) {
+      const vStart = (y === firstYear) ? 0 : (yearEndValue[y - 1] || 0);
+      const vEnd   = (y === currentYear) ? valueNow : (yearEndValue[y] || 0);
+      let vers = 0;
+      for (const t of trades) if (t.year === y) vers += t.signedCost;
+      let div = 0;
+      for (const d of dividends) if (d.year === y) div += d.amount;
+      const base = vStart + vers;
+      const gain = vEnd + div - vStart - vers;
+      years.push({
         year: y,
-        invested: +m.invested.toFixed(2),
-        value:    +m.value.toFixed(2),
+        invested: +vers.toFixed(2),
+        value:    +vEnd.toFixed(2),
         gain:     +gain.toFixed(2),
-        dividends:+m.dividends.toFixed(2),
-        perfPct:  m.invested > 0 ? +(gain / m.invested * 100).toFixed(2) : 0,
-      };
-    });
-    const totInv = years.reduce((s, y) => s + y.invested, 0);
-    const totVal = years.reduce((s, y) => s + y.value, 0);
-    const totDiv = years.reduce((s, y) => s + y.dividends, 0);
+        dividends:+div.toFixed(2),
+        perfPct:  base > 0.01 ? +(gain / base * 100).toFixed(2) : 0,
+      });
+    }
+
+    // 6. Totaux
+    const totalInvested = trades.reduce((s, t) => s + t.signedCost, 0);
+    const totalDiv = dividends.reduce((s, d) => s + d.amount, 0);
+    const totalGain = valueNow + totalDiv - totalInvested;
     const total = {
-      invested: +totInv.toFixed(2),
-      value:    +totVal.toFixed(2),
-      gain:     +(totVal - totInv).toFixed(2),
-      dividends:+totDiv.toFixed(2),
-      perfPct:  totInv > 0 ? +((totVal - totInv) / totInv * 100).toFixed(2) : 0,
+      invested: +totalInvested.toFixed(2),
+      value:    +valueNow.toFixed(2),
+      gain:     +totalGain.toFixed(2),
+      dividends:+totalDiv.toFixed(2),
+      perfPct:  totalInvested > 0.01 ? +(totalGain / totalInvested * 100).toFixed(2) : 0,
     };
 
-    // 6. Positions actuelles
+    // 7. Positions actuelles
     const positions = isins.map(isin => {
-      const lots = lotsByIsin[isin] || [];
-      const qty  = lots.reduce((s, l) => s + l.remaining, 0);
-      const cost = lots.reduce((s, l) => s + l.costPerShare * l.remaining, 0);
-      const cp   = currentPrice[isin] || 0;
-      return {
-        isin, ticker: isinToTicker[isin] || '', name: isinName[isin] || isin,
-        qty: +qty.toFixed(4), cost: +cost.toFixed(2), price: cp, value: +(qty * cp).toFixed(2),
-      };
+      const q = heldQtyAt(isin, today);
+      const px = priceAt(isin, today) || 0;
+      return { isin, ticker: isinToTicker[isin] || '', name: isinName[isin] || isin,
+        qty: +q.toFixed(4), price: px, value: +(q * px).toFixed(2) };
     }).filter(p => p.qty > 0.0001).sort((a, b) => b.value - a.value);
 
-    const cohort = {
-      updatedAt: new Date().toISOString().slice(0, 10),
-      years, total, positions,
-    };
+    const cohort = { updatedAt: today, years, total, positions };
     saveTRCohort(currentUser, cohort);
     saveDailyValues(currentUser, []); // désactive le path valorisations quotidiennes (Boursorama)
     _perfCache = null;
