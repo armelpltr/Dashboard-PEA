@@ -6706,9 +6706,15 @@ function importDailyValuesCSV(event) {
       saveDailyValues(currentUser, finalRows);
       _perfCache = null;
 
-      let msg = '✓ ' + finalRows.length + ' valorisations importées (' + finalRows[0].date + ' → ' + finalRows[finalRows.length-1].date + ').\n\nLa performance annuelle utilisera désormais ces valeurs broker.';
-      if (errors.length) msg += '\n\n' + errors.length + ' ligne(s) ignorée(s).';
-      alert(msg);
+      const successEl = document.getElementById('csv-import-success');
+      if (successEl) {
+        let label = '✓ ' + finalRows.length + ' valorisations importées (' + finalRows[0].date + ' → ' + finalRows[finalRows.length-1].date + '). La performance annuelle utilisera désormais ces valeurs broker.';
+        if (errors.length) label += ' (' + errors.length + ' ligne(s) ignorée(s))';
+        successEl.textContent = label;
+        successEl.classList.add('visible');
+        clearTimeout(successEl._hideTimer);
+        successEl._hideTimer = setTimeout(() => successEl.classList.remove('visible'), 6000);
+      }
 
       updateDailyStatus();
       // Recharger la page perf

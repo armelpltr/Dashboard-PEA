@@ -321,6 +321,24 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .perf-action-btn:hover { background: var(--s3); color: var(--text1); }
 .perf-btn-danger:hover { background: rgba(255,77,106,0.1); color: #ff4d6a; border-color: rgba(255,77,106,0.3); }
 
+#csv-import-success {
+  display: none;
+  align-items: center; gap: 7px;
+  font-size: 11px; font-weight: 500;
+  color: #00e09e;
+  background: rgba(0,224,158,0.08);
+  border: 1px solid rgba(0,224,158,0.22);
+  border-radius: 8px;
+  padding: 5px 11px;
+  white-space: nowrap;
+  animation: csv-success-in 0.25s ease;
+}
+#csv-import-success.visible { display: flex; }
+@keyframes csv-success-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .perf-export-btn {
   font-size: 11px; padding: 7px 11px;
   background: transparent; color: var(--text3);
