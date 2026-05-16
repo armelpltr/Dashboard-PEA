@@ -6626,8 +6626,6 @@ document.addEventListener('click', e => {
 function onBrokerSelectChange() {} // legacy no-op
 
 function onImportCSVClick() {
-  const sel = document.getElementById('broker-select');
-  if (!sel.value) return;
   document.getElementById('input-daily-csv').click();
 }
 
@@ -6963,7 +6961,7 @@ function clearDailyValues() {
   if (triggerLabel) triggerLabel.textContent = 'Votre broker…';
   if (triggerIcon)  triggerIcon.style.display = 'none';
   if (triggerEl)    triggerEl.style.color = 'var(--text3)';
-  if (importBtn)    { importBtn.style.opacity = '0.45'; importBtn.style.cursor = 'not-allowed'; importBtn.style.color = 'var(--text3)'; }
+  if (importBtn)    { importBtn.style.opacity = '1'; importBtn.style.cursor = 'pointer'; importBtn.style.color = 'var(--text1)'; }
   updateDailyStatus();
   if (typeof initPerformance === 'function') initPerformance();
 }
