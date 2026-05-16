@@ -6792,13 +6792,28 @@ async function importTRTransactionsCSV(lines, parseLine) {
 
     if (!finalRows.length) { alert('Valorisations nulles — vérifiez que le fichier contient des transactions PEA avec actions.'); return; }
 
+    // Extraire les versements PEA (TRANSFER_IN uniquement) → remplace le tracker dashboard
+    // Nécessaire pour que le TWR soit correct (versByDate doit coïncider avec les daily values)
+    const trVersements = [];
+    const versByDateTR = {};
+    for (const row of peaRows) {
+      if (row.type === 'TRANSFER_IN' && row.amount > 0) {
+        versByDateTR[row.date] = (versByDateTR[row.date] || 0) + row.amount;
+      }
+    }
+    for (const [date, amount] of Object.entries(versByDateTR)) {
+      trVersements.push({ date, amount: Math.round(amount * 100) / 100 });
+    }
+    trVersements.sort((a, b) => a.date < b.date ? -1 : 1);
+    saveVersements(currentUser, trVersements);
+
     saveDailyValues(currentUser, finalRows);
     _perfCache = null;
 
     if (successEl) {
-      const label = '✓ ' + finalRows.length + ' valorisations calculées depuis TR ('
+      const label = '✓ ' + finalRows.length + ' valorisations + ' + trVersements.length + ' versements synchronisés depuis TR ('
         + finalRows[0].date + ' → ' + finalRows[finalRows.length - 1].date
-        + '). La performance annuelle utilisera désormais ces valeurs broker.';
+        + ').';
       successEl.textContent = label;
       successEl.classList.add('visible');
       clearTimeout(successEl._hideTimer);
