@@ -6600,7 +6600,13 @@ function selectBroker(el) {
   document.getElementById('broker-menu').style.display = 'none';
 
   if (!operational.includes(value)) {
-    alert('Support ' + label + ' en cours de développement.\n\nBoursorama et Trade Republic sont opérationnels.');
+    const noticeEl = document.getElementById('broker-notice');
+    if (noticeEl) {
+      noticeEl.textContent = 'Support ' + label + ' en cours de développement. Boursorama et Trade Republic sont opérationnels.';
+      noticeEl.classList.add('visible');
+      clearTimeout(noticeEl._hideTimer);
+      noticeEl._hideTimer = setTimeout(() => noticeEl.classList.remove('visible'), 5000);
+    }
     return;
   }
 
@@ -6947,7 +6953,7 @@ function clearDailyValues() {
   const kpiEl   = document.getElementById('perf-kpis');
   const tbodyEl = document.getElementById('perf-tbody');
   if (kpiEl)   kpiEl.innerHTML = '';
-  if (tbodyEl) tbodyEl.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:32px">Aucune donnée disponible.</td></tr>';
+  if (tbodyEl) tbodyEl.innerHTML = '';
 
   // Masquer la bannière de succès import
   const successEl = document.getElementById('csv-import-success');
@@ -6965,7 +6971,6 @@ function clearDailyValues() {
   if (triggerEl)    triggerEl.style.color = 'var(--text3)';
   if (importBtn)    { importBtn.style.opacity = '1'; importBtn.style.cursor = 'pointer'; importBtn.style.color = 'var(--text1)'; }
   updateDailyStatus();
-  if (typeof initPerformance === 'function') initPerformance();
 }
 
 function updateDailyStatus() {
