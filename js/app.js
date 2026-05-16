@@ -6778,7 +6778,9 @@ async function importTRTransactionsCSV(lines, parseLine) {
         if (price) stockValue += qty * price;
       }
 
-      const totalValue = stockValue + Math.max(0, cash);
+      // Stock-only : exclure le cash pour éviter que les TRANSFER_IN faussent le TWR
+      // (les versements sont trackés séparément dans le dashboard)
+      const totalValue = stockValue;
       if (totalValue > 0) finalRows.push({ date: day, value: Math.round(totalValue * 100) / 100 });
     }
 
