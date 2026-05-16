@@ -6813,7 +6813,8 @@ async function importTRTransactionsCSV(lines, parseLine) {
       let div = 0;
       for (const d of dividends) if (d.year === y) div += d.amount;
       const base = vStart + vers;
-      const gain = vEnd + div - vStart - vers;
+      // Gain = plus-value seule (hors dividendes, comme l'affichage TR). Dividendes = KPI séparé.
+      const gain = vEnd - vStart - vers;
       years.push({
         year: y,
         invested: +vers.toFixed(2),
@@ -6827,7 +6828,7 @@ async function importTRTransactionsCSV(lines, parseLine) {
     // 6. Totaux
     const totalInvested = trades.reduce((s, t) => s + t.signedCost, 0);
     const totalDiv = dividends.reduce((s, d) => s + d.amount, 0);
-    const totalGain = valueNow + totalDiv - totalInvested;
+    const totalGain = valueNow - totalInvested; // plus-value seule, hors dividendes
     const total = {
       invested: +totalInvested.toFixed(2),
       value:    +valueNow.toFixed(2),
