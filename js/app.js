@@ -1501,7 +1501,7 @@ const ISIN_MAP = {
   'FR0010208488': 'ENGI.PA',
   'FR0000120578': 'ATO.PA',
   'FR0000131906': 'FP.PA',
-  'FR0000045072': 'CNA.PA',
+  'FR0000045072': 'ACA.PA',
   'FR0010307819': 'GLE.PA',
   'FR0000035081': 'AXA.PA',
   'FR0000073272': 'EDF.PA',
@@ -6823,16 +6823,19 @@ async function importTRTransactionsCSV(lines, parseLine) {
 
     if (!finalRows.length) { alert('Valorisations nulles — vérifiez que le fichier contient des transactions PEA avec actions.'); return; }
 
-    // Extraire les versements PEA (TRANSFER_IN uniquement) → remplace le tracker dashboard
-    // Nécessaire pour que le TWR soit correct (versByDate doit coïncider avec les daily values)
+    // Versements pour le calcul de perf = coût NET des trades par jour (shares × prix d'exécution).
+    // Les daily values étant stock-only, le "capital ajouté au pool mesuré" un jour donné = le coût
+    // des achats ce jour-là (pas le TRANSFER_IN cash, qui peut tomber un autre jour). Ainsi
+    // stockValue saute exactement du montant du versement → TWR ≈ 1 le jour d'un trade.
+    // Une VENTE (shares négatif) → versement négatif → neutralisée pareil.
     const trVersements = [];
-    const versByDateTR = {};
+    const versByDateTrade = {};
     for (const row of peaRows) {
-      if (row.type === 'TRANSFER_IN' && row.amount > 0) {
-        versByDateTR[row.date] = (versByDateTR[row.date] || 0) + row.amount;
+      if ((row.type === 'BUY' || row.type === 'SELL') && row.symbol && row.shares && row.price > 0) {
+        versByDateTrade[row.date] = (versByDateTrade[row.date] || 0) + row.shares * row.price;
       }
     }
-    for (const [date, amount] of Object.entries(versByDateTR)) {
+    for (const [date, amount] of Object.entries(versByDateTrade)) {
       trVersements.push({ date, amount: Math.round(amount * 100) / 100 });
     }
     trVersements.sort((a, b) => a.date < b.date ? -1 : 1);
