@@ -6595,12 +6595,12 @@ function selectBroker(el) {
   const value = el.dataset.value;
   const label = el.dataset.label;
   const logo  = el.dataset.logo;
-  const operational = ['boursorama'];
+  const operational = ['boursorama', 'trade-republic'];
 
   document.getElementById('broker-menu').style.display = 'none';
 
   if (!operational.includes(value)) {
-    alert('Support ' + label + ' en cours de développement.\n\nSeul Boursorama est opérationnel pour le moment.');
+    alert('Support ' + label + ' en cours de développement.\n\nBoursorama et Trade Republic sont opérationnels.');
     return;
   }
 
@@ -6629,6 +6629,184 @@ function onImportCSVClick() {
   const sel = document.getElementById('broker-select');
   if (!sel.value) return;
   document.getElementById('input-daily-csv').click();
+}
+
+async function importTRTransactionsCSV(lines, parseLine) {
+  const successEl = document.getElementById('csv-import-success');
+  const statusEl  = document.getElementById('daily-status');
+
+  function showProgress(msg) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--accent)">⏳</span> ' + msg;
+  }
+
+  try {
+    const header = parseLine(lines[0]).map(h => h.toLowerCase().trim());
+    const col = name => header.indexOf(name);
+
+    const iDate    = col('date');
+    const iAccType = col('account_type');
+    const iType    = col('type');
+    const iCat     = col('category');
+    const iSymbol  = col('symbol');
+    const iShares  = col('shares');
+    const iAmount  = col('amount');
+
+    // 1. Filtrer les lignes PEA
+    const peaRows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cells = parseLine(lines[i]);
+      if (!cells || cells.length < 5) continue;
+      if ((cells[iAccType] || '').trim() !== 'PEA') continue;
+      peaRows.push({
+        date:    (cells[iDate]    || '').trim(),
+        type:    (cells[iType]    || '').trim(),
+        cat:     (cells[iCat]     || '').trim(),
+        symbol:  (cells[iSymbol]  || '').trim(),
+        shares:  parseFloat(cells[iShares])  || 0,
+        amount:  parseFloat(cells[iAmount])  || 0,
+      });
+    }
+
+    if (!peaRows.length) { alert('Aucune transaction PEA trouvée dans le fichier.'); return; }
+    peaRows.sort((a, b) => a.date < b.date ? -1 : 1);
+
+    // 2. Agréger par date : changements holdings + cash
+    const events = {}; // date → { holdings: {ISIN: delta}, cash: delta }
+    for (const row of peaRows) {
+      if (!row.date) continue;
+      if (!events[row.date]) events[row.date] = { holdings: {}, cash: 0 };
+      events[row.date].cash += row.amount;
+      if (row.type === 'BUY' && row.symbol) {
+        events[row.date].holdings[row.symbol] = (events[row.date].holdings[row.symbol] || 0) + row.shares;
+      } else if (row.type === 'SELL' && row.symbol) {
+        events[row.date].holdings[row.symbol] = (events[row.date].holdings[row.symbol] || 0) - row.shares;
+      }
+    }
+
+    const allEventDates = Object.keys(events).sort();
+    const firstDate = allEventDates[0];
+
+    // 3. ISINs uniques
+    const isins = new Set();
+    for (const ev of Object.values(events)) {
+      for (const isin of Object.keys(ev.holdings)) if (isin) isins.add(isin);
+    }
+
+    // 4. Résoudre ISIN → Yahoo ticker
+    showProgress('Résolution des tickers…');
+    const isinToTicker = {};
+    await Promise.all([...isins].map(async isin => {
+      if (ISIN_MAP[isin]) { isinToTicker[isin] = ISIN_MAP[isin]; return; }
+      try {
+        const raw = await fetchWithFallback(
+          'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(isin)
+          + '&lang=fr&region=FR&quotesCount=3&newsCount=0'
+        );
+        const data = JSON.parse(raw);
+        const quote = data.quotes && data.quotes.find(q => q.symbol);
+        if (quote) isinToTicker[isin] = quote.symbol;
+      } catch {}
+    }));
+
+    // 5. Fetch historique de prix
+    showProgress('Récupération des prix historiques…');
+    const p1 = Math.floor(new Date(firstDate + 'T00:00:00').getTime() / 1000);
+    const p2 = Math.floor(Date.now() / 1000) + 86400;
+    const priceHistory = {}; // ticker → { 'YYYY-MM-DD': close }
+
+    const uniqueTickers = [...new Set(Object.values(isinToTicker).filter(Boolean))];
+    await Promise.all(uniqueTickers.map(async ticker => {
+      priceHistory[ticker] = {};
+      try {
+        const raw = await fetchWithFallback(
+          'https://query1.finance.yahoo.com/v8/finance/chart/'
+          + encodeURIComponent(ticker)
+          + '?interval=1d&period1=' + p1 + '&period2=' + p2
+        );
+        const d = JSON.parse(raw);
+        const res = d.chart && d.chart.result && d.chart.result[0];
+        if (!res || !res.timestamp) return;
+        const closes = res.indicators.quote[0].close;
+        res.timestamp.forEach((ts, i) => {
+          if (closes[i] == null) return;
+          priceHistory[ticker][new Date(ts * 1000).toISOString().slice(0, 10)] = closes[i];
+        });
+      } catch {}
+    }));
+
+    // 6. Jours de cotation disponibles
+    const allPriceDates = new Set();
+    for (const prices of Object.values(priceHistory)) {
+      for (const d of Object.keys(prices)) allPriceDates.add(d);
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const tradingDays = [...allPriceDates].filter(d => d >= firstDate && d <= today).sort();
+
+    if (!tradingDays.length) { alert('Impossible de récupérer les prix Yahoo pour les actifs TR.'); return; }
+
+    // Helper : dernier prix connu ≤ date
+    function getPrice(ticker, date) {
+      const prices = priceHistory[ticker];
+      if (!prices) return null;
+      if (prices[date]) return prices[date];
+      const prev = Object.keys(prices).filter(d => d <= date).sort();
+      return prev.length ? prices[prev[prev.length - 1]] : null;
+    }
+
+    // 7. Calculer valeur quotidienne
+    showProgress('Calcul des valorisations…');
+    const holdings = {};
+    let cash = 0;
+    let ei = 0;
+    const finalRows = [];
+
+    for (const day of tradingDays) {
+      // Appliquer les événements jusqu'à ce jour
+      while (ei < allEventDates.length && allEventDates[ei] <= day) {
+        const ev = events[allEventDates[ei]];
+        cash += ev.cash;
+        for (const [isin, delta] of Object.entries(ev.holdings)) {
+          holdings[isin] = (holdings[isin] || 0) + delta;
+        }
+        ei++;
+      }
+
+      let stockValue = 0;
+      for (const [isin, qty] of Object.entries(holdings)) {
+        if (qty <= 0) continue;
+        const ticker = isinToTicker[isin];
+        if (!ticker) continue;
+        const price = getPrice(ticker, day);
+        if (price) stockValue += qty * price;
+      }
+
+      const totalValue = stockValue + Math.max(0, cash);
+      if (totalValue > 0) finalRows.push({ date: day, value: Math.round(totalValue * 100) / 100 });
+    }
+
+    if (!finalRows.length) { alert('Valorisations nulles — vérifiez que le fichier contient des transactions PEA avec actions.'); return; }
+
+    saveDailyValues(currentUser, finalRows);
+    _perfCache = null;
+
+    if (successEl) {
+      const label = '✓ ' + finalRows.length + ' valorisations calculées depuis TR ('
+        + finalRows[0].date + ' → ' + finalRows[finalRows.length - 1].date
+        + '). La performance annuelle utilisera désormais ces valeurs broker.';
+      successEl.textContent = label;
+      successEl.classList.add('visible');
+      clearTimeout(successEl._hideTimer);
+      successEl._hideTimer = setTimeout(() => successEl.classList.remove('visible'), 8000);
+    }
+
+    updateDailyStatus();
+    if (typeof initPerformance === 'function') initPerformance();
+
+  } catch (err) {
+    console.error('Erreur import TR:', err);
+    alert('Erreur lors du traitement du fichier TR : ' + err.message);
+    updateDailyStatus();
+  }
 }
 
 function importDailyValuesCSV(event) {
@@ -6661,7 +6839,14 @@ function importDailyValuesCSV(event) {
         return out.map(s => s.trim());
       }
 
-      const header = parseLine(lines[0]).map(h => h.toLowerCase());
+      const header = parseLine(lines[0]).map(h => h.toLowerCase().trim());
+
+      // Détection format Trade Republic (colonnes account_type + transaction_id)
+      if (header.includes('account_type') && header.includes('transaction_id')) {
+        await importTRTransactionsCSV(lines, parseLine);
+        return;
+      }
+
       const idxDate = header.findIndex(h => h.includes('date'));
       const idxVal  = header.findIndex(h => h.includes('valorisation') || h.includes('valeur') || h.includes('value'));
       if (idxDate < 0 || idxVal < 0) {
