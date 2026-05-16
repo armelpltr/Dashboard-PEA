@@ -6823,21 +6823,14 @@ async function importTRTransactionsCSV(lines, parseLine) {
 
     if (!finalRows.length) { alert('Valorisations nulles — vérifiez que le fichier contient des transactions PEA avec actions.'); return; }
 
-    // Versements pour le calcul de perf = capital des trades par jour, valorisé au MÊME prix
-    // (close Yahoo) que les daily values stock-only. Crucial : si on utilisait le prix d'exécution
-    // TR au lieu du close, l'écart intraday créerait un biais systématique cumulé sur chaque achat.
-    // En valorisant au close, le saut de stockValue le jour d'un trade est exactement compensé
-    // → TWR = 1 le jour du trade, = pur rendement marché les autres jours.
-    // Une VENTE (shares négatif) → versement négatif → neutralisée pareil.
+    // Versements = capital réellement investi (shares × prix d'exécution TR = cash payé).
+    // Rendement simple : gain = valeur marché (close Yahoo) − cash investi → P&L réel.
+    // Une VENTE (shares négatif) → versement négatif → capital retiré.
     const trVersements = [];
     const versByDateTrade = {};
     for (const row of peaRows) {
-      if ((row.type === 'BUY' || row.type === 'SELL') && row.symbol && row.shares) {
-        const ticker = isinToTicker[row.symbol];
-        let px = ticker ? getPrice(ticker, row.date) : null;
-        if (px == null) px = costPriceAt(row.symbol, row.date);
-        if (px == null) px = row.price;
-        versByDateTrade[row.date] = (versByDateTrade[row.date] || 0) + row.shares * px;
+      if ((row.type === 'BUY' || row.type === 'SELL') && row.symbol && row.shares && row.price > 0) {
+        versByDateTrade[row.date] = (versByDateTrade[row.date] || 0) + row.shares * row.price;
       }
     }
     for (const [date, amount] of Object.entries(versByDateTrade)) {
