@@ -6656,6 +6656,8 @@ async function importTRTransactionsCSV(lines, parseLine) {
     const iShares  = col('shares');
     const iPrice   = col('price');
     const iAmount  = col('amount');
+    const iFee     = col('fee');
+    const iTax     = col('tax');
 
     // 1. Filtrer les lignes PEA
     const peaRows = [];
@@ -6671,6 +6673,8 @@ async function importTRTransactionsCSV(lines, parseLine) {
         shares:  parseFloat(cells[iShares])  || 0,
         price:   parseFloat(cells[iPrice])   || 0,
         amount:  parseFloat(cells[iAmount])  || 0,
+        fee:     iFee >= 0 ? (parseFloat(cells[iFee]) || 0) : 0,
+        tax:     iTax >= 0 ? (parseFloat(cells[iTax]) || 0) : 0,
       });
     }
 
@@ -6679,13 +6683,14 @@ async function importTRTransactionsCSV(lines, parseLine) {
 
     // 2. Agréger par date : changements holdings + cash.
     //    TR signe déjà `shares` (+ pour BUY, − pour SELL) → addition directe.
+    //    cash = mouvement net de liquidités PEA = amount + fee + tax (tous signés par TR).
     //    On capture aussi le prix d'exécution TR (fallback si Yahoo manque des prix).
     const events = {}; // date → { holdings: {ISIN: delta}, cash: delta }
     const trExecPrices = {}; // ISIN → [{date, price}] trié
     for (const row of peaRows) {
       if (!row.date) continue;
       if (!events[row.date]) events[row.date] = { holdings: {}, cash: 0 };
-      events[row.date].cash += row.amount;
+      events[row.date].cash += row.amount + row.fee + row.tax;
       if ((row.type === 'BUY' || row.type === 'SELL') && row.symbol && row.shares) {
         events[row.date].holdings[row.symbol] = (events[row.date].holdings[row.symbol] || 0) + row.shares;
         if (row.price > 0) {
@@ -6810,9 +6815,10 @@ async function importTRTransactionsCSV(lines, parseLine) {
       }
     }
 
-    // 7. Calculer valeur quotidienne
+    // 7. Calculer valeur quotidienne = titres au marché + cash PEA (comptabilité complète)
     showProgress('Calcul des valorisations…');
     const holdings = {};
+    let cash = 0;
     let ei = 0;
     const finalRows = [];
 
@@ -6820,6 +6826,7 @@ async function importTRTransactionsCSV(lines, parseLine) {
       // Appliquer les événements jusqu'à ce jour
       while (ei < allEventDates.length && allEventDates[ei] <= day) {
         const ev = events[allEventDates[ei]];
+        cash += ev.cash;
         for (const [isin, delta] of Object.entries(ev.holdings)) {
           holdings[isin] = (holdings[isin] || 0) + delta;
         }
@@ -6836,23 +6843,24 @@ async function importTRTransactionsCSV(lines, parseLine) {
         if (price) stockValue += qty * price;
       }
 
-      // Stock-only : valeur de marché des titres uniquement (le cash est hors périmètre)
-      if (stockValue > 0) finalRows.push({ date: day, value: Math.round(stockValue * 100) / 100 });
+      // Valeur totale PEA = titres (marché) + liquidités (cash : dépôts, dividendes, frais…)
+      const totalValue = stockValue + cash;
+      if (totalValue > 0) finalRows.push({ date: day, value: Math.round(totalValue * 100) / 100 });
     }
 
     if (!finalRows.length) { alert('Valorisations nulles — vérifiez que le fichier contient des transactions PEA avec actions.'); return; }
 
-    // Versements = capital réellement investi (shares × prix d'exécution TR = cash payé).
-    // Rendement simple : gain = valeur marché (close Yahoo) − cash investi → P&L réel.
-    // Une VENTE (shares négatif) → versement négatif → capital retiré.
+    // Versements = vrais virements injectés dans le PEA (TRANSFER_IN). La valeur quotidienne
+    // intègre le cash → un TRANSFER_IN fait monter valeur ET base d'autant → gain neutre.
+    // Rendement simple : gain = valeur − versements cumulés.
     const trVersements = [];
-    const versByDateTrade = {};
+    const versByDateIn = {};
     for (const row of peaRows) {
-      if ((row.type === 'BUY' || row.type === 'SELL') && row.symbol && row.shares && row.price > 0) {
-        versByDateTrade[row.date] = (versByDateTrade[row.date] || 0) + row.shares * row.price;
+      if (row.type === 'TRANSFER_IN' && row.amount > 0) {
+        versByDateIn[row.date] = (versByDateIn[row.date] || 0) + row.amount;
       }
     }
-    for (const [date, amount] of Object.entries(versByDateTrade)) {
+    for (const [date, amount] of Object.entries(versByDateIn)) {
       trVersements.push({ date, amount: Math.round(amount * 100) / 100 });
     }
     trVersements.sort((a, b) => a.date < b.date ? -1 : 1);
