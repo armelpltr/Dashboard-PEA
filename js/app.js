@@ -98,10 +98,6 @@ const firebaseConfig = {
 
 
 let currentUser = null;
-let currentUserRole = 'user'; // 'user' | 'admin' | 'superadmin'
-
-function isSuperAdmin(user) { return user && currentUserRole === 'superadmin'; }
-function isAdmin(user)      { return currentUserRole === 'admin' || currentUserRole === 'superadmin'; }
 
 // ─── COUCHE DONNÉES FIRESTORE (cache synchrone + sync arrière-plan) ──────
 // Les lectures/écritures sont SYNCHRONES via un cache mémoire.
@@ -412,18 +408,6 @@ window.doLogout = async function() {
 async function startApp(user) {
   currentUser = user.uid;
   window.currentUser = user.uid;
-  // Charger le rôle depuis Firestore
-  try {
-    const roleDoc = await getFirestoreDoc(firestoreDoc(db, 'roles', user.uid));
-    const baseSync = { email: user.email, displayName: user.displayName || '' };
-    if (user.photoURL) baseSync.photoURL = user.photoURL;
-    await setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), baseSync, { merge: true });
-    if (!roleDoc.exists()) {
-      await setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { role: 'user', email: user.email });
-    }
-    currentUserRole = roleDoc.exists() ? (roleDoc.data().role || 'user') : 'user';
-  } catch(e) { console.error('🔑 role load error:', e); currentUserRole = 'user'; }
-  updateRoleBadges();
   const displayName = user.displayName || user.email.split('@')[0];
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -450,7 +434,6 @@ async function startApp(user) {
   // Ne bloque pas l'affichage : lancé après le rendu du portefeuille.
   setTimeout(() => { preloadAll().catch(e => console.warn('Preload:', e)); }, 200);
   _updateNotifBadge();
-  _listenBroadcast();
   if (Notification.permission === 'granted') initPush(user.uid).catch(() => {});
 }
 
@@ -548,7 +531,6 @@ window.uploadProfilAvatar = function(event) {
 
 function loadProfilePage(user) {
   if (!user) return;
-  updateRoleBadges();
 
   // Avatar
   const letter = document.getElementById('profil-avatar-letter');
@@ -691,35 +673,6 @@ function syncMobileNav(id) {
     b.classList.toggle('active', b.dataset.mob === id);
   });
 }
-
-function _roleBadgeHtml(role, size) {
-  const s = size || '9px';
-  const base = `display:inline-block;white-space:nowrap;font-size:${s};font-family:var(--mono);font-weight:700;padding:1px 7px;border-radius:4px;`;
-  if (role === 'superadmin') return `<span style="${base}background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)">${IC.crown} Super Admin</span>`;
-  if (role === 'admin')      return `<span style="${base}background:rgba(124,109,245,0.15);color:var(--accent);border:1px solid rgba(124,109,245,0.25)">${IC.zap} Admin</span>`;
-  return `<span style="${base}background:var(--s3);color:var(--text3)">Utilisateur</span>`;
-}
-
-function updateRoleBadges() {
-  const sb = document.getElementById('sidebar-role-badge');
-  if (sb) { sb.style.display = 'block'; sb.innerHTML = _roleBadgeHtml(currentUserRole, '9px'); }
-  const pb = document.getElementById('profil-role-badge');
-  if (pb) pb.innerHTML = _roleBadgeHtml(currentUserRole, '10px');
-  // Bouton Super Admin sidebar + mobile
-  const isSA = isSuperAdmin(fbAuth.currentUser);
-  const btnSA = document.getElementById('btn-superadmin');
-  if (btnSA) btnSA.style.display = isSA ? 'flex' : 'none';
-  const btnSAm = document.getElementById('btn-superadmin-mobile');
-  if (btnSAm) btnSAm.style.display = isSA ? 'flex' : 'none';
-}
-
-window.openSuperAdminPanel = async function() {
-  document.getElementById('superadmin-overlay').style.display = 'flex';
-  await _saLoadAll();
-};
-window.closeSuperAdminPanel = function() {
-  document.getElementById('superadmin-overlay').style.display = 'none';
-};
 
 // Update mobile header avatar
 function updateMobileAvatar(user) {
@@ -6583,52 +6536,6 @@ let _perfCache = null; // évite de refetch à chaque clic
 //    - Boursorama : "Date","Valorisation portefeuille","Perf période portefeuille","Perf cumulée portefeuille"
 //    - Générique  : Date,Valeur (séparateur , ou ;)
 // ─────────────────────────────────────────────────────────────────
-function toggleBrokerDropdown(e) {
-  e.stopPropagation();
-  const menu = document.getElementById('broker-menu');
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-}
-
-function selectBroker(el) {
-  const value = el.dataset.value;
-  const label = el.dataset.label;
-  const logo  = el.dataset.logo;
-  const operational = ['boursorama', 'trade-republic'];
-
-  document.getElementById('broker-menu').style.display = 'none';
-
-  if (!operational.includes(value)) {
-    const noticeEl = document.getElementById('broker-notice');
-    if (noticeEl) {
-      noticeEl.textContent = 'Support ' + label + ' en cours de développement. Boursorama et Trade Republic sont opérationnels.';
-      noticeEl.classList.add('visible');
-      clearTimeout(noticeEl._hideTimer);
-      noticeEl._hideTimer = setTimeout(() => noticeEl.classList.remove('visible'), 5000);
-    }
-    return;
-  }
-
-  document.getElementById('broker-select').value = value;
-  document.getElementById('broker-trigger-label').textContent = label;
-  const iconWrap = document.getElementById('broker-trigger-icon');
-  document.getElementById('broker-trigger-img').src = logo;
-  iconWrap.style.display = 'inline-flex';
-  document.getElementById('broker-trigger').style.color = 'var(--text1)';
-
-  const btn = document.getElementById('btn-import-csv');
-  btn.style.opacity = '1'; btn.style.cursor = 'pointer'; btn.style.color = 'var(--text1)';
-}
-
-document.addEventListener('click', e => {
-  const dd = document.getElementById('broker-dropdown');
-  if (dd && !dd.contains(e.target)) {
-    const menu = document.getElementById('broker-menu');
-    if (menu) menu.style.display = 'none';
-  }
-});
-
-function onBrokerSelectChange() {} // legacy no-op
-
 function onImportCSVClick() {
   document.getElementById('input-daily-csv').click();
 }
@@ -7008,17 +6915,6 @@ function clearDailyValues() {
   const successEl = document.getElementById('csv-import-success');
   if (successEl) { clearTimeout(successEl._hideTimer); successEl.classList.remove('visible'); }
 
-  // Reset broker dropdown
-  const brokerInput = document.getElementById('broker-select');
-  const triggerLabel = document.getElementById('broker-trigger-label');
-  const triggerIcon  = document.getElementById('broker-trigger-icon');
-  const triggerEl    = document.getElementById('broker-trigger');
-  const importBtn    = document.getElementById('btn-import-csv');
-  if (brokerInput)  brokerInput.value = '';
-  if (triggerLabel) triggerLabel.textContent = 'Votre broker…';
-  if (triggerIcon)  triggerIcon.style.display = 'none';
-  if (triggerEl)    triggerEl.style.color = 'var(--text3)';
-  if (importBtn)    { importBtn.style.opacity = '1'; importBtn.style.cursor = 'pointer'; importBtn.style.color = 'var(--text1)'; }
   updateDailyStatus();
 }
 
@@ -7888,246 +7784,6 @@ window._dismissChatToast = function() {
   if (toast) toast.style.display = 'none';
   if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
 };
-
-// ── Gestion des rôles (superadmin) ─────────────────────────
-
-window.grantAdmin  = async function() { await _setRoleByEmail('admin'); };
-window.revokeAdmin = async function() { await _setRoleByEmail('user'); };
-
-// ── Super Admin panel ───────────────────────────────────────
-
-async function _saLoadAll() {
-  document.getElementById('sa-subtitle').textContent = 'Chargement…';
-  try {
-    const [rolesSnap, presenceSnap] = await Promise.all([
-      getDocs(firestoreCollection(db, 'roles')),
-      getDocs(firestoreCollection(db, 'presence')),
-    ]);
-
-    const presence = {};
-    presenceSnap.forEach(d => { presence[d.id] = d.data(); });
-
-    const users = [];
-    const portfolioFetches = rolesSnap.docs.map(async d => {
-      const role = d.data();
-      const uid  = d.id;
-      const [portSnap, alertsSnap] = await Promise.all([
-        getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'portfolio')).catch(() => null),
-        getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'alerts')).catch(() => null),
-      ]);
-      const positions = portSnap?.exists() ? (portSnap.data().items || []).length : 0;
-      const alerts    = alertsSnap?.exists() ? (alertsSnap.data().items || []).filter(a => a.active && !a.triggeredAt).length : 0;
-      users.push({ uid, email: role.email || '', role: role.role || 'user', positions, alerts, presence: presence[uid] || null });
-    });
-    await Promise.all(portfolioFetches);
-
-    const online = users.filter(u => u.presence?.online).length;
-    const active7 = users.filter(u => {
-      if (!u.presence?.lastSeen) return false;
-      const d = u.presence.lastSeen.toDate ? u.presence.lastSeen.toDate() : new Date(u.presence.lastSeen);
-      return (Date.now() - d.getTime()) < 7 * 24 * 3600 * 1000;
-    }).length;
-    const totalAlerts = users.reduce((s, u) => s + u.alerts, 0);
-    const totalPos    = users.reduce((s, u) => s + u.positions, 0);
-
-    document.getElementById('sa-subtitle').textContent = `${users.length} utilisateurs · ${online} en ligne`;
-    document.getElementById('sa-online-count').textContent = `· ${online} en ligne`;
-
-    // Stats cards
-    const statsEl = document.getElementById('sa-stats');
-    const stats = [
-      { label: 'Utilisateurs', value: users.length, icon: '👥' },
-      { label: 'Actifs 7j',    value: active7,       icon: IC.calendar },
-      { label: 'En ligne',     value: online,         icon: IC.dotGreen },
-      { label: 'Alertes actives', value: totalAlerts, icon: IC.target },
-      { label: 'Positions totales', value: totalPos,  icon: IC.briefcase },
-    ];
-    statsEl.innerHTML = stats.map(s =>
-      `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-        <div style="font-size:18px;margin-bottom:4px">${s.icon}</div>
-        <div style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--mono)">${s.value}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">${s.label}</div>
-      </div>`
-    ).join('');
-
-    // Users table
-    users.sort((a, b) => (b.presence?.online ? 1 : 0) - (a.presence?.online ? 1 : 0));
-    document.getElementById('sa-users-tbody').innerHTML = users.map(u => {
-      const isOnline = u.presence?.online;
-      const lastSeen = u.presence?.lastSeen ? (() => {
-        const d = u.presence.lastSeen.toDate ? u.presence.lastSeen.toDate() : new Date(u.presence.lastSeen);
-        return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
-      })() : '—';
-      const roleColor = u.role === 'superadmin' ? '#fbbf24' : u.role === 'admin' ? 'var(--accent)' : 'var(--text3)';
-      return `<tr style="border-bottom:1px solid var(--border)">
-        <td style="padding:8px 10px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${isOnline ? 'var(--positive)' : 'var(--border2)'}" title="${isOnline ? 'En ligne' : 'Hors ligne'}"></span></td>
-        <td style="padding:8px 10px;font-size:12px;color:var(--text)">${u.email}</td>
-        <td style="padding:8px 10px;font-size:11px;color:${roleColor};font-weight:600">${u.role}</td>
-        <td style="padding:8px 10px;font-size:12px;color:var(--text2);font-family:var(--mono);text-align:center">${u.positions}</td>
-        <td style="padding:8px 10px;font-size:12px;color:${u.alerts > 0 ? 'var(--accent)' : 'var(--text3)'};font-family:var(--mono);text-align:center">${u.alerts}</td>
-        <td style="padding:8px 10px;font-size:11px;color:var(--text3)">${lastSeen}</td>
-        <td style="padding:8px 10px">
-          <button onclick="saDeleteUser('${u.uid}','${u.email}')" style="background:none;border:1px solid rgba(255,77,106,0.3);color:var(--negative);border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer" title="Supprimer données">🗑</button>
-        </td>
-      </tr>`;
-    }).join('');
-
-    // Charger token GitHub depuis Firestore
-    try {
-      const tokSnap = await getFirestoreDoc(firestoreDoc(db, 'config', 'githubToken'));
-      if (tokSnap.exists() && tokSnap.data().token) {
-        document.getElementById('sa-github-token').value = tokSnap.data().token;
-      }
-    } catch(e) {}
-
-    // Recap buttons
-    document.getElementById('sa-recap-btns').innerHTML = users.map(u =>
-      `<button onclick="saOpenConfirmRecap('${u.email}')" style="text-align:left;background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer">▶ ${u.email}</button>`
-    ).join('');
-
-  } catch(e) {
-    document.getElementById('sa-subtitle').textContent = 'Erreur : ' + e.message;
-  }
-}
-
-async function saBroadcast() {
-  const msg = document.getElementById('sa-broadcast-msg').value.trim();
-  const st  = document.getElementById('sa-broadcast-status');
-  if (!msg) return;
-  try {
-    await setFirestoreDoc(firestoreDoc(db, 'config', 'broadcast'), { message: msg, active: true, createdAt: serverTimestamp() });
-    st.style.color = 'var(--positive)';
-    st.textContent = '✓ Bandeau envoyé';
-    document.getElementById('sa-broadcast-msg').value = '';
-    setTimeout(() => { st.textContent = ''; }, 3000);
-  } catch(e) { st.style.color = 'var(--negative)'; st.textContent = 'Erreur : ' + e.message; }
-}
-
-async function saClearBroadcast() {
-  const st = document.getElementById('sa-broadcast-status');
-  try {
-    await setFirestoreDoc(firestoreDoc(db, 'config', 'broadcast'), { active: false, message: '' });
-    st.style.color = 'var(--text3)';
-    st.textContent = 'Bandeau effacé';
-    setTimeout(() => { st.textContent = ''; }, 2000);
-  } catch(e) { st.style.color = 'var(--negative)'; st.textContent = 'Erreur : ' + e.message; }
-}
-
-async function saSaveGithubToken() {
-  const token = document.getElementById('sa-github-token').value.trim();
-  const st    = document.getElementById('sa-recap-status');
-  if (!token) return;
-  try {
-    await setFirestoreDoc(firestoreDoc(db, 'config', 'githubToken'), { token });
-    st.style.color = 'var(--positive)'; st.textContent = '✓ Token sauvegardé';
-    setTimeout(() => { st.textContent = ''; }, 2000);
-  } catch(e) { st.style.color = 'var(--negative)'; st.textContent = 'Erreur : ' + e.message; }
-}
-
-let _saAllUsers = [];
-
-function saFilterUsers(query) {
-  const q = query.toLowerCase();
-  const rows = document.querySelectorAll('#sa-users-tbody tr');
-  rows.forEach(row => {
-    const text = row.textContent.toLowerCase();
-    row.style.display = (!q || text.includes(q)) ? '' : 'none';
-  });
-}
-
-let _saConfirmEmail = null;
-function saOpenConfirmRecap(email) {
-  _saConfirmEmail = email;
-  document.getElementById('confirm-recap-email').textContent = email;
-  document.getElementById('confirm-recap-overlay').style.display = 'flex';
-}
-function closeConfirmRecap() {
-  document.getElementById('confirm-recap-overlay').style.display = 'none';
-  _saConfirmEmail = null;
-}
-async function confirmRecapSend() {
-  const email = _saConfirmEmail;
-  closeConfirmRecap();
-  if (email) await saForceRecap(email);
-}
-
-async function saForceRecap(email) {
-  const st = document.getElementById('sa-recap-status');
-  let token = document.getElementById('sa-github-token').value.trim();
-  if (!token) {
-    try {
-      const snap = await getFirestoreDoc(firestoreDoc(db, 'config', 'githubToken'));
-      token = snap.exists() ? snap.data().token : '';
-    } catch(e) {}
-  }
-  if (!token) { st.style.color = 'var(--negative)'; st.textContent = 'Aucun GitHub PAT configuré'; return; }
-  st.style.color = 'var(--text3)'; st.textContent = `Envoi recap pour ${email}…`;
-  try {
-    const res = await fetch('https://api.github.com/repos/armelpltr/Dashboard-PEA/actions/workflows/daily-recap.yml/dispatches', {
-      method: 'POST',
-      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ref: 'main', inputs: { target_email: email } }),
-    });
-    if (res.ok || res.status === 204) {
-      st.style.color = 'var(--positive)'; st.textContent = `✓ Recap déclenché (tous les users recevront le mail)`;
-    } else {
-      const err = await res.text();
-      st.style.color = 'var(--negative)'; st.textContent = `Erreur GitHub ${res.status}: ${err}`;
-    }
-  } catch(e) { st.style.color = 'var(--negative)'; st.textContent = 'Erreur : ' + e.message; }
-}
-
-async function saDeleteUser(uid, email) {
-  if (!confirm(`Supprimer toutes les données de ${email} ?\n\nLe compte Auth reste actif mais le portfolio, transactions et paramètres seront effacés.`)) return;
-  try {
-    const cols = ['portfolio', 'transactions', 'versements', 'watchlist', 'dailyValues', 'alerts', 'notifHistory', 'settings'];
-    await Promise.all(cols.map(c => deleteFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', c)).catch(() => {})));
-    await deleteFirestoreDoc(firestoreDoc(db, 'roles', uid)).catch(() => {});
-    alert(`✓ Données de ${email} supprimées.`);
-    await _saLoadAll();
-  } catch(e) { alert('Erreur : ' + e.message); }
-}
-
-function _listenBroadcast() {
-  onSnapshot(firestoreDoc(db, 'config', 'broadcast'), snap => {
-    const banner = document.getElementById('broadcast-banner');
-    if (!banner) return;
-    const data = snap.exists() ? snap.data() : null;
-    if (data?.active && data.message) {
-      document.getElementById('broadcast-text').textContent = data.message;
-      banner.style.display = 'flex';
-      document.body.style.paddingTop = '44px';
-    } else {
-      banner.style.display = 'none';
-      document.body.style.paddingTop = '';
-    }
-  });
-}
-
-function dismissBroadcast() {
-  const banner = document.getElementById('broadcast-banner');
-  if (banner) banner.style.display = 'none';
-  document.body.style.paddingTop = '';
-}
-
-async function _setRoleByEmail(role) {
-  const email = document.getElementById('input-admin-email').value.trim().toLowerCase();
-  const st    = document.getElementById('admin-role-status');
-  if (!email) return;
-  try {
-    const snap = await getDocs(firestoreQuery(firestoreCollection(db, 'users'), firestoreWhere('email', '==', email)));
-    if (snap.empty) { st.style.color = 'var(--negative)'; st.textContent = 'Utilisateur introuvable.'; return; }
-    const uid = snap.docs[0].id;
-    await setFirestoreDoc(firestoreDoc(db, 'roles', uid), { role, email }, { merge: true });
-    st.style.color   = 'var(--positive)';
-    st.textContent   = role === 'admin' ? ('✓ ' + email + ' est admin') : ('✓ Droits retirés pour ' + email);
-    document.getElementById('input-admin-email').value = '';
-    setTimeout(() => { st.textContent = ''; }, 3000);
-  } catch(e) {
-    st.style.color = 'var(--negative)';
-    st.textContent = 'Erreur : ' + e.message;
-  }
-}
 
 
 // ═══════════════════════════════════════════════════════════════

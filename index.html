@@ -100,14 +100,6 @@
 <!-- ═══ APP ═════════════════════════════════════════ -->
 <div id="app" style="display:none">
 
-  <!-- ─── BROADCAST BANNER ──────────────────────────── -->
-  <div id="broadcast-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:2000;background:linear-gradient(90deg,#7c6df5,#5b8dee);padding:10px 20px;display:none;align-items:center;justify-content:space-between;gap:12px">
-    <div style="display:flex;align-items:center;gap:10px;flex:1">
-      <span style="font-size:16px">📢</span>
-      <span id="broadcast-text" style="font-size:13px;font-weight:600;color:#fff"></span>
-    </div>
-    <button onclick="dismissBroadcast()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>
-  </div>
 
   <!-- ─── MOBILE HEADER ───────────────────────────── -->
   <header class="mobile-header" id="mobile-header">
@@ -171,9 +163,6 @@
         <span id="notif-drawer-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
       </div>
       <div class="mobile-drawer-section">Compte</div>
-      <div class="mobile-drawer-item" id="btn-superadmin-mobile" onclick="openSuperAdminPanel();closeMobileDrawer()" style="display:none;color:#fbbf24">
-        <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e17055" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="m4 20 4-12 4 7 4-10 4 15"/></svg></span>Super Admin
-      </div>
       <div class="mobile-drawer-item" onclick="openProfilModal();closeMobileDrawer()">
         <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>Mon profil
       </div>
@@ -220,13 +209,6 @@
         <span id="notif-nav-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
       </div>
     </nav>
-    <div id="btn-superadmin" onclick="openSuperAdminPanel()" title="Super Admin" style="
-      display:none;margin:8px 12px 8px;padding:9px 14px;border-radius:10px;cursor:pointer;
-      display:none;align-items:center;gap:10px;font-size:13px;color:#fbbf24;
-      background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);transition:background .15s">
-      <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e17055" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="m4 20 4-12 4 7 4-10 4 15"/></svg></span>
-      <span style="flex:1">Super Admin</span>
-    </div>
     <div class="sidebar-legal">
       <a href="mentions-legales.html" target="_blank">Légal</a>
       <span class="sep">·</span>
@@ -243,7 +225,6 @@
         <button class="btn-refresh" onclick="event.stopPropagation();refreshAll()" title="Rafraîchir les données" id="btn-refresh-data">↻</button>
         <button class="btn-logout" onclick="event.stopPropagation();doLogout()" title="Déconnexion">⏻</button>
       </div>
-      <div id="sidebar-role-badge" style="display:none;padding:4px 4px 0 4px"></div>
     </div>
   </aside>
 
@@ -591,33 +572,11 @@
 
         <!-- Broker + import -->
         <div style="display:flex;align-items:center;gap:0;border:1px solid var(--s3);border-radius:10px;background:var(--s2);position:relative">
-          <!-- Custom broker dropdown -->
-          <div id="broker-dropdown" style="position:relative">
-            <div id="broker-trigger" onclick="toggleBrokerDropdown(event)"
-              style="display:flex;align-items:center;gap:7px;padding:7px 10px;cursor:pointer;min-width:160px;font-size:11px;color:var(--text3);user-select:none">
-              <span id="broker-trigger-icon" style="display:none;width:16px;height:16px;border-radius:3px;overflow:hidden;flex-shrink:0">
-                <img id="broker-trigger-img" src="" style="width:16px;height:16px;object-fit:contain">
-              </span>
-              <span id="broker-trigger-label">Votre broker…</span>
-              <svg style="margin-left:auto;flex-shrink:0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </div>
-            <div id="broker-menu" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--s1);border:1px solid var(--s3);border-radius:10px;overflow:hidden;z-index:999;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,0.4)">
-              <div class="broker-opt" data-value="boursorama" data-label="Boursorama" data-logo="https://www.boursorama.com/favicon.ico" data-ok="1" onclick="selectBroker(this)">
-                <img src="https://www.boursorama.com/favicon.ico" width="16" height="16" style="border-radius:3px;object-fit:contain">
-                <span>Boursorama</span><span style="margin-left:auto;font-size:9px;color:var(--positive)">✓</span>
-              </div>
-              <div class="broker-opt" data-value="fortuneo" data-label="Fortuneo" data-logo="https://www.fortuneo.fr/favicon.ico" onclick="selectBroker(this)">
-                <img src="https://www.fortuneo.fr/favicon.ico" width="16" height="16" style="border-radius:3px;object-fit:contain">
-                <span>Fortuneo</span><span style="margin-left:auto;font-size:9px;color:var(--text3)">bientôt</span>
-              </div>
-
-              <div class="broker-opt" data-value="trade-republic" data-label="Trade Republic" data-logo="https://traderepublic.com/favicon.ico" data-ok="1" onclick="selectBroker(this)">
-                <img src="https://traderepublic.com/favicon.ico" width="16" height="16" style="border-radius:3px;object-fit:contain">
-                <span>Trade Republic</span><span style="margin-left:auto;font-size:9px;color:var(--positive)">✓</span>
-              </div>
-            </div>
+          <!-- Broker : Boursorama uniquement -->
+          <div style="display:flex;align-items:center;gap:7px;padding:7px 10px;min-width:130px;font-size:11px;color:var(--text1);user-select:none">
+            <img src="https://www.boursorama.com/favicon.ico" width="16" height="16" style="border-radius:3px;object-fit:contain;flex-shrink:0">
+            <span>Boursorama</span>
           </div>
-          <input type="hidden" id="broker-select" value="">
           <div style="width:1px;height:18px;background:var(--s3)"></div>
           <button onclick="onImportCSVClick()" id="btn-import-csv"
             style="font-size:11px;padding:7px 12px;background:transparent;color:var(--text1);border:none;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
@@ -636,7 +595,6 @@
 
         <span id="daily-status" style="font-size:11px;color:var(--text3)"></span>
         <div id="csv-import-success"></div>
-        <div id="broker-notice"></div>
 
         <!-- Exports -->
         <div style="display:flex;align-items:center;gap:0;border:1px solid var(--s3);border-radius:10px;overflow:hidden;background:var(--s2);margin-left:auto">
@@ -789,7 +747,6 @@
         <div id="profil-display-name" style="font-family:var(--display);font-size:18px;font-weight:700">—</div>
         <div id="profil-email" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:3px">—</div>
         <div id="profil-provider-badge" style="margin-top:6px"></div>
-        <div id="profil-role-badge" style="margin-top:4px"></div>
       </div>
       <button onclick="closeProfilModal()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:4px;border-radius:6px;line-height:1" title="Fermer">✕</button>
     </div>
@@ -1120,93 +1077,6 @@
         <button onclick="_confirmModalCancel()" style="padding:8px 16px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:8px;font-size:13px;cursor:pointer">Annuler</button>
         <button id="confirm-modal-btn" onclick="_confirmModalOk()" style="padding:8px 20px;border:none;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer"></button>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL SUPER ADMIN ═════════════════════════════ -->
-<div id="superadmin-overlay" onclick="if(event.target===this)closeSuperAdminPanel()" style="
-  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1300;
-  align-items:flex-start;justify-content:center;padding:20px;box-sizing:border-box;overflow-y:auto">
-  <div style="width:860px;max-width:100%;background:var(--s1);border-radius:18px;border:1px solid rgba(251,191,36,0.3);box-shadow:0 24px 60px rgba(0,0,0,0.6);overflow:hidden;margin:auto">
-
-    <!-- Header -->
-    <div style="padding:18px 24px;border-bottom:1px solid rgba(251,191,36,0.2);display:flex;align-items:center;gap:10px;background:rgba(251,191,36,0.05)">
-      <span style="font-size:20px">👑</span>
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:15px;font-family:var(--display);color:#fbbf24">Super Admin</div>
-        <div style="font-size:11px;color:var(--text3)" id="sa-subtitle">Chargement…</div>
-      </div>
-      <button onclick="closeSuperAdminPanel()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px">✕</button>
-    </div>
-
-    <div style="padding:24px;display:flex;flex-direction:column;gap:24px">
-
-      <!-- Stats globales -->
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Stats globales</div>
-        <div id="sa-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px"></div>
-      </div>
-
-      <!-- Users en ligne + liste -->
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px">Utilisateurs <span id="sa-online-count" style="color:var(--positive)"></span></div>
-          <input id="sa-user-search" type="text" placeholder="🔍 Rechercher un utilisateur…" oninput="saFilterUsers(this.value)" style="font-size:12px;padding:6px 12px;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);width:240px;outline:none">
-        </div>
-        <div style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead>
-              <tr style="color:var(--text3);text-align:left">
-                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Statut</th>
-                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Email</th>
-                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Rôle</th>
-                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Positions</th>
-                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Alertes</th>
-                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Dernière activité</th>
-                <th style="padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border)">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="sa-users-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Broadcast -->
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Broadcast — bandeau annonce</div>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input id="sa-broadcast-msg" type="text" placeholder="Message à afficher à tous les utilisateurs…" class="form-input" style="flex:1;font-size:13px">
-          <button onclick="saBroadcast()" style="padding:8px 16px;background:#fbbf24;border:none;color:#000;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">📢 Envoyer</button>
-          <button onclick="saClearBroadcast()" style="padding:8px 12px;background:var(--s3);border:1px solid var(--border);color:var(--negative);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap">✕ Effacer</button>
-        </div>
-        <div id="sa-broadcast-status" style="font-size:12px;color:var(--text3);min-height:16px"></div>
-      </div>
-
-      <!-- Forcer recap + Gestion rôles -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Forcer recap email</div>
-          <div style="display:flex;gap:8px;margin-bottom:6px">
-            <input id="sa-github-token" type="password" placeholder="GitHub PAT (scope: workflow)" class="form-input" style="flex:1;font-size:12px">
-            <button onclick="saSaveGithubToken()" style="padding:7px 12px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">💾 Sauver</button>
-          </div>
-          <div id="sa-recap-btns" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto"></div>
-          <div id="sa-recap-status" style="font-size:12px;color:var(--text3);margin-top:6px;min-height:16px"></div>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Gérer les rôles</div>
-          <div style="display:flex;gap:8px;margin-bottom:8px">
-            <input id="input-admin-email" type="email" placeholder="Email utilisateur" class="form-input" style="flex:1;font-size:12px">
-          </div>
-          <div style="display:flex;gap:6px;margin-bottom:8px">
-            <button onclick="grantAdmin()" style="flex:1;padding:7px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer">+ Admin</button>
-            <button onclick="revokeAdmin()" style="flex:1;padding:7px;background:var(--s3);border:1px solid var(--border);color:var(--negative);border-radius:8px;font-size:11px;cursor:pointer">Retirer</button>
-          </div>
-          <div id="admin-role-status" style="font-size:12px;font-family:var(--mono);min-height:16px;color:var(--positive)"></div>
-        </div>
-      </div>
-
     </div>
   </div>
 </div>
