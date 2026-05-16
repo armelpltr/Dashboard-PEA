@@ -1466,6 +1466,7 @@ async function fetchWithFallback(url) {
 }
 
 const ISIN_MAP = {
+  'IE0002XZSHO1': 'WPEA.PA',
   'FR0011871110': 'PUST.PA',
   'FR0013412285': 'MWRD.PA',
   'FR0011550185': 'PE500.PA',
