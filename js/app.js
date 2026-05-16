@@ -6654,6 +6654,7 @@ async function importTRTransactionsCSV(lines, parseLine) {
     const iCat     = col('category');
     const iSymbol  = col('symbol');
     const iShares  = col('shares');
+    const iPrice   = col('price');
     const iAmount  = col('amount');
 
     // 1. Filtrer les lignes PEA
@@ -6668,6 +6669,7 @@ async function importTRTransactionsCSV(lines, parseLine) {
         cat:     (cells[iCat]     || '').trim(),
         symbol:  (cells[iSymbol]  || '').trim(),
         shares:  parseFloat(cells[iShares])  || 0,
+        price:   parseFloat(cells[iPrice])   || 0,
         amount:  parseFloat(cells[iAmount])  || 0,
       });
     }
@@ -6675,17 +6677,32 @@ async function importTRTransactionsCSV(lines, parseLine) {
     if (!peaRows.length) { alert('Aucune transaction PEA trouvée dans le fichier.'); return; }
     peaRows.sort((a, b) => a.date < b.date ? -1 : 1);
 
-    // 2. Agréger par date : changements holdings + cash
+    // 2. Agréger par date : changements holdings + cash.
+    //    TR signe déjà `shares` (+ pour BUY, − pour SELL) → addition directe.
+    //    On capture aussi le prix d'exécution TR (fallback si Yahoo manque des prix).
     const events = {}; // date → { holdings: {ISIN: delta}, cash: delta }
+    const trExecPrices = {}; // ISIN → [{date, price}] trié
     for (const row of peaRows) {
       if (!row.date) continue;
       if (!events[row.date]) events[row.date] = { holdings: {}, cash: 0 };
       events[row.date].cash += row.amount;
-      if (row.type === 'BUY' && row.symbol) {
+      if ((row.type === 'BUY' || row.type === 'SELL') && row.symbol && row.shares) {
         events[row.date].holdings[row.symbol] = (events[row.date].holdings[row.symbol] || 0) + row.shares;
-      } else if (row.type === 'SELL' && row.symbol) {
-        events[row.date].holdings[row.symbol] = (events[row.date].holdings[row.symbol] || 0) - row.shares;
+        if (row.price > 0) {
+          (trExecPrices[row.symbol] = trExecPrices[row.symbol] || []).push({ date: row.date, price: row.price });
+        }
       }
+    }
+    for (const isin of Object.keys(trExecPrices)) {
+      trExecPrices[isin].sort((a, b) => a.date < b.date ? -1 : 1);
+    }
+    // Dernier prix d'exécution TR connu ≤ date
+    function costPriceAt(isin, date) {
+      const list = trExecPrices[isin];
+      if (!list || !list.length) return null;
+      let px = null;
+      for (const e of list) { if (e.date <= date) px = e.price; else break; }
+      return px;
     }
 
     const allEventDates = Object.keys(events).sort();
@@ -6739,23 +6756,35 @@ async function importTRTransactionsCSV(lines, parseLine) {
       } catch {}
     }));
 
-    // 6. Jours de cotation disponibles
+    // Diagnostics : couverture des prix Yahoo par ISIN
+    for (const isin of isins) {
+      const ticker = isinToTicker[isin];
+      const ph = ticker ? priceHistory[ticker] : null;
+      const dates = ph ? Object.keys(ph).sort() : [];
+      console.log('[TR import] ISIN', isin, '→ ticker', ticker || '(non résolu)',
+        '| prix Yahoo:', dates.length,
+        dates.length ? '(' + dates[0] + ' → ' + dates[dates.length-1] + ')' : '— fallback prix TR');
+    }
+
+    // 6. Jours de cotation : union des dates Yahoo + dates d'événement TR
     const allPriceDates = new Set();
     for (const prices of Object.values(priceHistory)) {
       for (const d of Object.keys(prices)) allPriceDates.add(d);
     }
+    for (const d of allEventDates) allPriceDates.add(d);
     const today = new Date().toISOString().slice(0, 10);
     const tradingDays = [...allPriceDates].filter(d => d >= firstDate && d <= today).sort();
 
-    if (!tradingDays.length) { alert('Impossible de récupérer les prix Yahoo pour les actifs TR.'); return; }
+    if (!tradingDays.length) { alert('Impossible de calculer les valorisations pour les actifs TR.'); return; }
 
-    // Helper : dernier prix connu ≤ date
+    // Helper : dernier prix Yahoo connu ≤ date
     function getPrice(ticker, date) {
       const prices = priceHistory[ticker];
       if (!prices) return null;
-      if (prices[date]) return prices[date];
-      const prev = Object.keys(prices).filter(d => d <= date).sort();
-      return prev.length ? prices[prev[prev.length - 1]] : null;
+      if (prices[date] != null) return prices[date];
+      let px = null;
+      for (const d of Object.keys(prices).sort()) { if (d <= date) px = prices[d]; else break; }
+      return px;
     }
 
     // 7. Calculer valeur quotidienne
@@ -6778,10 +6807,11 @@ async function importTRTransactionsCSV(lines, parseLine) {
 
       let stockValue = 0;
       for (const [isin, qty] of Object.entries(holdings)) {
-        if (qty <= 0) continue;
+        if (qty <= 0.0000001) continue;
         const ticker = isinToTicker[isin];
-        if (!ticker) continue;
-        const price = getPrice(ticker, day);
+        // Prix Yahoo si dispo, sinon fallback sur le prix d'exécution TR (cost basis)
+        let price = ticker ? getPrice(ticker, day) : null;
+        if (price == null) price = costPriceAt(isin, day);
         if (price) stockValue += qty * price;
       }
 
