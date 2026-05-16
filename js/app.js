@@ -7212,11 +7212,14 @@ function computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio) {
       if (valToday > 0) { prevValue = valToday; valueEnd = valToday; }
     }
 
-    // Pour le YTD : si la dernière dailyValue n'est pas d'aujourd'hui mais
-    // qu'on a une valeur LIVE, on ajoute le ratio du jour
+    // Pour le YTD : si la dernière dailyValue est ANCIENNE (CSV périmé) et qu'on a une valeur
+    // LIVE, on ajoute le ratio du jour. Si le CSV est récent (< 5 j), il fait foi → pas d'override.
     if (isYTD && liveValue != null) {
       const lastBrokerDate = yearDates.length ? yearDates[yearDates.length - 1] : null;
-      if (lastBrokerDate && lastBrokerDate < todayStr) {
+      const daysStale = lastBrokerDate
+        ? (new Date(todayStr + 'T12:00:00') - new Date(lastBrokerDate + 'T12:00:00')) / 86400000
+        : 999;
+      if (lastBrokerDate && lastBrokerDate < todayStr && daysStale > 5) {
         const versToday = versByDate[todayStr] || 0;
         const denom = prevValue + versToday;
         if (denom > 0.01) {
