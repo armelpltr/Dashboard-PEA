@@ -7230,10 +7230,7 @@ function computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio) {
       }
     }
 
-    const perfPct = hasCapital ? (twr - 1) * 100 : 0;
-
-    // V_début de l'année pour la colonne "base"
-    // V_début de l'année pour la colonne "base"
+    // V_début de l'année (= valeur au 31/12 de l'année précédente)
     const valueYearStart = (y === firstYear) ? 0 : (function(){
       for (let i = sortedDates.length - 1; i >= 0; i--) {
         if (sortedDates[i] < yearStart) return valByDate[sortedDates[i]];
@@ -7241,11 +7238,14 @@ function computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio) {
       return 0;
     })();
     const totalGain = valueEnd - valueYearStart - totalVersYear;
+    const base = valueYearStart + totalVersYear;
+    // Rendement simple : gain / capital investi (comme Boursorama / le suivi TR)
+    const perfPct = base > 0.01 ? (totalGain / base) * 100 : 0;
 
     yearResults.push({
       year: y,
       isYTD,
-      base: +(valueYearStart + totalVersYear).toFixed(2),
+      base: +base.toFixed(2),
       gain: +totalGain.toFixed(2),
       perfPct: +perfPct.toFixed(2),
     });
