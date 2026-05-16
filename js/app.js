@@ -6942,6 +6942,17 @@ function closeConfirmModal() {
 function clearDailyValues() {
   saveDailyValues(currentUser, []);
   _perfCache = null;
+
+  // Vider immédiatement l'affichage perf
+  const kpiEl   = document.getElementById('perf-kpis');
+  const tbodyEl = document.getElementById('perf-tbody');
+  if (kpiEl)   kpiEl.innerHTML = '';
+  if (tbodyEl) tbodyEl.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:32px">Aucune donnée disponible.</td></tr>';
+
+  // Masquer la bannière de succès import
+  const successEl = document.getElementById('csv-import-success');
+  if (successEl) { clearTimeout(successEl._hideTimer); successEl.classList.remove('visible'); }
+
   // Reset broker dropdown
   const brokerInput = document.getElementById('broker-select');
   const triggerLabel = document.getElementById('broker-trigger-label');
