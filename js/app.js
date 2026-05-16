@@ -115,7 +115,7 @@ async function loadAllUserData(uid) {
   // Enregistrer l'email pour la recherche par email (gestion des rôles)
   const _u = fbAuth.currentUser;
   if (_u) setFirestoreDoc(firestoreDoc(db, 'users', uid), { email: _u.email }, { merge: true }).catch(() => {});
-  const cols = ['portfolio', 'transactions', 'versements', 'watchlist', 'dailyValues', 'alerts', 'notifHistory'];
+  const cols = ['portfolio', 'transactions', 'versements', 'watchlist', 'dailyValues', 'alerts', 'notifHistory', 'trCohort'];
   await Promise.all(cols.map(async col => {
     try {
       const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', col));
@@ -163,6 +163,9 @@ function saveTransactions(user, data) { _perfCache = null; _fsWrite(user||curren
 function saveVersements(user, data)   { _perfCache = null; _fsWrite(user||currentUser, 'versements',   data); }
 function saveWatchlist(user, data)    { _fsWrite(user||currentUser, 'watchlist',    data); }
 function saveDailyValues(user, data)  { _perfCache = null; _fsWrite(user||currentUser, 'dailyValues', data); }
+// trCohort : résultat de perf cohorte importé depuis un CSV Trade Republic (objet unique en array)
+function getTRCohort(user)  { const a = _localCache[(user||currentUser) + '_trCohort']; return (a && a[0]) || null; }
+function saveTRCohort(user, obj) { _perfCache = null; _fsWrite(user||currentUser, 'trCohort', obj ? [obj] : []); }
 function getAlerts(user)       { return _localCache[(user||currentUser) + '_alerts']       || []; }
 function getNotifHistory(user) { return _localCache[(user||currentUser) + '_notifHistory']  || []; }
 function saveAlerts(user, data)       { _fsWrite(user||currentUser, 'alerts',       data); }
@@ -6639,7 +6642,6 @@ function onImportCSVClick() {
 async function importTRTransactionsCSV(lines, parseLine) {
   const successEl = document.getElementById('csv-import-success');
   const statusEl  = document.getElementById('daily-status');
-
   function showProgress(msg) {
     if (statusEl) statusEl.innerHTML = '<span style="color:var(--accent)">⏳</span> ' + msg;
   }
@@ -6647,233 +6649,171 @@ async function importTRTransactionsCSV(lines, parseLine) {
   try {
     const header = parseLine(lines[0]).map(h => h.toLowerCase().trim());
     const col = name => header.indexOf(name);
+    const iDate=col('date'), iAccType=col('account_type'), iType=col('type'),
+          iSymbol=col('symbol'), iName=col('name'), iShares=col('shares'),
+          iPrice=col('price'), iAmount=col('amount'), iFee=col('fee'), iTax=col('tax');
 
-    const iDate    = col('date');
-    const iAccType = col('account_type');
-    const iType    = col('type');
-    const iCat     = col('category');
-    const iSymbol  = col('symbol');
-    const iShares  = col('shares');
-    const iPrice   = col('price');
-    const iAmount  = col('amount');
-    const iFee     = col('fee');
-    const iTax     = col('tax');
-
-    // 1. Filtrer les lignes PEA
-    const peaRows = [];
+    // 1. Parser les lignes PEA : achats/ventes + dividendes
+    const trades = [];      // {date, year, isin, name, type, qty, price, cost}
+    const dividends = [];   // {date, year, amount}
     for (let i = 1; i < lines.length; i++) {
-      const cells = parseLine(lines[i]);
-      if (!cells || cells.length < 5) continue;
-      if ((cells[iAccType] || '').trim() !== 'PEA') continue;
-      peaRows.push({
-        date:    (cells[iDate]    || '').trim(),
-        type:    (cells[iType]    || '').trim(),
-        cat:     (cells[iCat]     || '').trim(),
-        symbol:  (cells[iSymbol]  || '').trim(),
-        shares:  parseFloat(cells[iShares])  || 0,
-        price:   parseFloat(cells[iPrice])   || 0,
-        amount:  parseFloat(cells[iAmount])  || 0,
-        fee:     iFee >= 0 ? (parseFloat(cells[iFee]) || 0) : 0,
-        tax:     iTax >= 0 ? (parseFloat(cells[iTax]) || 0) : 0,
-      });
-    }
-
-    if (!peaRows.length) { alert('Aucune transaction PEA trouvée dans le fichier.'); return; }
-    peaRows.sort((a, b) => a.date < b.date ? -1 : 1);
-
-    // 2. Agréger par date : changements holdings + cash.
-    //    TR signe déjà `shares` (+ pour BUY, − pour SELL) → addition directe.
-    //    cash = mouvement net de liquidités PEA = amount + fee + tax (tous signés par TR).
-    //    On capture aussi le prix d'exécution TR (fallback si Yahoo manque des prix).
-    const events = {}; // date → { holdings: {ISIN: delta}, cash: delta }
-    const trExecPrices = {}; // ISIN → [{date, price}] trié
-    for (const row of peaRows) {
-      if (!row.date) continue;
-      if (!events[row.date]) events[row.date] = { holdings: {}, cash: 0 };
-      events[row.date].cash += row.amount + row.fee + row.tax;
-      if ((row.type === 'BUY' || row.type === 'SELL') && row.symbol && row.shares) {
-        events[row.date].holdings[row.symbol] = (events[row.date].holdings[row.symbol] || 0) + row.shares;
-        if (row.price > 0) {
-          (trExecPrices[row.symbol] = trExecPrices[row.symbol] || []).push({ date: row.date, price: row.price });
-        }
+      const c = parseLine(lines[i]);
+      if (!c || c.length < 5) continue;
+      if ((c[iAccType] || '').trim() !== 'PEA') continue;
+      const type = (c[iType] || '').trim();
+      const date = (c[iDate] || '').trim();
+      const year = parseInt(date.slice(0, 4), 10);
+      if (!year) continue;
+      if (type === 'BUY' || type === 'SELL') {
+        const isin   = (c[iSymbol] || '').trim();
+        const shares = parseFloat(c[iShares]) || 0;
+        const price  = parseFloat(c[iPrice])  || 0;
+        if (!isin || !shares || price <= 0) continue;
+        const fee = iFee >= 0 ? Math.abs(parseFloat(c[iFee]) || 0) : 0;
+        const tax = iTax >= 0 ? Math.abs(parseFloat(c[iTax]) || 0) : 0;
+        const qty = Math.abs(shares);
+        trades.push({
+          date, year, isin, name: (c[iName] || '').trim(), type, qty, price,
+          cost: qty * price + fee + tax, // coût total achat = brut + frais + taxes
+        });
+      } else if (type === 'DIVIDEND' || type === 'DIVIDEND_EQUIVALENT_PAYMENT') {
+        const amt = parseFloat(c[iAmount]) || 0;
+        if (amt > 0) dividends.push({ date, year, amount: amt });
       }
     }
-    for (const isin of Object.keys(trExecPrices)) {
-      trExecPrices[isin].sort((a, b) => a.date < b.date ? -1 : 1);
-    }
-    // Dernier prix d'exécution TR connu ≤ date
-    function costPriceAt(isin, date) {
-      const list = trExecPrices[isin];
-      if (!list || !list.length) return null;
-      let px = null;
-      for (const e of list) { if (e.date <= date) px = e.price; else break; }
-      return px;
-    }
 
-    const allEventDates = Object.keys(events).sort();
-    const firstDate = allEventDates[0];
+    if (!trades.length) { alert('Aucune transaction PEA (achat/vente) trouvée dans le fichier.'); return; }
+    trades.sort((a, b) => a.date < b.date ? -1 : 1);
 
-    // 3. ISINs uniques
-    const isins = new Set();
-    for (const ev of Object.values(events)) {
-      for (const isin of Object.keys(ev.holdings)) if (isin) isins.add(isin);
-    }
-
-    // 4. Résoudre ISIN → Yahoo ticker
+    // 2. Résoudre ISIN → ticker Yahoo
     showProgress('Résolution des tickers…');
-    const isinToTicker = {};
-    await Promise.all([...isins].map(async isin => {
+    const isins = [...new Set(trades.map(t => t.isin))];
+    const isinToTicker = {}, isinName = {};
+    for (const t of trades) if (t.name && !isinName[t.isin]) isinName[t.isin] = t.name;
+    await Promise.all(isins.map(async isin => {
       if (ISIN_MAP[isin]) { isinToTicker[isin] = ISIN_MAP[isin]; return; }
       try {
         const raw = await fetchWithFallback(
           'https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(isin)
-          + '&lang=fr&region=FR&quotesCount=3&newsCount=0'
-        );
-        const data = JSON.parse(raw);
-        const quote = data.quotes && data.quotes.find(q => q.symbol);
-        if (quote) isinToTicker[isin] = quote.symbol;
+          + '&lang=fr&region=FR&quotesCount=3&newsCount=0');
+        const q = (JSON.parse(raw).quotes || []).find(x => x.symbol);
+        if (q) isinToTicker[isin] = q.symbol;
       } catch {}
     }));
 
-    // 5. Fetch historique de prix
-    showProgress('Récupération des prix historiques…');
-    const p1 = Math.floor(new Date(firstDate + 'T00:00:00').getTime() / 1000);
-    const p2 = Math.floor(Date.now() / 1000) + 86400;
-    const priceHistory = {}; // ticker → { 'YYYY-MM-DD': close }
-
-    const uniqueTickers = [...new Set(Object.values(isinToTicker).filter(Boolean))];
-    await Promise.all(uniqueTickers.map(async ticker => {
-      priceHistory[ticker] = {};
+    // 3. Récupérer le prix ACTUEL de chaque titre
+    showProgress('Récupération des prix actuels…');
+    const currentPrice = {};
+    await Promise.all(isins.map(async isin => {
+      const ticker = isinToTicker[isin];
+      if (!ticker) return;
       try {
         const raw = await fetchWithFallback(
           'https://query1.finance.yahoo.com/v8/finance/chart/'
-          + encodeURIComponent(ticker)
-          + '?interval=1d&period1=' + p1 + '&period2=' + p2
-        );
-        const d = JSON.parse(raw);
-        const res = d.chart && d.chart.result && d.chart.result[0];
-        if (!res || !res.timestamp) return;
-        const closes = res.indicators.quote[0].close;
-        res.timestamp.forEach((ts, i) => {
-          if (closes[i] == null) return;
-          priceHistory[ticker][new Date(ts * 1000).toISOString().slice(0, 10)] = closes[i];
-        });
+          + encodeURIComponent(ticker) + '?interval=1d&range=5d');
+        const res = JSON.parse(raw).chart && JSON.parse(raw).chart.result && JSON.parse(raw).chart.result[0];
+        const px = res && res.meta && res.meta.regularMarketPrice;
+        if (px) currentPrice[isin] = px;
       } catch {}
     }));
-
-    // Diagnostics : couverture des prix Yahoo par ISIN
+    // Fallback / garde-fou : si prix Yahoo absent ou aberrant → dernier prix d'exécution TR
+    const lastExec = {};
+    for (const t of trades) lastExec[t.isin] = t.price; // trades triés → dernier écrase
     for (const isin of isins) {
-      const ticker = isinToTicker[isin];
-      const ph = ticker ? priceHistory[ticker] : null;
-      const dates = ph ? Object.keys(ph).sort() : [];
-      console.log('[TR import] ISIN', isin, '→ ticker', ticker || '(non résolu)',
-        '| prix Yahoo:', dates.length,
-        dates.length ? '(' + dates[0] + ' → ' + dates[dates.length-1] + ')' : '— fallback prix TR');
+      const cp = currentPrice[isin], le = lastExec[isin];
+      if (cp == null) { currentPrice[isin] = le; continue; }
+      if (le > 0 && (cp / le < 0.5 || cp / le > 2)) {
+        console.warn('[TR import] prix actuel Yahoo incohérent', isin, cp, 'vs TR', le, '→ prix TR');
+        currentPrice[isin] = le;
+      }
     }
 
-    // 6. Jours de cotation : union des dates Yahoo + dates d'événement TR
-    const allPriceDates = new Set();
-    for (const prices of Object.values(priceHistory)) {
-      for (const d of Object.keys(prices)) allPriceDates.add(d);
+    // 4. FIFO : associer chaque vente aux lots d'achat les plus anciens
+    const lotsByIsin = {}; // isin → [{date,year,qty,remaining,costPerShare,cost,soldProceeds}]
+    for (const t of trades) {
+      if (t.type === 'BUY') {
+        (lotsByIsin[t.isin] = lotsByIsin[t.isin] || []).push({
+          date: t.date, year: t.year, qty: t.qty, remaining: t.qty,
+          costPerShare: t.cost / t.qty, cost: t.cost, soldProceeds: 0,
+        });
+      }
     }
-    for (const d of allEventDates) allPriceDates.add(d);
-    const today = new Date().toISOString().slice(0, 10);
-    const tradingDays = [...allPriceDates].filter(d => d >= firstDate && d <= today).sort();
-
-    if (!tradingDays.length) { alert('Impossible de calculer les valorisations pour les actifs TR.'); return; }
-
-    // Helper : dernier prix Yahoo connu ≤ date
-    function getPrice(ticker, date) {
-      const prices = priceHistory[ticker];
-      if (!prices) return null;
-      if (prices[date] != null) return prices[date];
-      let px = null;
-      for (const d of Object.keys(prices).sort()) { if (d <= date) px = prices[d]; else break; }
-      return px;
+    for (const t of trades) {
+      if (t.type !== 'SELL') continue;
+      let toSell = t.qty;
+      for (const lot of (lotsByIsin[t.isin] || [])) {
+        if (toSell <= 0) break;
+        if (lot.remaining <= 0) continue;
+        const take = Math.min(lot.remaining, toSell);
+        lot.remaining   -= take;
+        lot.soldProceeds += take * t.price;
+        toSell          -= take;
+      }
     }
 
-    // 6b. Contrôle de cohérence : comparer prix Yahoo vs prix d'exécution TR sur les dates
-    //     de trade. Si Yahoo diverge fortement (mauvais ticker / mauvaise classe de parts),
-    //     on rejette Yahoo pour cet ISIN → fallback sur les prix d'exécution TR.
+    // 5. Performance par millésime (cohorte) : chaque année = ses propres achats
+    const yearMap = {}; // year → {invested, value, dividends}
+    const ensureYear = y => (yearMap[y] = yearMap[y] || { invested: 0, value: 0, dividends: 0 });
     for (const isin of isins) {
-      const ticker = isinToTicker[isin];
-      if (!ticker || !priceHistory[ticker]) continue;
-      const trades = trExecPrices[isin] || [];
-      const ratios = [];
-      for (const t of trades) {
-        const yp = getPrice(ticker, t.date);
-        if (yp != null && t.price > 0) ratios.push(yp / t.price);
-      }
-      if (ratios.length >= 2) {
-        ratios.sort((a, b) => a - b);
-        const med = ratios[Math.floor(ratios.length / 2)];
-        if (med < 0.85 || med > 1.15) {
-          console.warn('[TR import] Prix Yahoo incohérent pour', isin, '(' + ticker + ')',
-            '— ratio médian Yahoo/TR =', med.toFixed(3), '→ fallback prix TR');
-          priceHistory[ticker] = {};
-        }
+      const cp = currentPrice[isin] || 0;
+      for (const lot of (lotsByIsin[isin] || [])) {
+        const m = ensureYear(lot.year);
+        m.invested += lot.cost;
+        m.value    += lot.remaining * cp + lot.soldProceeds;
       }
     }
-
-    // 7. Calculer valeur quotidienne = titres au marché + cash PEA (comptabilité complète)
-    showProgress('Calcul des valorisations…');
-    const holdings = {};
-    let cash = 0;
-    let ei = 0;
-    const finalRows = [];
-
-    for (const day of tradingDays) {
-      // Appliquer les événements jusqu'à ce jour
-      while (ei < allEventDates.length && allEventDates[ei] <= day) {
-        const ev = events[allEventDates[ei]];
-        cash += ev.cash;
-        for (const [isin, delta] of Object.entries(ev.holdings)) {
-          holdings[isin] = (holdings[isin] || 0) + delta;
-        }
-        ei++;
-      }
-
-      let stockValue = 0;
-      for (const [isin, qty] of Object.entries(holdings)) {
-        if (qty <= 0.0000001) continue;
-        const ticker = isinToTicker[isin];
-        // Prix Yahoo si dispo, sinon fallback sur le prix d'exécution TR (cost basis)
-        let price = ticker ? getPrice(ticker, day) : null;
-        if (price == null) price = costPriceAt(isin, day);
-        if (price) stockValue += qty * price;
-      }
-
-      // Valeur totale PEA = titres (marché) + liquidités (cash : dépôts, dividendes, frais…)
-      const totalValue = stockValue + cash;
-      if (totalValue > 0) finalRows.push({ date: day, value: Math.round(totalValue * 100) / 100 });
+    for (const d of dividends) {
+      const m = ensureYear(d.year);
+      m.value += d.amount;
+      m.dividends += d.amount;
     }
 
-    if (!finalRows.length) { alert('Valorisations nulles — vérifiez que le fichier contient des transactions PEA avec actions.'); return; }
+    const years = Object.keys(yearMap).map(Number).sort().map(y => {
+      const m = yearMap[y];
+      const gain = m.value - m.invested;
+      return {
+        year: y,
+        invested: +m.invested.toFixed(2),
+        value:    +m.value.toFixed(2),
+        gain:     +gain.toFixed(2),
+        dividends:+m.dividends.toFixed(2),
+        perfPct:  m.invested > 0 ? +(gain / m.invested * 100).toFixed(2) : 0,
+      };
+    });
+    const totInv = years.reduce((s, y) => s + y.invested, 0);
+    const totVal = years.reduce((s, y) => s + y.value, 0);
+    const totDiv = years.reduce((s, y) => s + y.dividends, 0);
+    const total = {
+      invested: +totInv.toFixed(2),
+      value:    +totVal.toFixed(2),
+      gain:     +(totVal - totInv).toFixed(2),
+      dividends:+totDiv.toFixed(2),
+      perfPct:  totInv > 0 ? +((totVal - totInv) / totInv * 100).toFixed(2) : 0,
+    };
 
-    // Versements = vrais virements injectés dans le PEA (TRANSFER_IN). La valeur quotidienne
-    // intègre le cash → un TRANSFER_IN fait monter valeur ET base d'autant → gain neutre.
-    // Rendement simple : gain = valeur − versements cumulés.
-    const trVersements = [];
-    const versByDateIn = {};
-    for (const row of peaRows) {
-      if (row.type === 'TRANSFER_IN' && row.amount > 0) {
-        versByDateIn[row.date] = (versByDateIn[row.date] || 0) + row.amount;
-      }
-    }
-    for (const [date, amount] of Object.entries(versByDateIn)) {
-      trVersements.push({ date, amount: Math.round(amount * 100) / 100 });
-    }
-    trVersements.sort((a, b) => a.date < b.date ? -1 : 1);
-    saveVersements(currentUser, trVersements);
+    // 6. Positions actuelles
+    const positions = isins.map(isin => {
+      const lots = lotsByIsin[isin] || [];
+      const qty  = lots.reduce((s, l) => s + l.remaining, 0);
+      const cost = lots.reduce((s, l) => s + l.costPerShare * l.remaining, 0);
+      const cp   = currentPrice[isin] || 0;
+      return {
+        isin, ticker: isinToTicker[isin] || '', name: isinName[isin] || isin,
+        qty: +qty.toFixed(4), cost: +cost.toFixed(2), price: cp, value: +(qty * cp).toFixed(2),
+      };
+    }).filter(p => p.qty > 0.0001).sort((a, b) => b.value - a.value);
 
-    saveDailyValues(currentUser, finalRows);
+    const cohort = {
+      updatedAt: new Date().toISOString().slice(0, 10),
+      years, total, positions,
+    };
+    saveTRCohort(currentUser, cohort);
+    saveDailyValues(currentUser, []); // désactive le path valorisations quotidiennes (Boursorama)
     _perfCache = null;
 
     if (successEl) {
-      const label = '✓ ' + finalRows.length + ' valorisations + ' + trVersements.length + ' versements synchronisés depuis TR ('
-        + finalRows[0].date + ' → ' + finalRows[finalRows.length - 1].date
-        + ').';
-      successEl.textContent = label;
+      successEl.textContent = '✓ ' + trades.length + ' transactions TR importées — performance calculée sur '
+        + years.length + ' année(s).';
       successEl.classList.add('visible');
       clearTimeout(successEl._hideTimer);
       successEl._hideTimer = setTimeout(() => successEl.classList.remove('visible'), 8000);
@@ -7021,6 +6961,7 @@ function closeConfirmModal() {
 
 function clearDailyValues() {
   saveDailyValues(currentUser, []);
+  saveTRCohort(currentUser, null);
   _perfCache = null;
 
   // Vider immédiatement l'affichage perf
@@ -7050,19 +6991,35 @@ function clearDailyValues() {
 function updateDailyStatus() {
   const el = document.getElementById('daily-status');
   if (!el) return;
+  const tr = getTRCohort(currentUser);
+  if (tr && tr.years && tr.years.length) {
+    el.innerHTML = '<span style="color:var(--positive)">●</span> Trade Republic — '
+      + tr.years.length + ' année(s), maj ' + (tr.updatedAt || '');
+    return;
+  }
   const dv = getDailyValues(currentUser);
   if (dv && dv.length) {
     el.innerHTML = '<span style="color:var(--positive)">●</span> ' + dv.length + ' j (' + dv[0].date + ' → ' + dv[dv.length-1].date + ')';
   } else {
-    el.innerHTML = '<span style="color:var(--text3)">○</span> aucune valeur broker — calcul Yahoo';
+    el.innerHTML = '<span style="color:var(--text3)">○</span> aucune donnée broker importée';
   }
 }
 
 async function initPerformance() {
-  const portfolio   = getPortfolio(currentUser);
-  const txs         = getTransactions(currentUser);
   const kpiEl       = document.getElementById('perf-kpis');
   const tbodyEl     = document.getElementById('perf-tbody');
+
+  if (typeof updateDailyStatus === 'function') updateDailyStatus();
+
+  // ── Path Trade Republic : performance cohorte importée depuis un CSV TR ──
+  const trCohort = getTRCohort(currentUser);
+  if (trCohort && trCohort.years && trCohort.years.length) {
+    renderTRCohort(trCohort);
+    return;
+  }
+
+  const portfolio   = getPortfolio(currentUser);
+  const txs         = getTransactions(currentUser);
 
   if (!portfolio.length && !txs.length) {
     kpiEl.innerHTML = '';
@@ -7113,6 +7070,72 @@ async function initPerformance() {
     kpiEl.innerHTML = '';
     tbodyEl.innerHTML =
       '<tr><td colspan="4" style="text-align:center;color:var(--negative);padding:32px">Erreur lors du chargement des données.</td></tr>';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Rendu de la performance cohorte importée depuis un CSV Trade Republic.
+//  Chaque année = ses propres achats, valorisés au prix du jour.
+// ─────────────────────────────────────────────────────────────────
+function renderTRCohort(cohort) {
+  const { years, total } = cohort;
+  const kpiEl = document.getElementById('perf-kpis');
+  const tbody = document.getElementById('perf-tbody');
+  if (!kpiEl || !tbody) return;
+  const sign = v => v >= 0 ? '+' : '';
+  const colE = v => v >= 0 ? 'var(--positive)' : 'var(--negative)';
+
+  kpiEl.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">PERF GLOBALE</div>
+      <div class="stat-value" style="color:${colE(total.gain)}">${sign(total.gain)}${fmt(total.gain)}</div>
+      <div class="stat-sub">${sign(total.perfPct)}${total.perfPct.toFixed(2)} %</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">VALEUR ACTUELLE</div>
+      <div class="stat-value">${fmt(total.value)}</div>
+      <div class="stat-sub">Cours du jour</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">TOTAL INVESTI</div>
+      <div class="stat-value">${fmt(total.invested)}</div>
+      <div class="stat-sub">Frais & taxes inclus</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">DIVIDENDES</div>
+      <div class="stat-value" style="color:var(--positive)">+${fmt(total.dividends || 0)}</div>
+      <div class="stat-sub">Encaissés</div>
+    </div>`;
+
+  tbody.innerHTML = years.map(y => `
+    <tr>
+      <td style="font-weight:600">${y.year}</td>
+      <td class="mono" style="text-align:right">${fmt(y.invested)}</td>
+      <td class="mono" style="text-align:right;color:${colE(y.gain)}">${sign(y.gain)}${fmt(y.gain)}</td>
+      <td class="mono" style="text-align:right"><span style="font-weight:600;color:${colE(y.perfPct)}">${sign(y.perfPct)}${y.perfPct.toFixed(2)} %</span></td>
+    </tr>`).join('');
+
+  const ctx = document.getElementById('chart-perf-annual');
+  if (ctx) {
+    const wrap = ctx.closest('.section-card');
+    if (wrap) wrap.style.display = '';
+    if (perfAnnualChart) perfAnnualChart.destroy();
+    perfAnnualChart = new Chart(ctx.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: years.map(y => String(y.year)),
+        datasets: [{
+          data: years.map(y => y.perfPct),
+          backgroundColor: years.map(y => y.perfPct >= 0 ? 'rgba(0,224,158,0.55)' : 'rgba(255,77,106,0.55)'),
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.y.toFixed(2) + ' %' } } },
+        scales: { y: { ticks: { callback: v => v + ' %' } } },
+      },
+    });
   }
 }
 
