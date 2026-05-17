@@ -8169,17 +8169,16 @@ function _paintRecapPage() {
     const badge  = isETF(l.ticker)
       ? '<span class="badge-etf">ETF</span>'
       : '<span class="badge-action">ACTION</span>';
-    return '<tr style="border-bottom:1px solid var(--border)">'
-      + '<td style="padding:11px 14px">'
-      + '<div style="display:flex;align-items:center;gap:9px">'
-      + logoHtml(l.ticker, 26, 'ticker-icon')
+    return '<tr>'
+      + '<td><div style="display:flex;align-items:center;gap:9px">'
+      + logoHtml(l.ticker, 28, 'ticker-icon')
       + '<span style="font-size:13px;font-weight:600;color:var(--text)">' + l.name + badge + '</span>'
       + '</div></td>'
-      + '<td style="padding:11px 8px;font-size:11px;color:var(--text2);font-family:var(--mono)">' + l.ticker + '</td>'
-      + '<td style="padding:11px 8px;font-size:12px;color:var(--text);font-family:var(--mono);text-align:right">' + l.qty + '</td>'
-      + '<td style="padding:11px 8px;font-size:12px;color:var(--text);font-family:var(--mono);text-align:right">' + fmt(l.price) + '</td>'
-      + '<td style="padding:11px 8px;font-size:12px;font-family:var(--mono);color:' + c + ';text-align:right">' + fp(l.changePct) + '</td>'
-      + '<td style="padding:11px 14px;font-size:12px;font-family:var(--mono);color:' + c + ';text-align:right">' + sgn(dayVal) + fmt(dayVal) + '</td>'
+      + '<td style="color:var(--text2)">' + l.ticker + '</td>'
+      + '<td style="color:var(--text)">' + l.qty + '</td>'
+      + '<td style="color:var(--text)">' + fmt(l.price) + '</td>'
+      + '<td style="color:' + c + '">' + fp(l.changePct) + '</td>'
+      + '<td style="color:' + c + '">' + sgn(dayVal) + fmt(dayVal) + '</td>'
       + '</tr>';
   }).join('');
 
@@ -8208,7 +8207,7 @@ function _paintRecapPage() {
     + '</div>'
 
     // Salutation
-    + '<div style="font-size:15px;color:var(--text2);margin-bottom:18px">Bonjour <strong style="color:var(--text)">' + _name + '</strong>,</div>'
+    + '<div class="recap-hello">Bonjour <strong style="color:var(--text)">' + _name + '</strong>,</div>'
 
     // KPIs
     + '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px">'
@@ -8229,22 +8228,17 @@ function _paintRecapPage() {
 
     // Commentaire IA
     + (r.aiComment
-      ? '<div class="section-card" style="margin-bottom:18px;border-left:3px solid var(--accent)">'
-        + '<div class="section-title" style="color:var(--accent)">✦ Analyse IA</div>'
-        + '<div style="font-size:13px;color:var(--text2);line-height:1.7">' + _mdInline(r.aiComment) + '</div></div>'
+      ? '<div class="recap-ai">'
+        + '<div class="recap-ai-title">✦ Analyse IA</div>'
+        + '<div class="recap-ai-text">' + _mdInline(r.aiComment) + '</div></div>'
       : '')
 
     // Tableau détaillé
     + '<div class="section-card">'
     + '<div class="section-title">Détail des lignes</div>'
-    + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+    + '<div style="overflow-x:auto"><table class="recap-table">'
     + '<thead><tr>'
-    + '<th style="text-align:left;padding:8px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Action</th>'
-    + '<th style="text-align:left;padding:8px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Ticker</th>'
-    + '<th style="text-align:right;padding:8px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Qté</th>'
-    + '<th style="text-align:right;padding:8px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Cours</th>'
-    + '<th style="text-align:right;padding:8px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Var. jour</th>'
-    + '<th style="text-align:right;padding:8px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Impact €</th>'
+    + '<th>Action</th><th>Ticker</th><th>Qté</th><th>Cours</th><th>Var. jour</th><th>Impact €</th>'
     + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
 }
 
