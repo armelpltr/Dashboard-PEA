@@ -1,30 +1,3 @@
-// ─── CAPTURE D'ERREURS (debug iOS) ─────────────────────
-// Affiche toute erreur JS à l'écran. Indispensable sur iPhone où la
-// console n'est pas accessible sans Mac branché.
-(function() {
-  function showErr(label, detail) {
-    let box = document.getElementById('js-error-box');
-    if (!box) {
-      box = document.createElement('div');
-      box.id = 'js-error-box';
-      box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;'
-        + 'background:#ff4d6a;color:#fff;font:12px/1.4 monospace;padding:10px 14px;'
-        + 'max-height:45vh;overflow:auto;white-space:pre-wrap;word-break:break-word;'
-        + '-webkit-user-select:text;user-select:text';
-      box.addEventListener('click', () => box.remove());
-      (document.body || document.documentElement).appendChild(box);
-    }
-    box.textContent += '[' + label + '] ' + detail + '\n';
-  }
-  window.addEventListener('error', e => {
-    showErr('ERR', (e.message || 'erreur') + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno);
-  });
-  window.addEventListener('unhandledrejection', e => {
-    const r = e.reason;
-    showErr('PROMISE', (r && (r.stack || r.message)) || String(r));
-  });
-})();
-
 // ─── ICON SYSTEM (colored SVG) ─────────────────────────
 const IC = {
   briefcase: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c6df5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>',
