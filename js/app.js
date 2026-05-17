@@ -475,10 +475,9 @@ async function startApp(user) {
     // l'app avec ce qu'on a plutôt que de laisser un écran noir.
     await _withTimeout(Promise.all([loadAllUserData(user.uid), loadFxRates()]), 12000);
 
-    // Avatar + sync roles APRÈS chargement des settings (avatarBase64 dispo)
+    // Avatar + sync roles APRÈS chargement des settings (avatarHue dispo)
     updateMobileAvatar(user);
-    const _avatar = getUserSettings(user.uid).avatarBase64;
-    if (_avatar) setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { avatarBase64: _avatar }, { merge: true }).catch(() => {});
+    setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { avatarHue: _avatarHue(user.uid) }, { merge: true }).catch(() => {});
     loadProfilePage(user);
     window.renderPortfolio();
     window.fetchAllLogos();
@@ -536,72 +535,16 @@ window.saveRecapPref = async function(value) {
     msg: on ? 'Notification push chaque jour ouvré à 18h.' : 'Vous ne recevrez plus le récap quotidien.' });
 };
 
-// Réinitialise l'avatar : supprime la photo importée → retour au logo
-// Capital View recoloré automatiquement.
-window.resetProfilAvatar = async function() {
-  await saveUserSettings(currentUser, { avatarBase64: null });
-  setFirestoreDoc(firestoreDoc(db, 'roles', currentUser), { avatarBase64: null }, { merge: true }).catch(() => {});
-  const imgEl = document.getElementById('profil-avatar-img');
-  const letEl = document.getElementById('profil-avatar-letter');
-  if (imgEl) imgEl.style.display = 'none';
-  if (letEl) { letEl.style.display = 'block'; letEl.innerHTML = defaultAvatarHtml(currentUser); }
-  updateMobileAvatar(fbAuth.currentUser);
-  const st = document.getElementById('avatar-status');
-  if (st) { st.textContent = '✓ Avatar par défaut restauré'; setTimeout(() => { st.textContent = ''; }, 2500); }
-};
-
-window.uploadProfilAvatar = function(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    const img = new Image();
-    img.onload = async function() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 120; canvas.height = 120;
-      const ctx = canvas.getContext('2d');
-      const size = Math.min(img.width, img.height);
-      ctx.drawImage(img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, 120, 120);
-      const base64 = canvas.toDataURL('image/jpeg', 0.85);
-      await saveUserSettings(currentUser, { avatarBase64: base64 });
-      setFirestoreDoc(firestoreDoc(db, 'roles', currentUser), { avatarBase64: base64 }, { merge: true }).catch(() => {});
-      const imgEl = document.getElementById('profil-avatar-img');
-      const letEl = document.getElementById('profil-avatar-letter');
-      imgEl.src = base64;
-      imgEl.style.display = 'block';
-      letEl.style.display = 'none';
-      updateMobileAvatar(fbAuth.currentUser);
-      document.querySelectorAll('.preset-avatar').forEach(e => e.style.borderColor = 'transparent');
-      const st = document.getElementById('avatar-status');
-      if (st) { st.textContent = '✓ Photo mise à jour'; setTimeout(() => { st.textContent = ''; }, 2500); }
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-  event.target.value = '';
-};
-
 function loadProfilePage(user) {
   if (!user) return;
 
-  // Avatar
+  // Avatar : logo recoloré + palette de couleurs
   const letter = document.getElementById('profil-avatar-letter');
-  const img    = document.getElementById('profil-avatar-img');
-  const big    = document.getElementById('profil-avatar-big');
-  const settingsAvatar = getUserSettings(user.uid);
-  const avatarSrc = settingsAvatar.avatarBase64 || user.photoURL;
-  if (avatarSrc) {
-    img.src = avatarSrc;
-    img.style.display = 'block';
-    letter.style.display = 'none';
-  } else {
-    img.style.display = 'none';
+  if (letter) {
     letter.style.display = 'block';
     letter.innerHTML = defaultAvatarHtml(user.uid);
   }
-  // Hover overlay
-  big.onmouseenter = () => { document.getElementById('profil-avatar-overlay').style.opacity = '1'; };
-  big.onmouseleave = () => { document.getElementById('profil-avatar-overlay').style.opacity = '0'; };
+  renderAvatarSwatches();
 
   // Nom & email
   const nameEl = document.getElementById('profil-display-name');
@@ -734,38 +677,61 @@ function _userHue(seed) {
   return h % 360;
 }
 
-// Avatar par défaut : logo Capital View dont la couleur est générée
-// automatiquement à partir de l'uid (rotation de teinte).
+// Teinte de l'avatar : choix de l'utilisateur si défini, sinon couleur
+// générée automatiquement depuis l'uid.
+function _avatarHue(uid) {
+  const s = getUserSettings(uid);
+  return (s && typeof s.avatarHue === 'number') ? s.avatarHue : _userHue(uid);
+}
+
+// Avatar : logo Capital View recoloré par rotation de teinte.
 function defaultAvatarHtml(uid) {
   return '<img src="logo.png" alt="" style="width:100%;height:100%;border-radius:inherit;'
-    + 'object-fit:cover;filter:hue-rotate(' + _userHue(uid) + 'deg)">';
+    + 'object-fit:cover;filter:hue-rotate(' + _avatarHue(uid) + 'deg)">';
 }
 
-// Update mobile header avatar
+// Met à jour les avatars (sidebar + mobile) — toujours le logo recoloré.
 function updateMobileAvatar(user) {
   if (!user) return;
-  const settings = getUserSettings(user.uid);
-  const src = settings.avatarBase64 || user.photoURL;
-
-  // Sidebar desktop
   const sidebarEl = document.getElementById('user-avatar');
-  if (sidebarEl) {
-    if (src) {
-      sidebarEl.innerHTML = `<img src="${src}" style="width:100%;height:100%;border-radius:10px;object-fit:cover;display:block;">`;
-    } else {
-      sidebarEl.innerHTML = defaultAvatarHtml(user.uid);
-    }
-  }
-
-  // Mobile
+  if (sidebarEl) sidebarEl.innerHTML = defaultAvatarHtml(user.uid);
   const letter = document.getElementById('mobile-avatar-letter');
-  if (!letter) return;
-  if (src) {
-    letter.innerHTML = `<img src="${src}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">`;
-  } else {
-    letter.innerHTML = defaultAvatarHtml(user.uid);
-  }
+  if (letter) letter.innerHTML = defaultAvatarHtml(user.uid);
 }
+
+// Rend la palette de couleurs d'avatar dans le profil.
+function renderAvatarSwatches() {
+  const el = document.getElementById('avatar-hue-swatches');
+  if (!el) return;
+  const cur = _avatarHue(currentUser);
+  let best = 0, bestDiff = 999;
+  const hues = [];
+  for (let d = 0; d < 360; d += 30) {
+    hues.push(d);
+    const diff = Math.min(Math.abs(d - cur), 360 - Math.abs(d - cur));
+    if (diff < bestDiff) { bestDiff = diff; best = d; }
+  }
+  el.innerHTML = hues.map(d => {
+    const sel = d === best;
+    return '<div onclick="setAvatarHue(' + d + ')" title="Couleur" style="width:42px;height:42px;'
+      + 'border-radius:11px;cursor:pointer;overflow:hidden;flex-shrink:0;transition:transform .12s;'
+      + 'border:2px solid ' + (sel ? 'var(--accent)' : 'transparent') + '">'
+      + '<img src="logo.png" style="width:100%;height:100%;object-fit:cover;filter:hue-rotate(' + d + 'deg)">'
+      + '</div>';
+  }).join('');
+}
+
+// Change la couleur de l'avatar.
+window.setAvatarHue = async function(deg) {
+  await saveUserSettings(currentUser, { avatarHue: deg });
+  setFirestoreDoc(firestoreDoc(db, 'roles', currentUser), { avatarHue: deg }, { merge: true }).catch(() => {});
+  const letEl = document.getElementById('profil-avatar-letter');
+  if (letEl) letEl.innerHTML = defaultAvatarHtml(currentUser);
+  updateMobileAvatar(fbAuth.currentUser);
+  renderAvatarSwatches();
+  const st = document.getElementById('avatar-status');
+  if (st) { st.textContent = '✓ Couleur enregistrée'; setTimeout(() => { st.textContent = ''; }, 2000); }
+};
 
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
