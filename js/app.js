@@ -33,16 +33,32 @@ let fcmMessaging = null, getFCMToken, onFCMMessage;
 // VAPID key : Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Generate key pair
 const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vNXI1EL2xQKA1Nr6tmKaSX5hcGJY';
 
+let _splashWatchdog = null;
 function _hideSplash() {
+  if (_splashWatchdog) { clearTimeout(_splashWatchdog); _splashWatchdog = null; }
   const s = document.getElementById('splash-screen');
   if (s) s.style.display = 'none';
 }
 function _splashError(msg) {
-  const s = document.getElementById('splash-error');
-  if (s) { s.textContent = msg; s.style.display = 'block'; }
-  const sp = document.querySelector('.splash-spinner');
-  if (sp) sp.style.display = 'none';
+  if (_splashWatchdog) { clearTimeout(_splashWatchdog); _splashWatchdog = null; }
+  const err  = document.getElementById('splash-error');
+  const sp   = document.getElementById('splash-spinner');
+  const txt  = document.getElementById('splash-text');
+  const btn  = document.getElementById('splash-reload');
+  if (err) { err.textContent = msg; err.style.display = 'block'; }
+  if (sp)  sp.style.display = 'none';
+  if (txt) txt.style.display = 'none';
+  if (btn) btn.style.display = 'inline-block';
 }
+
+// Filet de sécurité : si l'app n'a pas démarré après 15 s (réseau bloqué,
+// CDN Firebase injoignable…), on sort de l'écran de chargement avec une erreur.
+_splashWatchdog = setTimeout(() => {
+  const s = document.getElementById('splash-screen');
+  if (s && s.style.display !== 'none') {
+    _splashError("Le chargement prend trop de temps. Vérifiez votre connexion internet puis rechargez.");
+  }
+}, 15000);
 
 (async function initFirebase() {
  try {

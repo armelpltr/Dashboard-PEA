@@ -2,20 +2,36 @@
 #splash-screen {
   position: fixed; inset: 0; z-index: 5000;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 22px;
-  background: #04060b;
+  align-items: center; justify-content: center; gap: 18px;
+  background: radial-gradient(ellipse at 50% 38%, #161427 0%, #04060b 70%);
+  padding: 24px;
 }
-.splash-logo { width: 72px; height: 72px; object-fit: contain; opacity: .9; }
+.splash-logo {
+  width: 76px; height: 76px; object-fit: contain;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(124,109,245,0.35);
+}
+.splash-name {
+  font-family: 'Switzer', sans-serif; font-weight: 800;
+  font-size: 19px; color: #edf0f7; letter-spacing: -0.3px;
+}
 .splash-spinner {
-  width: 32px; height: 32px; border-radius: 50%;
-  border: 3px solid rgba(255,255,255,0.12);
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 3px solid rgba(124,109,245,0.25);
   border-top-color: #7c6df5;
-  animation: splash-spin .8s linear infinite;
+  animation: splash-spin .7s linear infinite;
 }
 @keyframes splash-spin { to { transform: rotate(360deg); } }
+.splash-text { font-family: sans-serif; font-size: 12px; color: #8892a8; }
 .splash-error {
   display: none; max-width: 320px; text-align: center;
-  color: #ff4d6a; font-size: 13px; font-family: sans-serif; padding: 0 20px;
+  color: #ff4d6a; font-size: 13px; font-family: sans-serif; line-height: 1.5;
+}
+.splash-reload {
+  display: none; margin-top: 4px;
+  background: #7c6df5; color: #fff; border: none;
+  border-radius: 9px; padding: 9px 20px;
+  font-size: 13px; font-weight: 600; font-family: sans-serif; cursor: pointer;
 }
 
 :root {
