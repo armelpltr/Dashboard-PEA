@@ -4152,16 +4152,13 @@ function exportTransactionsCSV() {
 let autoRefreshInterval = null;
 function toggleAutoRefresh() {
   const btn = document.getElementById('btn-auto-refresh');
-  const badge = document.getElementById('refresh-badge');
   if (autoRefreshInterval) {
     clearInterval(autoRefreshInterval);
     autoRefreshInterval = null;
-    btn.classList.remove('active');
-    badge.style.display = 'none';
+    if (btn) btn.classList.remove('active');
   } else {
     autoRefreshInterval = setInterval(refreshPrices, 60000);
-    btn.classList.add('active');
-    badge.style.display = 'inline-flex';
+    if (btn) btn.classList.add('active');
     refreshPrices(); // immediate first refresh
   }
 }

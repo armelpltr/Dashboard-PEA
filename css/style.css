@@ -1238,18 +1238,6 @@ tr.drag-over td { border-top: 2px solid var(--accent) !important; }
 /* ═══════════════════════════════════════════════════
    AUTO-REFRESH INDICATOR
    ═══════════════════════════════════════════════════ */
-.refresh-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 10px; font-family: var(--mono); color: var(--text3);
-  padding: 3px 8px; border-radius: 5px; background: var(--s2);
-  border: 1px solid var(--border);
-}
-.refresh-dot {
-  width: 6px; height: 6px; border-radius: 50%; background: var(--positive);
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-@keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-
 /* ═══════════════════════════════════════════════════
    WATCHLIST
    ═══════════════════════════════════════════════════ */
