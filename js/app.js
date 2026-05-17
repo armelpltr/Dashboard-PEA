@@ -751,6 +751,7 @@ function showPage(id) {
   });
   if (id === 'graphiques')  initCharts();
   if (id === 'recap')       renderRecapPage();
+  if (id === 'alertes')     renderAlertsList();
 }
 
 function showPageMobile(id) {
@@ -765,6 +766,7 @@ function showPageMobile(id) {
   });
   if (id === 'graphiques')  initCharts();
   if (id === 'recap')       renderRecapPage();
+  if (id === 'alertes')     renderAlertsList();
 }
 
 // ─── PORTFOLIO ────────────────────────────────────────
