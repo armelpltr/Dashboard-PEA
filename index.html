@@ -82,7 +82,7 @@
       <input type="checkbox" id="reg-recap" checked style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0">
       <div>
         <div style="font-size:12px;font-weight:600;color:var(--text)">Récap quotidien par notification</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">Recevez chaque soir à 18h une notification résumant la performance de votre PEA.</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Recevez chaque soir à 20h une notification résumant la performance de votre PEA.</div>
       </div>
     </div>
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;cursor:pointer" onclick="document.getElementById('reg-rgpd').click()">
@@ -675,7 +675,7 @@
         </div>
         <div style="flex:1;min-width:0">
           <div class="recap-notif-title">Notification du récap quotidien</div>
-          <div class="recap-notif-desc">Une notification push chaque jour ouvré à 18h</div>
+          <div class="recap-notif-desc">Une notification push chaque jour ouvré à 20h</div>
         </div>
         <label class="toggle-switch">
           <input type="checkbox" id="recap-notif-toggle" onchange="saveRecapPref(this.checked ? 'on' : 'off')">
@@ -832,7 +832,7 @@
     <div style="height:1px;background:var(--border);margin:18px 0"></div>
     <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">🔔 Récap quotidien</div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
-      <div style="font-size:12px;color:var(--text3)">Notification push de récap chaque jour ouvré à 18h</div>
+      <div style="font-size:12px;color:var(--text3)">Notification push de récap chaque jour ouvré à 20h</div>
       <select id="select-recap-freq" onchange="saveRecapPref(this.value)" style="
         background:var(--s2);border:1px solid var(--border);color:var(--text);
         border-radius:8px;padding:6px 10px;font-size:12px;font-family:var(--sans);cursor:pointer;flex-shrink:0">

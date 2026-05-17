@@ -539,7 +539,7 @@ window.saveRecapPref = async function(value) {
   const chk = document.getElementById('recap-notif-toggle');
   if (chk) chk.checked = on;
   _showChatToast({ icon: on ? '🔔' : '🔕', title: on ? 'Récap activé' : 'Récap désactivé',
-    msg: on ? 'Notification push chaque jour ouvré à 18h.' : 'Vous ne recevrez plus le récap quotidien.' });
+    msg: on ? 'Notification push chaque jour ouvré à 20h.' : 'Vous ne recevrez plus le récap quotidien.' });
 };
 
 function loadProfilePage(user) {
@@ -8140,7 +8140,7 @@ function _paintRecapPage() {
       '<div class="section-card" style="text-align:center;padding:48px 24px">'
       + '<div style="font-size:34px;margin-bottom:12px">🌙</div>'
       + '<div style="font-size:14px;color:var(--text2);font-weight:600;margin-bottom:6px">Aucun récap pour l\'instant</div>'
-      + '<div style="font-size:12px;color:var(--text3);line-height:1.6">Le récap quotidien est généré automatiquement<br>chaque jour ouvré à 18h.</div>'
+      + '<div style="font-size:12px;color:var(--text3);line-height:1.6">Le récap quotidien est généré automatiquement<br>chaque jour ouvré à 20h.</div>'
       + '</div>';
     return;
   }

@@ -2,9 +2,9 @@ name: Daily Market Recap
 
 on:
   schedule:
-    # 18h00 heure Paris = 16h00 UTC (heure d'été) / 17h00 UTC (heure d'hiver)
-    # On lance à 16h00 UTC pour couvrir les deux cas
-    - cron: '0 16 * * 1-5'  # Lundi-Vendredi uniquement
+    # 20h00 heure Paris = 18h00 UTC (heure d'été) / 19h00 UTC (heure d'hiver)
+    # On lance à 18h00 UTC (≈20h l'été, 19h l'hiver)
+    - cron: '0 18 * * 1-5'  # Lundi-Vendredi uniquement
   workflow_dispatch:
     inputs:
       target_uid:

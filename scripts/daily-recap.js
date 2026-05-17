@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 // daily-recap.js — Récap quotidien Capital View
-// Lancé par GitHub Actions chaque jour ouvré à 18h (Paris)
+// Lancé par GitHub Actions chaque jour ouvré à 20h (Paris)
 //
 // Ne fait plus d'email : envoie une notification push courte et
 // stocke le récap complet dans Firestore pour l'espace "Récap" du
