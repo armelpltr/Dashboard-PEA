@@ -736,22 +736,20 @@ function syncMobileNav(id) {
   });
 }
 
-// Couleur déterministe par utilisateur (hash de l'uid) — deux comptes
-// ont quasiment toujours une teinte différente.
-function _userColor(seed) {
+// Décalage de teinte déterministe par utilisateur (hash de l'uid) —
+// deux comptes ont quasiment toujours une couleur de logo différente.
+function _userHue(seed) {
   let h = 0;
   const s = String(seed || 'x');
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return 'hsl(' + (h % 360) + ', 52%, 42%)';
+  return h % 360;
 }
 
-// Avatar par défaut : logo Capital View sur un fond de couleur propre
-// à l'utilisateur.
+// Avatar par défaut : logo Capital View dont la couleur est générée
+// automatiquement à partir de l'uid (rotation de teinte).
 function defaultAvatarHtml(uid) {
-  return '<div style="width:100%;height:100%;border-radius:inherit;background:' + _userColor(uid)
-    + ';display:grid;place-items:center;overflow:hidden">'
-    + '<img src="logo.png" alt="" style="width:62%;height:62%;object-fit:contain">'
-    + '</div>';
+  return '<img src="logo.png" alt="" style="width:100%;height:100%;border-radius:inherit;'
+    + 'object-fit:cover;filter:hue-rotate(' + _userHue(uid) + 'deg)">';
 }
 
 // Update mobile header avatar
