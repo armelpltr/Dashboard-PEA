@@ -29,7 +29,8 @@ const fmt  = n => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 
 const fmtp = n => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const todayIso = new Date().toISOString().slice(0, 10);
 const today    = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-const isFriday = new Date().getDay() === 5;
+const forceWeekly = (process.env.FORCE_WEEKLY || '').toLowerCase() === 'true';
+const isFriday    = new Date().getDay() === 5 || forceWeekly;
 
 // ─── RÉCUPÉRER LES UTILISATEURS FIREBASE ─────────────────────
 async function getAllUsers() {
