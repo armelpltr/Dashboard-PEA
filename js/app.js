@@ -8020,8 +8020,11 @@ function checkPriceAlerts() {
 function renderNotificationsPage() {
   renderAlertsList();
   renderNotifSettings();
-  renderNotifHistory();
   updatePushBtn();
+  // Marquer les notifications comme lues à l'ouverture de la page
+  const h = getNotifHistory(currentUser);
+  if (h.some(n => !n.read)) { h.forEach(n => n.read = true); saveNotifHistory(currentUser, h); }
+  _updateNotifBadge();
   const hint = document.getElementById('ios-push-hint');
   if (hint) hint.style.display = _isIOSNonStandalone() ? 'flex' : 'none';
 }
