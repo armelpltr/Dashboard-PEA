@@ -8131,6 +8131,16 @@ window.generateRecapNow = async function() {
   });
 };
 
+// Supprime le récap stocké (utile pour les tests).
+window.deleteRecap = async function() {
+  _localCache[currentUser + '_recap'] = null;
+  try {
+    await deleteFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'recap'));
+  } catch(e) { console.warn('Récap delete:', e); }
+  _paintRecapPage();
+  _showChatToast({ icon: '🗑️', title: 'Récap supprimé', msg: 'La page Récap est de nouveau vide.' });
+};
+
 function _paintRecapPage() {
   const el = document.getElementById('recap-content');
   if (!el) return;
@@ -8180,8 +8190,10 @@ function _paintRecapPage() {
     : '';
 
   el.innerHTML =
-    '<div style="font-size:12px;color:var(--text3);margin-bottom:14px">'
-    + 'Récap du ' + (r.dateLabel || r.date || '') + '</div>'
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">'
+    + '<div style="font-size:12px;color:var(--text3)">Récap du ' + (r.dateLabel || r.date || '') + '</div>'
+    + '<button onclick="deleteRecap()" class="btn-outline" style="font-size:11px;padding:5px 11px;color:var(--negative);border-color:rgba(255,77,106,0.3)">🗑️ Supprimer</button>'
+    + '</div>'
 
     // KPIs
     + '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px">'
