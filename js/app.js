@@ -33,7 +33,19 @@ let fcmMessaging = null, getFCMToken, onFCMMessage;
 // VAPID key : Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Generate key pair
 const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vNXI1EL2xQKA1Nr6tmKaSX5hcGJY';
 
+function _hideSplash() {
+  const s = document.getElementById('splash-screen');
+  if (s) s.style.display = 'none';
+}
+function _splashError(msg) {
+  const s = document.getElementById('splash-error');
+  if (s) { s.textContent = msg; s.style.display = 'block'; }
+  const sp = document.querySelector('.splash-spinner');
+  if (sp) sp.style.display = 'none';
+}
+
 (async function initFirebase() {
+ try {
   const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
   const auth = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
 
@@ -85,6 +97,10 @@ const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vN
   auth.onAuthStateChanged(fbAuth, user => {
     if (user) { startApp(user); } else { stopApp(); }
   });
+ } catch(e) {
+   console.error('Échec initialisation Firebase:', e);
+   _splashError("Impossible de charger l'application. Vérifiez votre connexion internet puis rechargez la page.");
+ }
 })();
 
 const firebaseConfig = {
@@ -409,6 +425,7 @@ async function startApp(user) {
   currentUser = user.uid;
   window.currentUser = user.uid;
   const displayName = user.displayName || user.email.split('@')[0];
+  _hideSplash();
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('user-avatar').textContent = displayName[0].toUpperCase();
@@ -438,6 +455,7 @@ async function startApp(user) {
 }
 
 function stopApp() {
+  _hideSplash();
   _stopPresenceHeartbeat(currentUser);
   currentUser = null;
   window.currentUser = null;

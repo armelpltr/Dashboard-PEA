@@ -1,3 +1,23 @@
+/* ─── SPLASH ─── */
+#splash-screen {
+  position: fixed; inset: 0; z-index: 5000;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 22px;
+  background: #04060b;
+}
+.splash-logo { width: 72px; height: 72px; object-fit: contain; opacity: .9; }
+.splash-spinner {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.12);
+  border-top-color: #7c6df5;
+  animation: splash-spin .8s linear infinite;
+}
+@keyframes splash-spin { to { transform: rotate(360deg); } }
+.splash-error {
+  display: none; max-width: 320px; text-align: center;
+  color: #ff4d6a; font-size: 13px; font-family: sans-serif; padding: 0 20px;
+}
+
 :root {
   --bg:       #04060b;
   --s1:       #0a0c14;
