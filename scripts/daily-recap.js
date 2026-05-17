@@ -205,20 +205,61 @@ async function fetchWeek(ticker) {
   }
 }
 
-// Dividendes à venir (≤ 45 jours) pour les tickers du portefeuille.
-function upcomingDividends(portfolioTickers) {
+// Estime le prochain dividende d'un ticker depuis l'historique Yahoo.
+// (Yahoo ne fournit plus de date future fiable : on extrapole la
+// fréquence des versements passés.)
+async function fetchDividendEstimate(ticker) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=3y&interval=1wk&events=div`;
   try {
-    const raw  = readFileSync(new URL('../data/dividendes.json', import.meta.url), 'utf-8');
-    const data = JSON.parse(raw).dividends || {};
-    const horizon = new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10);
-    const set = new Set(portfolioTickers);
-    return Object.values(data)
-      .filter(d => set.has(d.ticker) && d.next && d.next.date >= todayIso && d.next.date <= horizon)
-      .map(d => ({ name: d.name, ticker: d.ticker, date: d.next.date, amount: d.next.amount_estimated }));
+    const res  = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) });
+    const json = await res.json();
+    const divs = json?.chart?.result?.[0]?.events?.dividends;
+    if (!divs) return null;
+    const arr = Object.values(divs)
+      .map(d => ({ date: d.date * 1000, amount: d.amount }))
+      .sort((a, b) => a.date - b.date);
+    if (arr.length < 2) return null;
+    const gaps = [];
+    for (let i = 1; i < arr.length; i++) gaps.push(arr[i].date - arr[i - 1].date);
+    gaps.sort((a, b) => a - b);
+    const medGap = gaps[Math.floor(gaps.length / 2)];
+    const last   = arr[arr.length - 1];
+    const nextMs = last.date + medGap;
+    if (nextMs < Date.now()) return null; // estimation déjà dépassée
+    return {
+      date:      new Date(nextMs).toISOString().slice(0, 10),
+      amount:    +last.amount.toFixed(2),
+      estimated: true,
+    };
   } catch(e) {
-    console.warn('Dividendes indisponibles:', e.message);
-    return [];
+    return null;
   }
+}
+
+// Dividendes à venir (≤ 100 jours) pour chaque ligne du portefeuille.
+// Source confirmée : data/dividendes.json (CAC40). Sinon estimation Yahoo.
+async function upcomingDividends(portfolio) {
+  let fileData = {};
+  try {
+    fileData = JSON.parse(readFileSync(new URL('../data/dividendes.json', import.meta.url), 'utf-8')).dividends || {};
+  } catch(e) { /* fichier absent : on passe à l'estimation */ }
+
+  const horizon = new Date(Date.now() + 100 * 86400000).toISOString().slice(0, 10);
+  const out = [];
+  for (const row of portfolio) {
+    const t  = row.ticker;
+    const fe = fileData[t];
+    if (fe && fe.next && fe.next.date >= todayIso && fe.next.date <= horizon) {
+      out.push({ name: fe.name || row.name || t, ticker: t, date: fe.next.date, amount: fe.next.amount_estimated, estimated: false });
+      continue;
+    }
+    const est = await fetchDividendEstimate(t);
+    if (est && est.date <= horizon) {
+      out.push({ name: row.name || t, ticker: t, date: est.date, amount: est.amount, estimated: true });
+    }
+  }
+  out.sort((a, b) => a.date.localeCompare(b.date));
+  return out;
 }
 
 // Rapport hebdo : 6 sections, ancré sur la recherche web Tavily.
@@ -236,8 +277,8 @@ async function generateWeeklyReport(weekLines, weekPct, dividends) {
   }).join('\n\n');
 
   const divInfo = dividends.length
-    ? dividends.map(d => `- ${d.name} : ${d.amount ? d.amount + ' € le ' : 'le '}${d.date}`).join('\n')
-    : '(aucun dividende connu à venir pour ces lignes)';
+    ? dividends.map(d => `- ${d.name} : ${d.amount ? d.amount + ' € ' : ''}vers le ${d.date}${d.estimated ? ' (date estimée)' : ''}`).join('\n')
+    : '(aucun dividende à venir — lignes capitalisantes ou sans versement prévu)';
 
   const prompt = `Tu es analyste financier. Rédige le RAPPORT HEBDOMADAIRE de ce portefeuille PEA, semaine se terminant le ${today}.
 
@@ -432,7 +473,7 @@ async function main() {
         const wWeekChange = wTotalValue - wPrevValue;
         const wWeekPct    = wPrevValue > 0 ? (wWeekChange / wPrevValue) * 100 : 0;
         const wSorted     = [...weekLines].sort((a, b) => b.weekPct - a.weekPct);
-        const divs        = upcomingDividends(portfolio.map(p => p.ticker));
+        const divs        = await upcomingDividends(portfolio);
 
         console.log(`  📰 Génération du rapport hebdo Mistral...`);
         const aiReport = await generateWeeklyReport(weekLines, wWeekPct, divs);

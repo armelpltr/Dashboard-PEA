@@ -8141,12 +8141,12 @@ function _paintWeeklyRecap() {
     + '<div class="section-title">Dividendes à venir</div>'
     + (divs.length
       ? '<div style="display:flex;flex-direction:column;gap:8px">'
-        + divs.map(d => '<div style="display:flex;justify-content:space-between;font-size:12.5px">'
-          + '<span style="color:var(--text)">' + d.name + '</span>'
-          + '<span style="color:var(--text2);font-family:var(--mono)">'
-          + (d.amount ? d.amount + ' € · ' : '') + d.date + '</span></div>').join('')
+        + divs.map(d => '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px">'
+          + '<span style="color:var(--text)">' + d.name + (d.estimated ? ' <span style="color:var(--text3);font-size:10px">estimé</span>' : '') + '</span>'
+          + '<span style="color:var(--text2);font-family:var(--mono);white-space:nowrap">'
+          + (d.amount ? d.amount + ' € · ' : '') + (d.estimated ? '≈ ' : '') + d.date + '</span></div>').join('')
         + '</div>'
-      : '<div style="font-size:12.5px;color:var(--text3)">Aucun dividende connu à venir pour vos lignes.</div>')
+      : '<div style="font-size:12.5px;color:var(--text3)">Aucun dividende à venir — lignes capitalisantes ou sans versement prévu.</div>')
     + '</div>';
 
   el.innerHTML =
