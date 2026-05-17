@@ -6548,6 +6548,26 @@ showPageMobile = function(id) {
 let perfAnnualChart = null;
 let _perfCache = null; // évite de refetch à chaque clic
 
+// Plugin Chart.js : trace une ligne violette à 0 % sur l'axe Y.
+const zeroLinePlugin = {
+  id: 'zeroLine',
+  afterDatasetsDraw(chart) {
+    const y = chart.scales.y;
+    if (!y) return;
+    const y0 = y.getPixelForValue(0);
+    if (y0 < y.top || y0 > y.bottom) return;
+    const { ctx, chartArea } = chart;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(chartArea.left, y0);
+    ctx.lineTo(chartArea.right, y0);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#7c6df5';
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
 // ─────────────────────────────────────────────────────────────────
 //  Import du CSV de valorisation quotidienne du broker
 //  Formats supportés (auto-détection) :
@@ -7083,6 +7103,7 @@ function renderTRCohort(cohort) {
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.y.toFixed(2) + ' %' } } },
         scales: { y: { ticks: { callback: v => v + ' %' } } },
       },
+      plugins: [zeroLinePlugin],
     });
   }
 }
@@ -7764,7 +7785,8 @@ function renderPerformancePage(result, portfolio, txs) {
           grid: { color: 'rgba(255,255,255,0.04)' }
         }
       }
-    }
+    },
+    plugins: [zeroLinePlugin]
   });
 }
 
