@@ -6,6 +6,7 @@
 <title>CapitalView</title>
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
+<link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CapitalView">
@@ -657,7 +658,16 @@
           <div class="page-title">Notifications</div>
           <div class="page-subtitle">Alertes prix · Push · Historique</div>
         </div>
-        <button onclick="requestPushPermission()" class="btn-outline" id="btn-enable-push" style="font-size:12px;padding:7px 14px">🔔 Activer les push</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="requestPushPermission()" class="btn-outline" id="btn-enable-push" style="font-size:12px;padding:7px 14px">🔔 Activer les push</button>
+          <button onclick="sendTestNotification()" class="btn-outline" id="btn-test-push" style="font-size:12px;padding:7px 14px">✉️ Tester</button>
+        </div>
+      </div>
+
+      <!-- Astuce iOS : push uniquement en PWA installée -->
+      <div id="ios-push-hint" style="display:none;gap:8px;align-items:flex-start;background:var(--s2);border:1px solid var(--s3);border-radius:10px;padding:10px 12px;margin-bottom:18px;font-size:11px;color:var(--text2);line-height:1.5">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span>Sur iPhone, les notifications push ne fonctionnent que si l'app est installée : <strong>Partager → Sur l'écran d'accueil</strong>, puis ouvrez CapitalView depuis l'icône. iOS 16.4 ou plus requis.</span>
       </div>
 
       <!-- Paramètres -->

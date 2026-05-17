@@ -7876,6 +7876,52 @@ async function requestPushPermission() {
   updatePushBtn();
 }
 
+// Renvoie true si on tourne sur iOS hors mode app installée (PWA).
+function _isIOSNonStandalone() {
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+  const standalone = navigator.standalone === true
+    || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  return isIOS && !standalone;
+}
+
+// Envoie une notification de test locale (valide permission + SW + affichage).
+async function sendTestNotification() {
+  const btn = document.getElementById('btn-test-push');
+  if (!('Notification' in window)) {
+    _showChatToast({ icon: '🔕', title: 'Non supporté', msg: 'Ce navigateur ne gère pas les notifications.' });
+    return;
+  }
+  if (_isIOSNonStandalone()) {
+    _showChatToast({ icon: '📲', title: 'Installez l\'app', msg: 'Sur iPhone : Partager → Sur l\'écran d\'accueil, puis rouvrez CapitalView.' });
+    return;
+  }
+  let perm = Notification.permission;
+  if (perm === 'default') perm = await Notification.requestPermission();
+  if (perm !== 'granted') {
+    _showChatToast({ icon: '🔕', title: 'Notifications bloquées', msg: 'Autorisez les notifications dans votre navigateur.' });
+    updatePushBtn();
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = '✉️ Envoi…'; }
+  const title = 'CapitalView — Test';
+  const body  = 'Notification de test reçue avec succès ✅';
+  try {
+    await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(title, {
+      body, icon: 'logo.png', badge: 'logo.png', tag: 'test',
+    });
+  } catch(e) {
+    // Repli : notification directe sans service worker
+    try { new Notification(title, { body, icon: 'logo.png' }); }
+    catch(e2) { console.warn('Test notif:', e2.message); }
+  }
+  _logNotifHistory('test', title, body);
+  _showChatToast({ icon: '🔔', title: 'Test envoyé', msg: 'Vérifiez vos notifications.' });
+  renderNotificationsPage();
+  if (btn) { btn.disabled = false; btn.textContent = '✉️ Tester'; }
+}
+
 function _logNotifHistory(type, title, body) {
   if (!currentUser) return;
   const history = getNotifHistory(currentUser);
@@ -7932,6 +7978,8 @@ function renderNotificationsPage() {
   renderNotifSettings();
   renderNotifHistory();
   updatePushBtn();
+  const hint = document.getElementById('ios-push-hint');
+  if (hint) hint.style.display = _isIOSNonStandalone() ? 'flex' : 'none';
 }
 
 function updatePushBtn() {
