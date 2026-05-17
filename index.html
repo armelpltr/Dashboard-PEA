@@ -81,8 +81,8 @@
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:12px 14px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.2);border-radius:10px;cursor:pointer" onclick="document.getElementById('reg-recap').click()">
       <input type="checkbox" id="reg-recap" checked style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0">
       <div>
-        <div style="font-size:12px;font-weight:600;color:var(--text)">Récap quotidien par mail</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">Recevez chaque soir à 18h un résumé de la performance de votre PEA.</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">Récap quotidien par notification</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Recevez chaque soir à 18h une notification résumant la performance de votre PEA.</div>
       </div>
     </div>
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;cursor:pointer" onclick="document.getElementById('reg-rgpd').click()">
@@ -169,6 +169,9 @@
         <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00e09e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span>Projections
       </div>
       <div class="mobile-drawer-section">Outils</div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('recap');closeMobileDrawer()" data-mob="recap">
+        <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00e09e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>Récap du jour
+      </div>
       <div class="mobile-drawer-item" onclick="showPageMobile('notifications');closeMobileDrawer()" data-mob="notifications">
         <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>Notifications
         <span id="notif-drawer-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
@@ -214,6 +217,9 @@
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00e09e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span> Projections
       </div>
       <div class="nav-section-label" style="margin-top:14px">Outils</div>
+      <div class="nav-item" onclick="showPage('recap')">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00e09e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span> Récap du jour
+      </div>
       <div class="nav-item" onclick="showPage('notifications')" id="nav-notifications">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span> Notifications
         <span id="notif-nav-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
@@ -654,6 +660,17 @@
       </div>
     </div>
 
+    <!-- RÉCAP PAGE -->
+    <div class="page" id="page-recap">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Récap du jour</div>
+          <div class="page-subtitle">Résumé quotidien de la performance de votre PEA</div>
+        </div>
+      </div>
+      <div id="recap-content"></div>
+    </div>
+
     <!-- NOTIFICATIONS PAGE -->
     <div class="page" id="page-notifications">
       <div class="page-header">
@@ -703,22 +720,6 @@
   </main>
 </div>
 
-
-<!-- ═══ MODAL CONFIRM RECAP ════════════════════════ -->
-<div id="confirm-recap-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1400;align-items:center;justify-content:center">
-  <div style="background:var(--s1);border:1px solid rgba(251,191,36,0.3);border-radius:16px;padding:28px;width:380px;max-width:90%;box-shadow:0 24px 60px rgba(0,0,0,0.6);animation:fadeInScale .15s ease">
-    <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:36px;margin-bottom:10px">📧</div>
-      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Envoyer le récap</div>
-      <div style="font-size:13px;color:var(--text3)">Vous allez envoyer le récap quotidien à</div>
-      <div id="confirm-recap-email" style="font-size:14px;font-weight:700;color:#fbbf24;margin-top:6px;padding:8px 14px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;word-break:break-all"></div>
-    </div>
-    <div style="display:flex;gap:10px">
-      <button onclick="closeConfirmRecap()" style="flex:1;padding:10px;background:var(--s3);border:1px solid var(--border);color:var(--text2);border-radius:10px;font-size:13px;cursor:pointer;font-family:var(--sans)">Annuler</button>
-      <button onclick="confirmRecapSend()" style="flex:1;padding:10px;background:linear-gradient(135deg,#fbbf24,#f59e0b);border:none;color:#000;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)">✓ Envoyer</button>
-    </div>
-  </div>
-</div>
 
 <!-- ═══ MODAL ALERTE PRIX ══════════════════════════ -->
 <div class="modal-overlay" id="alert-modal-overlay" onclick="if(event.target===this)closeAlertModal()">
@@ -833,21 +834,14 @@
 
     <!-- Notifications -->
     <div style="height:1px;background:var(--border);margin:18px 0"></div>
-    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">📬 Récap par mail</div>
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">🔔 Récap quotidien</div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
-      <div style="font-size:12px;color:var(--text3)">Fréquence d'envoi du résumé de performance</div>
-      <select id="select-recap-freq" onchange="saveRecapFreq(this.value)" style="
+      <div style="font-size:12px;color:var(--text3)">Notification push de récap chaque jour ouvré à 18h</div>
+      <select id="select-recap-freq" onchange="saveRecapPref(this.value)" style="
         background:var(--s2);border:1px solid var(--border);color:var(--text);
         border-radius:8px;padding:6px 10px;font-size:12px;font-family:var(--sans);cursor:pointer;flex-shrink:0">
-        <option value="never">Jamais</option>
-        <option value="daily">Tous les jours</option>
-        <option value="weekly">Toutes les semaines</option>
-        <option value="monthly">Tous les mois</option>
-        <option value="3months">Tous les 3 mois</option>
-        <option value="6months">Tous les 6 mois</option>
-        <option value="1year">Tous les ans</option>
-        <option value="3years">Tous les 3 ans</option>
-        <option value="5years">Tous les 5 ans</option>
+        <option value="on">Activé</option>
+        <option value="off">Désactivé</option>
       </select>
     </div>
     <span id="recap-freq-status" style="font-size:11px;font-family:var(--mono);color:var(--positive)"></span>

@@ -155,19 +155,30 @@ async function loadAllUserData(uid) {
   // Charger les settings
   try {
     const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'settings'));
-    _localCache[uid + '_settings'] = snap.exists() ? snap.data() : { emailRecap: true };
+    _localCache[uid + '_settings'] = snap.exists() ? snap.data() : { pushRecap: true };
   } catch(e) {
-    _localCache[uid + '_settings'] = { emailRecap: true };
+    _localCache[uid + '_settings'] = { pushRecap: true };
   }
   // Appliquer préférence en attente (premier compte)
   if (window._pendingRecapPref !== undefined) {
-    await saveUserSettings(uid, { emailRecap: window._pendingRecapPref });
+    await saveUserSettings(uid, { pushRecap: window._pendingRecapPref });
     window._pendingRecapPref = undefined;
+  }
+  // Charger le dernier récap quotidien (généré côté serveur)
+  try {
+    const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'recap'));
+    _localCache[uid + '_recap'] = snap.exists() ? snap.data() : null;
+  } catch(e) {
+    _localCache[uid + '_recap'] = null;
   }
 }
 
 function getUserSettings(uid) {
-  return _localCache[(uid||currentUser) + '_settings'] || { emailRecap: true };
+  return _localCache[(uid||currentUser) + '_settings'] || { pushRecap: true };
+}
+
+function getRecap(uid) {
+  return _localCache[(uid || currentUser) + '_recap'] || null;
 }
 
 async function saveUserSettings(uid, settings) {
@@ -510,16 +521,9 @@ window.closeProfilModal = function() {
   document.getElementById('profil-modal-overlay').classList.remove('open');
 };
 
-window.toggleRecapSetting = async function() {
-  const toggle   = document.getElementById('toggle-recap');
-  const settings = getUserSettings(currentUser);
-  const newVal   = settings.emailRecap === false;
-  toggle.classList.toggle('on', newVal);
-  await saveUserSettings(currentUser, { emailRecap: newVal });
-};
-
-window.saveRecapFreq = async function(value) {
-  await saveUserSettings(currentUser, { emailRecapFreq: value });
+// Active/désactive le récap quotidien push (select Activé/Désactivé).
+window.saveRecapPref = async function(value) {
+  await saveUserSettings(currentUser, { pushRecap: value === 'on' });
   const st = document.getElementById('recap-freq-status');
   if (st) { st.textContent = '✓ Sauvegardé'; setTimeout(() => { st.textContent = ''; }, 2500); }
 };
@@ -621,10 +625,10 @@ function loadProfilePage(user) {
   const passSection = document.getElementById('profil-password-section');
   if (passSection) passSection.style.display = isGoogle ? 'none' : 'block';
 
-  // Fréquence récap email
+  // Préférence récap quotidien push
   const settings    = getUserSettings(user.uid);
   const freqSelect  = document.getElementById('select-recap-freq');
-  if (freqSelect) freqSelect.value = settings.emailRecapFreq || 'never';
+  if (freqSelect) freqSelect.value = settings.pushRecap === false ? 'off' : 'on';
 }
 
 window.saveDisplayName = async function() {
@@ -761,6 +765,7 @@ function showPage(id) {
     b.classList.toggle('active', b.dataset.mob === id);
   });
   if (id === 'graphiques')  initCharts();
+  if (id === 'recap')       renderRecapPage();
 }
 
 function showPageMobile(id) {
@@ -774,6 +779,7 @@ function showPageMobile(id) {
     if (onclick.includes("'" + id + "'")) n.classList.add('active');
   });
   if (id === 'graphiques')  initCharts();
+  if (id === 'recap')       renderRecapPage();
 }
 
 // ─── PORTFOLIO ────────────────────────────────────────
@@ -7899,6 +7905,7 @@ async function initPush(uid) {
       _logNotifHistory(payload.data?.type || 'push', title || 'Capital View', body || '');
       _showChatToast({ icon: '🔔', title: title || 'Capital View', msg: body || '' });
       renderNotificationsPage();
+      if (payload.data?.type === 'daily_recap') _refreshRecap();
     });
   } catch(e) { console.warn('FCM init:', e.message); }
 }
@@ -8013,6 +8020,113 @@ function renderNotificationsPage() {
   updatePushBtn();
   const hint = document.getElementById('ios-push-hint');
   if (hint) hint.style.display = _isIOSNonStandalone() ? 'flex' : 'none';
+}
+
+// ─── PAGE RÉCAP DU JOUR ───────────────────────────────
+// Affiche le dernier récap quotidien généré côté serveur (Firestore).
+// Peint le cache immédiatement, puis rafraîchit depuis Firestore (un
+// nouveau récap a pu être généré depuis l'ouverture de la session).
+function renderRecapPage() {
+  _paintRecapPage();
+  _refreshRecap();
+}
+
+async function _refreshRecap() {
+  if (!currentUser || !db) return;
+  try {
+    const snap = await getFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'recap'));
+    _localCache[currentUser + '_recap'] = snap.exists() ? snap.data() : null;
+    if (document.getElementById('page-recap')?.classList.contains('active')) _paintRecapPage();
+  } catch(e) { /* garde le cache */ }
+}
+
+function _paintRecapPage() {
+  const el = document.getElementById('recap-content');
+  if (!el) return;
+  const r = getRecap(currentUser);
+
+  if (!r || !r.lines || !r.lines.length) {
+    el.innerHTML =
+      '<div class="section-card" style="text-align:center;padding:48px 24px">'
+      + '<div style="font-size:34px;margin-bottom:12px">🌙</div>'
+      + '<div style="font-size:14px;color:var(--text2);font-weight:600;margin-bottom:6px">Aucun récap pour l\'instant</div>'
+      + '<div style="font-size:12px;color:var(--text3);line-height:1.6">Le récap quotidien est généré automatiquement<br>chaque jour ouvré à 18h.</div>'
+      + '</div>';
+    return;
+  }
+
+  const sgn = v => v >= 0 ? '+' : '';
+  const col = v => v >= 0 ? 'var(--positive)' : 'var(--negative)';
+  const fp  = v => sgn(v) + (v).toFixed(2) + ' %';
+
+  const dayCol = col(r.totalDayChange);
+  const glbCol = col(r.totalPnl);
+
+  const rows = r.lines.map(l => {
+    const c = col(l.changePct);
+    const dayVal = l.qty * (l.price - l.prev);
+    return '<tr style="border-bottom:1px solid var(--border)">'
+      + '<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--text)">' + l.name + '</td>'
+      + '<td style="padding:11px 8px;font-size:11px;color:var(--text2);font-family:var(--mono)">' + l.ticker + '</td>'
+      + '<td style="padding:11px 8px;font-size:12px;color:var(--text);font-family:var(--mono);text-align:right">' + l.qty + '</td>'
+      + '<td style="padding:11px 8px;font-size:12px;color:var(--text);font-family:var(--mono);text-align:right">' + fmt(l.price) + '</td>'
+      + '<td style="padding:11px 8px;font-size:12px;font-family:var(--mono);color:' + c + ';text-align:right">' + fp(l.changePct) + '</td>'
+      + '<td style="padding:11px 14px;font-size:12px;font-family:var(--mono);color:' + c + ';text-align:right">' + sgn(dayVal) + fmt(dayVal) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  const bestWorst = (r.best && r.worst)
+    ? '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:18px">'
+      + '<div class="stat-card" style="border-left:3px solid var(--positive)">'
+      + '<div class="stat-label">🏆 Meilleure performance</div>'
+      + '<div class="stat-value" style="font-size:15px">' + r.best.name + '</div>'
+      + '<div class="stat-sub" style="color:var(--positive)">' + fp(r.best.changePct) + '</div></div>'
+      + '<div class="stat-card" style="border-left:3px solid var(--negative)">'
+      + '<div class="stat-label">📉 Moins bonne performance</div>'
+      + '<div class="stat-value" style="font-size:15px">' + r.worst.name + '</div>'
+      + '<div class="stat-sub" style="color:var(--negative)">' + fp(r.worst.changePct) + '</div></div>'
+      + '</div>'
+    : '';
+
+  el.innerHTML =
+    '<div style="font-size:12px;color:var(--text3);margin-bottom:14px">'
+    + 'Récap du ' + (r.dateLabel || r.date || '') + '</div>'
+
+    // KPIs
+    + '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px">'
+    + '<div class="stat-card"><div class="stat-label">Valeur totale</div>'
+    + '<div class="stat-value">' + fmt(r.totalValue) + '</div></div>'
+    + '<div class="stat-card"><div class="stat-label">Variation du jour</div>'
+    + '<div class="stat-value" style="color:' + dayCol + '">' + fp(r.totalDayPct) + '</div>'
+    + '<div class="stat-sub" style="color:' + dayCol + '">' + sgn(r.totalDayChange) + fmt(r.totalDayChange) + '</div></div>'
+    + '<div class="stat-card"><div class="stat-label">+/- Value totale</div>'
+    + '<div class="stat-value" style="color:' + glbCol + '">' + sgn(r.totalPnl) + fmt(r.totalPnl) + '</div>'
+    + '<div class="stat-sub" style="color:' + glbCol + '">' + fp(r.totalPnlPct) + '</div></div>'
+    + '<div class="stat-card"><div class="stat-label">Lignes</div>'
+    + '<div class="stat-value">' + r.lines.length + '</div></div>'
+    + '</div>'
+
+    + bestWorst
+
+    // Commentaire IA
+    + (r.aiComment
+      ? '<div class="section-card" style="margin-bottom:18px;border-left:3px solid var(--accent)">'
+        + '<div class="section-title" style="color:var(--accent)">✦ Analyse IA</div>'
+        + '<div style="font-size:13px;color:var(--text2);line-height:1.7">' + r.aiComment + '</div></div>'
+      : '')
+
+    // Tableau détaillé
+    + '<div class="section-card">'
+    + '<div class="section-title">Détail des lignes</div>'
+    + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr>'
+    + '<th style="text-align:left;padding:8px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Action</th>'
+    + '<th style="text-align:left;padding:8px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Ticker</th>'
+    + '<th style="text-align:right;padding:8px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Qté</th>'
+    + '<th style="text-align:right;padding:8px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Cours</th>'
+    + '<th style="text-align:right;padding:8px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Var. jour</th>'
+    + '<th style="text-align:right;padding:8px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Impact €</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
 }
 
 function updatePushBtn() {

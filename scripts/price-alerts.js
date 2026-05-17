@@ -1,19 +1,20 @@
 // ─────────────────────────────────────────────────────────────
-// price-alerts.js — Vérification alertes prix + email Brevo
+// price-alerts.js — Vérification alertes prix + notification push
 // Lancé par GitHub Actions toutes les heures (jours ouvrés)
 // ─────────────────────────────────────────────────────────────
 
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore }        from 'firebase-admin/firestore';
 import { getAuth }             from 'firebase-admin/auth';
+import { getMessaging }        from 'firebase-admin/messaging';
 import fetch                   from 'node-fetch';
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-const BREVO_KEY      = process.env.BREVO_API_KEY;
 
 initializeApp({ credential: cert(serviceAccount) });
-const db     = getFirestore();
-const fbAuth = getAuth();
+const db        = getFirestore();
+const fbAuth    = getAuth();
+const messaging = getMessaging();
 
 const fmt = n => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
 
@@ -44,6 +45,19 @@ async function logNotifHistory(uid, type, title, body) {
   await db.doc(`users/${uid}/data/notifHistory`).set({ items: history });
 }
 
+// ─── ENVOYER PUSH FCM ────────────────────────────────────────
+async function sendFcmPush(uid, title, body) {
+  try {
+    const roleSnap = await db.doc(`roles/${uid}`).get();
+    const token = roleSnap.exists ? roleSnap.data().fcmToken : null;
+    if (!token) { console.log(`  — Pas de token FCM pour ${uid}, push ignoré`); return; }
+    await messaging.send({ token, notification: { title, body }, data: { type: 'price_alert' } });
+    console.log(`  📲 Push FCM envoyé à ${uid}`);
+  } catch(e) {
+    console.warn(`  ⚠️  Push FCM échoué pour ${uid}:`, e.message);
+  }
+}
+
 async function fetchPrice(ticker) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`;
   try {
@@ -56,69 +70,6 @@ async function fetchPrice(ticker) {
     console.warn(`Prix indisponible pour ${ticker}:`, e.message);
     return null;
   }
-}
-
-async function sendAlertEmail({ to, toName, alerts }) {
-  const rows = alerts.map(a => {
-    const dir = a.direction === 'above' ? '≥' : '≤';
-    return `
-      <tr style="border-bottom:1px solid #1e2130">
-        <td style="padding:12px 16px;font-size:13px;font-weight:600;color:#edf0f7">${a.name}</td>
-        <td style="padding:12px 8px;font-size:11px;color:#8892a8;font-family:monospace">${a.ticker}</td>
-        <td style="padding:12px 8px;font-size:12px;color:#edf0f7;font-family:monospace">Prix ${dir} ${a.targetPrice}€</td>
-        <td style="padding:12px 16px;font-size:13px;font-weight:700;color:#00e09e;font-family:monospace;text-align:right">${fmt(a.currentPrice)}</td>
-      </tr>`;
-  }).join('');
-
-  const html = `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#04060b;font-family:'Helvetica Neue',Arial,sans-serif">
-<div style="max-width:600px;margin:0 auto;padding:24px 16px">
-  <div style="text-align:center;margin-bottom:28px">
-    <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#7c6df5,#5b8dee);display:inline-grid;place-items:center;font-size:24px;margin-bottom:14px">🎯</div>
-    <div style="font-size:22px;font-weight:800;color:#edf0f7;letter-spacing:-0.5px">Capital View</div>
-    <div style="font-size:12px;color:#495068;margin-top:4px;text-transform:uppercase;letter-spacing:2px">Alerte${alerts.length > 1 ? 's' : ''} prix déclenchée${alerts.length > 1 ? 's' : ''}</div>
-  </div>
-  <div style="font-size:15px;color:#8892a8;margin-bottom:20px">Bonjour <strong style="color:#edf0f7">${toName}</strong>,</div>
-  <div style="font-size:14px;color:#b8bfd0;margin-bottom:20px">
-    ${alerts.length === 1 ? 'Une alerte prix que vous avez configurée vient d\'être déclenchée.' : alerts.length + ' alertes prix que vous avez configurées viennent d\'être déclenchées.'}
-  </div>
-  <div style="background:#0a0c14;border:1px solid #1e2130;border-radius:12px;overflow:hidden;margin-bottom:28px">
-    <table style="width:100%;border-collapse:collapse">
-      <thead>
-        <tr style="background:rgba(255,255,255,0.015)">
-          <th style="padding:10px 16px;text-align:left;font-size:9px;color:#495068;text-transform:uppercase;letter-spacing:1.4px;font-weight:600">Action</th>
-          <th style="padding:10px 8px;text-align:left;font-size:9px;color:#495068;text-transform:uppercase;letter-spacing:1.4px;font-weight:600">Ticker</th>
-          <th style="padding:10px 8px;text-align:left;font-size:9px;color:#495068;text-transform:uppercase;letter-spacing:1.4px;font-weight:600">Condition</th>
-          <th style="padding:10px 16px;text-align:right;font-size:9px;color:#495068;text-transform:uppercase;letter-spacing:1.4px;font-weight:600">Cours actuel</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </div>
-  <div style="text-align:center;padding-top:16px;border-top:1px solid #1e2130">
-    <div style="font-size:11px;color:#495068">
-      Capital View · Alertes prix automatiques<br>
-      <span style="font-size:10px">Les données sont issues de Yahoo Finance et peuvent présenter un léger décalage.</span>
-    </div>
-  </div>
-</div>
-</body>
-</html>`;
-
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: { 'api-key': BREVO_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sender:      { name: 'Capital View', email: 'armelpltr14@gmail.com' },
-      to:          [{ email: to, name: toName }],
-      subject:     `🎯 Alerte prix — ${alerts.map(a => a.ticker).join(', ')}`,
-      htmlContent: html,
-    }),
-  });
-  if (!res.ok) throw new Error(`Brevo error: ${res.status} ${await res.text()}`);
-  console.log(`  ✅ Mail alerte envoyé à ${to}`);
 }
 
 async function main() {
@@ -180,15 +131,14 @@ async function main() {
     // Sauvegarder alertes mises à jour
     await saveUserAlerts(user.uid, alerts);
 
-    // Log historique in-app
+    // Log historique in-app + push pour chaque alerte déclenchée
     for (const a of triggered) {
-      const dir = a.direction === 'above' ? '>=' : '<=';
-      await logNotifHistory(user.uid, 'price_alert', '🎯 Alerte prix déclenchée',
-        `${a.name} (${a.ticker}) ${dir} ${a.targetPrice}€ — cours : ${fmt(a.currentPrice)}`);
+      const dir   = a.direction === 'above' ? '≥' : '≤';
+      const title = '🎯 Alerte prix déclenchée';
+      const body  = `${a.name} (${a.ticker}) ${dir} ${a.targetPrice}€ — cours : ${fmt(a.currentPrice)}`;
+      await logNotifHistory(user.uid, 'price_alert', title, body);
+      await sendFcmPush(user.uid, title, body);
     }
-
-    // Envoyer email
-    await sendAlertEmail({ to: user.email, toName: user.name, alerts: triggered });
   }
 
   console.log('\n✅ Vérification alertes terminée\n');

@@ -7,8 +7,8 @@ on:
     - cron: '0 16 * * 1-5'  # Lundi-Vendredi uniquement
   workflow_dispatch:
     inputs:
-      target_email:
-        description: 'Email spécifique (vide = tous les users)'
+      target_uid:
+        description: 'UID Firebase spécifique (vide = tous les users)'
         required: false
         default: ''
 
@@ -32,9 +32,8 @@ jobs:
       - name: Run daily recap
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-          TARGET_EMAIL: ${{ github.event.inputs.target_email }}
+          TARGET_UID: ${{ github.event.inputs.target_uid }}
         run: |
           cd scripts
           node daily-recap.js

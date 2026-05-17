@@ -26,7 +26,6 @@ jobs:
       - name: Check price alerts
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
         run: |
           cd scripts
           node price-alerts.js
