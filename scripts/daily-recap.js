@@ -157,13 +157,20 @@ Pour chaque ligne, voici sa variation du jour et des résultats de recherche web
 
 ${ctx}
 
-Consignes de rédaction :
-- Commence par une section "**Synthèse**" : une phrase sur la tendance globale du jour.
-- Ensuite, UNE section par ligne : titre en gras "**Nom de la ligne** (variation%)".
-- Pour chaque ligne, 1 à 2 phrases : si les résultats web expliquent réellement le mouvement (résultats financiers, annonce, actualité sectorielle, macro, indice suivi), donne l'explication. Sinon écris exactement : "Rien de notable, mouvement lié à la tendance de marché."
+FORMAT DE RÉPONSE OBLIGATOIRE — texte brut uniquement, AUCUN symbole markdown (pas de **, pas de #, pas de ---).
+Une section par ligne, format exact :
+
+Synthèse: <une phrase sur la tendance globale du jour>
+<Nom de la ligne> (<variation%>): <explication en 1 à 2 phrases>
+<Nom de la ligne suivante> (<variation%>): <explication>
+...
+
+Règles de contenu :
+- Reprends EXACTEMENT le nom et la variation de chaque ligne fournie ci-dessus, dans le même ordre.
+- Explication : si les résultats web expliquent réellement le mouvement (résultats financiers, annonce, actualité sectorielle, macro, indice suivi), donne-la. Sinon écris exactement : "Rien de notable, mouvement lié à la tendance de marché."
+- Ne mélange pas : soit une vraie explication, soit la phrase "Rien de notable" — jamais les deux.
 - Appuie-toi UNIQUEMENT sur les résultats web fournis. N'invente JAMAIS un événement, un chiffre ou une annonce absent de ces résultats.
-- Ignore les résultats web hors sujet ou non datés du moment.
-- Français, factuel, concis. Aucun conseil d'achat ou de vente. Pas de formule de politesse. Pas d'URL.`;
+- Français, factuel, concis. Aucun conseil d'achat ou de vente. Pas d'URL. Une seule ligne de texte par section.`;
 
   try {
     const text = await callMistral(prompt);

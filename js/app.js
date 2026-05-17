@@ -8139,6 +8139,26 @@ function _mdInline(s) {
     .replace(/\n/g, '<br>');
 }
 
+// Rend le rapport IA (format "Titre: corps", une section par ligne).
+function _renderAiReport(text) {
+  const blocks = String(text || '')
+    .split('\n')
+    .map(s => s.trim().replace(/^[-*#\s]+/, '').trim())
+    .filter(s => s && !/^[-—=*]{2,}$/.test(s));
+  if (!blocks.length) return '';
+  return blocks.map(b => {
+    const i = b.indexOf(':');
+    if (i < 0) return '<p class="recap-ai-b">' + _mdInline(b) + '</p>';
+    const head = b.slice(0, i).replace(/\*/g, '').trim();
+    const body = b.slice(i + 1).trim();
+    const isSynth = /^synth[èe]se$/i.test(head);
+    return '<div class="recap-ai-item' + (isSynth ? ' recap-ai-synth' : '') + '">'
+      + '<div class="recap-ai-h">' + _mdInline(head) + '</div>'
+      + '<div class="recap-ai-b">' + _mdInline(body) + '</div>'
+      + '</div>';
+  }).join('');
+}
+
 function _paintRecapPage() {
   const chk = document.getElementById('recap-notif-toggle');
   if (chk) chk.checked = getUserSettings(currentUser).pushRecap !== false;
@@ -8230,7 +8250,7 @@ function _paintRecapPage() {
     + (r.aiComment
       ? '<div class="recap-ai">'
         + '<div class="recap-ai-title">✦ Analyse IA</div>'
-        + '<div class="recap-ai-text">' + _mdInline(r.aiComment) + '</div></div>'
+        + '<div class="recap-ai-text">' + _renderAiReport(r.aiComment) + '</div></div>'
       : '')
 
     // Tableau détaillé
