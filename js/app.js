@@ -8129,6 +8129,16 @@ window.deleteRecap = async function() {
   _showChatToast({ icon: '🗑️', title: 'Récap supprimé', msg: 'La page Récap est de nouveau vide.' });
 };
 
+// Rendu markdown minimal : **gras**, *italique*, sauts de ligne.
+function _mdInline(s) {
+  const esc = String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return esc
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text)">$1</strong>')
+    .replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, '$1<em>$2</em>')
+    .replace(/\n/g, '<br>');
+}
+
 function _paintRecapPage() {
   const chk = document.getElementById('recap-notif-toggle');
   if (chk) chk.checked = getUserSettings(currentUser).pushRecap !== false;
@@ -8186,11 +8196,19 @@ function _paintRecapPage() {
       + '</div>'
     : '';
 
+  const _u    = fbAuth.currentUser;
+  const _name = (_u && (_u.displayName || (_u.email || '').split('@')[0])) || '';
+  const upN   = r.lines.filter(l => l.changePct > 0).length;
+  const dnN   = r.lines.filter(l => l.changePct < 0).length;
+
   el.innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">'
     + '<div style="font-size:12px;color:var(--text3)">Récap du ' + (r.dateLabel || r.date || '') + '</div>'
     + '<button onclick="deleteRecap()" class="btn-outline" style="font-size:11px;padding:5px 11px;color:var(--negative);border-color:rgba(255,77,106,0.3)">🗑️ Supprimer</button>'
     + '</div>'
+
+    // Salutation
+    + '<div style="font-size:15px;color:var(--text2);margin-bottom:18px">Bonjour <strong style="color:var(--text)">' + _name + '</strong>,</div>'
 
     // KPIs
     + '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px">'
@@ -8203,7 +8221,8 @@ function _paintRecapPage() {
     + '<div class="stat-value" style="color:' + glbCol + '">' + sgn(r.totalPnl) + fmt(r.totalPnl) + '</div>'
     + '<div class="stat-sub" style="color:' + glbCol + '">' + fp(r.totalPnlPct) + '</div></div>'
     + '<div class="stat-card"><div class="stat-label">Lignes</div>'
-    + '<div class="stat-value">' + r.lines.length + '</div></div>'
+    + '<div class="stat-value">' + r.lines.length + '</div>'
+    + '<div class="stat-sub">' + upN + ' en hausse · ' + dnN + ' en baisse</div></div>'
     + '</div>'
 
     + bestWorst
@@ -8212,7 +8231,7 @@ function _paintRecapPage() {
     + (r.aiComment
       ? '<div class="section-card" style="margin-bottom:18px;border-left:3px solid var(--accent)">'
         + '<div class="section-title" style="color:var(--accent)">✦ Analyse IA</div>'
-        + '<div style="font-size:13px;color:var(--text2);line-height:1.7">' + r.aiComment + '</div></div>'
+        + '<div style="font-size:13px;color:var(--text2);line-height:1.7">' + _mdInline(r.aiComment) + '</div></div>'
       : '')
 
     // Tableau détaillé
