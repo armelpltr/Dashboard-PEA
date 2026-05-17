@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// daily-recap.js — Récap quotidien CapitalView
+// daily-recap.js — Récap quotidien Capital View
 // Lancé par GitHub Actions chaque jour ouvré à 18h (Paris)
 // ─────────────────────────────────────────────────────────────
 
@@ -139,7 +139,7 @@ function buildEmailHtml({ userName, lines, totalValue, totalPnl, totalPnlPct, to
   <!-- HEADER -->
   <div style="text-align:center;margin-bottom:28px">
     <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#7c6df5,#5b8dee);display:inline-grid;place-items:center;font-size:24px;margin-bottom:14px">📈</div>
-    <div style="font-size:22px;font-weight:800;color:#edf0f7;letter-spacing:-0.5px">CapitalView</div>
+    <div style="font-size:22px;font-weight:800;color:#edf0f7;letter-spacing:-0.5px">Capital View</div>
     <div style="font-size:12px;color:#495068;margin-top:4px;text-transform:uppercase;letter-spacing:2px">Récap du ${today}</div>
   </div>
 
@@ -213,7 +213,7 @@ function buildEmailHtml({ userName, lines, totalValue, totalPnl, totalPnlPct, to
   <!-- FOOTER -->
   <div style="text-align:center;padding-top:16px;border-top:1px solid #1e2130">
     <div style="font-size:11px;color:#495068">
-      CapitalView · Récap automatique quotidien<br>
+      Capital View · Récap automatique quotidien<br>
       <span style="font-size:10px">Les données sont issues de Yahoo Finance et peuvent présenter un léger décalage.</span>
     </div>
   </div>
@@ -245,7 +245,7 @@ async function sendEmail({ to, toName, subject, html }) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      sender:  { name: 'CapitalView', email: 'armelpltr14@gmail.com' },
+      sender:  { name: 'Capital View', email: 'armelpltr14@gmail.com' },
       to:      [{ email: to, name: toName }],
       subject,
       htmlContent: html,

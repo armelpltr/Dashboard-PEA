@@ -7879,8 +7879,8 @@ async function initPush(uid) {
     if (token) setFirestoreDoc(firestoreDoc(db, 'roles', uid), { fcmToken: token }, { merge: true }).catch(() => {});
     onFCMMessage(fcmMessaging, payload => {
       const { title, body } = payload.notification || {};
-      _logNotifHistory(payload.data?.type || 'push', title || 'CapitalView', body || '');
-      _showChatToast({ icon: '🔔', title: title || 'CapitalView', msg: body || '' });
+      _logNotifHistory(payload.data?.type || 'push', title || 'Capital View', body || '');
+      _showChatToast({ icon: '🔔', title: title || 'Capital View', msg: body || '' });
       renderNotificationsPage();
     });
   } catch(e) { console.warn('FCM init:', e.message); }
@@ -7908,7 +7908,7 @@ async function sendTestNotification() {
     return;
   }
   if (_isIOSNonStandalone()) {
-    _showChatToast({ icon: '📲', title: 'Installez l\'app', msg: 'Sur iPhone : Partager → Sur l\'écran d\'accueil, puis rouvrez CapitalView.' });
+    _showChatToast({ icon: '📲', title: 'Installez l\'app', msg: 'Sur iPhone : Partager → Sur l\'écran d\'accueil, puis rouvrez Capital View.' });
     return;
   }
   let perm = Notification.permission;
@@ -7919,7 +7919,7 @@ async function sendTestNotification() {
     return;
   }
   if (btn) { btn.disabled = true; btn.textContent = '✉️ Envoi…'; }
-  const title = 'CapitalView — Test';
+  const title = 'Capital View — Test';
   const body  = 'Notification de test reçue avec succès ✅';
   try {
     await navigator.serviceWorker.register('firebase-messaging-sw.js');

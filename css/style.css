@@ -238,7 +238,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
   box-shadow: 0 4px 16px rgba(124,109,245,0.25);
 }
 .sidebar-logo-title {
-  font-family: var(--display); font-size: 15px; font-weight: 800;
+  font-family: var(--display); font-size: 20px; font-weight: 800;
   color: var(--text); letter-spacing: -0.3px;
 }
 .sidebar-logo-sub {
