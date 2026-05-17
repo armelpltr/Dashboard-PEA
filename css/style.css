@@ -407,6 +407,54 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
   box-shadow: 0 1px 2px rgba(124,109,245,0.25);
 }
 
+/* ─── Sélecteur d'indices Benchmark ─── */
+.bench-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+.bench-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  padding: 6px 13px 6px 10px;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: var(--sans);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, opacity .15s ease;
+  user-select: none;
+}
+.bench-toggle:hover {
+  border-color: var(--chip);
+  background: var(--s3);
+}
+.bench-toggle-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--chip);
+  flex-shrink: 0;
+  transition: transform .15s ease;
+}
+.bench-toggle:not(.off) {
+  border-color: color-mix(in srgb, var(--chip) 55%, transparent);
+  background: color-mix(in srgb, var(--chip) 12%, var(--s1));
+}
+.bench-toggle.off {
+  opacity: 0.45;
+  color: var(--text2);
+}
+.bench-toggle.off .bench-toggle-dot {
+  background: var(--text3);
+  transform: scale(0.7);
+}
+
 /* ═══════════════════════════════════════════════════
    MAIN CONTENT
    ═══════════════════════════════════════════════════ */

@@ -5070,6 +5070,36 @@ const BENCH_NAMES = {
   '^NDX':      'Nasdaq 100',
 };
 
+// Indices désactivés par l'utilisateur (clés masquées sur le graphe Benchmark).
+const _benchHidden = new Set();
+
+// Bascule l'affichage d'un indice sur le graphe Benchmark.
+function toggleBenchIndex(key) {
+  if (_benchHidden.has(key)) _benchHidden.delete(key);
+  else _benchHidden.add(key);
+  if (benchmarkChart) {
+    benchmarkChart.data.datasets.forEach((ds, i) => {
+      if (ds._key === key) benchmarkChart.setDatasetVisibility(i, !_benchHidden.has(key));
+    });
+    benchmarkChart.update();
+  }
+  const chip = document.querySelector('.bench-toggle[data-key="' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]');
+  if (chip) chip.classList.toggle('off', _benchHidden.has(key));
+}
+
+// Rend les puces de sélection d'indices au-dessus du graphe.
+function renderBenchToggles(datasets) {
+  const el = document.getElementById('bench-index-toggles');
+  if (!el) return;
+  el.innerHTML = datasets.map(ds => {
+    const off = _benchHidden.has(ds._key);
+    return '<button class="bench-toggle' + (off ? ' off' : '') + '" data-key="' + ds._key + '"'
+      + ' style="--chip:' + ds.borderColor + '"'
+      + ' onclick="toggleBenchIndex(\'' + ds._key + '\')">'
+      + '<span class="bench-toggle-dot"></span>' + ds.label + '</button>';
+  }).join('');
+}
+
 // Calcule la date de début pour une période donnée
 function benchStartDateFor(period) {
   const today = new Date();
@@ -5241,6 +5271,7 @@ async function initBenchmark() {
     const perfPct = points[points.length - 1].y;
 
     datasets.push({
+      _key: key,
       label: BENCH_NAMES[key],
       data: points,
       borderColor: BENCH_COLORS[key],
@@ -5250,6 +5281,7 @@ async function initBenchmark() {
       tension: 0.2,
       pointRadius: 0,
       pointHoverRadius: 3,
+      hidden: _benchHidden.has(key),
     });
 
     kpis.push({ key, name: BENCH_NAMES[key], perfPct, color: BENCH_COLORS[key] });
@@ -5331,18 +5363,7 @@ function renderBenchmarkMultiChart(datasets) {
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: {
-          position: 'top',
-          align: 'end',
-          labels: {
-            color: '#edf0f7',
-            font: { size: 11 },
-            usePointStyle: true,
-            pointStyle: 'line',
-            boxWidth: 18,
-            padding: 14,
-          },
-        },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             title: function(items) {
@@ -5383,6 +5404,8 @@ function renderBenchmarkMultiChart(datasets) {
       },
     },
   });
+
+  renderBenchToggles(datasets);
 }
 
 function initBase100() {
