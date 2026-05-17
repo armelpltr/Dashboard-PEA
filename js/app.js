@@ -521,11 +521,19 @@ window.closeProfilModal = function() {
   document.getElementById('profil-modal-overlay').classList.remove('open');
 };
 
-// Active/désactive le récap quotidien push (select Activé/Désactivé).
+// Active/désactive le récap quotidien push. Synchronise les deux
+// contrôles (select du profil + case de la page Récap).
 window.saveRecapPref = async function(value) {
-  await saveUserSettings(currentUser, { pushRecap: value === 'on' });
+  const on = value === 'on';
+  await saveUserSettings(currentUser, { pushRecap: on });
   const st = document.getElementById('recap-freq-status');
   if (st) { st.textContent = '✓ Sauvegardé'; setTimeout(() => { st.textContent = ''; }, 2500); }
+  const sel = document.getElementById('select-recap-freq');
+  if (sel) sel.value = on ? 'on' : 'off';
+  const chk = document.getElementById('recap-notif-toggle');
+  if (chk) chk.checked = on;
+  _showChatToast({ icon: on ? '🔔' : '🔕', title: on ? 'Récap activé' : 'Récap désactivé',
+    msg: on ? 'Notification push chaque jour ouvré à 18h.' : 'Vous ne recevrez plus le récap quotidien.' });
 };
 
 window.selectPresetAvatar = async function(el) {
@@ -8161,6 +8169,8 @@ window.deleteRecap = async function() {
 };
 
 function _paintRecapPage() {
+  const chk = document.getElementById('recap-notif-toggle');
+  if (chk) chk.checked = getUserSettings(currentUser).pushRecap !== false;
   const el = document.getElementById('recap-content');
   if (!el) return;
   const r = getRecap(currentUser);

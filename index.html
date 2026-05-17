@@ -669,6 +669,10 @@
         </div>
         <button onclick="generateRecapNow()" class="btn-outline" id="btn-generate-recap" style="font-size:12px;padding:7px 14px">⚡ Générer maintenant</button>
       </div>
+      <label style="display:flex;align-items:center;gap:9px;cursor:pointer;background:var(--s2);border:1px solid var(--s3);border-radius:10px;padding:10px 13px;margin-bottom:18px;font-size:12px;color:var(--text2)">
+        <input type="checkbox" id="recap-notif-toggle" onchange="saveRecapPref(this.checked ? 'on' : 'off')" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer;flex-shrink:0">
+        <span>Recevoir la notification push du récap chaque jour ouvré à 18h</span>
+      </label>
       <div id="recap-content"></div>
     </div>
 
