@@ -233,8 +233,7 @@ async function main() {
 
     const up      = totalDayPct >= 0;
     const emoji   = up ? '📈' : '📉';
-    const dayEur  = (up ? '+' : '') + fmt(totalDayChange);
-    const title   = `Récap du jour : ${emoji} ${fmtp(totalDayPct)} (${dayEur})`;
+    const title   = `Récap du jour : ${emoji} ${fmtp(totalDayPct)}`;
     const body    = 'Touchez pour voir le détail';
     await sendFcmPush(user.uid, title, body);
     await logNotifHistory(user.uid, 'daily_recap', title, body);
