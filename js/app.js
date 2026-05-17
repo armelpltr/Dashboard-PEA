@@ -536,29 +536,18 @@ window.saveRecapPref = async function(value) {
     msg: on ? 'Notification push chaque jour ouvré à 18h.' : 'Vous ne recevrez plus le récap quotidien.' });
 };
 
-window.selectPresetAvatar = async function(el) {
-  const img = new Image();
-  img.onload = async function() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 120; canvas.height = 120;
-    canvas.getContext('2d').drawImage(img, 0, 0, 120, 120);
-    const base64 = canvas.toDataURL('image/png');
-    await saveUserSettings(currentUser, { avatarBase64: base64 });
-    setFirestoreDoc(firestoreDoc(db, 'roles', currentUser), { avatarBase64: base64 }, { merge: true }).catch(() => {});
-    const imgEl = document.getElementById('profil-avatar-img');
-    const letEl = document.getElementById('profil-avatar-letter');
-    imgEl.src = base64;
-    imgEl.style.display = 'block';
-    letEl.style.display = 'none';
-    updateMobileAvatar(fbAuth.currentUser);
-    document.querySelectorAll('.preset-avatar').forEach(e => {
-      e.style.borderColor = e === el ? 'var(--accent)' : 'transparent';
-    });
-    const st = document.getElementById('avatar-status');
-    if (st) { st.textContent = '✓ Photo mise à jour'; setTimeout(() => { st.textContent = ''; }, 2500); }
-  };
-  img.crossOrigin = 'anonymous';
-  img.src = el.src;
+// Réinitialise l'avatar : supprime la photo importée → retour au logo
+// Capital View recoloré automatiquement.
+window.resetProfilAvatar = async function() {
+  await saveUserSettings(currentUser, { avatarBase64: null });
+  setFirestoreDoc(firestoreDoc(db, 'roles', currentUser), { avatarBase64: null }, { merge: true }).catch(() => {});
+  const imgEl = document.getElementById('profil-avatar-img');
+  const letEl = document.getElementById('profil-avatar-letter');
+  if (imgEl) imgEl.style.display = 'none';
+  if (letEl) { letEl.style.display = 'block'; letEl.innerHTML = defaultAvatarHtml(currentUser); }
+  updateMobileAvatar(fbAuth.currentUser);
+  const st = document.getElementById('avatar-status');
+  if (st) { st.textContent = '✓ Avatar par défaut restauré'; setTimeout(() => { st.textContent = ''; }, 2500); }
 };
 
 window.uploadProfilAvatar = function(event) {
