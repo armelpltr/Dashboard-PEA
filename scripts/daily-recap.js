@@ -12,17 +12,15 @@ import { getFirestore }        from 'firebase-admin/firestore';
 import { getAuth }             from 'firebase-admin/auth';
 import { getMessaging }        from 'firebase-admin/messaging';
 import fetch                   from 'node-fetch';
-import { Mistral }             from '@mistralai/mistralai';
 
 // ─── CONFIG ──────────────────────────────────────────────────
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-const MISTRAL_KEY    = process.env.MISTRAL_API_KEY;
+const GEMINI_KEY     = process.env.GEMINI_API_KEY;
 
 initializeApp({ credential: cert(serviceAccount) });
 const db        = getFirestore();
 const fbAuth    = getAuth();
 const messaging = getMessaging();
-const mistral   = new Mistral({ apiKey: MISTRAL_KEY });
 
 // ─── HELPERS ─────────────────────────────────────────────────
 const fmt  = n => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
@@ -80,41 +78,53 @@ async function fetchPrice(ticker) {
 }
 
 // ─── MISTRAL — COMMENTAIRE IA ────────────────────────────────
-// ─── MISTRAL — RAPPORT QUOTIDIEN ─────────────────────────────
-// Analyse ligne par ligne : l'IA interprète chaque mouvement à partir
-// de sa connaissance de l'instrument (secteur, indice, zone géo, macro).
-// Interdiction stricte d'inventer un événement daté ou un chiffre.
+// ─── GEMINI — RAPPORT QUOTIDIEN AVEC RECHERCHE WEB ───────────
+// Gemini 2.0 Flash + outil Google Search : le modèle cherche lui-même
+// l'actualité du jour pour expliquer chaque mouvement. Ancré sur de
+// vrais résultats web — pas d'invention.
 async function generateReport(lines, totalPct) {
   const lineInfo = lines.map(l =>
-    `- ${l.name} (${l.ticker}) : ${fmtp(l.changePct)} aujourd'hui, ${l.qty} titre(s), valeur ${fmt(l.value)}`
+    `- ${l.name} (${l.ticker}) : ${fmtp(l.changePct)} aujourd'hui, ${l.qty} titre(s)`
   ).join('\n');
 
-  const prompt = `Tu es analyste financier. Rédige le rapport quotidien de ce portefeuille PEA (${today}).
+  const prompt = `Tu es analyste financier. Rédige le rapport quotidien de ce portefeuille PEA, daté du ${today}.
 
 Performance globale du jour : ${fmtp(totalPct)}
 
 Lignes du portefeuille :
 ${lineInfo}
 
+Méthode :
+- Pour CHAQUE ligne, utilise la recherche Google pour vérifier s'il s'est passé quelque chose aujourd'hui ou très récemment qui explique son mouvement (résultats, annonce, actualité sectorielle, macro-économie, mouvement de l'indice suivi).
+- Une grosse variation (par exemple plus de 3 % en valeur absolue) mérite une recherche approfondie.
+
 Consignes de rédaction :
 - Commence par une section "**Synthèse**" : une phrase sur la tendance globale du jour.
-- Ensuite, UNE section par ligne : titre en gras au format "**Nom de la ligne** (variation%)".
-- Pour chaque ligne : identifie ce qu'elle représente (action ou ETF, secteur, indice suivi, zone géographique) puis explique en 1 à 2 phrases ce qui peut justifier son mouvement du jour : dynamique sectorielle, contexte macro-économique, taux d'intérêt, géographie, rotation de marché.
-- Tu peux et tu dois dire quand le mouvement n'a rien de particulier et relève d'une variation de marché ordinaire.
-- INTERDIT : inventer une annonce, un communiqué, un résultat trimestriel, un événement daté ou un chiffre précis que tu ne peux pas connaître avec certitude. Reste sur l'analyse qualitative et le contexte général.
-- Reste prudent : emploie "probablement", "vraisemblablement" quand tu interprètes.
-- Français, factuel, concis. Aucun conseil d'achat ou de vente.
-- Ne commence pas par une formule de politesse.`;
+- Ensuite, UNE section par ligne : titre en gras "**Nom de la ligne** (variation%)".
+- Pour chaque ligne : 1 à 2 phrases. Si tu as trouvé une explication concrète et vérifiée, donne-la. Sinon écris exactement : "Rien de notable, mouvement lié à la tendance de marché."
+- N'invente JAMAIS : ne mentionne un événement, un chiffre ou une annonce que si la recherche le confirme réellement.
+- Français, factuel, concis. Aucun conseil d'achat ou de vente. Pas de formule de politesse.
+- N'inclus pas d'URL ni de liste de sources dans le texte.`;
 
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_KEY;
   try {
-    const res = await mistral.chat.complete({
-      model: 'mistral-small-latest',
-      messages: [{ role: 'user', content: prompt }],
-      maxTokens: 900,
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        tools: [{ google_search: {} }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1200 },
+      }),
+      signal: AbortSignal.timeout(60000),
     });
-    return res.choices[0].message.content.trim();
+    const json = await res.json();
+    if (!res.ok) throw new Error(`Gemini ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
+    const parts = json?.candidates?.[0]?.content?.parts || [];
+    const text  = parts.map(p => p.text || '').join('').trim();
+    return text || 'Analyse IA indisponible aujourd\'hui.';
   } catch(e) {
-    console.warn('Mistral error:', e.message);
+    console.warn('Gemini error:', e.message);
     return 'Analyse IA indisponible aujourd\'hui.';
   }
 }
