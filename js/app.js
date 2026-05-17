@@ -8040,6 +8040,64 @@ async function _refreshRecap() {
   } catch(e) { /* garde le cache */ }
 }
 
+// Génère un récap immédiatement à partir du portefeuille courant et le
+// stocke dans Firestore. Aperçu local : pas d'analyse IA, pas de push
+// (la push s'envoie uniquement côté serveur via GitHub Actions).
+window.generateRecapNow = async function() {
+  const btn = document.getElementById('btn-generate-recap');
+  const pf  = getPortfolio(currentUser);
+  if (!pf.length) {
+    _showChatToast({ icon: '📭', title: 'Portefeuille vide', msg: 'Ajoutez des lignes avant de générer un récap.' });
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Génération…'; }
+
+  const lines = pf.filter(r => r.currentPrice).map(r => {
+    const chg  = r.changePct || 0;
+    const prev = r.currentPrice / (1 + chg / 100);
+    return {
+      ticker:    r.ticker,
+      name:      r.name || r.ticker,
+      qty:       r.qty,
+      buyPrice:  r.buyPrice || 0,
+      price:     r.currentPrice,
+      prev,
+      changePct: chg,
+      value:     r.qty * r.currentPrice,
+      pnl:       r.qty * (r.currentPrice - (r.buyPrice || r.currentPrice)),
+    };
+  });
+
+  const totalValue     = lines.reduce((s, l) => s + l.value, 0);
+  const totalInvested  = lines.reduce((s, l) => s + l.qty * l.buyPrice, 0);
+  const totalPnl       = totalValue - totalInvested;
+  const totalPnlPct    = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+  const totalDayChange = lines.reduce((s, l) => s + l.qty * (l.price - l.prev), 0);
+  const prevValue      = lines.reduce((s, l) => s + l.qty * l.prev, 0);
+  const totalDayPct    = prevValue > 0 ? (totalDayChange / prevValue) * 100 : 0;
+  const sorted         = [...lines].sort((a, b) => b.changePct - a.changePct);
+
+  const recap = {
+    date:        new Date().toISOString().slice(0, 10),
+    dateLabel:   new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    generatedAt: new Date().toISOString(),
+    totalValue, totalInvested, totalPnl, totalPnlPct, totalDayChange, totalDayPct,
+    lines,
+    best:  sorted.length     ? { name: sorted[0].name, changePct: sorted[0].changePct } : null,
+    worst: sorted.length > 1 ? { name: sorted[sorted.length-1].name, changePct: sorted[sorted.length-1].changePct } : null,
+    aiComment: '',
+  };
+
+  _localCache[currentUser + '_recap'] = recap;
+  try {
+    await setFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'recap'), recap);
+  } catch(e) { console.warn('Récap save:', e); }
+
+  _paintRecapPage();
+  if (btn) { btn.disabled = false; btn.textContent = '⚡ Générer maintenant'; }
+  _showChatToast({ icon: '✅', title: 'Récap généré', msg: 'Aperçu local — sans analyse IA ni notification.' });
+};
+
 function _paintRecapPage() {
   const el = document.getElementById('recap-content');
   if (!el) return;
