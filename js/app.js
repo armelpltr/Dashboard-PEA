@@ -8168,8 +8168,15 @@ function _paintRecapPage() {
   const rows = r.lines.map(l => {
     const c = col(l.changePct);
     const dayVal = l.qty * (l.price - l.prev);
+    const badge  = isETF(l.ticker)
+      ? '<span class="badge-etf">ETF</span>'
+      : '<span class="badge-action">ACTION</span>';
     return '<tr style="border-bottom:1px solid var(--border)">'
-      + '<td style="padding:11px 14px;font-size:13px;font-weight:600;color:var(--text)">' + l.name + '</td>'
+      + '<td style="padding:11px 14px">'
+      + '<div style="display:flex;align-items:center;gap:9px">'
+      + logoHtml(l.ticker, 26, 'ticker-icon')
+      + '<span style="font-size:13px;font-weight:600;color:var(--text)">' + l.name + badge + '</span>'
+      + '</div></td>'
       + '<td style="padding:11px 8px;font-size:11px;color:var(--text2);font-family:var(--mono)">' + l.ticker + '</td>'
       + '<td style="padding:11px 8px;font-size:12px;color:var(--text);font-family:var(--mono);text-align:right">' + l.qty + '</td>'
       + '<td style="padding:11px 8px;font-size:12px;color:var(--text);font-family:var(--mono);text-align:right">' + fmt(l.price) + '</td>'
