@@ -563,7 +563,7 @@
       <div class="page-header">
         <div>
           <div class="page-title">Performance</div>
-          <div class="page-subtitle">Rendement TWR annuel — broker si CSV importé, sinon Yahoo Finance</div>
+          <div class="page-subtitle">Rendement TWR annuel via CSV Broker</div>
         </div>
       </div>
 
@@ -625,6 +625,9 @@
         <div class="section-title">Performance par année</div>
         <div style="position:relative;height:320px">
           <canvas id="chart-perf-annual"></canvas>
+          <div id="perf-chart-empty" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;color:var(--text3);font-size:13px;text-align:center">
+            Aucune donnée — merci d'importer un CSV.
+          </div>
         </div>
       </div>
 

@@ -6938,16 +6938,35 @@ function closeConfirmModal() {
   document.getElementById('confirm-modal2').style.display = 'none';
 }
 
+// Affiche l'état "aucune donnée" : graphe vidé + message dans le tableau.
+function showPerfEmptyState() {
+  if (perfAnnualChart) { perfAnnualChart.destroy(); perfAnnualChart = null; }
+  const canvas = document.getElementById('chart-perf-annual');
+  const empty  = document.getElementById('perf-chart-empty');
+  if (canvas) canvas.style.display = 'none';
+  if (empty)  empty.style.display = 'flex';
+  const tbodyEl = document.getElementById('perf-tbody');
+  if (tbodyEl) tbodyEl.innerHTML =
+    '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:32px">Aucune donnée — merci d\'importer un CSV.</td></tr>';
+}
+
+// Réaffiche le graphe (masque le message vide).
+function hidePerfEmptyState() {
+  const canvas = document.getElementById('chart-perf-annual');
+  const empty  = document.getElementById('perf-chart-empty');
+  if (canvas) canvas.style.display = '';
+  if (empty)  empty.style.display = 'none';
+}
+
 function clearDailyValues() {
   saveDailyValues(currentUser, []);
   saveTRCohort(currentUser, null);
   _perfCache = null;
 
   // Vider immédiatement l'affichage perf
-  const kpiEl   = document.getElementById('perf-kpis');
-  const tbodyEl = document.getElementById('perf-tbody');
-  if (kpiEl)   kpiEl.innerHTML = '';
-  if (tbodyEl) tbodyEl.innerHTML = '';
+  const kpiEl = document.getElementById('perf-kpis');
+  if (kpiEl) kpiEl.innerHTML = '';
+  showPerfEmptyState();
 
   // Masquer la bannière de succès import
   const successEl = document.getElementById('csv-import-success');
@@ -7000,31 +7019,14 @@ async function initPerformance() {
 
   const dailyValues = getDailyValues(currentUser);
   if (!dailyValues || dailyValues.length < 2) {
-    // Pas de CSV broker → KPIs depuis portfolio uniquement, chart + tableau = CTA
+    // Pas de CSV broker → KPIs depuis portfolio uniquement, graphe + tableau vides
     renderPerformancePage({ years: [] }, portfolio, txs);
-    const chartSection = document.getElementById('chart-perf-annual');
-    if (chartSection) {
-      const wrap = chartSection.closest('.section-card');
-      if (wrap) wrap.style.display = 'none';
-    }
-    tbodyEl.innerHTML = `
-      <tr><td colspan="4" style="text-align:center;padding:36px 20px">
-        <div style="color:var(--text3);font-size:13px;margin-bottom:10px">
-          Pour afficher le détail annuel, importez votre CSV broker.
-        </div>
-        <button onclick="onImportCSVClick()" style="font-size:12px;padding:8px 16px;border-radius:9px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-family:var(--sans);font-weight:600">
-          Importer CSV
-        </button>
-      </td></tr>`;
+    showPerfEmptyState();
     return;
   }
 
-  // CSV présent : chart visible
-  const chartSection = document.getElementById('chart-perf-annual');
-  if (chartSection) {
-    const wrap = chartSection.closest('.section-card');
-    if (wrap) wrap.style.display = '';
-  }
+  // CSV présent : graphe visible
+  hidePerfEmptyState();
 
   kpiEl.innerHTML = '<div class="stat-card"><div class="stat-label">Chargement…</div></div>';
   tbodyEl.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">Calcul en cours…</td></tr>';
