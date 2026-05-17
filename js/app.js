@@ -8106,7 +8106,7 @@ window.generateRecapNow = async function() {
   const emoji    = up ? '📈' : '📉';
   const pctStr   = (up ? '+' : '') + totalDayPct.toFixed(2) + '%';
   const ntitle   = `Récap du jour : ${emoji} ${pctStr}`;
-  const nbody    = 'Touchez pour voir le détail';
+  const nbody    = 'Touchez pour voir le détail.';
   const shown    = await _showLocalNotif(ntitle, nbody);
   _logNotifHistory('daily_recap', ntitle, nbody);
   renderNotificationsPage();
