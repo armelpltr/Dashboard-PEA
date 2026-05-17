@@ -600,7 +600,7 @@ function loadProfilePage(user) {
   } else {
     img.style.display = 'none';
     letter.style.display = 'block';
-    letter.textContent = (user.displayName || user.email || '?')[0].toUpperCase();
+    letter.innerHTML = defaultAvatarHtml(user.uid);
   }
   // Hover overlay
   big.onmouseenter = () => { document.getElementById('profil-avatar-overlay').style.opacity = '1'; };
@@ -638,9 +638,8 @@ window.saveDisplayName = async function() {
   if (!name) { status.textContent = 'Le nom ne peut pas être vide.'; status.style.color = 'var(--negative)'; return; }
   try {
     await updateProfile(user, { displayName: name });
-    // Update sidebar
+    // Update sidebar (l'avatar ne dépend plus du nom)
     document.getElementById('user-name-display').textContent = name;
-    document.getElementById('user-avatar').textContent = name[0].toUpperCase();
     document.getElementById('profil-display-name').textContent = name;
     status.textContent = '✓ Nom mis à jour !';
     status.style.color = 'var(--positive)';
@@ -729,6 +728,24 @@ function syncMobileNav(id) {
   });
 }
 
+// Couleur déterministe par utilisateur (hash de l'uid) — deux comptes
+// ont quasiment toujours une teinte différente.
+function _userColor(seed) {
+  let h = 0;
+  const s = String(seed || 'x');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return 'hsl(' + (h % 360) + ', 52%, 42%)';
+}
+
+// Avatar par défaut : logo Capital View sur un fond de couleur propre
+// à l'utilisateur.
+function defaultAvatarHtml(uid) {
+  return '<div style="width:100%;height:100%;border-radius:inherit;background:' + _userColor(uid)
+    + ';display:grid;place-items:center;overflow:hidden">'
+    + '<img src="logo.png" alt="" style="width:62%;height:62%;object-fit:contain">'
+    + '</div>';
+}
+
 // Update mobile header avatar
 function updateMobileAvatar(user) {
   if (!user) return;
@@ -741,7 +758,7 @@ function updateMobileAvatar(user) {
     if (src) {
       sidebarEl.innerHTML = `<img src="${src}" style="width:100%;height:100%;border-radius:10px;object-fit:cover;display:block;">`;
     } else {
-      sidebarEl.textContent = (user.displayName || user.email || '?')[0].toUpperCase();
+      sidebarEl.innerHTML = defaultAvatarHtml(user.uid);
     }
   }
 
@@ -751,7 +768,7 @@ function updateMobileAvatar(user) {
   if (src) {
     letter.innerHTML = `<img src="${src}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">`;
   } else {
-    letter.textContent = (user.displayName || user.email || '?')[0].toUpperCase();
+    letter.innerHTML = defaultAvatarHtml(user.uid);
   }
 }
 
