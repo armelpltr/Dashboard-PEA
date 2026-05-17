@@ -520,6 +520,13 @@ window.closeProfilModal = function() {
   document.getElementById('profil-modal-overlay').classList.remove('open');
 };
 
+// Échap ferme la fenêtre profil quand elle est ouverte.
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('profil-modal-overlay')?.classList.contains('open')) {
+    closeProfilModal();
+  }
+});
+
 // Active/désactive le récap quotidien push. Synchronise les deux
 // contrôles (select du profil + case de la page Récap).
 window.saveRecapPref = async function(value) {
