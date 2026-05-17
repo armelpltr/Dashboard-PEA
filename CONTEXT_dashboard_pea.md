@@ -4,6 +4,43 @@
 ## Notes de collaboration
 - Ne pas hésiter à proposer l'utilisation de Claude Opus pour les tâches complexes (refactoring majeur, architecture, optimisation avancée).
 
+## Notifications push & Récap (2026-05-17)
+
+### Migration email → push
+- Le système d'email (Brevo) est **supprimé**. Tout passe par les notifications push FCM.
+- `scripts/daily-recap.js` : ne fait plus d'email. Stocke le récap dans Firestore `users/{uid}/data/recap` + envoie une push courte.
+- `scripts/price-alerts.js` : alertes prix par push FCM (plus d'email).
+- Préférence renommée `emailRecap` → `pushRecap` (repli sur l'ancienne clé pour anciens users).
+
+### Service worker & PWA
+- `firebase-messaging-sw.js` : service worker FCM (notifs en arrière-plan).
+- `manifest.json` : PWA installable (`display: standalone`) — prérequis du Web Push iOS 16.4+.
+- iOS : push fonctionne UNIQUEMENT si l'app est installée sur l'écran d'accueil (PWA standalone). Astuce affichée sur la page Notifications.
+- L'attribution "from Capital View" dans la notif = imposée par l'OS, non masquable.
+
+### Page Récap (`page-recap`)
+- Switch **Quotidien / Hebdomadaire**.
+- Quotidien : KPIs, meilleure/pire (% jour), analyse IA, détail des lignes. Bouton "⚡ Générer maintenant" = génération locale (pas d'IA, pas de push).
+- Hebdomadaire : généré le vendredi 20h — KPIs semaine, meilleure/pire, dividendes à venir, rapport IA 6 sections, détail.
+- Données : `users/{uid}/data/recap` et `users/{uid}/data/weeklyRecap`.
+
+### Rapport IA (daily-recap.js)
+- **Tavily** (`TAVILY_API_KEY`) : recherche web par ligne — gratuit 1000/mois.
+- **Mistral** (`MISTRAL_API_KEY`) : rédige le rapport à partir des résultats Tavily uniquement (pas d'invention).
+- Gemini abandonné : free tier sans quota (429).
+- Format imposé "Titre: corps", rendu par `_renderAiReport` dans `js/app.js`.
+- Dividendes à venir : `data/dividendes.json` (CAC40, confirmé) sinon estimation Yahoo `events=div` (fréquence extrapolée).
+
+### Workflow `daily-recap.yml`
+- Cron `0 18 * * 1-5` (≈20h Paris). Le vendredi génère aussi le rapport hebdo.
+- `workflow_dispatch` : inputs `target_uid` + `force_weekly` (force le rapport hebdo hors vendredi, pour test).
+- Secrets : `FIREBASE_SERVICE_ACCOUNT`, `MISTRAL_API_KEY`, `TAVILY_API_KEY`. (`BREVO_API_KEY` obsolète.)
+
+### Avatar utilisateur
+- Avatar = logo Capital View recoloré par `hue-rotate`, teinte par défaut dérivée de l'uid.
+- L'utilisateur choisit sa couleur (palette 12 teintes dans le profil) → `avatarHue` dans settings.
+- Import de photo et avatars prédéfinis supprimés.
+
 ## En cours (2026-05-15) — à reprendre
 
 ### Watchlist inline chart — ✅ Résolu (2026-05-15)
