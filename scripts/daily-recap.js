@@ -16,6 +16,7 @@ import fetch                   from 'node-fetch';
 // ─── CONFIG ──────────────────────────────────────────────────
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 const GEMINI_KEY     = process.env.GEMINI_API_KEY;
+const TAVILY_KEY     = process.env.TAVILY_API_KEY;
 
 initializeApp({ credential: cert(serviceAccount) });
 const db        = getFirestore();
@@ -78,50 +79,91 @@ async function fetchPrice(ticker) {
 }
 
 // ─── MISTRAL — COMMENTAIRE IA ────────────────────────────────
-// ─── GEMINI — RAPPORT QUOTIDIEN AVEC RECHERCHE WEB ───────────
-// Gemini 2.0 Flash + outil Google Search : le modèle cherche lui-même
-// l'actualité du jour pour expliquer chaque mouvement. Ancré sur de
-// vrais résultats web — pas d'invention.
+// ─── RECHERCHE WEB (Tavily) ──────────────────────────────────
+// Renvoie des résultats web récents (titres + extraits) pour une requête.
+async function searchWeb(query) {
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: TAVILY_KEY,
+        query,
+        topic: 'news',
+        days: 4,
+        max_results: 5,
+        search_depth: 'basic',
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(`Tavily ${res.status}: ${JSON.stringify(json).slice(0, 200)}`);
+    return (json.results || []).map(r => ({
+      title:   (r.title || '').trim(),
+      content: (r.content || '').trim().slice(0, 400),
+    }));
+  } catch(e) {
+    console.warn(`Tavily error (${query}):`, e.message);
+    return [];
+  }
+}
+
+// ─── GEMINI — RÉDACTION DU RAPPORT ───────────────────────────
+async function callGemini(prompt) {
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_KEY;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 1400 },
+    }),
+    signal: AbortSignal.timeout(60000),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(`Gemini ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
+  const parts = json?.candidates?.[0]?.content?.parts || [];
+  return parts.map(p => p.text || '').join('').trim();
+}
+
+// ─── RAPPORT QUOTIDIEN ───────────────────────────────────────
+// 1) Tavily cherche l'actualité réelle de chaque ligne.
+// 2) Gemini rédige le rapport en s'appuyant UNIQUEMENT sur ces résultats.
 async function generateReport(lines, totalPct) {
-  const lineInfo = lines.map(l =>
-    `- ${l.name} (${l.ticker}) : ${fmtp(l.changePct)} aujourd'hui, ${l.qty} titre(s)`
-  ).join('\n');
+  // 1. Recherche web par ligne
+  const searchPairs = await Promise.all(lines.map(async l => {
+    const results = await searchWeb(`${l.name} action bourse actualité cours`);
+    return [l.ticker, results];
+  }));
+  const webByTicker = Object.fromEntries(searchPairs);
+
+  // 2. Contexte pour le modèle
+  const ctx = lines.map(l => {
+    const r = webByTicker[l.ticker] || [];
+    return `### ${l.name} (${l.ticker}) — variation du jour : ${fmtp(l.changePct)}\n`
+      + (r.length
+        ? r.map(x => `- ${x.title} : ${x.content}`).join('\n')
+        : '- (aucun résultat web)');
+  }).join('\n\n');
 
   const prompt = `Tu es analyste financier. Rédige le rapport quotidien de ce portefeuille PEA, daté du ${today}.
 
 Performance globale du jour : ${fmtp(totalPct)}
 
-Lignes du portefeuille :
-${lineInfo}
+Pour chaque ligne, voici sa variation du jour et des résultats de recherche web récents :
 
-Méthode :
-- Pour CHAQUE ligne, utilise la recherche Google pour vérifier s'il s'est passé quelque chose aujourd'hui ou très récemment qui explique son mouvement (résultats, annonce, actualité sectorielle, macro-économie, mouvement de l'indice suivi).
-- Une grosse variation (par exemple plus de 3 % en valeur absolue) mérite une recherche approfondie.
+${ctx}
 
 Consignes de rédaction :
 - Commence par une section "**Synthèse**" : une phrase sur la tendance globale du jour.
 - Ensuite, UNE section par ligne : titre en gras "**Nom de la ligne** (variation%)".
-- Pour chaque ligne : 1 à 2 phrases. Si tu as trouvé une explication concrète et vérifiée, donne-la. Sinon écris exactement : "Rien de notable, mouvement lié à la tendance de marché."
-- N'invente JAMAIS : ne mentionne un événement, un chiffre ou une annonce que si la recherche le confirme réellement.
-- Français, factuel, concis. Aucun conseil d'achat ou de vente. Pas de formule de politesse.
-- N'inclus pas d'URL ni de liste de sources dans le texte.`;
+- Pour chaque ligne, 1 à 2 phrases : si les résultats web expliquent réellement le mouvement (résultats financiers, annonce, actualité sectorielle, macro, indice suivi), donne l'explication. Sinon écris exactement : "Rien de notable, mouvement lié à la tendance de marché."
+- Appuie-toi UNIQUEMENT sur les résultats web fournis. N'invente JAMAIS un événement, un chiffre ou une annonce absent de ces résultats.
+- Ignore les résultats web hors sujet ou non datés du moment.
+- Français, factuel, concis. Aucun conseil d'achat ou de vente. Pas de formule de politesse. Pas d'URL.`;
 
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_KEY;
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        tools: [{ google_search: {} }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 1200 },
-      }),
-      signal: AbortSignal.timeout(60000),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(`Gemini ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
-    const parts = json?.candidates?.[0]?.content?.parts || [];
-    const text  = parts.map(p => p.text || '').join('').trim();
+    const text = await callGemini(prompt);
     return text || 'Analyse IA indisponible aujourd\'hui.';
   } catch(e) {
     console.warn('Gemini error:', e.message);
