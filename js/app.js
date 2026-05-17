@@ -7924,6 +7924,25 @@ function _isIOSNonStandalone() {
   return isIOS && !standalone;
 }
 
+// Affiche une notification locale (via service worker, repli Notification).
+// Renvoie true si la notification a pu être affichée.
+async function _showLocalNotif(title, body) {
+  if (!('Notification' in window)) return false;
+  if (_isIOSNonStandalone()) return false;
+  let perm = Notification.permission;
+  if (perm === 'default') perm = await Notification.requestPermission();
+  if (perm !== 'granted') return false;
+  try {
+    await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(title, { body, icon: 'logo.png', badge: 'logo.png', tag: 'recap' });
+    return true;
+  } catch(e) {
+    try { new Notification(title, { body, icon: 'logo.png' }); return true; }
+    catch(e2) { console.warn('Notif locale:', e2.message); return false; }
+  }
+}
+
 // Envoie une notification de test locale (valide permission + SW + affichage).
 async function sendTestNotification() {
   const btn = document.getElementById('btn-test-push');
@@ -8094,8 +8113,22 @@ window.generateRecapNow = async function() {
   } catch(e) { console.warn('Récap save:', e); }
 
   _paintRecapPage();
+
+  // Notification locale (sur l'appareil) — pas un envoi serveur FCM.
+  const daySign  = totalDayPct >= 0 ? '▲' : '▼';
+  const sgnPct   = totalDayPct >= 0 ? '+' : '';
+  const ntitle   = `${daySign} Récap du jour — ${sgnPct}${totalDayPct.toFixed(2)} %`;
+  const nbody    = `Portefeuille : ${fmt(totalValue)}. Touchez pour voir le détail.`;
+  const shown    = await _showLocalNotif(ntitle, nbody);
+  _logNotifHistory('daily_recap', ntitle, nbody);
+  renderNotificationsPage();
+
   if (btn) { btn.disabled = false; btn.textContent = '⚡ Générer maintenant'; }
-  _showChatToast({ icon: '✅', title: 'Récap généré', msg: 'Aperçu local — sans analyse IA ni notification.' });
+  _showChatToast({
+    icon: '✅',
+    title: 'Récap généré',
+    msg: shown ? 'Notification envoyée sur cet appareil.' : 'Aperçu local — notification non disponible.',
+  });
 };
 
 function _paintRecapPage() {
