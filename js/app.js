@@ -436,38 +436,56 @@ window.doLogout = async function() {
   await signOut(fbAuth);
 };
 
+// Résout au plus tard après `ms` même si la promesse ne répond jamais
+// (réseau bloqué côté iOS). Évite de rester coincé sur l'écran noir.
+function _withTimeout(promise, ms) {
+  return Promise.race([
+    Promise.resolve(promise).catch(() => {}),
+    new Promise(resolve => setTimeout(resolve, ms)),
+  ]);
+}
+
 // ─── DÉMARRAGE APP ────────────────────────────────────
 async function startApp(user) {
-  currentUser = user.uid;
-  window.currentUser = user.uid;
-  const displayName = user.displayName || user.email.split('@')[0];
-  _hideSplash();
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('user-avatar').textContent = displayName[0].toUpperCase();
-  document.getElementById('user-name-display').textContent = displayName;
-  const d = new Date();
-  document.getElementById('portfolio-date').textContent =
-    'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-  // Charger FX rates + données Firestore avant de rendre
-  await Promise.all([loadAllUserData(user.uid), loadFxRates()]);
-  // Avatar + sync roles APRÈS chargement des settings (avatarBase64 dispo)
-  updateMobileAvatar(user);
-  const _avatar = getUserSettings(user.uid).avatarBase64;
-  if (_avatar) setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { avatarBase64: _avatar }, { merge: true }).catch(() => {});
-  loadProfilePage(user);
-  window.renderPortfolio();
-  window.fetchAllLogos();
-  if (!window.autoRefreshInterval) window.toggleAutoRefresh();
-  setTimeout(initStatCardsScroll, 1500);
+  try {
+    currentUser = user.uid;
+    window.currentUser = user.uid;
+    const displayName = user.displayName || user.email.split('@')[0];
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('user-avatar').textContent = (displayName[0] || '?').toUpperCase();
+    document.getElementById('user-name-display').textContent = displayName;
+    const d = new Date();
+    document.getElementById('portfolio-date').textContent =
+      'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  // Preload des données lourdes (Benchmark + Performance + Watchlist)
-  // en arrière-plan, pour que les pages s'affichent instantanément quand
-  // l'utilisateur clique dessus.
-  // Ne bloque pas l'affichage : lancé après le rendu du portefeuille.
-  setTimeout(() => { preloadAll().catch(e => console.warn('Preload:', e)); }, 200);
-  _updateNotifBadge();
-  if (Notification.permission === 'granted') initPush(user.uid).catch(() => {});
+    // Charger FX rates + données Firestore avant de rendre.
+    // Timeout de 12 s : si le réseau ne répond pas, on rend quand même
+    // l'app avec ce qu'on a plutôt que de laisser un écran noir.
+    await _withTimeout(Promise.all([loadAllUserData(user.uid), loadFxRates()]), 12000);
+
+    // Avatar + sync roles APRÈS chargement des settings (avatarBase64 dispo)
+    updateMobileAvatar(user);
+    const _avatar = getUserSettings(user.uid).avatarBase64;
+    if (_avatar) setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { avatarBase64: _avatar }, { merge: true }).catch(() => {});
+    loadProfilePage(user);
+    window.renderPortfolio();
+    window.fetchAllLogos();
+    if (!window.autoRefreshInterval) window.toggleAutoRefresh();
+    setTimeout(initStatCardsScroll, 1500);
+
+    // Preload des données lourdes (Benchmark + Performance + Watchlist)
+    // en arrière-plan, pour que les pages s'affichent instantanément quand
+    // l'utilisateur clique dessus.
+    setTimeout(() => { preloadAll().catch(e => console.warn('Preload:', e)); }, 200);
+    _updateNotifBadge();
+    if (Notification.permission === 'granted') initPush(user.uid).catch(() => {});
+  } catch(e) {
+    console.error('startApp error:', e);
+  } finally {
+    // L'app est affichée : on retire l'écran de chargement dans tous les cas.
+    _hideSplash();
+  }
 }
 
 function stopApp() {
