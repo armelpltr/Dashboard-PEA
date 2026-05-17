@@ -667,25 +667,40 @@
     <div class="page" id="page-recap">
       <div class="page-header">
         <div>
-          <div class="page-title">Récap du jour</div>
-          <div class="page-subtitle">Résumé quotidien de la performance de votre PEA</div>
+          <div class="page-title">Récap</div>
+          <div class="page-subtitle">Performance de votre PEA — quotidien & hebdomadaire</div>
         </div>
         <button onclick="generateRecapNow()" class="btn-outline" id="btn-generate-recap" style="font-size:12px;padding:7px 14px">⚡ Générer maintenant</button>
       </div>
-      <div class="recap-notif-card">
-        <div class="recap-notif-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div class="recap-notif-title">Notification du récap quotidien</div>
-          <div class="recap-notif-desc">Une notification push chaque jour ouvré à 20h</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="recap-notif-toggle" onchange="saveRecapPref(this.checked ? 'on' : 'off')">
-          <span class="toggle-track"></span>
-        </label>
+
+      <!-- Switch Jour / Semaine -->
+      <div class="recap-switch">
+        <button class="recap-switch-btn active" data-view="day" onclick="switchRecapView('day')">Quotidien</button>
+        <button class="recap-switch-btn" data-view="week" onclick="switchRecapView('week')">Hebdomadaire</button>
       </div>
-      <div id="recap-content"></div>
+
+      <!-- Vue quotidienne -->
+      <div id="recap-day-view">
+        <div class="recap-notif-card">
+          <div class="recap-notif-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="recap-notif-title">Notification du récap quotidien</div>
+            <div class="recap-notif-desc">Une notification push chaque jour ouvré à 20h</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="recap-notif-toggle" onchange="saveRecapPref(this.checked ? 'on' : 'off')">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div id="recap-content"></div>
+      </div>
+
+      <!-- Vue hebdomadaire -->
+      <div id="recap-week-view" style="display:none">
+        <div id="weekly-content"></div>
+      </div>
     </div>
 
     <!-- NOTIFICATIONS PAGE -->

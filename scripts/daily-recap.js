@@ -11,6 +11,7 @@ import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore }        from 'firebase-admin/firestore';
 import { getAuth }             from 'firebase-admin/auth';
 import { getMessaging }        from 'firebase-admin/messaging';
+import { readFileSync }        from 'fs';
 import fetch                   from 'node-fetch';
 
 // ─── CONFIG ──────────────────────────────────────────────────
@@ -28,6 +29,7 @@ const fmt  = n => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 
 const fmtp = n => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const todayIso = new Date().toISOString().slice(0, 10);
 const today    = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const isFriday = new Date().getDay() === 5;
 
 // ─── RÉCUPÉRER LES UTILISATEURS FIREBASE ─────────────────────
 async function getAllUsers() {
@@ -181,13 +183,109 @@ Règles de contenu :
   }
 }
 
+// ─── RAPPORT HEBDOMADAIRE (vendredi) ─────────────────────────
+// Prix sur 5 jours pour calculer la variation hebdomadaire.
+async function fetchWeek(ticker) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`;
+  try {
+    const res  = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) });
+    const json = await res.json();
+    const r    = json?.chart?.result?.[0];
+    const meta = r?.meta;
+    const closes = (r?.indicators?.quote?.[0]?.close || []).filter(v => v != null);
+    if (!meta || closes.length < 2) return null;
+    return {
+      name:      meta.shortName || meta.longName || ticker,
+      price:     meta.regularMarketPrice || closes[closes.length - 1],
+      weekStart: closes[0],
+    };
+  } catch(e) {
+    console.warn(`Données semaine indisponibles pour ${ticker}:`, e.message);
+    return null;
+  }
+}
+
+// Dividendes à venir (≤ 45 jours) pour les tickers du portefeuille.
+function upcomingDividends(portfolioTickers) {
+  try {
+    const raw  = readFileSync(new URL('../data/dividendes.json', import.meta.url), 'utf-8');
+    const data = JSON.parse(raw).dividends || {};
+    const horizon = new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10);
+    const set = new Set(portfolioTickers);
+    return Object.values(data)
+      .filter(d => set.has(d.ticker) && d.next && d.next.date >= todayIso && d.next.date <= horizon)
+      .map(d => ({ name: d.name, ticker: d.ticker, date: d.next.date, amount: d.next.amount_estimated }));
+  } catch(e) {
+    console.warn('Dividendes indisponibles:', e.message);
+    return [];
+  }
+}
+
+// Rapport hebdo : 6 sections, ancré sur la recherche web Tavily.
+async function generateWeeklyReport(weekLines, weekPct, dividends) {
+  const searchPairs = await Promise.all(weekLines.map(async l => {
+    const results = await searchWeb(`${l.name} bourse actualité semaine`);
+    return [l.ticker, results];
+  }));
+  const webByTicker = Object.fromEntries(searchPairs);
+
+  const ctx = weekLines.map(l => {
+    const r = webByTicker[l.ticker] || [];
+    return `### ${l.name} (${l.ticker}) — variation de la semaine : ${fmtp(l.weekPct)}\n`
+      + (r.length ? r.map(x => `- ${x.title} : ${x.content}`).join('\n') : '- (aucun résultat web)');
+  }).join('\n\n');
+
+  const divInfo = dividends.length
+    ? dividends.map(d => `- ${d.name} : ${d.amount ? d.amount + ' € le ' : 'le '}${d.date}`).join('\n')
+    : '(aucun dividende connu à venir pour ces lignes)';
+
+  const prompt = `Tu es analyste financier. Rédige le RAPPORT HEBDOMADAIRE de ce portefeuille PEA, semaine se terminant le ${today}.
+
+Performance du portefeuille sur la semaine : ${fmtp(weekPct)}
+
+Lignes (variation hebdomadaire) et résultats de recherche web récents :
+
+${ctx}
+
+Dividendes connus à venir :
+${divInfo}
+
+FORMAT DE RÉPONSE OBLIGATOIRE — texte brut, AUCUN markdown (pas de **, #, ---).
+Une section par ligne, format exact "Titre: corps" :
+
+Synthèse marché: <2 à 3 phrases sur le contexte de marché de la semaine (indices, macro, taux)>
+<Nom de la ligne 1> (<variation hebdo%>): <analyse approfondie de la semaine, 2 à 3 phrases>
+<Nom de la ligne 2> (<variation hebdo%>): <analyse>
+...
+Points d'attention: <2 à 3 phrases sur ce qu'il faut surveiller la semaine prochaine (résultats, événements macro)>
+
+Règles :
+- Reprends EXACTEMENT le nom et la variation hebdo de chaque ligne, dans le même ordre.
+- Analyse de ligne : appuie-toi sur les résultats web. Si rien de concret, explique le mouvement par le contexte sectoriel/macro de la semaine.
+- N'invente JAMAIS un événement ou un chiffre absent des résultats web.
+- Français, factuel, posé, plus développé qu'un récap quotidien. Aucun conseil d'achat/vente. Pas d'URL.`;
+
+  try {
+    const text = await callMistral(prompt);
+    return text || 'Analyse IA indisponible cette semaine.';
+  } catch(e) {
+    console.warn('Mistral error (hebdo):', e.message);
+    return 'Analyse IA indisponible cette semaine.';
+  }
+}
+
+async function saveWeeklyRecap(uid, recap) {
+  await db.doc(`users/${uid}/data/weeklyRecap`).set(recap);
+  console.log(`  💾 Rapport hebdo stocké pour ${uid}`);
+}
+
 // ─── ENVOYER PUSH FCM ────────────────────────────────────────
-async function sendFcmPush(uid, title, body) {
+async function sendFcmPush(uid, title, body, type = 'daily_recap') {
   try {
     const roleSnap = await db.doc(`roles/${uid}`).get();
     const token = roleSnap.exists ? roleSnap.data().fcmToken : null;
     if (!token) { console.log(`  — Pas de token FCM pour ${uid}, push ignoré`); return; }
-    await messaging.send({ token, notification: { title, body }, data: { type: 'daily_recap' } });
+    await messaging.send({ token, notification: { title, body }, data: { type } });
     console.log(`  📲 Push FCM envoyé à ${uid}`);
   } catch(e) {
     console.warn(`  ⚠️  Push FCM échoué pour ${uid}:`, e.message);
@@ -307,8 +405,62 @@ async function main() {
     const emoji   = up ? '📈' : '📉';
     const title   = `Récap du jour : ${emoji} ${fmtp(totalDayPct)}`;
     const body    = 'Touchez pour voir le détail.';
-    await sendFcmPush(user.uid, title, body);
+    await sendFcmPush(user.uid, title, body, 'daily_recap');
     await logNotifHistory(user.uid, 'daily_recap', title, body);
+
+    // 10. Vendredi : rapport hebdomadaire en plus
+    if (isFriday) {
+      console.log(`  📅 Vendredi — génération du rapport hebdomadaire...`);
+      const weekResults = await Promise.all(
+        portfolio.map(async row => ({ row, w: await fetchWeek(row.ticker) }))
+      );
+      const weekLines = weekResults
+        .filter(({ w }) => w && w.weekStart > 0)
+        .map(({ row, w }) => ({
+          ticker:    row.ticker,
+          name:      w.name || row.name || row.ticker,
+          qty:       row.qty,
+          price:     w.price,
+          weekStart: w.weekStart,
+          weekPct:   (w.price - w.weekStart) / w.weekStart * 100,
+          value:     row.qty * w.price,
+        }));
+
+      if (weekLines.length) {
+        const wTotalValue = weekLines.reduce((s, l) => s + l.value, 0);
+        const wPrevValue  = weekLines.reduce((s, l) => s + l.qty * l.weekStart, 0);
+        const wWeekChange = wTotalValue - wPrevValue;
+        const wWeekPct    = wPrevValue > 0 ? (wWeekChange / wPrevValue) * 100 : 0;
+        const wSorted     = [...weekLines].sort((a, b) => b.weekPct - a.weekPct);
+        const divs        = upcomingDividends(portfolio.map(p => p.ticker));
+
+        console.log(`  📰 Génération du rapport hebdo Mistral...`);
+        const aiReport = await generateWeeklyReport(weekLines, wWeekPct, divs);
+
+        const weekly = {
+          date:        todayIso,
+          weekLabel:   `Semaine terminée le ${today}`,
+          generatedAt: new Date().toISOString(),
+          totalValue:  wTotalValue,
+          weekChange:  wWeekChange,
+          weekPct:     wWeekPct,
+          lines:       weekLines,
+          best:  wSorted.length     ? { name: wSorted[0].name, weekPct: wSorted[0].weekPct } : null,
+          worst: wSorted.length > 1 ? { name: wSorted[wSorted.length-1].name, weekPct: wSorted[wSorted.length-1].weekPct } : null,
+          dividends:   divs,
+          aiReport,
+        };
+        await saveWeeklyRecap(user.uid, weekly);
+
+        const wUp    = wWeekPct >= 0;
+        const wTitle = `Rapport hebdo : ${wUp ? '📈' : '📉'} ${fmtp(wWeekPct)}`;
+        const wBody  = 'Votre semaine en détail. Touchez pour voir.';
+        await sendFcmPush(user.uid, wTitle, wBody, 'weekly_recap');
+        await logNotifHistory(user.uid, 'weekly_recap', wTitle, wBody);
+      } else {
+        console.log(`  ⚠️  Pas de données hebdo, rapport ignoré`);
+      }
+    }
   }
 
   console.log('\n✅ Récap quotidien terminé\n');

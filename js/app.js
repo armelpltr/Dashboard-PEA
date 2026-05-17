@@ -164,12 +164,18 @@ async function loadAllUserData(uid) {
     await saveUserSettings(uid, { pushRecap: window._pendingRecapPref });
     window._pendingRecapPref = undefined;
   }
-  // Charger le dernier récap quotidien (généré côté serveur)
+  // Charger le dernier récap quotidien + rapport hebdo (générés serveur)
   try {
     const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'recap'));
     _localCache[uid + '_recap'] = snap.exists() ? snap.data() : null;
   } catch(e) {
     _localCache[uid + '_recap'] = null;
+  }
+  try {
+    const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'weeklyRecap'));
+    _localCache[uid + '_weeklyRecap'] = snap.exists() ? snap.data() : null;
+  } catch(e) {
+    _localCache[uid + '_weeklyRecap'] = null;
   }
 }
 
@@ -179,6 +185,10 @@ function getUserSettings(uid) {
 
 function getRecap(uid) {
   return _localCache[(uid || currentUser) + '_recap'] || null;
+}
+
+function getWeeklyRecap(uid) {
+  return _localCache[(uid || currentUser) + '_weeklyRecap'] || null;
 }
 
 async function saveUserSettings(uid, settings) {
@@ -8032,10 +8042,27 @@ function renderNotificationsPage() {
 // Affiche le dernier récap quotidien généré côté serveur (Firestore).
 // Peint le cache immédiatement, puis rafraîchit depuis Firestore (un
 // nouveau récap a pu être généré depuis l'ouverture de la session).
+let _recapView = 'day';
+
 function renderRecapPage() {
   _paintRecapPage();
+  _paintWeeklyRecap();
   _refreshRecap();
+  _refreshWeeklyRecap();
 }
+
+// Bascule entre vue quotidienne et hebdomadaire.
+window.switchRecapView = function(v) {
+  _recapView = v;
+  const dayEl  = document.getElementById('recap-day-view');
+  const weekEl = document.getElementById('recap-week-view');
+  if (dayEl)  dayEl.style.display  = v === 'day'  ? '' : 'none';
+  if (weekEl) weekEl.style.display = v === 'week' ? '' : 'none';
+  document.querySelectorAll('.recap-switch-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.view === v));
+  const gen = document.getElementById('btn-generate-recap');
+  if (gen) gen.style.display = v === 'day' ? '' : 'none';
+};
 
 async function _refreshRecap() {
   if (!currentUser || !db) return;
@@ -8044,6 +8071,115 @@ async function _refreshRecap() {
     _localCache[currentUser + '_recap'] = snap.exists() ? snap.data() : null;
     if (document.getElementById('page-recap')?.classList.contains('active')) _paintRecapPage();
   } catch(e) { /* garde le cache */ }
+}
+
+async function _refreshWeeklyRecap() {
+  if (!currentUser || !db) return;
+  try {
+    const snap = await getFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'weeklyRecap'));
+    _localCache[currentUser + '_weeklyRecap'] = snap.exists() ? snap.data() : null;
+    if (document.getElementById('page-recap')?.classList.contains('active')) _paintWeeklyRecap();
+  } catch(e) { /* garde le cache */ }
+}
+
+// ─── RENDU DU RAPPORT HEBDOMADAIRE ────────────────────────────
+function _paintWeeklyRecap() {
+  const el = document.getElementById('weekly-content');
+  if (!el) return;
+  const r = getWeeklyRecap(currentUser);
+
+  if (!r || !r.lines || !r.lines.length) {
+    el.innerHTML =
+      '<div class="section-card" style="text-align:center;padding:48px 24px">'
+      + '<div style="font-size:34px;margin-bottom:12px">📅</div>'
+      + '<div style="font-size:14px;color:var(--text2);font-weight:600;margin-bottom:6px">Aucun rapport hebdomadaire</div>'
+      + '<div style="font-size:12px;color:var(--text3);line-height:1.6">Le rapport hebdomadaire est généré<br>chaque vendredi soir à 20h.</div>'
+      + '</div>';
+    return;
+  }
+
+  const sgn = v => v >= 0 ? '+' : '';
+  const col = v => v >= 0 ? 'var(--positive)' : 'var(--negative)';
+  const fp  = v => sgn(v) + (v).toFixed(2) + ' %';
+
+  const _u    = fbAuth.currentUser;
+  const _name = (_u && (_u.displayName || (_u.email || '').split('@')[0])) || '';
+  const wkCol = col(r.weekChange);
+
+  const rows = r.lines.map(l => {
+    const c = col(l.weekPct);
+    const badge = isETF(l.ticker)
+      ? '<span class="badge-etf">ETF</span>'
+      : '<span class="badge-action">ACTION</span>';
+    return '<tr>'
+      + '<td><div style="display:flex;align-items:center;gap:9px">'
+      + logoHtml(l.ticker, 28, 'ticker-icon')
+      + '<span style="font-size:13px;font-weight:600;color:var(--text)">' + l.name + badge + '</span>'
+      + '</div></td>'
+      + '<td style="color:var(--text2)">' + l.ticker + '</td>'
+      + '<td style="color:var(--text)">' + l.qty + '</td>'
+      + '<td style="color:var(--text)">' + fmt(l.price) + '</td>'
+      + '<td style="color:' + c + '">' + fp(l.weekPct) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  const bestWorst = (r.best && r.worst)
+    ? '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:18px">'
+      + '<div class="stat-card" style="border-left:3px solid var(--positive)">'
+      + '<div class="stat-label">🏆 Meilleure de la semaine</div>'
+      + '<div class="stat-value" style="font-size:15px">' + r.best.name + '</div>'
+      + '<div class="stat-sub" style="color:var(--positive)">' + fp(r.best.weekPct) + '</div></div>'
+      + '<div class="stat-card" style="border-left:3px solid var(--negative)">'
+      + '<div class="stat-label">📉 Moins bonne de la semaine</div>'
+      + '<div class="stat-value" style="font-size:15px">' + r.worst.name + '</div>'
+      + '<div class="stat-sub" style="color:var(--negative)">' + fp(r.worst.weekPct) + '</div></div>'
+      + '</div>'
+    : '';
+
+  const divs = r.dividends || [];
+  const divBlock = '<div class="section-card" style="margin-bottom:18px">'
+    + '<div class="section-title">Dividendes à venir</div>'
+    + (divs.length
+      ? '<div style="display:flex;flex-direction:column;gap:8px">'
+        + divs.map(d => '<div style="display:flex;justify-content:space-between;font-size:12.5px">'
+          + '<span style="color:var(--text)">' + d.name + '</span>'
+          + '<span style="color:var(--text2);font-family:var(--mono)">'
+          + (d.amount ? d.amount + ' € · ' : '') + d.date + '</span></div>').join('')
+        + '</div>'
+      : '<div style="font-size:12.5px;color:var(--text3)">Aucun dividende connu à venir pour vos lignes.</div>')
+    + '</div>';
+
+  el.innerHTML =
+    '<div style="font-size:12px;color:var(--text3);margin-bottom:14px">' + (r.weekLabel || '') + '</div>'
+    + '<div class="recap-hello">Bonjour <strong style="color:var(--text)">' + _name + '</strong>,</div>'
+
+    // KPIs
+    + '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px">'
+    + '<div class="stat-card"><div class="stat-label">Valeur totale</div>'
+    + '<div class="stat-value">' + fmt(r.totalValue) + '</div></div>'
+    + '<div class="stat-card"><div class="stat-label">Variation de la semaine</div>'
+    + '<div class="stat-value" style="color:' + wkCol + '">' + fp(r.weekPct) + '</div>'
+    + '<div class="stat-sub" style="color:' + wkCol + '">' + sgn(r.weekChange) + fmt(r.weekChange) + '</div></div>'
+    + '<div class="stat-card"><div class="stat-label">Lignes</div>'
+    + '<div class="stat-value">' + r.lines.length + '</div></div>'
+    + '</div>'
+
+    + bestWorst
+    + divBlock
+
+    // Rapport IA
+    + (r.aiReport
+      ? '<div class="recap-ai">'
+        + '<div class="recap-ai-title">✦ Rapport hebdomadaire</div>'
+        + '<div class="recap-ai-text">' + _renderAiReport(r.aiReport) + '</div></div>'
+      : '')
+
+    // Détail
+    + '<div class="section-card">'
+    + '<div class="section-title">Détail des lignes — semaine</div>'
+    + '<div style="overflow-x:auto"><table class="recap-table">'
+    + '<thead><tr><th>Action</th><th>Ticker</th><th>Qté</th><th>Cours</th><th>Var. semaine</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table></div></div>';
 }
 
 // Génère un récap immédiatement à partir du portefeuille courant et le
