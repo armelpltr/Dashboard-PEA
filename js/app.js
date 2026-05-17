@@ -517,7 +517,6 @@ async function startApp(user) {
 
 function stopApp() {
   _hideSplash();
-  _stopPresenceHeartbeat(currentUser);
   currentUser = null;
   window.currentUser = null;
   document.getElementById('app').style.display = 'none';
