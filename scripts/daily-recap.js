@@ -15,7 +15,7 @@ import fetch                   from 'node-fetch';
 
 // ─── CONFIG ──────────────────────────────────────────────────
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-const GEMINI_KEY     = process.env.GEMINI_API_KEY;
+const MISTRAL_KEY    = process.env.MISTRAL_API_KEY;
 const TAVILY_KEY     = process.env.TAVILY_API_KEY;
 
 initializeApp({ credential: cert(serviceAccount) });
@@ -108,27 +108,30 @@ async function searchWeb(query) {
   }
 }
 
-// ─── GEMINI — RÉDACTION DU RAPPORT ───────────────────────────
-async function callGemini(prompt) {
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_KEY;
-  const res = await fetch(url, {
+// ─── MISTRAL — RÉDACTION DU RAPPORT ──────────────────────────
+async function callMistral(prompt) {
+  const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Authorization': 'Bearer ' + MISTRAL_KEY,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 1400 },
+      model: 'mistral-small-latest',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 1400,
     }),
     signal: AbortSignal.timeout(60000),
   });
   const json = await res.json();
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
-  const parts = json?.candidates?.[0]?.content?.parts || [];
-  return parts.map(p => p.text || '').join('').trim();
+  if (!res.ok) throw new Error(`Mistral ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
+  return (json?.choices?.[0]?.message?.content || '').trim();
 }
 
 // ─── RAPPORT QUOTIDIEN ───────────────────────────────────────
 // 1) Tavily cherche l'actualité réelle de chaque ligne.
-// 2) Gemini rédige le rapport en s'appuyant UNIQUEMENT sur ces résultats.
+// 2) Mistral rédige le rapport en s'appuyant UNIQUEMENT sur ces résultats.
 async function generateReport(lines, totalPct) {
   // 1. Recherche web par ligne
   const searchPairs = await Promise.all(lines.map(async l => {
@@ -163,10 +166,10 @@ Consignes de rédaction :
 - Français, factuel, concis. Aucun conseil d'achat ou de vente. Pas de formule de politesse. Pas d'URL.`;
 
   try {
-    const text = await callGemini(prompt);
+    const text = await callMistral(prompt);
     return text || 'Analyse IA indisponible aujourd\'hui.';
   } catch(e) {
-    console.warn('Gemini error:', e.message);
+    console.warn('Mistral error:', e.message);
     return 'Analyse IA indisponible aujourd\'hui.';
   }
 }
