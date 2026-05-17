@@ -80,27 +80,62 @@ async function fetchPrice(ticker) {
 }
 
 // ─── MISTRAL — COMMENTAIRE IA ────────────────────────────────
-async function generateComment(lines, totalPct) {
-  const summary = lines.map(l =>
-    `${l.name} (${l.ticker}): ${fmtp(l.changePct)} aujourd'hui, ${l.qty} titres, valeur ${fmt(l.value)}`
+// ─── ACTUALITÉS YAHOO FINANCE ────────────────────────────────
+// Récupère les titres d'actualité récents (< 3 jours) pour un ticker.
+async function fetchNews(ticker) {
+  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(ticker)}&newsCount=6&quotesCount=0`;
+  try {
+    const res  = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) });
+    const json = await res.json();
+    const now  = Date.now();
+    return (json.news || [])
+      .filter(n => n.title && n.providerPublishTime && (now - n.providerPublishTime * 1000) < 3 * 86400000)
+      .slice(0, 5)
+      .map(n => n.title.trim());
+  } catch(e) {
+    console.warn(`Actus indisponibles pour ${ticker}:`, e.message);
+    return [];
+  }
+}
+
+// ─── MISTRAL — RAPPORT QUOTIDIEN ─────────────────────────────
+// Rapport ligne par ligne, ancré sur de vraies actualités (pas
+// d'invention : si aucune actu, le modèle l'indique).
+async function generateReport(lines, totalPct, newsByTicker) {
+  const lineInfo = lines.map(l =>
+    `- ${l.name} (${l.ticker}) : ${fmtp(l.changePct)} aujourd'hui`
   ).join('\n');
 
-  const prompt = `Tu es un conseiller financier expert. Voici la performance du portefeuille PEA aujourd'hui (${today}) :
+  const newsInfo = lines.map(l => {
+    const h = newsByTicker[l.ticker] || [];
+    return `${l.name} (${l.ticker}) :\n`
+      + (h.length ? h.map(t => '  • ' + t).join('\n') : '  (aucune actualité récente trouvée)');
+  }).join('\n\n');
 
-Performance globale : ${fmtp(totalPct)}
+  const prompt = `Tu es analyste financier. Rédige le rapport quotidien de ce portefeuille PEA (${today}).
 
-Détail des lignes :
-${summary}
+Performance globale du jour : ${fmtp(totalPct)}
 
-Rédige un commentaire synthétique de 3-4 phrases en français, professionnel mais accessible.
-Mentionne les points saillants (meilleure/pire performance), donne un contexte marché si pertinent, et termine par une perspective courte.
-Ne commence pas par "Bonjour" ou formule de politesse. Va directement au contenu.`;
+Lignes du portefeuille :
+${lineInfo}
+
+Actualités récentes par ligne (source Yahoo Finance) :
+${newsInfo}
+
+Consignes de rédaction :
+- Commence par une section "**Synthèse**" : une phrase sur la tendance globale du jour.
+- Ensuite, UNE section par ligne : titre en gras au format "**Nom de la ligne** (variation%)".
+- Pour chaque ligne, 1 à 2 phrases expliquant le mouvement du jour.
+- Appuie-toi UNIQUEMENT sur les actualités fournies. N'invente JAMAIS d'information, de chiffre ni d'événement.
+- Si aucune actualité pertinente n'est fournie pour une ligne, écris exactement : "Rien de notable, mouvement lié à la tendance de marché."
+- Français, factuel, concis. Aucun conseil d'achat ou de vente.
+- Ne commence pas par une formule de politesse.`;
 
   try {
     const res = await mistral.chat.complete({
       model: 'mistral-small-latest',
       messages: [{ role: 'user', content: prompt }],
-      maxTokens: 300,
+      maxTokens: 900,
     });
     return res.choices[0].message.content.trim();
   } catch(e) {
@@ -206,9 +241,13 @@ async function main() {
 
     console.log(`  💰 Valeur: ${fmt(totalValue)} | Jour: ${fmtp(totalDayPct)}`);
 
-    // 7. Génération commentaire IA
-    console.log(`  🤖 Génération commentaire Mistral...`);
-    const aiComment = await generateComment(lines, totalDayPct);
+    // 7. Récupérer les actualités par ligne, puis générer le rapport IA
+    console.log(`  📰 Récupération des actualités...`);
+    const uniqTickers = [...new Set(lines.map(l => l.ticker))];
+    const newsPairs   = await Promise.all(uniqTickers.map(async t => [t, await fetchNews(t)]));
+    const newsByTicker = Object.fromEntries(newsPairs);
+    console.log(`  🤖 Génération du rapport Mistral...`);
+    const aiComment = await generateReport(lines, totalDayPct, newsByTicker);
 
     // 8. Construire le récap complet (affiché dans le dashboard)
     const sorted = [...lines].sort((a, b) => b.changePct - a.changePct);
