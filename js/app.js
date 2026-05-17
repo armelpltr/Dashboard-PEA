@@ -8115,10 +8115,12 @@ window.generateRecapNow = async function() {
   _paintRecapPage();
 
   // Notification locale (sur l'appareil) — pas un envoi serveur FCM.
-  const daySign  = totalDayPct >= 0 ? '▲' : '▼';
-  const sgnPct   = totalDayPct >= 0 ? '+' : '';
-  const ntitle   = `${daySign} Récap du jour — ${sgnPct}${totalDayPct.toFixed(2)} %`;
-  const nbody    = `Portefeuille : ${fmt(totalValue)}. Touchez pour voir le détail.`;
+  const up       = totalDayPct >= 0;
+  const emoji    = up ? '📈' : '📉';
+  const pctStr   = (up ? '+' : '') + totalDayPct.toFixed(2) + '%';
+  const eurStr   = (up ? '+' : '') + fmt(totalDayChange);
+  const ntitle   = `Récap du jour : ${emoji} ${pctStr} (${eurStr})`;
+  const nbody    = 'Touchez pour voir le détail';
   const shown    = await _showLocalNotif(ntitle, nbody);
   _logNotifHistory('daily_recap', ntitle, nbody);
   renderNotificationsPage();

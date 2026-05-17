@@ -231,9 +231,11 @@ async function main() {
     // 9. Stocker le récap + envoyer push courte + logguer l'historique
     await saveRecap(user.uid, recap);
 
-    const daySign = totalDayPct >= 0 ? '▲' : '▼';
-    const title   = `${daySign} Récap du jour — ${fmtp(totalDayPct)}`;
-    const body    = `Portefeuille : ${fmt(totalValue)}. Touchez pour voir le détail.`;
+    const up      = totalDayPct >= 0;
+    const emoji   = up ? '📈' : '📉';
+    const dayEur  = (up ? '+' : '') + fmt(totalDayChange);
+    const title   = `Récap du jour : ${emoji} ${fmtp(totalDayPct)} (${dayEur})`;
+    const body    = 'Touchez pour voir le détail';
     await sendFcmPush(user.uid, title, body);
     await logNotifHistory(user.uid, 'daily_recap', title, body);
   }
