@@ -1,41 +1,25 @@
 {
-  "generated_at": "2026-05-13",
+  "generated_at": "2026-05-18",
   "dividends": {
     "AI.PA": {
       "ticker": "AI.PA",
       "name": "Air Liquide",
-      "next": {
-        "date": "2026-05-20",
-        "amount_estimated": 3.7,
-        "confirmed": true
-      }
+      "next": null
     },
     "TTE.PA": {
       "ticker": "TTE.PA",
       "name": "TotalEnergies",
-      "next": {
-        "date": "2026-06-30",
-        "amount_estimated": 0.85,
-        "confirmed": true
-      }
+      "next": null
     },
     "BNP.PA": {
       "ticker": "BNP.PA",
       "name": "BNP Paribas",
-      "next": {
-        "date": "2026-05-20",
-        "amount_estimated": 2.57,
-        "confirmed": true
-      }
+      "next": null
     },
     "ACA.PA": {
       "ticker": "ACA.PA",
       "name": "Crédit Agricole",
-      "next": {
-        "date": "2026-05-28",
-        "amount_estimated": 1.13,
-        "confirmed": true
-      }
+      "next": null
     },
     "SAN.PA": {
       "ticker": "SAN.PA",
