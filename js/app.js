@@ -3435,9 +3435,9 @@ async function renderPortfolioChart() {
       if (daysDuration <= 1)
         return dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       if (daysDuration <= 6)
-        return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' ' + dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       if (daysDuration <= 400)
-        return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+        return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
       if (daysDuration <= 1500)
         return dt.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
       return dt.getFullYear().toString();
