@@ -561,8 +561,7 @@ window.saveRecapPref = async function(value) {
   await saveUserSettings(currentUser, { pushRecap: on });
   const st = document.getElementById('recap-freq-status');
   if (st) { st.textContent = '✓ Sauvegardé'; setTimeout(() => { st.textContent = ''; }, 2500); }
-  const sel = document.getElementById('select-recap-freq');
-  if (sel) sel.value = on ? 'on' : 'off';
+  _paintRecapButtons(on);
   const chk = document.getElementById('recap-notif-toggle');
   if (chk) chk.checked = on;
   _showChatToast({ icon: on ? IC.bell : IC.bellOff, title: on ? 'Récap activé' : 'Récap désactivé',
@@ -601,8 +600,19 @@ function loadProfilePage(user) {
 
   // Préférence récap quotidien push
   const settings    = getUserSettings(user.uid);
-  const freqSelect  = document.getElementById('select-recap-freq');
-  if (freqSelect) freqSelect.value = settings.pushRecap === false ? 'off' : 'on';
+  _paintRecapButtons(settings.pushRecap !== false);
+}
+
+// Met en évidence le bouton actif du toggle Récap quotidien (Activé/Désactivé).
+function _paintRecapButtons(on) {
+  const bOn  = document.getElementById('btn-recap-on');
+  const bOff = document.getElementById('btn-recap-off');
+  if (!bOn || !bOff) return;
+  const base     = 'border-radius:8px;padding:6px 14px;font-size:12px;font-family:var(--sans);font-weight:600;cursor:pointer;transition:all .15s;';
+  const active   = 'background:var(--accent);border:1px solid var(--accent);color:#fff;';
+  const inactive = 'background:var(--s2);border:1px solid var(--border);color:var(--text3);';
+  bOn.style.cssText  = base + (on ? active : inactive);
+  bOff.style.cssText = base + (on ? inactive : active);
 }
 
 window.saveDisplayName = async function() {
