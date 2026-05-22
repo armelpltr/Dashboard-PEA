@@ -24,6 +24,14 @@
 - Bouton Auto-refresh retiré (le refresh 60s reste actif au démarrage via `startApp`).
 - Emojis des boutons Importer/Export CSV, champ Filtrer, titre Historique → SVG.
 - Profil → Récap quotidien : `<select>` remplacé par 2 boutons Activé/Désactivé (`_paintRecapButtons`).
+- Bouton « Modifier » du portefeuille (ligne + détail mobile) : caractère `✏` → `IC.edit` (SVG).
+
+### Historique des transactions
+- Affiche les 10 transactions les plus récentes par défaut. Bouton « Afficher plus (N) » / « Afficher moins » (`toggleTxHistory`, `_txShowAll`, `TX_HISTORY_LIMIT`, conteneur `#tx-show-more-wrap`).
+- Scroll interne 400px retiré : le tableau s'étend en pleine hauteur, la page scrolle (`overflow-x:auto` gardé pour mobile).
+
+## À reprendre (prochaine session)
+- CSS mobile : revue générale à poursuivre.
 
 ## Notifications push & Récap (2026-05-17)
 
