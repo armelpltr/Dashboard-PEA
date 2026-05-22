@@ -28,6 +28,7 @@ const IC = {
   lock:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
   save:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00cec9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
   eye:       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  edit:      '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
   coin:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 9.5a3 3 0 0 0-2.5-1.5h-1a3 3 0 0 0 0 6h1a3 3 0 0 1 0 6h-1A3 3 0 0 1 9 18"/><line x1="12" y1="5" x2="12" y2="7"/><line x1="12" y1="17" x2="12" y2="19"/></svg>',
   warning:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
   dotGold:   '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#f5b731"/></svg>',
@@ -875,7 +876,7 @@ function renderPortfolio() {
         <td>${perfJourHtml}</td>
         <td style="text-align:right;padding-right:18px;white-space:nowrap">
           <div class="btn-portfolio-actions" style="display:inline-flex;gap:6px;align-items:center">
-            <button class="btn-edit" onclick="openEditModal(${i})" title="Modifier">✏</button>
+            <button class="btn-edit" onclick="openEditModal(${i})" title="Modifier" style="display:inline-flex;align-items:center;justify-content:center">${IC.edit}</button>
             <button class="btn-del" onclick="deleteRow(${i})" title="Supprimer">✕</button>
           </div>
           <button class="btn-voir-plus" onclick="togglePortfolioDetail(${i})" title="Voir plus">▾</button>
@@ -896,7 +897,7 @@ function renderPortfolio() {
               <span><label>+/- Value</label><span class="${isPos ? 'badge-pos' : 'badge-neg'}">${isPos ? '▲' : '▼'} ${fmt(Math.abs(pnl))} (${isPos ? '+' : ''}${pct.toFixed(2)}%)</span></span>
             </div>
             <div class="portfolio-detail-actions">
-              <button class="btn-edit" onclick="openEditModal(${i})">✏ Modifier</button>
+              <button class="btn-edit" onclick="openEditModal(${i})" style="display:inline-flex;align-items:center;gap:5px">${IC.edit}Modifier</button>
               <button class="btn-del" onclick="deleteRow(${i})">✕ Supprimer</button>
             </div>
           </div>
