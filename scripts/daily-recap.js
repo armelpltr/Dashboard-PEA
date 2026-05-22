@@ -318,7 +318,7 @@ Règles :
 
 async function saveWeeklyRecap(uid, recap) {
   await db.doc(`users/${uid}/data/weeklyRecap`).set(recap);
-  console.log(`  💾 Rapport hebdo stocké pour ${uid}`);
+  console.log(`  Rapport hebdo stocké pour ${uid}`);
 }
 
 // ─── ENVOYER PUSH FCM ────────────────────────────────────────
@@ -328,16 +328,16 @@ async function sendFcmPush(uid, title, body, type = 'daily_recap') {
     const token = roleSnap.exists ? roleSnap.data().fcmToken : null;
     if (!token) { console.log(`  — Pas de token FCM pour ${uid}, push ignoré`); return; }
     await messaging.send({ token, notification: { title, body }, data: { type } });
-    console.log(`  📲 Push FCM envoyé à ${uid}`);
+    console.log(`  Push FCM envoyé à ${uid}`);
   } catch(e) {
-    console.warn(`  ⚠️  Push FCM échoué pour ${uid}:`, e.message);
+    console.warn(`   Push FCM échoué pour ${uid}:`, e.message);
   }
 }
 
 // ─── STOCKER LE RÉCAP COMPLET DANS FIRESTORE ─────────────────
 async function saveRecap(uid, recap) {
   await db.doc(`users/${uid}/data/recap`).set(recap);
-  console.log(`  💾 Récap stocké pour ${uid}`);
+  console.log(`  Récap stocké pour ${uid}`);
 }
 
 // ─── LOG HISTORIQUE NOTIFS IN-APP ────────────────────────────
@@ -352,32 +352,32 @@ async function logNotifHistory(uid, type, title, body) {
 // ─── MAIN ─────────────────────────────────────────────────────
 async function main() {
   const targetUid = (process.env.TARGET_UID || '').trim();
-  console.log(`\n🚀 Démarrage récap quotidien — ${today}`);
-  if (targetUid) console.log(`🎯 Cible : ${targetUid}\n`);
-  else console.log(`📢 Envoi à tous les utilisateurs\n`);
+  console.log(`\nDémarrage récap quotidien — ${today}`);
+  if (targetUid) console.log(`Cible : ${targetUid}\n`);
+  else console.log(`Envoi à tous les utilisateurs\n`);
 
   // 1. Récupérer tous les utilisateurs
   let users = await getAllUsers();
   if (targetUid) users = users.filter(u => u.uid === targetUid);
-  console.log(`👥 ${users.length} utilisateur(s) traité(s)`);
+  console.log(`${users.length} utilisateur(s) traité(s)`);
 
   for (const user of users) {
-    console.log(`\n📊 Traitement de ${user.name} (${user.email})...`);
+    console.log(`\nTraitement de ${user.name} (${user.email})...`);
 
     // 2. Vérifier la préférence de l'utilisateur
     const settings = await getUserSettings(user.uid);
     if (!recapEnabled(settings)) {
-      console.log(`  🔕 Récap désactivé pour ${user.name}, ignoré`);
+      console.log(`  Récap désactivé pour ${user.name}, ignoré`);
       continue;
     }
 
     // 3. Récupérer le portfolio
     const portfolio = await getUserPortfolio(user.uid);
     if (!portfolio.length) {
-      console.log(`  ⚠️  Portfolio vide, ignoré`);
+      console.log(`   Portfolio vide, ignoré`);
       continue;
     }
-    console.log(`  📋 ${portfolio.length} ligne(s) détectée(s)`);
+    console.log(`  ${portfolio.length} ligne(s) détectée(s)`);
 
     // 4. Récupérer les prix en parallèle
     const priceResults = await Promise.all(
@@ -403,7 +403,7 @@ async function main() {
       }));
 
     if (!lines.length) {
-      console.log(`  ⚠️  Aucun prix disponible, ignoré`);
+      console.log(`   Aucun prix disponible, ignoré`);
       continue;
     }
 
@@ -416,10 +416,10 @@ async function main() {
     const prevValue      = lines.reduce((s, l) => s + l.qty * l.prev, 0);
     const totalDayPct    = prevValue > 0 ? (totalDayChange / prevValue) * 100 : 0;
 
-    console.log(`  💰 Valeur: ${fmt(totalValue)} | Jour: ${fmtp(totalDayPct)}`);
+    console.log(`  Valeur: ${fmt(totalValue)} | Jour: ${fmtp(totalDayPct)}`);
 
     // 7. Génération du rapport IA
-    console.log(`  🤖 Génération du rapport Mistral...`);
+    console.log(`  Génération du rapport Mistral...`);
     const aiComment = await generateReport(lines, totalDayPct);
 
     // 8. Construire le récap complet (affiché dans le dashboard)
@@ -444,7 +444,7 @@ async function main() {
     await saveRecap(user.uid, recap);
 
     const up      = totalDayPct >= 0;
-    const emoji   = up ? '📈' : '📉';
+    const emoji   = up ? '' : '';
     const title   = `Récap du jour : ${emoji} ${fmtp(totalDayPct)}`;
     const body    = 'Touchez pour voir le détail.';
     await sendFcmPush(user.uid, title, body, 'daily_recap');
@@ -452,7 +452,7 @@ async function main() {
 
     // 10. Vendredi : rapport hebdomadaire en plus
     if (isFriday) {
-      console.log(`  📅 Vendredi — génération du rapport hebdomadaire...`);
+      console.log(`  Vendredi — génération du rapport hebdomadaire...`);
       const weekResults = await Promise.all(
         portfolio.map(async row => ({ row, w: await fetchWeek(row.ticker) }))
       );
@@ -476,7 +476,7 @@ async function main() {
         const wSorted     = [...weekLines].sort((a, b) => b.weekPct - a.weekPct);
         const divs        = await upcomingDividends(portfolio);
 
-        console.log(`  📰 Génération du rapport hebdo Mistral...`);
+        console.log(`  Génération du rapport hebdo Mistral...`);
         const aiReport = await generateWeeklyReport(weekLines, wWeekPct, divs);
 
         const weekly = {
@@ -495,20 +495,20 @@ async function main() {
         await saveWeeklyRecap(user.uid, weekly);
 
         const wUp    = wWeekPct >= 0;
-        const wTitle = `Rapport hebdo : ${wUp ? '📈' : '📉'} ${fmtp(wWeekPct)}`;
+        const wTitle = `Rapport hebdo : ${wUp ? '' : ''} ${fmtp(wWeekPct)}`;
         const wBody  = 'Votre semaine en détail. Touchez pour voir.';
         await sendFcmPush(user.uid, wTitle, wBody, 'weekly_recap');
         await logNotifHistory(user.uid, 'weekly_recap', wTitle, wBody);
       } else {
-        console.log(`  ⚠️  Pas de données hebdo, rapport ignoré`);
+        console.log(`   Pas de données hebdo, rapport ignoré`);
       }
     }
   }
 
-  console.log('\n✅ Récap quotidien terminé\n');
+  console.log('\nRécap quotidien terminé\n');
 }
 
 main().catch(err => {
-  console.error('❌ Erreur fatale:', err);
+  console.error('Erreur fatale:', err);
   process.exit(1);
 });

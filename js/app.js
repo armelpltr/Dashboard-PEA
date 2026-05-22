@@ -15,6 +15,22 @@ const IC = {
   user:      '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   message:   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fd79a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
   list:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a29bfe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+  trash:     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff4d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
+  trendDown: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff4d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>',
+  bellOff:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
+  phone:     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c6df5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>',
+  mail:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c6df5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+  moon:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a29bfe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+  inbox:     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>',
+  scroll:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
+  checkCirc: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00e09e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+  square:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>',
+  lock:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+  save:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00cec9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
+  eye:       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  coin:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 9.5a3 3 0 0 0-2.5-1.5h-1a3 3 0 0 0 0 6h1a3 3 0 0 1 0 6h-1A3 3 0 0 1 9 18"/><line x1="12" y1="5" x2="12" y2="7"/><line x1="12" y1="17" x2="12" y2="19"/></svg>',
+  warning:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  dotGold:   '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#f5b731"/></svg>',
   dotGreen:  '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#00e09e"/></svg>',
   dotRed:    '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#ff4d6a"/></svg>',
 };
@@ -299,7 +315,7 @@ async function importAllUserData(event) {
     + '• Watchlist    : ' + counts.watchlist + '\n'
     + '• Valorisations quotidiennes : ' + counts.dailyValues + '\n\n'
     + 'Exporté le : ' + (payload._meta.exportedAt || '?') + '\n\n'
-    + '⚠️ Cela REMPLACE toutes les données actuelles de votre compte.';
+    + '⚠ Cela REMPLACE toutes les données actuelles de votre compte.';
 
   if (!confirm(msg)) return;
 
@@ -549,7 +565,7 @@ window.saveRecapPref = async function(value) {
   if (sel) sel.value = on ? 'on' : 'off';
   const chk = document.getElementById('recap-notif-toggle');
   if (chk) chk.checked = on;
-  _showChatToast({ icon: on ? '🔔' : '🔕', title: on ? 'Récap activé' : 'Récap désactivé',
+  _showChatToast({ icon: on ? IC.bell : IC.bellOff, title: on ? 'Récap activé' : 'Récap désactivé',
     msg: on ? 'Notification push chaque jour ouvré à 20h.' : 'Vous ne recevrez plus le récap quotidien.' });
 };
 
@@ -2059,11 +2075,11 @@ function updateHeroScore(score, verdict) {
   const isPos = verdict === 'ACHAT' || verdict === 'ACHAT PROGRESSIF';
   const isNeg = verdict === 'ÉVITER' || verdict === 'PRUDENCE';
   const color = isPos ? 'var(--positive)' : isNeg ? 'var(--negative)' : 'var(--gold)';
-  const emoji = isPos ? '🟢' : isNeg ? '🔴' : '🟡';
+  const dot = isPos ? IC.dotGreen : isNeg ? IC.dotRed : IC.dotGold;
   const offset = 251.2 - (score / 100) * 251.2;
   if (progress) { progress.style.stroke = color; progress.style.strokeDashoffset = offset; }
   if (scoreEl)  { scoreEl.textContent = score; scoreEl.style.color = color; }
-  if (verdictEl){ verdictEl.textContent = emoji + ' ' + verdict; verdictEl.style.color = color; }
+  if (verdictEl){ verdictEl.innerHTML = dot + ' ' + verdict; verdictEl.style.color = color; }
 }
 
 function populateHero(d) {
@@ -2545,7 +2561,7 @@ function populateTabs(d) {
     metricCard('Rendement', dyDisplay ? (dyDisplay*100).toFixed(2)+'%' : na, 'Annuel', dyDisplay ? rateBadge(dyDisplay*100, 2, 5, 1, 2) : null) +
     metricCard('Dividende/action', d.divRate ? f2(d.divRate)+' '+d.currency : na, 'Trailing 12 mois', null) +
     metricCard('Payout Ratio', d.payoutRatio ? (parseFloat(d.payoutRatio) > 1 ? parseFloat(d.payoutRatio).toFixed(1) : (parseFloat(d.payoutRatio)*100).toFixed(1))+'%' : na, '', null) +
-    (d.qty && d.divRate ? metricCard('Revenu annuel estimé', f2(d.qty * parseFloat(d.divRate))+' '+d.currency, d.qty+' actions', { cls:'good', text:'💰' }) : metricCard('Revenu annuel', na, 'Ajoutez au portefeuille', null)) +
+    (d.qty && d.divRate ? metricCard('Revenu annuel estimé', f2(d.qty * parseFloat(d.divRate))+' '+d.currency, d.qty+' actions', { cls:'good', text: IC.coin }) : metricCard('Revenu annuel', na, 'Ajoutez au portefeuille', null)) +
     metricCard('Statut', dyDisplay && dyDisplay > 0 ? 'Distributeur' : 'Pas de dividende', '', dyDisplay && dyDisplay > 0 ? { cls:'good', text:'OUI' } : { cls:'mid', text:'NON' });
 
   // ── RISQUE / SOLIDITÉ ──
@@ -5832,7 +5848,7 @@ function initBilan() {
           </div>`).join('')}
         </div>
         <div style="margin-top:12px;background:var(--s3);border-radius:10px;padding:10px 14px;border:1px solid var(--border)">
-          <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px">📊 vs Livret A 2,5%</div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:5px">${IC.barchart}<span>vs Livret A 2,5%</span></div>
           ${(() => {
             if (y.isYTD && y.pv !== null) {
               // YTD : PV latente vs intérêts Livret A proratisés sur l'année en cours
@@ -5974,22 +5990,22 @@ function initTrophees() {
     const nextPatrimoine = TROPHIES.patrimoine.paliers.find(p => values.patrimoine < p) || TROPHIES.patrimoine.paliers[TROPHIES.patrimoine.paliers.length - 1];
     summary.innerHTML = `
       <div class="stat-card">
-        <div class="stat-label">🏆 Total débloqués</div>
+        <div class="stat-label" style="display:flex;align-items:center;gap:6px">${IC.trophy}Total débloqués</div>
         <div class="stat-value" style="color:var(--gold)">${totalUnlocked} / ${totalPossible}</div>
         <div class="stat-change pos">Trophées obtenus</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">💼 Patrimoine</div>
+        <div class="stat-label" style="display:flex;align-items:center;gap:6px">${IC.briefcase}Patrimoine</div>
         <div class="stat-value">${patrimoine.toFixed(0)} €</div>
         <div class="stat-change pos" style="font-size:10px">Titres ${totalVal.toFixed(0)} € + Espèces ${cash.toFixed(2)} €</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">📈 Plus-value latente</div>
+        <div class="stat-label" style="display:flex;align-items:center;gap:6px">${IC.trending}Plus-value latente</div>
         <div class="stat-value" style="color:${totalPnl >= 0 ? 'var(--positive)' : 'var(--negative)'}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(0)} €</div>
         <div class="stat-change ${totalPnl >= 0 ? 'pos' : 'neg'}">${TROPHIES.rendement.paliers.filter(p => totalPnl >= p).length} / ${TROPHIES.rendement.paliers.length} paliers</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">🎯 Prochain palier</div>
+        <div class="stat-label" style="display:flex;align-items:center;gap:6px">${IC.target}Prochain palier</div>
         <div class="stat-value" style="color:var(--accent2)">${nextPatrimoine.toLocaleString('fr-FR')} €</div>
         <div class="stat-change">Patrimoine</div>
       </div>
@@ -6013,7 +6029,7 @@ function initTrophees() {
           const ok  = current >= s;
           const pct = Math.min(100, (current / s) * 100).toFixed(0);
           return `<div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:14px;flex-shrink:0">${ok ? '✅' : '⬜'}</span>
+            <span style="flex-shrink:0;display:flex">${ok ? IC.checkCirc : IC.square}</span>
             <div style="flex:1">
               <div style="display:flex;justify-content:space-between;margin-bottom:3px">
                 <span style="font-size:11px;color:${ok ? 'var(--positive)' : 'var(--text3)'};font-weight:${ok ? 600 : 400}">${s.toLocaleString('fr-FR')} €</span>
@@ -6224,7 +6240,7 @@ async function refreshDividendes() {
   const btn = document.getElementById('btn-div-refresh');
   const icon = document.getElementById('div-refresh-icon');
   if (btn) btn.disabled = true;
-  if (icon) icon.textContent = '⏳';
+  if (icon) icon.innerHTML = IC.clock;
   await initDividendes();
   if (btn) btn.disabled = false;
   if (icon) icon.textContent = '↻';
@@ -6250,7 +6266,7 @@ async function loadDivJson() {
     const subEl = document.querySelector('#page-dividendes .page-subtitle span');
     if (subEl && json.generated_at) subEl.textContent = '✦ Données Mistral AI · mis à jour le ' + new Date(json.generated_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
   } catch(e) {
-    console.warn('⚠️ dividendes.json non disponible, historique vide.', e);
+    console.warn('dividendes.json non disponible, historique vide.', e);
     _divJsonLoaded = true;
   }
 }
@@ -6545,8 +6561,8 @@ function initDividendes() {
     if (histEl) renderDivHistory(histEl);
   }).catch(err => {
     console.error('initDividendes error:', err);
-    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--negative);padding:24px">⚠️ Erreur lors du chargement des dividendes</td></tr>';
-    if (histEl) histEl.innerHTML = '<div class="cal-empty">⚠️ Erreur lors du chargement</div>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--negative);padding:24px"><span style="display:inline-flex;align-items:center;gap:6px">' + IC.warning + ' Erreur lors du chargement des dividendes</span></td></tr>';
+    if (histEl) histEl.innerHTML = '<div class="cal-empty" style="display:flex;align-items:center;justify-content:center;gap:6px">' + IC.warning + ' Erreur lors du chargement</div>';
   });
 }
 
@@ -6683,7 +6699,7 @@ async function importTRTransactionsCSV(lines, parseLine) {
   const successEl = document.getElementById('csv-import-success');
   const statusEl  = document.getElementById('daily-status');
   function showProgress(msg) {
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--accent)">⏳</span> ' + msg;
+    if (statusEl) statusEl.innerHTML = '<span style="display:inline-flex;vertical-align:middle">' + IC.clock + '</span> ' + msg;
   }
 
   try {
@@ -7016,7 +7032,7 @@ function importDailyValuesCSV(event) {
 
 function confirmClearDaily() {
   showConfirmModal({
-    icon: '🗑️',
+    icon: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff4d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
     title: 'Réinitialiser les données broker ?',
     body: 'Toutes les valorisations importées seront supprimées.\nLa performance sera recalculée depuis Yahoo Finance.',
     onConfirm: clearDailyValues,
@@ -7948,13 +7964,13 @@ function _showBrowserNotif(title, body) {
   try { new Notification(title, { body, icon: 'logo.png' }); } catch {}
 }
 
-function _showChatToast({ icon = '🔔', title, msg, duration = 5000 }) {
+function _showChatToast({ icon = IC.bell, title, msg, duration = 5000 }) {
   const toast = document.getElementById('chat-toast');
   if (!toast) return;
   const iconEl = document.getElementById('chat-toast-icon');
   const titleEl = document.getElementById('chat-toast-title');
   const msgEl = document.getElementById('chat-toast-msg');
-  if (iconEl)  iconEl.textContent  = icon;
+  if (iconEl)  iconEl.innerHTML    = icon;
   if (titleEl) titleEl.textContent = title || '';
   if (msgEl)   msgEl.textContent   = msg || '';
   const bar = document.getElementById('chat-toast-bar');
@@ -7986,7 +8002,7 @@ async function initPush(uid) {
     onFCMMessage(fcmMessaging, payload => {
       const { title, body } = payload.notification || {};
       _logNotifHistory(payload.data?.type || 'push', title || 'Capital View', body || '');
-      _showChatToast({ icon: '🔔', title: title || 'Capital View', msg: body || '' });
+      _showChatToast({ icon: IC.bell, title: title || 'Capital View', msg: body || '' });
       renderNotificationsPage();
       if (payload.data?.type === 'daily_recap') _refreshRecap();
     });
@@ -8030,23 +8046,23 @@ async function _showLocalNotif(title, body) {
 async function sendTestNotification() {
   const btn = document.getElementById('btn-test-push');
   if (!('Notification' in window)) {
-    _showChatToast({ icon: '🔕', title: 'Non supporté', msg: 'Ce navigateur ne gère pas les notifications.' });
+    _showChatToast({ icon: IC.bellOff, title: 'Non supporté', msg: 'Ce navigateur ne gère pas les notifications.' });
     return;
   }
   if (_isIOSNonStandalone()) {
-    _showChatToast({ icon: '📲', title: 'Installez l\'app', msg: 'Sur iPhone : Partager → Sur l\'écran d\'accueil, puis rouvrez Capital View.' });
+    _showChatToast({ icon: IC.phone, title: 'Installez l\'app', msg: 'Sur iPhone : Partager → Sur l\'écran d\'accueil, puis rouvrez Capital View.' });
     return;
   }
   let perm = Notification.permission;
   if (perm === 'default') perm = await Notification.requestPermission();
   if (perm !== 'granted') {
-    _showChatToast({ icon: '🔕', title: 'Notifications bloquées', msg: 'Autorisez les notifications dans votre navigateur.' });
+    _showChatToast({ icon: IC.bellOff, title: 'Notifications bloquées', msg: 'Autorisez les notifications dans votre navigateur.' });
     updatePushBtn();
     return;
   }
-  if (btn) { btn.disabled = true; btn.textContent = '✉️ Envoi…'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = IC.mail + ' Envoi…'; }
   const title = 'Capital View — Test';
-  const body  = 'Notification de test reçue avec succès ✅';
+  const body  = 'Notification de test reçue avec succès';
   try {
     await navigator.serviceWorker.register('firebase-messaging-sw.js');
     const reg = await navigator.serviceWorker.ready;
@@ -8059,9 +8075,9 @@ async function sendTestNotification() {
     catch(e2) { console.warn('Test notif:', e2.message); }
   }
   _logNotifHistory('test', title, body);
-  _showChatToast({ icon: '🔔', title: 'Test envoyé', msg: 'Vérifiez vos notifications.' });
+  _showChatToast({ icon: IC.bell, title: 'Test envoyé', msg: 'Vérifiez vos notifications.' });
   renderNotificationsPage();
-  if (btn) { btn.disabled = false; btn.textContent = '✉️ Tester'; }
+  if (btn) { btn.disabled = false; btn.innerHTML = IC.mail + ' Tester'; }
 }
 
 function _logNotifHistory(type, title, body) {
@@ -8180,7 +8196,7 @@ function _paintWeeklyRecap() {
   if (!r || !r.lines || !r.lines.length) {
     el.innerHTML =
       '<div class="section-card" style="text-align:center;padding:48px 24px">'
-      + '<div style="font-size:34px;margin-bottom:12px">📅</div>'
+      + '<div style="margin-bottom:12px;opacity:0.5"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>'
       + '<div style="font-size:14px;color:var(--text2);font-weight:600;margin-bottom:6px">Aucun rapport hebdomadaire</div>'
       + '<div style="font-size:12px;color:var(--text3);line-height:1.6">Le rapport hebdomadaire est généré<br>chaque vendredi soir à 20h.</div>'
       + '</div>';
@@ -8215,11 +8231,11 @@ function _paintWeeklyRecap() {
   const bestWorst = (r.best && r.worst)
     ? '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:18px">'
       + '<div class="stat-card" style="border-left:3px solid var(--positive)">'
-      + '<div class="stat-label">🏆 Meilleure de la semaine</div>'
+      + '<div class="stat-label" style="display:flex;align-items:center;gap:6px">' + IC.trophy + 'Meilleure de la semaine</div>'
       + '<div class="stat-value" style="font-size:15px">' + r.best.name + '</div>'
       + '<div class="stat-sub" style="color:var(--positive)">' + fp(r.best.weekPct) + '</div></div>'
       + '<div class="stat-card" style="border-left:3px solid var(--negative)">'
-      + '<div class="stat-label">📉 Moins bonne de la semaine</div>'
+      + '<div class="stat-label" style="display:flex;align-items:center;gap:6px">' + IC.trendDown + 'Moins bonne de la semaine</div>'
       + '<div class="stat-value" style="font-size:15px">' + r.worst.name + '</div>'
       + '<div class="stat-sub" style="color:var(--negative)">' + fp(r.worst.weekPct) + '</div></div>'
       + '</div>'
@@ -8278,7 +8294,7 @@ window.generateRecapNow = async function() {
   const btn = document.getElementById('btn-generate-recap');
   const pf  = getPortfolio(currentUser);
   if (!pf.length) {
-    _showChatToast({ icon: '📭', title: 'Portefeuille vide', msg: 'Ajoutez des lignes avant de générer un récap.' });
+    _showChatToast({ icon: IC.inbox, title: 'Portefeuille vide', msg: 'Ajoutez des lignes avant de générer un récap.' });
     return;
   }
   if (btn) { btn.disabled = true; btn.textContent = 'Génération…'; }
@@ -8328,17 +8344,16 @@ window.generateRecapNow = async function() {
 
   // Notification locale (sur l'appareil) — pas un envoi serveur FCM.
   const up       = totalDayPct >= 0;
-  const emoji    = up ? '📈' : '📉';
   const pctStr   = (up ? '+' : '') + totalDayPct.toFixed(2) + '%';
-  const ntitle   = `Récap du jour : ${emoji} ${pctStr}`;
+  const ntitle   = `Récap du jour : ${pctStr}`;
   const nbody    = 'Touchez pour voir le détail.';
   const shown    = await _showLocalNotif(ntitle, nbody);
   _logNotifHistory('daily_recap', ntitle, nbody);
   renderNotificationsPage();
 
-  if (btn) { btn.disabled = false; btn.textContent = '⚡ Générer maintenant'; }
+  if (btn) { btn.disabled = false; btn.innerHTML = IC.zap + ' Générer maintenant'; }
   _showChatToast({
-    icon: '✅',
+    icon: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00e09e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
     title: 'Récap généré',
     msg: shown ? 'Notification envoyée sur cet appareil.' : 'Aperçu local — notification non disponible.',
   });
@@ -8351,7 +8366,7 @@ window.deleteRecap = async function() {
     await deleteFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'recap'));
   } catch(e) { console.warn('Récap delete:', e); }
   _paintRecapPage();
-  _showChatToast({ icon: '🗑️', title: 'Récap supprimé', msg: 'La page Récap est de nouveau vide.' });
+  _showChatToast({ icon: IC.trash, title: 'Récap supprimé', msg: 'La page Récap est de nouveau vide.' });
 };
 
 // Rendu markdown minimal : **gras**, *italique*, sauts de ligne.
@@ -8394,7 +8409,7 @@ function _paintRecapPage() {
   if (!r || !r.lines || !r.lines.length) {
     el.innerHTML =
       '<div class="section-card" style="text-align:center;padding:48px 24px">'
-      + '<div style="font-size:34px;margin-bottom:12px">🌙</div>'
+      + '<div style="margin-bottom:12px;opacity:0.5"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#a29bfe" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></div>'
       + '<div style="font-size:14px;color:var(--text2);font-weight:600;margin-bottom:6px">Aucun récap pour l\'instant</div>'
       + '<div style="font-size:12px;color:var(--text3);line-height:1.6">Le récap quotidien est généré automatiquement<br>chaque jour ouvré à 20h.</div>'
       + '</div>';
@@ -8430,11 +8445,11 @@ function _paintRecapPage() {
   const bestWorst = (r.best && r.worst)
     ? '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:18px">'
       + '<div class="stat-card" style="border-left:3px solid var(--positive)">'
-      + '<div class="stat-label">🏆 Meilleure performance</div>'
+      + '<div class="stat-label" style="display:flex;align-items:center;gap:6px">' + IC.trophy + 'Meilleure performance</div>'
       + '<div class="stat-value" style="font-size:15px">' + r.best.name + '</div>'
       + '<div class="stat-sub" style="color:var(--positive)">' + fp(r.best.changePct) + '</div></div>'
       + '<div class="stat-card" style="border-left:3px solid var(--negative)">'
-      + '<div class="stat-label">📉 Moins bonne performance</div>'
+      + '<div class="stat-label" style="display:flex;align-items:center;gap:6px">' + IC.trendDown + 'Moins bonne performance</div>'
       + '<div class="stat-value" style="font-size:15px">' + r.worst.name + '</div>'
       + '<div class="stat-sub" style="color:var(--negative)">' + fp(r.worst.changePct) + '</div></div>'
       + '</div>'
@@ -8448,7 +8463,7 @@ function _paintRecapPage() {
   el.innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">'
     + '<div style="font-size:12px;color:var(--text3)">Récap du ' + (r.dateLabel || r.date || '') + '</div>'
-    + '<button onclick="deleteRecap()" class="btn-outline" style="font-size:11px;padding:5px 11px;color:var(--negative);border-color:rgba(255,77,106,0.3)">🗑️ Supprimer</button>'
+    + '<button onclick="deleteRecap()" class="btn-outline" style="font-size:11px;padding:5px 11px;color:var(--negative);border-color:rgba(255,77,106,0.3);display:inline-flex;align-items:center;gap:5px">' + IC.trash + 'Supprimer</button>'
     + '</div>'
 
     // Salutation

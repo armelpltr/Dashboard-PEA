@@ -52,9 +52,9 @@ async function sendFcmPush(uid, title, body) {
     const token = roleSnap.exists ? roleSnap.data().fcmToken : null;
     if (!token) { console.log(`  — Pas de token FCM pour ${uid}, push ignoré`); return; }
     await messaging.send({ token, notification: { title, body }, data: { type: 'price_alert' } });
-    console.log(`  📲 Push FCM envoyé à ${uid}`);
+    console.log(`  Push FCM envoyé à ${uid}`);
   } catch(e) {
-    console.warn(`  ⚠️  Push FCM échoué pour ${uid}:`, e.message);
+    console.warn(`   Push FCM échoué pour ${uid}:`, e.message);
   }
 }
 
@@ -73,37 +73,37 @@ async function fetchPrice(ticker) {
 }
 
 async function main() {
-  console.log(`\n🎯 Vérification alertes prix — ${new Date().toISOString()}\n`);
+  console.log(`\nVérification alertes prix — ${new Date().toISOString()}\n`);
 
   const users = await getAllUsers();
-  console.log(`👥 ${users.length} utilisateur(s)`);
+  console.log(`${users.length} utilisateur(s)`);
 
   for (const user of users) {
-    console.log(`\n👤 ${user.name} (${user.email}) — uid: ${user.uid}`);
+    console.log(`\n${user.name} (${user.email}) — uid: ${user.uid}`);
     const alerts = await getUserAlerts(user.uid);
-    console.log(`  📋 ${alerts.length} alerte(s) totale(s) en Firestore`);
+    console.log(`  ${alerts.length} alerte(s) totale(s) en Firestore`);
     alerts.forEach((a, i) => console.log(`     [${i}] ${a.ticker} ${a.direction === 'above' ? '>=' : '<='} ${a.targetPrice}€ | active=${a.active} | triggeredAt=${a.triggeredAt || 'null'}`));
 
     const active = alerts.filter(a => a.active && !a.triggeredAt);
     if (!active.length) { console.log(`  — Aucune alerte active, skip`); continue; }
 
-    console.log(`  ✅ ${active.length} alerte(s) active(s)`);
+    console.log(`  ${active.length} alerte(s) active(s)`);
 
     const settings = await getUserSettings(user.uid);
-    console.log(`  ⚙️  notifSettings.priceAlerts = ${settings.notifSettings?.priceAlerts}`);
+    console.log(`   notifSettings.priceAlerts = ${settings.notifSettings?.priceAlerts}`);
     if (settings.notifSettings?.priceAlerts === false) {
-      console.log(`  🔕 Alertes prix désactivées`);
+      console.log(`  Alertes prix désactivées`);
       continue;
     }
 
     // Fetch prix uniques
     const tickers = [...new Set(active.map(a => a.ticker))];
-    console.log(`  🔍 Fetch prix pour: ${tickers.join(', ')}`);
+    console.log(`  Fetch prix pour: ${tickers.join(', ')}`);
     const prices = {};
     await Promise.all(tickers.map(async t => {
       const data = await fetchPrice(t);
-      if (data) { prices[t] = data; console.log(`  💹 ${t} = ${data.price}€`); }
-      else console.log(`  ⚠️  ${t} — prix indisponible`);
+      if (data) { prices[t] = data; console.log(`  ${t} = ${data.price}€`); }
+      else console.log(`   ${t} — prix indisponible`);
     }));
 
     const triggered = [];
@@ -119,7 +119,7 @@ async function main() {
         alert.currentPrice = data.price;
         alert.name         = data.name || alert.name;
         triggered.push(alert);
-        console.log(`  🎯 ALERTE: ${alert.ticker} ${alert.direction === 'above' ? '>=' : '<='} ${alert.targetPrice}€ (cours: ${data.price}€)`);
+        console.log(`  ALERTE: ${alert.ticker} ${alert.direction === 'above' ? '>=' : '<='} ${alert.targetPrice}€ (cours: ${data.price}€)`);
       }
     });
 
@@ -134,17 +134,17 @@ async function main() {
     // Log historique in-app + push pour chaque alerte déclenchée
     for (const a of triggered) {
       const dir   = a.direction === 'above' ? '≥' : '≤';
-      const title = '🎯 Alerte prix déclenchée';
+      const title = 'Alerte prix déclenchée';
       const body  = `${a.name} (${a.ticker}) ${dir} ${a.targetPrice}€ — cours : ${fmt(a.currentPrice)}`;
       await logNotifHistory(user.uid, 'price_alert', title, body);
       await sendFcmPush(user.uid, title, body);
     }
   }
 
-  console.log('\n✅ Vérification alertes terminée\n');
+  console.log('\nVérification alertes terminée\n');
 }
 
 main().catch(err => {
-  console.error('❌ Erreur fatale:', err);
+  console.error('Erreur fatale:', err);
   process.exit(1);
 });
