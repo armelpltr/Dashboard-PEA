@@ -6383,21 +6383,18 @@ function initDividendes() {
     const lastKnown     = history.find(d => !d.next) || null;
     return { r, history, buyDate: firstBuy, allReceived, totalRecu, duringHolding, nextEstim, lastKnown };
   })).then(rows => {
-    // Persister les dividendes auto-détectés Yahoo comme transactions une fois
-    // la date de versement passée → ils entrent dans le solde espèces.
+    // Dividendes auto-détectés Yahoo, date de versement passée, pas encore
+    // enregistrés → demander confirmation à l'utilisateur via popup.
     const existingDiv = (getTransactions(currentUser) || []).filter(t => t.type === 'dividend');
-    let nbDivLogged = 0;
     rows.forEach(x => x.allReceived.forEach(e => {
       if (!e.auto || !e.qty || !e.price) return;
+      const key = e.ticker + '|' + e.date;
       if (existingDiv.find(t => t.ticker === e.ticker && t.date === e.date)) return;
-      logTransaction(currentUser, {
-        type: 'dividend', ticker: e.ticker, name: e.name || e.ticker,
-        qty: e.qty, price: e.price, date: e.date, source: 'yahoo-auto',
-      });
-      existingDiv.push({ ticker: e.ticker, date: e.date });
-      nbDivLogged++;
+      if (_divDeclined.has(key)) return;
+      if (_divPromptQueue.find(q => q.ticker === e.ticker && q.date === e.date)) return;
+      _divPromptQueue.push({ ticker: e.ticker, name: e.name || e.ticker, qty: e.qty, price: e.price, date: e.date });
     }));
-    if (nbDivLogged > 0) { try { renderPortfolio(); } catch(_) {} }
+    _processDivPromptQueue();
 
     // Mettre à jour KPIs dynamiques
     const totalHolding   = rows.reduce((s, x) => s + x.duringHolding.length, 0);
@@ -6997,19 +6994,60 @@ function confirmClearDaily() {
   });
 }
 
-function showConfirmModal({ icon, title, body, onConfirm, danger = false }) {
+function showConfirmModal({ icon, title, body, onConfirm, onCancel, okLabel, cancelLabel, danger = false }) {
   const modal = document.getElementById('confirm-modal2');
   document.getElementById('confirm-modal2-icon').textContent = icon || '';
   document.getElementById('confirm-modal2-title').textContent = title;
   document.getElementById('confirm-modal2-body').textContent = body;
   const okBtn = document.getElementById('confirm-modal2-ok');
   okBtn.style.background = danger ? '#ff4d6a' : '#7c6df5';
-  okBtn.onclick = () => { closeConfirmModal(); onConfirm(); };
+  okBtn.textContent = okLabel || 'Confirmer';
+  okBtn.onclick = () => { closeConfirmModal(); if (onConfirm) onConfirm(); };
+  const cancelBtn = document.getElementById('confirm-modal2-cancel');
+  if (cancelBtn) {
+    cancelBtn.textContent = cancelLabel || 'Annuler';
+    cancelBtn.onclick = () => { closeConfirmModal(); if (onCancel) onCancel(); };
+  }
   modal.style.display = 'flex';
 }
 
 function closeConfirmModal() {
   document.getElementById('confirm-modal2').style.display = 'none';
+}
+
+// ─── POPUP CONFIRMATION DIVIDENDES AUTO-DÉTECTÉS ─────
+let _divPromptQueue  = [];
+let _divPromptActive = false;
+const _divDeclined   = new Set();   // refus session : "ticker|date"
+
+function _processDivPromptQueue() {
+  if (_divPromptActive) return;
+  const item = _divPromptQueue.shift();
+  if (!item) return;
+  _divPromptActive = true;
+  const total  = item.qty * item.price;
+  const dateFr = new Date(item.date + 'T12:00:00').toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  showConfirmModal({
+    icon:  '🎁',
+    title: 'Dividende reçu ?',
+    body:  `${item.name} — ${total.toFixed(2)} € (${item.qty} × ${item.price.toFixed(3)} €/action)\nVersement prévu le ${dateFr}.\nL'as-tu reçu sur ton compte espèces ?`,
+    okLabel:     'Oui, reçu',
+    cancelLabel: 'Pas encore',
+    onConfirm: () => {
+      logTransaction(currentUser, {
+        type: 'dividend', ticker: item.ticker, name: item.name,
+        qty: item.qty, price: item.price, date: item.date, source: 'yahoo-auto',
+      });
+      try { renderPortfolio(); } catch(_) {}
+      _divPromptActive = false;
+      _processDivPromptQueue();
+    },
+    onCancel: () => {
+      _divDeclined.add(item.ticker + '|' + item.date);
+      _divPromptActive = false;
+      _processDivPromptQueue();
+    },
+  });
 }
 
 // Affiche l'état "aucune donnée" : graphe vidé + message dans le tableau.
