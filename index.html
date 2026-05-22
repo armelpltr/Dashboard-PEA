@@ -312,13 +312,13 @@
         <div class="table-header">
           <span class="table-title">Mes actions</span>
           <div style="display:flex;gap:6px;align-items:center">
-            <button class="btn-add" onclick="document.getElementById('csv-import-input').click()" style="background:rgba(245,183,49,0.08);border-color:rgba(245,183,49,0.2);color:var(--gold)">📥 Importer CSV</button>
+            <button class="btn-add" onclick="document.getElementById('csv-import-input').click()" style="background:rgba(245,183,49,0.08);border-color:rgba(245,183,49,0.2);color:var(--gold)">Importer CSV</button>
             <input type="file" id="csv-import-input" accept=".csv" style="display:none" onchange="importCSV(event)">
             <button class="btn-add" onclick="openModal()">＋ Ajouter une ligne</button>
           </div>
         </div>
         <div class="toolbar" id="portfolio-toolbar">
-          <input class="toolbar-input" id="table-search" placeholder="🔍 Filtrer…" oninput="filterTable()">
+          <input class="toolbar-input" id="table-search" placeholder="Filtrer…" oninput="filterTable()">
           <select class="toolbar-select" id="table-sort" onchange="sortTable()">
             <option value="">Tri : ordre ajout</option>
             <option value="name-asc">Nom A→Z</option>
@@ -328,8 +328,7 @@
             <option value="perf-desc">Perf ↓</option>
             <option value="perf-asc">Perf ↑</option>
           </select>
-          <button class="toolbar-btn" onclick="exportCSV()">📄 CSV</button>
-          <button class="toolbar-btn" onclick="toggleAutoRefresh()" id="btn-auto-refresh">⟳ Auto-refresh</button>
+          <button class="toolbar-btn" onclick="exportCSV()">CSV</button>
           <button class="toolbar-btn show-mobile-inline" onclick="openReorderModal()">↕ Réorganiser</button>
         </div>
         <table>
@@ -356,7 +355,7 @@
       <!-- Transaction History -->
       <div class="table-container" style="margin-top:18px" id="tx-history-card">
         <div class="table-header">
-          <span class="table-title">📜 Historique des transactions</span>
+          <span class="table-title">Historique des transactions</span>
           <span style="font-size:11px;color:var(--text3);font-family:var(--mono)" id="tx-count">0 opérations</span>
         </div>
         <div style="max-height:400px;overflow-y:auto;overflow-x:hidden">
