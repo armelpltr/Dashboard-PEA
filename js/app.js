@@ -14,6 +14,7 @@ const IC = {
   crown:     '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#e17055" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="m4 20 4-12 4 7 4-10 4 15"/></svg>',
   user:      '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   message:   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fd79a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  list:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a29bfe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
   dotGreen:  '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#00e09e"/></svg>',
   dotRed:    '<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="#ff4d6a"/></svg>',
 };
@@ -6347,28 +6348,28 @@ function initDividendes() {
   const tbody = document.getElementById('div-tbody');
   const histEl = document.getElementById('div-history');
   if (tbody)  tbody.innerHTML  = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Chargement des dividendes…</td></tr>';
-  if (histEl) histEl.innerHTML = '<div class="cal-empty">⏳ Récupération de l\'historique…</div>';
+  if (histEl) histEl.innerHTML = '<div class="cal-empty" style="display:flex;align-items:center;justify-content:center;gap:6px">' + IC.clock + ' Récupération de l\'historique…</div>';
 
   // KPIs immédiats
   const kpis = document.getElementById('div-kpis');
   if (kpis) kpis.innerHTML = `
     <div class="stat-card" id="div-kpi-recus">
-      <div class="stat-label">🎁 Dividendes reçus</div>
+      <div class="stat-label" style="display:flex;align-items:center;gap:6px">${IC.gift}Dividendes reçus</div>
       <div class="stat-value" style="color:var(--gold)">—</div>
       <div class="stat-change pos">Chargement…</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">📋 Actions suivies</div>
+      <div class="stat-label" style="display:flex;align-items:center;gap:6px">${IC.list}Actions suivies</div>
       <div class="stat-value">${actions.length}</div>
       <div class="stat-change">Dans le portefeuille</div>
     </div>
     <div class="stat-card" id="div-kpi-holding">
-      <div class="stat-label">📅 Versements pendant détention</div>
+      <div class="stat-label" style="display:flex;align-items:center;gap:6px">${IC.calendar}Versements pendant détention</div>
       <div class="stat-value">—</div>
       <div class="stat-change">Chargement…</div>
     </div>
     <div class="stat-card" id="div-kpi-next">
-      <div class="stat-label">⏰ Prochain versement</div>
+      <div class="stat-label" style="display:flex;align-items:center;gap:6px">${IC.clock}Prochain versement</div>
       <div class="stat-value" style="font-size:16px">—</div>
       <div class="stat-change">Chargement…</div>
     </div>`;
@@ -6434,15 +6435,15 @@ function initDividendes() {
     const kpiHolding = document.getElementById('div-kpi-holding');
     const kpiNext    = document.getElementById('div-kpi-next');
     if (kpiRecus) kpiRecus.innerHTML = `
-      <div class="stat-label">🎁 Dividendes reçus</div>
+      <div class="stat-label" style="display:flex;align-items:center;gap:6px">${IC.gift}Dividendes reçus</div>
       <div class="stat-value" style="color:var(--gold);font-size:26px">${totalRecuAuto.toFixed(2)} €</div>
       ${totalVersionts > 0 ? `<div class="stat-change pos">${totalVersionts} versement(s) détecté(s)</div>` : ''}`;
     if (kpiHolding) kpiHolding.innerHTML = `
-      <div class="stat-label">📅 Versements pendant détention</div>
+      <div class="stat-label" style="display:flex;align-items:center;gap:6px">${IC.calendar}Versements pendant détention</div>
       <div class="stat-value">${totalHolding}</div>
       <div class="stat-change">Depuis date d'achat</div>`;
     if (kpiNext && nextRows.length) kpiNext.innerHTML = `
-      <div class="stat-label">⏰ Prochain versement</div>
+      <div class="stat-label" style="display:flex;align-items:center;gap:6px">${IC.clock}Prochain versement</div>
       <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
         ${logoHtml(nextRows[0].r.ticker, 26, 'ticker-icon')}
         <span style="font-size:13px;font-weight:600;color:var(--text1)">${nextRows[0].r.name || nextRows[0].r.ticker}</span>
@@ -7025,7 +7026,7 @@ function confirmClearDaily() {
 
 function showConfirmModal({ icon, title, body, onConfirm, onCancel, okLabel, cancelLabel, danger = false }) {
   const modal = document.getElementById('confirm-modal2');
-  document.getElementById('confirm-modal2-icon').textContent = icon || '';
+  document.getElementById('confirm-modal2-icon').innerHTML = icon || '';
   document.getElementById('confirm-modal2-title').textContent = title;
   document.getElementById('confirm-modal2-body').textContent = body;
   const okBtn = document.getElementById('confirm-modal2-ok');
@@ -7057,7 +7058,7 @@ function _processDivPromptQueue() {
   const total  = item.qty * item.price;
   const dateFr = new Date(item.date + 'T12:00:00').toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
   showConfirmModal({
-    icon:  '🎁',
+    icon:  '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
     title: 'Dividende reçu ?',
     body:  `${item.name} — ${total.toFixed(2)} € (${item.qty} × ${item.price.toFixed(3)} €/action)\nVersement prévu le ${dateFr}.\nL'as-tu reçu sur ton compte espèces ?`,
     okLabel:     'Oui, reçu',
