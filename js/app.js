@@ -972,16 +972,26 @@ function deleteRow(i) {
   renderPortfolio();
 }
 
+let _txShowAll = false;
+const TX_HISTORY_LIMIT = 10;
+
+function toggleTxHistory() {
+  _txShowAll = !_txShowAll;
+  renderTxHistory();
+}
+
 function renderTxHistory() {
   const txs = getTransactions(currentUser);
   const tbody = document.getElementById('tx-history-tbody');
   const empty = document.getElementById('tx-empty');
   const count = document.getElementById('tx-count');
+  const moreWrap = document.getElementById('tx-show-more-wrap');
 
   if (!txs.length) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
     count.textContent = '0 opérations';
+    if (moreWrap) moreWrap.innerHTML = '';
     return;
   }
   empty.style.display = 'none';
@@ -989,7 +999,18 @@ function renderTxHistory() {
   const sorted = [...txs].sort((a,b) => (b.date || '').localeCompare(a.date || ''));
   count.textContent = sorted.length + ' opération' + (sorted.length > 1 ? 's' : '');
 
-  tbody.innerHTML = sorted.map(tx => {
+  // Affiche les 10 premières, le reste derrière le bouton "Afficher plus"
+  const visible = _txShowAll ? sorted : sorted.slice(0, TX_HISTORY_LIMIT);
+  if (moreWrap) {
+    if (sorted.length > TX_HISTORY_LIMIT) {
+      moreWrap.innerHTML = '<button onclick="toggleTxHistory()" style="background:var(--s3);border:1px solid var(--border);border-radius:7px;padding:6px 16px;font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;font-family:var(--sans)">' +
+        (_txShowAll ? 'Afficher moins' : 'Afficher plus (' + (sorted.length - TX_HISTORY_LIMIT) + ')') + '</button>';
+    } else {
+      moreWrap.innerHTML = '';
+    }
+  }
+
+  tbody.innerHTML = visible.map(tx => {
     const isBuy = tx.type === 'buy';
     const montant = (tx.qty * tx.price).toFixed(2);
     const _d = tx.date ? new Date(tx.date + 'T12:00:00') : null;
