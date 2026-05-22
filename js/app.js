@@ -3277,6 +3277,49 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
   return dataset;
 }
 
+// Tooltip HTML externe du graphique portefeuille : permet d'afficher
+// des icônes SVG (date, prix) que le tooltip canvas de Chart.js ne rend pas.
+function portfolioChartTooltip(context) {
+  const { chart, tooltip } = context;
+  let el = document.getElementById('pf-chart-tooltip');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'pf-chart-tooltip';
+    el.style.cssText = 'position:absolute;pointer-events:none;background:#10121c;' +
+      'border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;' +
+      'font-size:12px;opacity:0;transition:opacity .12s;z-index:50;' +
+      'box-shadow:0 8px 24px rgba(0,0,0,0.5);white-space:nowrap';
+    const parent = chart.canvas.parentNode;
+    if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative';
+    parent.appendChild(el);
+  }
+  if (tooltip.opacity === 0) { el.style.opacity = 0; return; }
+
+  const title = (tooltip.title && tooltip.title[0]) || '';
+  let rows = '';
+  (tooltip.dataPoints || []).forEach(dp => {
+    const val = dp.parsed.y;
+    if (val === null || val === undefined) return;
+    const valStr = val.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+    if (dp.datasetIndex === 0) {
+      rows += '<div style="display:flex;align-items:center;gap:6px;color:#edf0f7;margin-top:2px">' +
+        IC.wallet + '<span>' + valStr + '</span></div>';
+    } else {
+      const isBuy = dp.datasetIndex === 1;
+      rows += '<div style="display:flex;align-items:center;gap:6px;color:#edf0f7;margin-top:4px">' +
+        (isBuy ? IC.dotGreen : IC.dotRed) +
+        '<span>' + (isBuy ? 'Achat' : 'Vente') + ' · ' + valStr + '</span></div>';
+    }
+  });
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:6px;color:#8892a8;margin-bottom:4px">' +
+    IC.calendar + '<span>' + title + '</span></div>' + rows;
+
+  el.style.opacity = 1;
+  el.style.left = (chart.canvas.offsetLeft + tooltip.caretX) + 'px';
+  el.style.top  = (chart.canvas.offsetTop + tooltip.caretY) + 'px';
+  el.style.transform = 'translate(-50%, calc(-100% - 10px))';
+}
+
 async function renderPortfolioChart() {
   const data = getPortfolio(currentUser);
   const card = document.getElementById('portfolio-chart-card');
@@ -3485,23 +3528,8 @@ async function renderPortfolioChart() {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#10121c',
-            borderColor: 'rgba(255,255,255,0.06)',
-            borderWidth: 1,
-            titleColor: '#8892a8',
-            bodyColor: '#edf0f7',
-            padding: 12,
-            cornerRadius: 8,
-            usePointStyle: true,
-            callbacks: {
-              label: function(ctx) {
-                if (ctx.datasetIndex === 0)
-                  return ' ' + ctx.parsed.y.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
-                if (ctx.parsed.y === null) return null;
-                const label = ctx.datasetIndex === 1 ? 'Achat' : 'Vente';
-                return ' ' + label + ' · ' + ctx.parsed.y.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
-              }
-            }
+            enabled: false,
+            external: portfolioChartTooltip
           }
         },
         scales: {
