@@ -4,6 +4,27 @@
 ## Notes de collaboration
 - Ne pas hésiter à proposer l'utilisation de Claude Opus pour les tâches complexes (refactoring majeur, architecture, optimisation avancée).
 
+## Session 2026-05-22
+
+### Dividendes → solde espèces
+- Les transactions `type:'dividend'` sont désormais comptées dans le solde espèces (5 calculs : `stat-cash`, trophées, `cashResidual` live ×2, `cashAtDate`).
+- Dividendes auto-détectés Yahoo (date de versement passée) → popup de confirmation "Dividende reçu ?" (Oui / Pas encore) avant enregistrement comme transaction `source:'yahoo-auto'`. Dédup ticker+date, file d'attente. Fonctions : `_processDivPromptQueue`, `_divPromptQueue`, `_divDeclined`.
+
+### Tooltip graphique portefeuille
+- Tooltip canvas Chart.js remplacé par tooltip HTML externe (`portfolioChartTooltip`) pour afficher des icônes SVG : calendrier (date), portefeuille (prix), pastille verte/rouge (achat/vente).
+- La date du tooltip affiche l'année (`12 nov. 2029`). L'axe X est masqué → les labels ne servent qu'au tooltip.
+
+### Emojis → SVG (tous onglets)
+- Tous les emojis image remplacés par des icônes SVG dans `index.html`, `js/app.js`, `cgu.html`, `politique-confidentialite.html`.
+- Emojis retirés des logs et titres de notifs des scripts cron (`daily-recap.js`, `price-alerts.js`).
+- `showConfirmModal` (icône) et `_showChatToast` (icône) passés en `innerHTML` pour rendre du SVG. `showConfirmModal` accepte aussi `onCancel`, `okLabel`, `cancelLabel`.
+- Symboles typographiques monochromes conservés (✓ ✕ → ↻ ▲ ✦ ☰ ⏻).
+
+### UI toolbar / profil
+- Bouton Auto-refresh retiré (le refresh 60s reste actif au démarrage via `startApp`).
+- Emojis des boutons Importer/Export CSV, champ Filtrer, titre Historique → SVG.
+- Profil → Récap quotidien : `<select>` remplacé par 2 boutons Activé/Désactivé (`_paintRecapButtons`).
+
 ## Notifications push & Récap (2026-05-17)
 
 ### Migration email → push
@@ -89,7 +110,8 @@ AI.PA→1rPAI, TTE.PA→1rPTTE, BNP.PA→1rPBNP, ACA.PA→1rPACA, SAN.PA→1rPSA
 ### Système d'icônes SVG colorées
 - **IC object** dans `js/app.js` (top of file) : SVGs inline avec `stroke` hardcodé par couleur
 - Couleurs : purple `#7c6df5`, blue `#5b8dee`, gold `#f5b731`, green `#00e09e`, muted `#8892a8`, red `#ff4d6a`
-- Icônes JS : briefcase, eye, bell, target, compass, wallet, barchart, gift, trophy, trending, clock, zap, calendar, crown, user, message, dotGreen, dotRed
+- Icônes JS (`IC`) : briefcase, bell, target, wallet, barchart, gift, trophy, trending, clock, zap, calendar, crown, user, message, list, trash, trendDown, bellOff, phone, mail, moon, inbox, scroll, checkCirc, square, lock, save, eye, coin, warning, dotGreen, dotRed, dotGold
+- Tous les emojis image de l'app ont été remplacés par des SVG (session 2026-05-22) — ne pas réintroduire d'emoji, utiliser `IC.*` ou un SVG inline
 - **Icônes HTML** (`index.html`) : nav sidebar + mobile drawer — `stroke` hardcodé directement dans le SVG (plus de `stroke="currentColor"`)
   - briefcase/portfolio → `#7c6df5`
   - eye/watchlist → `#5b8dee`
