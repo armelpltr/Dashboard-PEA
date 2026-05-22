@@ -3492,12 +3492,13 @@ async function renderPortfolioChart() {
             bodyColor: '#edf0f7',
             padding: 12,
             cornerRadius: 8,
+            usePointStyle: true,
             callbacks: {
               label: function(ctx) {
                 if (ctx.datasetIndex === 0)
                   return ' ' + ctx.parsed.y.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
                 if (ctx.parsed.y === null) return null;
-                const label = ctx.datasetIndex === 1 ? IC.dotGreen + ' Achat' : IC.dotRed + ' Vente';
+                const label = ctx.datasetIndex === 1 ? 'Achat' : 'Vente';
                 return ' ' + label + ' · ' + ctx.parsed.y.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
               }
             }
