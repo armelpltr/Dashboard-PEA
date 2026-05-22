@@ -6383,6 +6383,22 @@ function initDividendes() {
     const lastKnown     = history.find(d => !d.next) || null;
     return { r, history, buyDate: firstBuy, allReceived, totalRecu, duringHolding, nextEstim, lastKnown };
   })).then(rows => {
+    // Persister les dividendes auto-détectés Yahoo comme transactions une fois
+    // la date de versement passée → ils entrent dans le solde espèces.
+    const existingDiv = (getTransactions(currentUser) || []).filter(t => t.type === 'dividend');
+    let nbDivLogged = 0;
+    rows.forEach(x => x.allReceived.forEach(e => {
+      if (!e.auto || !e.qty || !e.price) return;
+      if (existingDiv.find(t => t.ticker === e.ticker && t.date === e.date)) return;
+      logTransaction(currentUser, {
+        type: 'dividend', ticker: e.ticker, name: e.name || e.ticker,
+        qty: e.qty, price: e.price, date: e.date, source: 'yahoo-auto',
+      });
+      existingDiv.push({ ticker: e.ticker, date: e.date });
+      nbDivLogged++;
+    }));
+    if (nbDivLogged > 0) { try { renderPortfolio(); } catch(_) {} }
+
     // Mettre à jour KPIs dynamiques
     const totalHolding   = rows.reduce((s, x) => s + x.duringHolding.length, 0);
     const totalRecuAuto  = rows.reduce((s, x) => s + x.totalRecu, 0);
