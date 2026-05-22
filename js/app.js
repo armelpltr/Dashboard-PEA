@@ -910,13 +910,14 @@ function renderPortfolio() {
   const totalVersements = versements.reduce((s, v) => s + v.amount, 0);
   document.getElementById('stat-versements').textContent = fmt(totalVersements);
 
-  // Cash = versements - total achats + total ventes (from tx log)
-  let totalAchats = 0, totalVentes = 0;
+  // Cash = versements - total achats + total ventes + dividendes (from tx log)
+  let totalAchats = 0, totalVentes = 0, totalDividendes = 0;
   txs.forEach(tx => {
     if (tx.type === 'buy') totalAchats += tx.qty * tx.price;
     if (tx.type === 'sell') totalVentes += tx.qty * tx.price;
+    if (tx.type === 'dividend') totalDividendes += tx.qty * tx.price;
   });
-  const cash = totalVersements - totalAchats + totalVentes;
+  const cash = totalVersements - totalAchats + totalVentes + totalDividendes;
   const cashEl = document.getElementById('stat-cash');
   cashEl.textContent = fmt(cash);
   cashEl.style.color = cash >= 0 ? 'var(--positive)' : 'var(--negative)';
@@ -5917,15 +5918,16 @@ function initTrophees() {
   const totalInvested = pf.reduce((s, r) => s + r.qty * r.buyPrice, 0);
   const totalPnl      = totalVal - totalInvested;
 
-  // Solde espèces = versements - achats + ventes
+  // Solde espèces = versements - achats + ventes + dividendes
   const versements  = getVersements(currentUser);
   const totalVersements = versements.reduce((s, v) => s + v.amount, 0);
-  let totalAchats = 0, totalVentes = 0;
+  let totalAchats = 0, totalVentes = 0, totalDividendes = 0;
   txs.forEach(tx => {
     if (tx.type === 'buy')  totalAchats += tx.qty * tx.price;
     if (tx.type === 'sell') totalVentes += tx.qty * tx.price;
+    if (tx.type === 'dividend') totalDividendes += tx.qty * tx.price;
   });
-  const cash = Math.max(0, totalVersements - totalAchats + totalVentes);
+  const cash = Math.max(0, totalVersements - totalAchats + totalVentes + totalDividendes);
 
   // Patrimoine total = titres + espèces
   const patrimoine = totalVal + cash;
@@ -7210,8 +7212,9 @@ function computeAnnualPerformanceFromDaily(dailyValues, versements, portfolio) {
   }
   for (const t of txs) {
     if (!t || !t.qty || !t.price) continue;
-    if (t.type === 'buy')  cashResidual -= t.qty * t.price;
-    if (t.type === 'sell') cashResidual += t.qty * t.price;
+    if (t.type === 'buy')      cashResidual -= t.qty * t.price;
+    if (t.type === 'sell')     cashResidual += t.qty * t.price;
+    if (t.type === 'dividend') cashResidual += t.qty * t.price;
   }
   if (cashResidual > 0.001 && liveValue != null) {
     liveValue += cashResidual;
@@ -7429,6 +7432,7 @@ async function computeAnnualPerformance(portfolio, txs) {
       if (!t.date || t.date > dateStr) return;
       if (t.type === 'buy') cash -= t.qty * t.price;
       if (t.type === 'sell') cash += t.qty * t.price;
+      if (t.type === 'dividend') cash += t.qty * t.price;
     });
     return Math.max(0, cash);
   }
@@ -7659,8 +7663,9 @@ function computeShortPerf() {
   for (const v of versements) if (v && typeof v.amount === 'number') cashResidual += v.amount;
   for (const t of txs) {
     if (!t || !t.qty || !t.price) continue;
-    if (t.type === 'buy')  cashResidual -= t.qty * t.price;
-    if (t.type === 'sell') cashResidual += t.qty * t.price;
+    if (t.type === 'buy')      cashResidual -= t.qty * t.price;
+    if (t.type === 'sell')     cashResidual += t.qty * t.price;
+    if (t.type === 'dividend') cashResidual += t.qty * t.price;
   }
   if (cashResidual > 0.001 && liveValue != null) liveValue += cashResidual;
 
