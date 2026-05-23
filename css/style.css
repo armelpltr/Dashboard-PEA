@@ -1914,6 +1914,14 @@ body.sb-collapsed .main { margin-left: 58px; }
 .chart-fullscreen canvas { max-height: none !important; }
 .chart-fullscreen .chart-expand-btn { top: 14px; right: 14px; }
 
+/* Bar dédiée bouton expand (portfolio) — hors zone canvas */
+.chart-expand-bar {
+  display: flex; justify-content: flex-end;
+  padding: 2px 4px 8px;
+}
+.chart-expand-bar .chart-expand-btn { position: static; }
+.chart-expand-bar-fullscreen { position: fixed; top: 14px; right: 14px; z-index: 10000; padding: 0; }
+
 /* ── Spinners number input (Projections) ── */
 #page-projections input[type=number] {
   -moz-appearance: textfield;

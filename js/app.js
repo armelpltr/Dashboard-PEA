@@ -6748,6 +6748,9 @@ function toggleChartFullscreen(canvasId, btn) {
   const isOn = container.classList.toggle('chart-fullscreen');
   btn.innerHTML = isOn ? COLLAPSE_ICON : EXPAND_ICON;
   btn.title = isOn ? 'Réduire' : 'Agrandir';
+  // Si bouton dans bar dédiée (portfolio), positionne fixed en fullscreen pour rester accessible
+  const bar = btn.closest('.chart-expand-bar');
+  if (bar) bar.classList.toggle('chart-expand-bar-fullscreen', isOn);
   // Force Chart.js resize
   setTimeout(() => {
     const chart = window.Chart && Chart.getChart && Chart.getChart(canvasId);
@@ -6762,15 +6765,25 @@ function toggleChartFullscreen(canvasId, btn) {
 }
 function _addExpandBtn(canvasId) {
   const container = _findChartContainer(canvasId);
-  if (!container || container.querySelector(`.chart-expand-btn[data-target="${canvasId}"]`)) return;
-  if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+  if (!container) return;
+  const card = container.closest('.portf-chart-card, .section-card');
+  if ((card || container).querySelector(`.chart-expand-btn[data-target="${canvasId}"]`)) return;
   const btn = document.createElement('button');
   btn.className = 'chart-expand-btn';
   btn.dataset.target = canvasId;
   btn.innerHTML = EXPAND_ICON;
   btn.title = 'Agrandir';
   btn.onclick = (e) => { e.stopPropagation(); toggleChartFullscreen(canvasId, btn); };
-  container.appendChild(btn);
+  // Portfolio : bar dédiée entre header et canvas, bouton non superposé
+  if (canvasId === 'chart-portfolio' && card) {
+    const bar = document.createElement('div');
+    bar.className = 'chart-expand-bar';
+    bar.appendChild(btn);
+    card.insertBefore(bar, container);
+  } else {
+    if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+    container.appendChild(btn);
+  }
 }
 function initChartExpandButtons() {
   ['chart-portfolio', 'chart-benchmark', 'chart-projections', 'chart-perf-annual'].forEach(_addExpandBtn);
