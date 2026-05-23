@@ -6690,28 +6690,34 @@ function toggleDivHistory() {
   renderDivHistory(document.getElementById('div-history'));
 }
 
-// Auto-scroll horizontal des KPIs (mobile uniquement, même comportement que initStatCardsScroll)
-const _kpisScrollTimers = {};
-const _kpisScrollBound = {};
+// Auto-scroll horizontal des KPIs (mobile, RAF pour fluidité iOS Safari)
 function startKpisAutoScroll(elId) {
-  if (_kpisScrollTimers[elId]) { clearInterval(_kpisScrollTimers[elId]); _kpisScrollTimers[elId] = null; }
   const el = document.getElementById(elId);
   if (!el) return;
-  let paused = false;
-  if (!_kpisScrollBound[elId]) {
-    el.addEventListener('touchstart', () => { paused = true; }, { passive: true });
-    el.addEventListener('touchend',   () => { setTimeout(() => { paused = false; }, 2500); }, { passive: true });
-    el.addEventListener('mouseenter', () => { paused = true; });
-    el.addEventListener('mouseleave', () => { paused = false; });
-    _kpisScrollBound[elId] = true;
+  if (el._kpisRaf) cancelAnimationFrame(el._kpisRaf);
+  if (!el._kpisState) {
+    el._kpisState = { paused: false };
+    const st = el._kpisState;
+    el.addEventListener('touchstart', () => { st.paused = true; }, { passive: true });
+    el.addEventListener('touchend',   () => { setTimeout(() => { st.paused = false; }, 2500); }, { passive: true });
+    el.addEventListener('mouseenter', () => { st.paused = true; });
+    el.addEventListener('mouseleave', () => { st.paused = false; });
   }
-  _kpisScrollTimers[elId] = setInterval(() => {
-    if (paused) return;
-    el.scrollLeft += 1;
-    if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 1) {
-      el.scrollLeft = 0;
+  let last = 0;
+  const step = (ts) => {
+    if (!last) last = ts;
+    const dt = ts - last;
+    last = ts;
+    if (!el._kpisState.paused) {
+      const max = el.scrollWidth - el.clientWidth;
+      if (max > 0) {
+        el.scrollLeft += (dt * 33 / 1000); // 33px/s ≈ portfolio
+        if (el.scrollLeft >= max - 1) el.scrollLeft = 0;
+      }
     }
-  }, 30);
+    el._kpisRaf = requestAnimationFrame(step);
+  };
+  el._kpisRaf = requestAnimationFrame(step);
 }
 function startDivKpisAutoScroll() { startKpisAutoScroll('div-kpis'); }
 
