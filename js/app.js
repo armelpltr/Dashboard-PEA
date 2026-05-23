@@ -4471,14 +4471,14 @@ async function renderWatchlist() {
     const addedPrice = w.addedPrice || w.price; // compat données existantes
     return (
       '<tr id="' + rowId + '" class="wl-row-clickable" onclick="toggleWatchlistChart(' + i + ',\'' + w.ticker + '\')">' +
-        '<td><div class="ticker-cell">' + logoHtml(w.ticker, 26, 'ticker-icon') +
+        '<td data-label="Action"><div class="ticker-cell">' + logoHtml(w.ticker, 26, 'ticker-icon') +
           '<div><div class="ticker-name">' + (w.name || w.ticker) + '</div>' +
           '<div class="ticker-sym">' + w.ticker + '</div></div></div></td>' +
-        '<td class="mono wl-price" style="text-align:right">…</td>' +
-        '<td class="mono wl-daychg" style="text-align:right;color:var(--text2)">…</td>' +
-        '<td class="wl-spark" style="min-width:120px;width:120px;padding:0 8px"><div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px">…</div></td>' +
-        '<td class="mono wl-since" style="text-align:right;color:var(--text2)" title="Depuis le ' + (w.addedAt ? w.addedAt.slice(0,10) : '?') + ' @ ' + (addedPrice ? addedPrice.toFixed(2) + ' €' : '?') + '">…</td>' +
-        '<td style="text-align:right"><button class="btn-del" onclick="event.stopPropagation();removeFromWatchlist(' + i + ')" title="Retirer">✕</button></td>' +
+        '<td data-label="Prix actuel" class="mono wl-price" style="text-align:right">…</td>' +
+        '<td data-label="Variation jour" class="mono wl-daychg" style="text-align:right;color:var(--text2)">…</td>' +
+        '<td data-label="30 jours" class="wl-spark" style="min-width:120px;width:120px;padding:0 8px"><div style="height:30px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px">…</div></td>' +
+        '<td data-label="Depuis ajout" class="mono wl-since" style="text-align:right;color:var(--text2)" title="Depuis le ' + (w.addedAt ? w.addedAt.slice(0,10) : '?') + ' @ ' + (addedPrice ? addedPrice.toFixed(2) + ' €' : '?') + '">…</td>' +
+        '<td data-label="" style="text-align:right"><button class="btn-del" onclick="event.stopPropagation();removeFromWatchlist(' + i + ')" title="Retirer">✕</button></td>' +
       '</tr>' +
       '<tr id="wl-chart-row-' + i + '" class="wl-chart-row" style="display:none">' +
         '<td colspan="6">' +
