@@ -5711,6 +5711,16 @@ function fmtCompact(n) {
   return n.toFixed(0) + ' €';
 }
 
+function projNumStep(id, dir) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const step = parseFloat(el.step) || 1;
+  const cur  = parseFloat(el.value) || 0;
+  const next = +(cur + dir * step).toFixed(4);
+  el.value = next < 0 ? 0 : next;
+  renderProjections();
+}
+
 function renderProjections() {
   const base    = parseFloat(document.getElementById('proj-base')?.value) || 0;
   const monthly = parseFloat(document.getElementById('proj-monthly')?.value) || 0;

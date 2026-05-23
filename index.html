@@ -476,15 +476,27 @@
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px">
           <div>
             <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Valeur actuelle (€)</label>
-            <input type="number" id="proj-base" value="0" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+            <div class="num-input-wrap">
+              <input type="number" id="proj-base" value="0" step="100" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+              <span class="num-spin up"   onclick="projNumStep('proj-base',1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></span>
+              <span class="num-spin down" onclick="projNumStep('proj-base',-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
           </div>
           <div>
             <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Apport mensuel (€)</label>
-            <input type="number" id="proj-monthly" value="" placeholder="0" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+            <div class="num-input-wrap">
+              <input type="number" id="proj-monthly" value="" step="50" placeholder="0" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+              <span class="num-spin up"   onclick="projNumStep('proj-monthly',1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></span>
+              <span class="num-spin down" onclick="projNumStep('proj-monthly',-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
           </div>
           <div>
             <label style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Rendement estimé (%)</label>
-            <input type="number" id="proj-cagr" value="" placeholder="0" step="0.5" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+            <div class="num-input-wrap">
+              <input type="number" id="proj-cagr" value="" placeholder="0" step="0.5" oninput="renderProjections()" style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:var(--mono);outline:none">
+              <span class="num-spin up"   onclick="projNumStep('proj-cagr',1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></span>
+              <span class="num-spin down" onclick="projNumStep('proj-cagr',-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
           </div>
           <div style="background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;justify-content:center">
             <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px">Livret A benchmark</div>

@@ -1876,6 +1876,35 @@ body.sb-collapsed .main { margin-left: 58px; }
 .chart-fullscreen canvas { max-height: none !important; }
 .chart-fullscreen .chart-expand-btn { top: 14px; right: 14px; }
 
+/* ── Spinners number input (Projections) ── */
+#page-projections input[type=number] {
+  -moz-appearance: textfield;
+  padding-right: 32px !important;
+}
+#page-projections input[type=number]::-webkit-outer-spin-button,
+#page-projections input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+#page-projections .num-input-wrap {
+  position: relative;
+}
+#page-projections .num-spin {
+  position: absolute; right: 4px;
+  width: 22px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 5px; cursor: pointer;
+  color: var(--text2); transition: all 0.12s;
+  user-select: none;
+}
+#page-projections .num-spin:hover { background: var(--accent-d); color: var(--accent); border-color: rgba(124,109,245,0.3); }
+#page-projections .num-spin:active { transform: scale(0.92); }
+#page-projections .num-spin.up   { top: 7px; }
+#page-projections .num-spin.down { bottom: 7px; }
+#page-projections .num-spin svg { width: 12px; height: 12px; }
+
 /* Très petit écran */
 @media (max-width: 380px) {
   .stats-grid { grid-template-columns: 1fr !important; }
