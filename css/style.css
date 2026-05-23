@@ -1850,6 +1850,32 @@ body.sb-collapsed .main { margin-left: 58px; }
   #page-watchlist table tr.wl-chart-row td::before { display: none; }
 }
 
+/* ── Bouton agrandir chart + mode fullscreen ── */
+.chart-expand-btn {
+  position: absolute; top: 8px; right: 8px; z-index: 5;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(20,22,32,0.7); border: 1px solid var(--border);
+  color: var(--text2); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all 0.15s; backdrop-filter: blur(4px);
+}
+.chart-expand-btn:hover { background: var(--s2); color: var(--text); border-color: var(--border2); }
+.chart-fullscreen {
+  position: fixed !important; inset: 0 !important; z-index: 9999 !important;
+  background: var(--bg) !important; padding: 20px !important;
+  margin: 0 !important; border-radius: 0 !important;
+  height: 100vh !important; max-height: 100vh !important; width: 100vw !important;
+  display: flex !important; flex-direction: column !important;
+}
+.chart-fullscreen > canvas,
+.chart-fullscreen .portf-canvas-wrap,
+.chart-fullscreen > div:has(> canvas) {
+  flex: 1 !important; width: 100% !important; height: 100% !important;
+  max-height: none !important;
+}
+.chart-fullscreen canvas { max-height: none !important; }
+.chart-fullscreen .chart-expand-btn { top: 14px; right: 14px; }
+
 /* Très petit écran */
 @media (max-width: 380px) {
   .stats-grid { grid-template-columns: 1fr !important; }

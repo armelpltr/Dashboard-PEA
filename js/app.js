@@ -511,6 +511,7 @@ async function startApp(user) {
     window.fetchAllLogos();
     if (!window.autoRefreshInterval) window.toggleAutoRefresh();
     setTimeout(initStatCardsScroll, 1500);
+    setTimeout(initChartExpandButtons, 800);
 
     // Preload des données lourdes (Benchmark + Performance + Watchlist)
     // en arrière-plan, pour que les pages s'affichent instantanément quand
@@ -5457,6 +5458,7 @@ async function initBenchmark() {
       '</div>';
     }).join('');
   }
+  startKpisAutoScroll('bench-kpis');
 
   if (statusEl) {
     const missing = [];
@@ -6720,6 +6722,53 @@ function startKpisAutoScroll(elId) {
   el._kpisRaf = requestAnimationFrame(step);
 }
 function startDivKpisAutoScroll() { startKpisAutoScroll('div-kpis'); }
+
+// ── Bouton agrandir chart (plein écran landscape) ──
+const EXPAND_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+const COLLAPSE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+function _findChartContainer(canvasId) {
+  const c = document.getElementById(canvasId);
+  if (!c) return null;
+  // Remonte au parent qui peut être agrandi (section-card ou wrap)
+  let p = c.parentElement;
+  while (p && !p.classList.contains('section-card') && !p.classList.contains('portf-canvas-wrap') && p.tagName !== 'BODY') {
+    p = p.parentElement;
+  }
+  return p || c.parentElement;
+}
+function toggleChartFullscreen(canvasId, btn) {
+  const container = _findChartContainer(canvasId);
+  if (!container) return;
+  const isOn = container.classList.toggle('chart-fullscreen');
+  btn.innerHTML = isOn ? COLLAPSE_ICON : EXPAND_ICON;
+  btn.title = isOn ? 'Réduire' : 'Agrandir';
+  // Force Chart.js resize
+  setTimeout(() => {
+    const chart = window.Chart && Chart.getChart && Chart.getChart(canvasId);
+    if (chart) chart.resize();
+    // Verrouille orientation si possible (mobile uniquement)
+    if (isOn && screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    } else if (!isOn && screen.orientation && screen.orientation.unlock) {
+      try { screen.orientation.unlock(); } catch {}
+    }
+  }, 100);
+}
+function _addExpandBtn(canvasId) {
+  const container = _findChartContainer(canvasId);
+  if (!container || container.querySelector(`.chart-expand-btn[data-target="${canvasId}"]`)) return;
+  if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+  const btn = document.createElement('button');
+  btn.className = 'chart-expand-btn';
+  btn.dataset.target = canvasId;
+  btn.innerHTML = EXPAND_ICON;
+  btn.title = 'Agrandir';
+  btn.onclick = (e) => { e.stopPropagation(); toggleChartFullscreen(canvasId, btn); };
+  container.appendChild(btn);
+}
+function initChartExpandButtons() {
+  ['chart-portfolio', 'chart-benchmark', 'chart-projections', 'chart-perf-annual'].forEach(_addExpandBtn);
+}
 
 function openDivModal() {
   const pf  = getPortfolio(currentUser);
