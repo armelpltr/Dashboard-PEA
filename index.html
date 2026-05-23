@@ -20,6 +20,45 @@
 </head>
 <body>
 
+<!-- ═══ BANDEAU COOKIES ═══ -->
+<div id="cookie-banner" style="display:none">
+  <div class="cookie-banner-content">
+    <div class="cookie-banner-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="8.5" cy="10.5" r="0.7" fill="currentColor"/>
+        <circle cx="15.5" cy="9" r="0.7" fill="currentColor"/>
+        <circle cx="11" cy="15" r="0.7" fill="currentColor"/>
+        <circle cx="16" cy="14" r="0.7" fill="currentColor"/>
+      </svg>
+    </div>
+    <div class="cookie-banner-text">
+      <div class="cookie-banner-title">Cookies & stockage local</div>
+      <div class="cookie-banner-desc">Capital View utilise le stockage local (Firebase Auth, préférences) pour fonctionner. Aucun cookie publicitaire ni tracker tiers. <a href="politique-confidentialite.html" target="_blank">En savoir plus</a></div>
+    </div>
+    <div class="cookie-banner-actions">
+      <button onclick="cookieConsent('refuse')" class="cookie-btn-refuse">Refuser</button>
+      <button onclick="cookieConsent('accept')" class="cookie-btn-accept">Accepter</button>
+    </div>
+  </div>
+</div>
+<script>
+  (function() {
+    if (!localStorage.getItem('cookie_consent')) {
+      document.addEventListener('DOMContentLoaded', () => {
+        const b = document.getElementById('cookie-banner');
+        if (b) b.style.display = 'block';
+      });
+    }
+    window.cookieConsent = function(choice) {
+      localStorage.setItem('cookie_consent', choice);
+      localStorage.setItem('cookie_consent_date', new Date().toISOString());
+      const b = document.getElementById('cookie-banner');
+      if (b) b.style.display = 'none';
+    };
+  })();
+</script>
+
 <!-- ═══ SPLASH (visible par défaut, masqué quand l'app est prête) ═══ -->
 <div id="splash-screen">
   <img src="logo.png" alt="Capital View" class="splash-logo">

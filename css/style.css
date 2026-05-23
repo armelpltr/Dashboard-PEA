@@ -1922,6 +1922,55 @@ body.sb-collapsed .main { margin-left: 58px; }
 .chart-expand-bar .chart-expand-btn { position: static; }
 .chart-expand-bar-fullscreen { position: fixed; top: 14px; right: 14px; z-index: 10000; padding: 0; }
 
+/* ── Bandeau cookies ── */
+#cookie-banner {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+  z-index: 20000; max-width: 720px; width: calc(100% - 32px);
+  background: var(--s1); border: 1px solid var(--border2);
+  border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  backdrop-filter: blur(10px);
+  animation: cookie-slide-up 0.35s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes cookie-slide-up { from { opacity:0; transform: translate(-50%, 30px); } to { opacity:1; transform: translate(-50%, 0); } }
+.cookie-banner-content {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+}
+.cookie-banner-icon {
+  flex-shrink: 0; width: 38px; height: 38px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(245,183,49,0.12); color: var(--gold);
+  border-radius: 10px;
+}
+.cookie-banner-text { flex: 1; min-width: 0; }
+.cookie-banner-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.cookie-banner-desc { font-size: 11px; color: var(--text2); line-height: 1.5; }
+.cookie-banner-desc a { color: var(--accent); text-decoration: none; }
+.cookie-banner-desc a:hover { text-decoration: underline; }
+.cookie-banner-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.cookie-btn-refuse, .cookie-btn-accept {
+  border: none; border-radius: 8px; padding: 8px 16px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: var(--sans); transition: all 0.15s;
+}
+.cookie-btn-refuse {
+  background: var(--s3); color: var(--text2);
+  border: 1px solid var(--border);
+}
+.cookie-btn-refuse:hover { background: var(--s2); color: var(--text); }
+.cookie-btn-accept {
+  background: var(--accent); color: #fff;
+}
+.cookie-btn-accept:hover { background: var(--accent-h, var(--accent)); filter: brightness(1.1); }
+
+@media (max-width: 560px) {
+  .cookie-banner-content { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px; }
+  .cookie-banner-icon { display: none; }
+  .cookie-banner-actions { justify-content: stretch; }
+  .cookie-btn-refuse, .cookie-btn-accept { flex: 1; padding: 10px; }
+  #cookie-banner { bottom: 12px; }
+}
+
 /* ── Spinners number input (Projections) ── */
 #page-projections input[type=number] {
   -moz-appearance: textfield;
