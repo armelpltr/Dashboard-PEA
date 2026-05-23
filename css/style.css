@@ -1892,18 +1892,18 @@ body.sb-collapsed .main { margin-left: 58px; }
 }
 #page-projections .num-spin {
   position: absolute; right: 4px;
-  width: 22px; height: 18px;
+  width: 22px; height: 13px;
   display: flex; align-items: center; justify-content: center;
   background: var(--s2); border: 1px solid var(--border);
-  border-radius: 5px; cursor: pointer;
+  cursor: pointer;
   color: var(--text2); transition: all 0.12s;
   user-select: none;
 }
-#page-projections .num-spin:hover { background: var(--accent-d); color: var(--accent); border-color: rgba(124,109,245,0.3); }
+#page-projections .num-spin:hover { background: var(--accent-d); color: var(--accent); border-color: rgba(124,109,245,0.3); z-index: 2; }
 #page-projections .num-spin:active { transform: scale(0.92); }
-#page-projections .num-spin.up   { top: 7px; }
-#page-projections .num-spin.down { bottom: 7px; }
-#page-projections .num-spin svg { width: 12px; height: 12px; }
+#page-projections .num-spin.up   { top: 4px;    border-radius: 5px 5px 0 0; border-bottom: none; }
+#page-projections .num-spin.down { bottom: 4px; border-radius: 0 0 5px 5px; }
+#page-projections .num-spin svg { width: 10px; height: 10px; }
 
 /* Très petit écran */
 @media (max-width: 380px) {
