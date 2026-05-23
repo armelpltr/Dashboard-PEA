@@ -1922,6 +1922,20 @@ body.sb-collapsed .main { margin-left: 58px; }
 .chart-expand-bar .chart-expand-btn { position: static; }
 .chart-expand-bar-fullscreen { position: fixed; top: 14px; right: 14px; z-index: 10000; padding: 0; }
 
+/* Liens légaux dans la sidebar desktop */
+.sidebar-legal-links {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10px; color: var(--text3);
+  padding: 0 12px 8px;
+  flex-wrap: wrap;
+}
+.sidebar-legal-links a {
+  color: var(--text3); text-decoration: none;
+  transition: color 0.15s;
+}
+.sidebar-legal-links a:hover { color: var(--accent); }
+.sidebar-legal-links span { opacity: 0.4; }
+
 /* ── Bandeau cookies ── */
 #cookie-banner {
   position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);

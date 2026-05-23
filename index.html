@@ -221,6 +221,16 @@
       <div class="mobile-drawer-item" onclick="openProfilModal();closeMobileDrawer()">
         <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>Mon profil
       </div>
+      <div class="mobile-drawer-section">Informations légales</div>
+      <a class="mobile-drawer-item" href="cgu.html" target="_blank" style="text-decoration:none">
+        <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>CGU
+      </a>
+      <a class="mobile-drawer-item" href="politique-confidentialite.html" target="_blank" style="text-decoration:none">
+        <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>Politique de confidentialité
+      </a>
+      <a class="mobile-drawer-item" href="mentions-legales.html" target="_blank" style="text-decoration:none">
+        <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>Mentions légales
+      </a>
       <div style="height:1px;background:var(--border);margin:8px 20px"></div>
       <div class="mobile-drawer-item" onclick="doLogout()" style="color:var(--negative)">
         <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff4d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></span>Déconnexion
@@ -269,6 +279,13 @@
       </div>
     </nav>
     <div class="sidebar-user">
+      <div class="sidebar-legal-links">
+        <a href="cgu.html" target="_blank">CGU</a>
+        <span>·</span>
+        <a href="politique-confidentialite.html" target="_blank">Confidentialité</a>
+        <span>·</span>
+        <a href="mentions-legales.html" target="_blank">Mentions</a>
+      </div>
       <div class="user-card" onclick="openProfilModal()" style="cursor:pointer" title="Mon profil">
         <div class="user-avatar" id="user-avatar">A</div>
         <div style="flex:1;min-width:0">
