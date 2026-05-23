@@ -1,0 +1,211 @@
+================================================================
+CAPITAL BOARD - CHECKLIST AVANT LANCEMENT PUBLIC
+================================================================
+Dernière mise à jour : 2026-05-23
+
+
+╔════════════════════════════════════════════════════════════════╗
+║ 1. DOMAINE & EMAIL                                             ║
+╚════════════════════════════════════════════════════════════════╝
+
+□ Acheter le domaine (ovh.com / gandi.net / namecheap.com)
+  → capitalboard.fr     LIBRE (~7€/an)
+  → capital-board.com   LIBRE (~12€/an) — optionnel
+  → capitalboard.app    LIBRE (~15€/an) — optionnel
+  NB: capitalboard.com est PRIS, on prend le .fr en principal
+
+□ Créer l'email professionnel contact@capitalboard.fr
+  Options (gratuit ou bon marché) :
+  - Zoho Mail (gratuit, 1 boîte, 5 Go)        → zoho.com/mail
+  - ProtonMail (gratuit, identité PM)         → proton.me/mail
+  - OVH (inclus avec hébergement)             → ovh.com
+  - Bouygues/Orange (si tu as offre pro)
+
+□ Configurer un FORWARD :
+  contact@capitalboard.fr → ton email personnel
+  (pour recevoir tout direct sur ton inbox habituelle)
+
+□ Tester l'email en s'envoyant un message
+
+
+╔════════════════════════════════════════════════════════════════╗
+║ 2. STATUT JURIDIQUE                                            ║
+╚════════════════════════════════════════════════════════════════╝
+
+Tu peux commencer en tant que PARTICULIER (pas obligé d'être société).
+Mais si tu monétises OU si tu veux limiter ta responsabilité personnelle :
+
+□ Auto-entreprise (recommandé pour démarrer)
+  - Gratuit, 100% en ligne, 15 min
+  - autoentrepreneur.urssaf.fr
+  - Code APE : 6312Z (portail Internet) ou 6201Z (programmation)
+  - Tu obtiens un SIREN/SIRET (à mettre dans mentions légales)
+  - Tu peux refacturer tes utilisateurs si tu passes en payant
+
+□ Mettre le SIREN dans mentions-legales.html
+  (actuellement vide, faut compléter quand tu l'auras)
+
+
+╔════════════════════════════════════════════════════════════════╗
+║ 3. DÉPLOIEMENT DOMAINE                                         ║
+╚════════════════════════════════════════════════════════════════╝
+
+L'app est sur GitHub Pages (armelpltr.github.io/Dashboard-PEA).
+Pour pointer capitalboard.fr dessus :
+
+□ Dans le repo GitHub : Settings → Pages → Custom domain
+  → capitalboard.fr
+  → cocher "Enforce HTTPS"
+
+□ Chez ton registrar du domaine, ajouter ces DNS :
+  Type A      @       185.199.108.153
+  Type A      @       185.199.109.153
+  Type A      @       185.199.110.153
+  Type A      @       185.199.111.153
+  Type CNAME  www     armelpltr.github.io
+
+□ Attendre propagation DNS (15 min à 24h)
+□ Vérifier que https://capitalboard.fr charge bien l'app
+
+□ Mettre à jour Firebase :
+  Console Firebase → Authentication → Settings → Authorized domains
+  → Ajouter capitalboard.fr
+
+
+╔════════════════════════════════════════════════════════════════╗
+║ 4. RGPD - CONTENU LÉGAL À COMPLÉTER                            ║
+╚════════════════════════════════════════════════════════════════╝
+
+□ mentions-legales.html : compléter
+  - SIREN (après création auto-entreprise)
+  - Adresse postale (peut être ton adresse perso ou domiciliation)
+  - Hébergeur : préciser "GitHub Pages — GitHub Inc., 88 Colin P
+    Kelly Jr Street, San Francisco, CA 94107, USA"
+  - Directeur de publication : Armel Plantier
+  - Pour Firebase backend : "Google Cloud — Google LLC, 1600
+    Amphitheatre Parkway, Mountain View, CA 94043, USA"
+
+□ politique-confidentialite.html : à enrichir
+  - Liste explicite des sous-traitants :
+    * Firebase (Google) — auth, base de données — USA
+    * Mistral AI — analyse récap — France
+    * Tavily — recherche web — USA
+    * GitHub Pages — hébergement statique — USA
+  - Mention "Transferts hors UE encadrés par les Clauses
+    Contractuelles Types (CCT) approuvées par la Commission UE"
+  - Durée de conservation : préciser (compte = 3 ans inactivité ?)
+  - Droits RGPD : accès, rectification, suppression, portabilité,
+    opposition, retrait du consentement
+
+□ cgu.html : OK, juste vérifier email mis à jour
+
+
+╔════════════════════════════════════════════════════════════════╗
+║ 5. SÉCURITÉ AVANT OPEN SOURCE                                  ║
+╚════════════════════════════════════════════════════════════════╝
+
+□ Vérifier qu'aucun secret n'est dans le repo public :
+  - .env, .env.local, secrets.json → AUCUN dans le repo
+  - service-account.json → JAMAIS commité
+  - clés API privées (Mistral, Tavily) → uniquement secrets GitHub Actions
+
+□ Les clés Firebase client (apiKey dans index.html / app.js) sont
+  PUBLIQUES par design. La sécurité vient des Firestore Rules.
+  → Vérifier les Firestore Rules : Console Firebase → Rules
+  → Bonnes règles : un user ne peut lire/écrire que ses propres docs
+
+□ Activer Firebase App Check (anti-abuse, anti-scraping)
+  Console Firebase → App Check → reCAPTCHA v3
+
+□ Activer Firebase Security Rules pour Storage si utilisé
+
+
+╔════════════════════════════════════════════════════════════════╗
+║ 6. OPEN SOURCE - PRÉPARATION REPO                              ║
+╚════════════════════════════════════════════════════════════════╝
+
+□ Choisir licence
+  Recommandé : MIT (simple, permissif, standard)
+  Si tu veux protéger ton SaaS : AGPL-3.0 (force les forks
+  hébergés à publier leur code)
+
+□ Créer fichiers à la racine :
+  - LICENSE              (texte de la licence choisie)
+  - README.md            (présentation, install, stack, captures)
+  - CONTRIBUTING.md      (comment contribuer, style de commits)
+  - SECURITY.md          (où signaler une vulnérabilité)
+  - .github/ISSUE_TEMPLATE/ (bug report + feature request)
+
+□ Renommer le repo : Dashboard-PEA → capital-board
+  GitHub : Settings → Repository name
+
+□ Description GitHub : "Capital Board — Suivi personnel de
+  patrimoine financier (PEA, actions, ETF, crypto à venir)"
+
+□ Topics GitHub : finance, pea, portfolio, firebase, dashboard,
+  french, fintech
+
+□ Passer le repo en PUBLIC
+  GitHub : Settings → Danger Zone → Change visibility
+
+
+╔════════════════════════════════════════════════════════════════╗
+║ 7. RENOMMAGE COMPLET (déjà fait dans le code)                  ║
+╚════════════════════════════════════════════════════════════════╝
+
+□ DÉJÀ FAIT : "Capital View" → "Capital Board" dans tous les
+  fichiers (HTML, JS, manifest.json, scripts)
+□ DÉJÀ FAIT : "@capitalview.com" → "@capitalboard.fr"
+
+□ À FAIRE par toi :
+  - Mettre à jour logo / favicon (logo.png) si tu veux changer
+    l'icône (actuel = "C" violet → peut être gardé tel quel)
+  - Captures dans le README à mettre à jour avec nouveau nom
+
+
+╔════════════════════════════════════════════════════════════════╗
+║ 8. CHECKLIST PRÉ-LANCEMENT FINALE                              ║
+╚════════════════════════════════════════════════════════════════╝
+
+□ Tester l'app sur :
+  - Chrome Desktop
+  - Safari iOS (PWA installée + browser)
+  - Chrome Android
+  - Firefox
+
+□ Vérifier les push notifications
+□ Vérifier l'import CSV
+□ Vérifier le récap quotidien (manuel via "Générer maintenant")
+□ Vérifier le récap hebdo (workflow_dispatch + force_weekly)
+□ Vérifier le RGPD checkbox à l'inscription (bloquant)
+□ Vérifier le bandeau cookies
+□ Vérifier les 3 liens légaux (CGU, conf, mentions)
+□ Vérifier le bouton déconnexion mobile dans profil
+
+□ Tester création d'un nouveau compte de zéro
+□ Tester suppression de compte (Danger zone)
+
+□ Lancer Lighthouse (Chrome DevTools) :
+  - Performance > 80
+  - Accessibility > 90
+  - SEO > 90
+  - PWA installable ✓
+
+
+╔════════════════════════════════════════════════════════════════╗
+║ 9. POST-LANCEMENT                                              ║
+╚════════════════════════════════════════════════════════════════╝
+
+□ Annoncer (LinkedIn, Twitter, Reddit r/vosfinances)
+□ Ouvrir un canal de support (Discord ou email)
+□ Mettre en place analytics (sans tracker invasif)
+  → Plausible.io (RGPD-friendly, payant ~9€/mois)
+  → Ou Goatcounter (gratuit, simple)
+□ Suivi des bugs : GitHub Issues
+□ Roadmap publique : GitHub Projects
+
+================================================================
+PRIORITÉ 1 (cette semaine) : 1, 2, 3 (domaine, email, statut)
+PRIORITÉ 2 (avant ouvrir) : 4, 5 (légal + sécurité)
+PRIORITÉ 3 (au moment open source) : 6 (repo public)
+================================================================

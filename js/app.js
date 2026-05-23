@@ -730,7 +730,7 @@ function _avatarHue(uid) {
   return (s && typeof s.avatarHue === 'number') ? s.avatarHue : _userHue(uid);
 }
 
-// Avatar : logo Capital View recoloré par rotation de teinte.
+// Avatar : logo Capital Board recoloré par rotation de teinte.
 function defaultAvatarHtml(uid) {
   return '<img src="logo.png" alt="" style="width:100%;height:100%;border-radius:inherit;'
     + 'object-fit:cover;filter:hue-rotate(' + _avatarHue(uid) + 'deg)">';
@@ -8205,8 +8205,8 @@ async function initPush(uid) {
     if (token) setFirestoreDoc(firestoreDoc(db, 'roles', uid), { fcmToken: token }, { merge: true }).catch(() => {});
     onFCMMessage(fcmMessaging, payload => {
       const { title, body } = payload.notification || {};
-      _logNotifHistory(payload.data?.type || 'push', title || 'Capital View', body || '');
-      _showChatToast({ icon: IC.bell, title: title || 'Capital View', msg: body || '' });
+      _logNotifHistory(payload.data?.type || 'push', title || 'Capital Board', body || '');
+      _showChatToast({ icon: IC.bell, title: title || 'Capital Board', msg: body || '' });
       renderNotificationsPage();
       if (payload.data?.type === 'daily_recap') _refreshRecap();
     });
@@ -8254,7 +8254,7 @@ async function sendTestNotification() {
     return;
   }
   if (_isIOSNonStandalone()) {
-    _showChatToast({ icon: IC.phone, title: 'Installez l\'app', msg: 'Sur iPhone : Partager → Sur l\'écran d\'accueil, puis rouvrez Capital View.' });
+    _showChatToast({ icon: IC.phone, title: 'Installez l\'app', msg: 'Sur iPhone : Partager → Sur l\'écran d\'accueil, puis rouvrez Capital Board.' });
     return;
   }
   let perm = Notification.permission;
@@ -8265,7 +8265,7 @@ async function sendTestNotification() {
     return;
   }
   if (btn) { btn.disabled = true; btn.innerHTML = IC.mail + ' Envoi…'; }
-  const title = 'Capital View — Test';
+  const title = 'Capital Board — Test';
   const body  = 'Notification de test reçue avec succès';
   try {
     await navigator.serviceWorker.register('firebase-messaging-sw.js');

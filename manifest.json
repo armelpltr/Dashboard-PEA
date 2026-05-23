@@ -1,6 +1,6 @@
 {
-  "name": "Capital View",
-  "short_name": "Capital View",
+  "name": "Capital Board",
+  "short_name": "Capital Board",
   "description": "Suivi de portefeuille PEA",
   "start_url": "./index.html",
   "scope": "./",

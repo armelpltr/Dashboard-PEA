@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// daily-recap.js — Récap quotidien Capital View
+// daily-recap.js — Récap quotidien Capital Board
 // Lancé par GitHub Actions chaque jour ouvré à 20h (Paris)
 //
 // Ne fait plus d'email : envoie une notification push courte et

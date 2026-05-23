@@ -13,13 +13,13 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(payload => {
-  const title = payload.notification?.title || 'Capital View';
+  const title = payload.notification?.title || 'Capital Board';
   const body  = payload.notification?.body  || '';
   self.registration.showNotification(title, {
     body,
     icon:  '/Dashboard-PEA/logo.png',
     badge: '/Dashboard-PEA/logo.png',
-    tag:   payload.data?.type || 'capitalview',
+    tag:   payload.data?.type || 'capitalboard',
     data:  payload.data || {}
   });
 });

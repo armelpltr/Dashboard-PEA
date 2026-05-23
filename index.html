@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Capital View</title>
+<title>Capital Board</title>
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Capital View">
+<meta name="apple-mobile-web-app-title" content="Capital Board">
 <meta name="theme-color" content="#12111f">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,7 +34,7 @@
     </div>
     <div class="cookie-banner-text">
       <div class="cookie-banner-title">Cookies & stockage local</div>
-      <div class="cookie-banner-desc">Capital View utilise le stockage local (Firebase Auth, préférences) pour fonctionner. Aucun cookie publicitaire ni tracker tiers. <a href="politique-confidentialite.html" target="_blank">En savoir plus</a></div>
+      <div class="cookie-banner-desc">Capital Board utilise le stockage local (Firebase Auth, préférences) pour fonctionner. Aucun cookie publicitaire ni tracker tiers. <a href="politique-confidentialite.html" target="_blank">En savoir plus</a></div>
     </div>
     <div class="cookie-banner-actions">
       <button onclick="cookieConsent('refuse')" class="cookie-btn-refuse">Refuser</button>
@@ -61,8 +61,8 @@
 
 <!-- ═══ SPLASH (visible par défaut, masqué quand l'app est prête) ═══ -->
 <div id="splash-screen">
-  <img src="logo.png" alt="Capital View" class="splash-logo">
-  <div class="splash-name">Capital View</div>
+  <img src="logo.png" alt="Capital Board" class="splash-logo">
+  <div class="splash-name">Capital Board</div>
   <div class="splash-spinner" id="splash-spinner"></div>
   <div class="splash-text" id="splash-text">Chargement…</div>
   <div class="splash-error" id="splash-error"></div>
@@ -78,7 +78,7 @@
   <div class="login-card" id="login-view">
     <div class="login-logo">
       <div class="logo-icon"><img src="logo.png" alt="logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
-      <div class="login-title">Capital View</div>
+      <div class="login-title">Capital Board</div>
       <div class="login-subtitle">Suivi de portefeuille</div>
     </div>
     <div class="login-error" id="login-error"></div>
@@ -102,7 +102,7 @@
     <div class="login-logo">
       <div class="logo-icon"><img src="logo.png" alt="logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
       <div class="login-title">Créer un compte</div>
-      <div class="login-subtitle">Capital View</div>
+      <div class="login-subtitle">Capital Board</div>
     </div>
     <div class="login-error" id="register-error"></div>
     <div class="form-group">
@@ -155,7 +155,7 @@
   <header class="mobile-header" id="mobile-header">
     <div class="mobile-header-logo">
       <div class="mobile-header-icon"><img src="logo.png" alt="logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
-      <div class="mobile-header-title">Capital View</div>
+      <div class="mobile-header-title">Capital Board</div>
     </div>
     <div class="mobile-header-actions">
       <div class="mobile-header-btn" onclick="openMobileDrawer()" title="Plus">☰</div>
@@ -233,7 +233,7 @@
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon"><img src="logo.png" alt="logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
       <div>
-        <div class="sidebar-logo-title">Capital View</div>
+        <div class="sidebar-logo-title">Capital Board</div>
       </div>
     </div>
     <nav class="sidebar-nav">
@@ -775,7 +775,7 @@
       <!-- Astuce iOS : push uniquement en PWA installée -->
       <div id="ios-push-hint" style="display:none;gap:8px;align-items:flex-start;background:var(--s2);border:1px solid var(--s3);border-radius:10px;padding:10px 12px;margin-bottom:18px;font-size:11px;color:var(--text2);line-height:1.5">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        <span>Sur iPhone, les notifications push ne fonctionnent que si l'app est installée : <strong>Partager → Sur l'écran d'accueil</strong>, puis ouvrez Capital View depuis l'icône. iOS 16.4 ou plus requis.</span>
+        <span>Sur iPhone, les notifications push ne fonctionnent que si l'app est installée : <strong>Partager → Sur l'écran d'accueil</strong>, puis ouvrez Capital Board depuis l'icône. iOS 16.4 ou plus requis.</span>
       </div>
 
       <!-- Paramètres -->
