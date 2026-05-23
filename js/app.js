@@ -6709,13 +6709,15 @@ function startKpisAutoScroll(elId) {
   }
   // Délai pour laisser le layout se calculer après innerHTML
   setTimeout(() => {
+    let pos = el.scrollLeft;
     _kpisScrollTimers[elId] = setInterval(() => {
       if (paused) return;
       const max = el.scrollWidth - el.clientWidth;
       if (max <= 0) return;
-      el.scrollLeft += dir * 0.6;
-      if (el.scrollLeft >= max - 1) dir = -1;
-      else if (el.scrollLeft <= 0) dir = 1;
+      pos += dir * 0.6;
+      if (pos >= max) { pos = max; dir = -1; }
+      else if (pos <= 0) { pos = 0; dir = 1; }
+      el.scrollTo({ left: pos });
     }, 30);
   }, 150);
 }
