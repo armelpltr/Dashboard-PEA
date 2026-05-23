@@ -8341,6 +8341,15 @@ function renderNotificationsPage() {
 let _recapView = 'day';
 
 function renderRecapPage() {
+  // Auto-select: vendredi (5) → hebdo, autres jours → quotidien
+  const isFriday = new Date().getDay() === 5;
+  const view = isFriday ? 'week' : 'day';
+  const dayEl  = document.getElementById('recap-day-view');
+  const weekEl = document.getElementById('recap-week-view');
+  if (dayEl)  dayEl.style.display  = view === 'day'  ? '' : 'none';
+  if (weekEl) weekEl.style.display = view === 'week' ? '' : 'none';
+  const gen = document.getElementById('btn-generate-recap');
+  if (gen) gen.style.display = view === 'day' ? '' : 'none';
   _paintRecapPage();
   _paintWeeklyRecap();
   _refreshRecap();
@@ -8408,14 +8417,14 @@ function _paintWeeklyRecap() {
       ? '<span class="badge-etf">ETF</span>'
       : '<span class="badge-action">ACTION</span>';
     return '<tr>'
-      + '<td><div style="display:flex;align-items:center;gap:9px">'
+      + '<td data-label="Action"><div style="display:flex;align-items:center;gap:9px">'
       + logoHtml(l.ticker, 28, 'ticker-icon')
       + '<span style="font-size:13px;font-weight:600;color:var(--text)">' + l.name + badge + '</span>'
       + '</div></td>'
-      + '<td style="color:var(--text2)">' + l.ticker + '</td>'
-      + '<td style="color:var(--text)">' + l.qty + '</td>'
-      + '<td style="color:var(--text)">' + fmt(l.price) + '</td>'
-      + '<td style="color:' + c + '">' + fp(l.weekPct) + '</td>'
+      + '<td data-label="Ticker" style="color:var(--text2)">' + l.ticker + '</td>'
+      + '<td data-label="Qté" style="color:var(--text)">' + l.qty + '</td>'
+      + '<td data-label="Cours" style="color:var(--text)">' + fmt(l.price) + '</td>'
+      + '<td data-label="Var. semaine" style="color:' + c + '">' + fp(l.weekPct) + '</td>'
       + '</tr>';
   }).join('');
 
@@ -8621,15 +8630,15 @@ function _paintRecapPage() {
       ? '<span class="badge-etf">ETF</span>'
       : '<span class="badge-action">ACTION</span>';
     return '<tr>'
-      + '<td><div style="display:flex;align-items:center;gap:9px">'
+      + '<td data-label="Action"><div style="display:flex;align-items:center;gap:9px">'
       + logoHtml(l.ticker, 28, 'ticker-icon')
       + '<span style="font-size:13px;font-weight:600;color:var(--text)">' + l.name + badge + '</span>'
       + '</div></td>'
-      + '<td style="color:var(--text2)">' + l.ticker + '</td>'
-      + '<td style="color:var(--text)">' + l.qty + '</td>'
-      + '<td style="color:var(--text)">' + fmt(l.price) + '</td>'
-      + '<td style="color:' + c + '">' + fp(l.changePct) + '</td>'
-      + '<td style="color:' + c + '">' + sgn(dayVal) + fmt(dayVal) + '</td>'
+      + '<td data-label="Ticker" style="color:var(--text2)">' + l.ticker + '</td>'
+      + '<td data-label="Qté" style="color:var(--text)">' + l.qty + '</td>'
+      + '<td data-label="Cours" style="color:var(--text)">' + fmt(l.price) + '</td>'
+      + '<td data-label="Var. jour" style="color:' + c + '">' + fp(l.changePct) + '</td>'
+      + '<td data-label="Impact €" style="color:' + c + '">' + sgn(dayVal) + fmt(dayVal) + '</td>'
       + '</tr>';
   }).join('');
 

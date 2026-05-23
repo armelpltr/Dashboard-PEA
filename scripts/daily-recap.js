@@ -443,11 +443,14 @@ async function main() {
     // 9. Stocker le récap + envoyer push courte + logguer l'historique
     await saveRecap(user.uid, recap);
 
+    // Lun-Jeu : push daily. Vendredi : skip (la push weekly arrive juste après)
     const up      = totalDayPct >= 0;
     const emoji   = up ? '' : '';
     const title   = `Récap du jour : ${emoji} ${fmtp(totalDayPct)}`;
     const body    = 'Touchez pour voir le détail.';
-    await sendFcmPush(user.uid, title, body, 'daily_recap');
+    if (!isFriday) {
+      await sendFcmPush(user.uid, title, body, 'daily_recap');
+    }
     await logNotifHistory(user.uid, 'daily_recap', title, body);
 
     // 10. Vendredi : rapport hebdomadaire en plus
