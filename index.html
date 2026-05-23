@@ -886,6 +886,17 @@
       <input type="file" id="input-restore-json" accept=".json,application/json" style="display:none" onchange="importAllUserData(event)">
     </div>
 
+    <!-- Déconnexion -->
+    <div style="height:1px;background:var(--border);margin:18px 0"></div>
+    <button onclick="closeProfilModal();doLogout()" style="
+      width:100%;padding:10px;background:var(--s2);border:1px solid var(--border);
+      color:var(--text);border-radius:10px;font-size:13px;font-weight:600;
+      cursor:pointer;font-family:var(--sans);margin-bottom:10px;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Se déconnecter
+    </button>
+
     <!-- Danger zone -->
     <div style="height:1px;background:rgba(255,77,106,0.15);margin:18px 0"></div>
     <button onclick="confirmDeleteAccount()" style="
