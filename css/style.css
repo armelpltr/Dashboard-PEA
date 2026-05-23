@@ -1680,12 +1680,15 @@ body.sb-collapsed .main { margin-left: 58px; }
     display: flex !important;
     flex-direction: row !important;
     overflow-x: auto !important;
+    overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
     scrollbar-width: none;
     gap: 8px !important;
     padding: 4px 14px 12px !important;
     margin-bottom: 0 !important;
     border: none !important;
+    grid-template-columns: unset !important;
   }
   .stats-grid::-webkit-scrollbar { display: none; }
   .stat-card {
