@@ -6690,36 +6690,28 @@ function toggleDivHistory() {
   renderDivHistory(document.getElementById('div-history'));
 }
 
-// Auto-scroll horizontal des KPIs (mobile uniquement, pause au touch)
+// Auto-scroll horizontal des KPIs (mobile uniquement, même comportement que initStatCardsScroll)
 const _kpisScrollTimers = {};
 const _kpisScrollBound = {};
 function startKpisAutoScroll(elId) {
   if (_kpisScrollTimers[elId]) { clearInterval(_kpisScrollTimers[elId]); _kpisScrollTimers[elId] = null; }
-  if (window.innerWidth > 768) return;
   const el = document.getElementById(elId);
   if (!el) return;
   let paused = false;
-  let dir = 1;
   if (!_kpisScrollBound[elId]) {
-    const pause = () => { paused = true; clearTimeout(el._resumeT); el._resumeT = setTimeout(() => paused = false, 2500); };
-    el.addEventListener('touchstart', pause, { passive: true });
-    el.addEventListener('mouseenter', pause);
-    el._kpisPauseFn = () => paused;
+    el.addEventListener('touchstart', () => { paused = true; }, { passive: true });
+    el.addEventListener('touchend',   () => { setTimeout(() => { paused = false; }, 2500); }, { passive: true });
+    el.addEventListener('mouseenter', () => { paused = true; });
+    el.addEventListener('mouseleave', () => { paused = false; });
     _kpisScrollBound[elId] = true;
   }
-  // Délai pour laisser le layout se calculer après innerHTML
-  setTimeout(() => {
-    let pos = el.scrollLeft;
-    _kpisScrollTimers[elId] = setInterval(() => {
-      if (paused) return;
-      const max = el.scrollWidth - el.clientWidth;
-      if (max <= 0) return;
-      pos += dir * 0.6;
-      if (pos >= max) { pos = max; dir = -1; }
-      else if (pos <= 0) { pos = 0; dir = 1; }
-      el.scrollTo({ left: pos });
-    }, 30);
-  }, 150);
+  _kpisScrollTimers[elId] = setInterval(() => {
+    if (paused) return;
+    el.scrollLeft += 1;
+    if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 1) {
+      el.scrollLeft = 0;
+    }
+  }, 30);
 }
 function startDivKpisAutoScroll() { startKpisAutoScroll('div-kpis'); }
 
