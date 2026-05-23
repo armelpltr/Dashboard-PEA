@@ -6535,6 +6535,8 @@ function initDividendes() {
       </div>
       <div class="stat-value" style="font-size:16px;color:var(--gold)">${nextRows[0].nextEstim}</div>`;
 
+    startDivKpisAutoScroll();
+
     // ── Projection dividendes annuels ────────────────────────────────────────
     const projEl = document.getElementById('div-projection-content');
     if (projEl) {
@@ -6686,6 +6688,28 @@ function renderDivHistory(histEl) {
 function toggleDivHistory() {
   _divShowAll = !_divShowAll;
   renderDivHistory(document.getElementById('div-history'));
+}
+
+// Auto-scroll horizontal des KPIs dividendes (mobile uniquement, pause au touch)
+let _divKpisScrollTimer = null;
+function startDivKpisAutoScroll() {
+  if (_divKpisScrollTimer) { clearInterval(_divKpisScrollTimer); _divKpisScrollTimer = null; }
+  if (window.innerWidth > 768) return;
+  const el = document.getElementById('div-kpis');
+  if (!el) return;
+  let paused = false;
+  let dir = 1;
+  const pause = () => { paused = true; clearTimeout(el._resumeT); el._resumeT = setTimeout(() => paused = false, 2500); };
+  el.addEventListener('touchstart', pause, { passive: true });
+  el.addEventListener('mouseenter', pause);
+  _divKpisScrollTimer = setInterval(() => {
+    if (paused) return;
+    const max = el.scrollWidth - el.clientWidth;
+    if (max <= 0) return;
+    el.scrollLeft += dir * 0.6;
+    if (el.scrollLeft >= max - 1) dir = -1;
+    else if (el.scrollLeft <= 0) dir = 1;
+  }, 30);
 }
 
 function openDivModal() {
