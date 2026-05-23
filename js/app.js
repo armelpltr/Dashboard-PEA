@@ -6692,6 +6692,7 @@ function toggleDivHistory() {
 
 // Auto-scroll horizontal des KPIs (mobile uniquement, pause au touch)
 const _kpisScrollTimers = {};
+const _kpisScrollBound = {};
 function startKpisAutoScroll(elId) {
   if (_kpisScrollTimers[elId]) { clearInterval(_kpisScrollTimers[elId]); _kpisScrollTimers[elId] = null; }
   if (window.innerWidth > 768) return;
@@ -6699,17 +6700,24 @@ function startKpisAutoScroll(elId) {
   if (!el) return;
   let paused = false;
   let dir = 1;
-  const pause = () => { paused = true; clearTimeout(el._resumeT); el._resumeT = setTimeout(() => paused = false, 2500); };
-  el.addEventListener('touchstart', pause, { passive: true });
-  el.addEventListener('mouseenter', pause);
-  _kpisScrollTimers[elId] = setInterval(() => {
-    if (paused) return;
-    const max = el.scrollWidth - el.clientWidth;
-    if (max <= 0) return;
-    el.scrollLeft += dir * 0.6;
-    if (el.scrollLeft >= max - 1) dir = -1;
-    else if (el.scrollLeft <= 0) dir = 1;
-  }, 30);
+  if (!_kpisScrollBound[elId]) {
+    const pause = () => { paused = true; clearTimeout(el._resumeT); el._resumeT = setTimeout(() => paused = false, 2500); };
+    el.addEventListener('touchstart', pause, { passive: true });
+    el.addEventListener('mouseenter', pause);
+    el._kpisPauseFn = () => paused;
+    _kpisScrollBound[elId] = true;
+  }
+  // Délai pour laisser le layout se calculer après innerHTML
+  setTimeout(() => {
+    _kpisScrollTimers[elId] = setInterval(() => {
+      if (paused) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) return;
+      el.scrollLeft += dir * 0.6;
+      if (el.scrollLeft >= max - 1) dir = -1;
+      else if (el.scrollLeft <= 0) dir = 1;
+    }, 30);
+  }, 150);
 }
 function startDivKpisAutoScroll() { startKpisAutoScroll('div-kpis'); }
 
