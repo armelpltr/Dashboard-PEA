@@ -6690,19 +6690,19 @@ function toggleDivHistory() {
   renderDivHistory(document.getElementById('div-history'));
 }
 
-// Auto-scroll horizontal des KPIs dividendes (mobile uniquement, pause au touch)
-let _divKpisScrollTimer = null;
-function startDivKpisAutoScroll() {
-  if (_divKpisScrollTimer) { clearInterval(_divKpisScrollTimer); _divKpisScrollTimer = null; }
+// Auto-scroll horizontal des KPIs (mobile uniquement, pause au touch)
+const _kpisScrollTimers = {};
+function startKpisAutoScroll(elId) {
+  if (_kpisScrollTimers[elId]) { clearInterval(_kpisScrollTimers[elId]); _kpisScrollTimers[elId] = null; }
   if (window.innerWidth > 768) return;
-  const el = document.getElementById('div-kpis');
+  const el = document.getElementById(elId);
   if (!el) return;
   let paused = false;
   let dir = 1;
   const pause = () => { paused = true; clearTimeout(el._resumeT); el._resumeT = setTimeout(() => paused = false, 2500); };
   el.addEventListener('touchstart', pause, { passive: true });
   el.addEventListener('mouseenter', pause);
-  _divKpisScrollTimer = setInterval(() => {
+  _kpisScrollTimers[elId] = setInterval(() => {
     if (paused) return;
     const max = el.scrollWidth - el.clientWidth;
     if (max <= 0) return;
@@ -6711,6 +6711,7 @@ function startDivKpisAutoScroll() {
     else if (el.scrollLeft <= 0) dir = 1;
   }, 30);
 }
+function startDivKpisAutoScroll() { startKpisAutoScroll('div-kpis'); }
 
 function openDivModal() {
   const pf  = getPortfolio(currentUser);
@@ -7327,6 +7328,7 @@ function renderTRCohort(cohort) {
       <div class="stat-value" style="color:var(--positive)">+${fmt(total.dividends || 0)}</div>
       <div class="stat-sub">Encaissés</div>
     </div>`;
+  startKpisAutoScroll('perf-kpis');
 
   tbody.innerHTML = years.map(y => `
     <tr>
@@ -7992,6 +7994,7 @@ function renderPerformancePage(result, portfolio, txs) {
     </div>
   `;
   document.getElementById('perf-kpis').innerHTML = kpiHtml;
+  startKpisAutoScroll('perf-kpis');
 
   // ── Tableau ──
   const tbody = document.getElementById('perf-tbody');
