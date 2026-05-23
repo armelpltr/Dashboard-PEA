@@ -1580,7 +1580,7 @@ function resolveToYahooTicker(ticker) {
 
 // ── LOGO FETCHING ──────────────────────────────────────
 // Persist logo cache to localStorage so logos survive reloads
-const LOGO_CACHE_VERSION = 'v6'; // bump to purge stale hardcoded entries
+const LOGO_CACHE_VERSION = 'v7'; // bump to purge stale hardcoded entries
 function loadLogoCache() {
   try {
     if (localStorage.getItem('pea_logos_ver') !== LOGO_CACHE_VERSION) {
@@ -1633,11 +1633,12 @@ const ETF_ISSUER_DOMAINS = {
   'CSPX.AS':'ishares.com','EMIM.AS':'ishares.com','TLT':'ishares.com','SOXX':'ishares.com',
   // Amundi
   'PUST.PA':'amundietf.com','PANX.PA':'amundietf.com','PAEEM.PA':'amundietf.com',
-  'PCEU.PA':'amundietf.com','PE500.PA':'amundietf.com','ETZ.PA':'amundietf.com',
+  'PCEU.PA':'amundietf.com','PE500.PA':'amundietf.com',
   'EWLD.PA':'amundietf.com','CW8.PA':'amundietf.com','MWRD.PA':'amundietf.com',
   'RS2K.PA':'amundietf.com',
   // BNP Paribas Easy
   'ESEE.PA':'bnpparibas.com','ESE.PA':'bnpparibas.com','BNKE.PA':'bnpparibas.com',
+  'ETZ.PA':'bnpparibas.com',
   // Vanguard
   'VOO':'vanguard.com','VTI':'vanguard.com','VT':'vanguard.com',
   'VWCE.AS':'vanguard.com','VWRL.AS':'vanguard.com',
@@ -1654,7 +1655,7 @@ const ETF_ISSUER_DOMAINS = {
 function guessETFIssuerDomain(ticker) {
   const t = ticker.toUpperCase();
   if (/^(IW|IU|CS|EM|IS)/.test(t) || t === 'TLT' || t === 'SOXX') return 'ishares.com';
-  if (/^(CW|MWRD|RS|PC|PA|PU|PE|ET|EW)/.test(t)) return 'amundietf.com';
+  if (/^(CW|MWRD|RS|PC|PA|PU|PE|EW)/.test(t)) return 'amundietf.com';
   if (/^(VW|VO|VT)/.test(t)) return 'vanguard.com';
   if (/^(SP|XS|SPPW)/.test(t)) return 'ssga.com';
   if (/^XD/.test(t)) return 'xtrackers.com';
