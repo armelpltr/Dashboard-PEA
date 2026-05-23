@@ -1580,7 +1580,7 @@ function resolveToYahooTicker(ticker) {
 
 // ── LOGO FETCHING ──────────────────────────────────────
 // Persist logo cache to localStorage so logos survive reloads
-const LOGO_CACHE_VERSION = 'v5'; // bump to purge stale hardcoded entries
+const LOGO_CACHE_VERSION = 'v6'; // bump to purge stale hardcoded entries
 function loadLogoCache() {
   try {
     if (localStorage.getItem('pea_logos_ver') !== LOGO_CACHE_VERSION) {
@@ -1626,16 +1626,52 @@ function companyNameToDomain(name) {
   return clean.length > 2 ? clean + '.com' : null;
 }
 
+// Mapping ticker ETF → domaine émetteur (logo via favicon)
+const ETF_ISSUER_DOMAINS = {
+  // iShares (BlackRock)
+  'WPEA.PA':'ishares.com','IUSQ.AS':'ishares.com','IWDA.AS':'ishares.com',
+  'CSPX.AS':'ishares.com','EMIM.AS':'ishares.com','TLT':'ishares.com','SOXX':'ishares.com',
+  // Amundi
+  'PUST.PA':'amundietf.com','PANX.PA':'amundietf.com','PAEEM.PA':'amundietf.com',
+  'PCEU.PA':'amundietf.com','PE500.PA':'amundietf.com','ETZ.PA':'amundietf.com',
+  'EWLD.PA':'amundietf.com','CW8.PA':'amundietf.com','MWRD.PA':'amundietf.com',
+  'RS2K.PA':'amundietf.com',
+  // BNP Paribas Easy
+  'ESEE.PA':'bnpparibas.com','ESE.PA':'bnpparibas.com','BNKE.PA':'bnpparibas.com',
+  // Vanguard
+  'VOO':'vanguard.com','VTI':'vanguard.com','VT':'vanguard.com',
+  'VWCE.AS':'vanguard.com','VWRL.AS':'vanguard.com',
+  // SPDR / State Street
+  'SPY':'ssga.com','GLD':'ssga.com','SPPW.AS':'ssga.com',
+  // Xtrackers (DWS)
+  'XDWD.AS':'xtrackers.com',
+  // Invesco
+  'QQQ':'invesco.com','SGLD.AS':'invesco.com',
+  // ARK
+  'ARKK':'ark-funds.com',
+};
+
+function guessETFIssuerDomain(ticker) {
+  const t = ticker.toUpperCase();
+  if (/^(IW|IU|CS|EM|IS)/.test(t) || t === 'TLT' || t === 'SOXX') return 'ishares.com';
+  if (/^(CW|MWRD|RS|PC|PA|PU|PE|ET|EW)/.test(t)) return 'amundietf.com';
+  if (/^(VW|VO|VT)/.test(t)) return 'vanguard.com';
+  if (/^(SP|XS|SPPW)/.test(t)) return 'ssga.com';
+  if (/^XD/.test(t)) return 'xtrackers.com';
+  if (/^(BN|ES)/.test(t)) return 'bnpparibas.com';
+  return 'etf.com';
+}
+
 // Fetch logo : nom société → domaine, fallback map, fallback ticker (aucun appel réseau extra)
 function fetchLogo(ticker, companyName) {
   if (LOGO_CACHE[ticker]) return Promise.resolve(LOGO_CACHE[ticker]);
 
-  const ETF_LOGO = 'https://raw.githubusercontent.com/armelpltr/Dashboard-PEA/main/data/ETF-Database-Logo2-wPadding_RGB%20(1)%20square.png';
-
   if (isETF(ticker)) {
-    LOGO_CACHE[ticker] = ETF_LOGO;
+    const issuerDomain = ETF_ISSUER_DOMAINS[ticker] || guessETFIssuerDomain(ticker);
+    const url = 'https://www.google.com/s2/favicons?domain=' + issuerDomain + '&sz=128';
+    LOGO_CACHE[ticker] = url;
     saveLogoCache();
-    return Promise.resolve(ETF_LOGO);
+    return Promise.resolve(url);
   }
 
   // 1. Domaine de secours explicite (tickers dont le nom ne donne pas le bon domaine)
