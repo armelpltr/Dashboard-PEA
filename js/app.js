@@ -8634,8 +8634,7 @@ function _paintRecapPage() {
   }).join('');
 
   const bestWorst = (r.best && r.worst)
-    ? '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:18px">'
-      + '<div class="stat-card" style="border-left:3px solid var(--positive)">'
+    ? '<div class="stat-card" style="border-left:3px solid var(--positive)">'
       + '<div class="stat-label" style="display:flex;align-items:center;gap:6px">' + IC.trophy + 'Meilleure performance</div>'
       + '<div class="stat-value" style="font-size:15px">' + r.best.name + '</div>'
       + '<div class="stat-sub" style="color:var(--positive)">' + fp(r.best.changePct) + '</div></div>'
@@ -8643,7 +8642,6 @@ function _paintRecapPage() {
       + '<div class="stat-label" style="display:flex;align-items:center;gap:6px">' + IC.trendDown + 'Moins bonne performance</div>'
       + '<div class="stat-value" style="font-size:15px">' + r.worst.name + '</div>'
       + '<div class="stat-sub" style="color:var(--negative)">' + fp(r.worst.changePct) + '</div></div>'
-      + '</div>'
     : '';
 
   const _u    = fbAuth.currentUser;
@@ -8660,8 +8658,9 @@ function _paintRecapPage() {
     // Salutation
     + '<div class="recap-hello">Bonjour <strong style="color:var(--text)">' + _name + '</strong>,</div>'
 
-    // KPIs
-    + '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px">'
+    // KPIs + best/worst sur une seule ligne défilante
+    + '<div class="stats-scroll-wrap">'
+    + '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px" id="recap-kpis-row">'
     + '<div class="stat-card"><div class="stat-label">Valeur totale</div>'
     + '<div class="stat-value">' + fmt(r.totalValue) + '</div></div>'
     + '<div class="stat-card"><div class="stat-label">Variation du jour</div>'
@@ -8673,9 +8672,8 @@ function _paintRecapPage() {
     + '<div class="stat-card"><div class="stat-label">Lignes</div>'
     + '<div class="stat-value">' + r.lines.length + '</div>'
     + '<div class="stat-sub">' + upN + ' en hausse · ' + dnN + ' en baisse</div></div>'
-    + '</div>'
-
     + bestWorst
+    + '</div></div>'
 
     // Commentaire IA
     + (r.aiComment
@@ -8691,6 +8689,7 @@ function _paintRecapPage() {
     + '<thead><tr>'
     + '<th>Action</th><th>Ticker</th><th>Qté</th><th>Cours</th><th>Var. jour</th><th>Impact €</th>'
     + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  startKpisAutoScroll('recap-kpis-row');
 }
 
 function updatePushBtn() {
