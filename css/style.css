@@ -1743,6 +1743,44 @@ body.sb-collapsed .main { margin-left: 58px; }
   [data-theme="light"] .mobile-header {
     background: rgba(255,255,255,0.92);
   }
+
+  /* Page Dividendes — tables en cartes empilées (pas de scroll horizontal) */
+  #page-dividendes .section-card > div[style*="overflow-x"] { overflow-x: hidden !important; }
+  #page-dividendes table { display: block; width: 100%; }
+  #page-dividendes table thead { display: none; }
+  #page-dividendes table tbody { display: block; width: 100%; }
+  #page-dividendes table tr {
+    display: block;
+    background: var(--s2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  #page-dividendes table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0 !important;
+    border: none !important;
+    font-size: 12px;
+  }
+  #page-dividendes table td::before {
+    content: attr(data-label);
+    color: var(--text3);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+  #page-dividendes table td:first-child {
+    border-bottom: 1px solid var(--s3) !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 4px;
+    justify-content: flex-start;
+  }
+  #page-dividendes table td:first-child::before { display: none; }
 }
 
 /* Très petit écran */

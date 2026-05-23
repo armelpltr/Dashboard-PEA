@@ -6586,17 +6586,17 @@ function initDividendes() {
             : `<span style="background:var(--s3);color:var(--text3);border-radius:5px;padding:2px 8px;font-size:10px">Aucun depuis achat</span>`;
           const buyStr = r.buyDate ? new Date(r.buyDate+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
           return `<tr>
-            <td><div style="display:flex;align-items:center;gap:8px">
+            <td data-label="Action"><div style="display:flex;align-items:center;gap:8px">
               ${logoHtml(r.ticker, 24, 'ticker-icon')}
               <div><div style="font-size:12px;font-weight:600">${r.name}</div>
               <div style="font-size:10px;color:var(--text2);font-family:var(--mono)">${r.ticker}</div></div>
             </div></td>
-            <td class="mono" style="font-size:11px;color:var(--text3)">${buyStr}</td>
-            <td class="mono">${r.qty}</td>
-            <td class="mono" style="color:var(--gold);font-weight:600">${totalRecu > 0 ? totalRecu.toFixed(2)+' €' : '—'}</td>
-            <td class="mono" style="color:var(--text2)">${lastKnown ? lastKnown.amount.toFixed(2)+' €/action' : '—'}</td>
-            <td style="font-size:11px;color:var(--text2)">${nextEstim !== '—' ? nextEstim : '—'}</td>
-            <td>${holdingBadge}</td>
+            <td data-label="Détenu depuis" class="mono" style="font-size:11px;color:var(--text3)">${buyStr}</td>
+            <td data-label="Quantité" class="mono">${r.qty}</td>
+            <td data-label="Total reçu" class="mono" style="color:var(--gold);font-weight:600">${totalRecu > 0 ? totalRecu.toFixed(2)+' €' : '—'}</td>
+            <td data-label="Dernier div./action" class="mono" style="color:var(--text2)">${lastKnown ? lastKnown.amount.toFixed(2)+' €/action' : '—'}</td>
+            <td data-label="Prochain estimé" style="font-size:11px;color:var(--text2)">${nextEstim !== '—' ? nextEstim : '—'}</td>
+            <td data-label="Pendant détention">${holdingBadge}</td>
           </tr>`;
         }).join('');
 
@@ -6664,15 +6664,15 @@ function renderDivHistory(histEl) {
       ? '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px;display:inline-flex;align-items:center;gap:3px"><img src="https://www.boursorama.com/favicon.ico" width="11" height="11" style="border-radius:2px;vertical-align:middle">Boursorama</span>'
       : '<span style="background:var(--s2);color:var(--text3);font-size:10px;padding:1px 7px;border-radius:4px;display:inline-flex;align-items:center;gap:3px"><img src="https://finance.yahoo.com/favicon.ico" width="11" height="11" style="border-radius:2px;vertical-align:middle">Yahoo Finance</span>';
     return `<tr>
-      <td class="mono" style="font-size:12px;color:var(--text2)">${ds}</td>
-      <td><div style="display:flex;align-items:center;gap:6px">${logoHtml(e.ticker||'',20,'ticker-icon')}
+      <td data-label="Date" class="mono" style="font-size:12px;color:var(--text2)">${ds}</td>
+      <td data-label="Action"><div style="display:flex;align-items:center;gap:6px">${logoHtml(e.ticker||'',20,'ticker-icon')}
         <div><span style="font-size:12px">${e.name||e.ticker}</span>
         ${e.label?`<div style="font-size:10px;color:var(--text3)">${e.label}</div>`:''}</div></div></td>
-      <td class="mono" style="font-weight:600;color:var(--gold)">${e.amount.toFixed(2)} €</td>
-      <td class="mono" style="font-size:11px;color:var(--text3)">${e.perShare.toFixed(3)} €/action</td>
-      <td>${periodBadge}</td>
-      <td>${statutBadge}</td>
-      <td>${srcBadge}</td>
+      <td data-label="Montant total" class="mono" style="font-weight:600;color:var(--gold)">${e.amount.toFixed(2)} €</td>
+      <td data-label="Par action" class="mono" style="font-size:11px;color:var(--text3)">${e.perShare.toFixed(3)} €/action</td>
+      <td data-label="Période">${periodBadge}</td>
+      <td data-label="Statut">${statutBadge}</td>
+      <td data-label="Source">${srcBadge}</td>
     </tr>`;
   }).join('');
   const emptyMsg = !entries.length ? '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Aucun dividende pendant la période de détention</td></tr>' : rows;
