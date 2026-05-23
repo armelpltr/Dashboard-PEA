@@ -97,12 +97,52 @@
   </div>
 
   <div class="legal-section">
-    <h2>3. Partage des données</h2>
-    <p>Vos données ne sont pas vendues ni partagées à des fins commerciales. Elles sont transmises aux seuls prestataires techniques nécessaires au fonctionnement du service :</p>
+    <h2>3. Sous-traitants et partage des données</h2>
+    <p>Vos données ne sont jamais vendues ni partagées à des fins commerciales ou publicitaires. Elles sont transmises uniquement aux prestataires techniques strictement nécessaires au fonctionnement du service :</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Sous-traitant</th><th>Finalité</th><th>Données traitées</th><th>Localisation</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong style="color:var(--text)">Google Firebase</strong><br><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener" style="font-size:11px">Politique →</a></td>
+          <td>Authentification, base de données, notifications push (FCM)</td>
+          <td>Email, données portefeuille, token push</td>
+          <td>UE (Dublin) + USA (transfert encadré)</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--text)">GitHub Pages</strong><br><a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener" style="font-size:11px">Politique →</a></td>
+          <td>Hébergement du site statique (HTML/JS/CSS)</td>
+          <td>Adresse IP (logs serveur)</td>
+          <td>USA</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--text)">Mistral AI</strong><br><a href="https://mistral.ai/terms/" target="_blank" rel="noopener" style="font-size:11px">Politique →</a></td>
+          <td>Génération du rapport d'analyse IA pour le récap</td>
+          <td>Tickers + variations agrégées (anonymisées, pas d'email)</td>
+          <td>UE (France)</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--text)">Tavily</strong><br><a href="https://tavily.com/privacy" target="_blank" rel="noopener" style="font-size:11px">Politique →</a></td>
+          <td>Recherche web pour contexte du rapport IA</td>
+          <td>Tickers (anonymisé, pas d'email)</td>
+          <td>USA</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--text)">Yahoo Finance</strong><br>(via proxies CORS publics)</td>
+          <td>Récupération cours et historiques marché</td>
+          <td>Tickers uniquement (pas de donnée utilisateur)</td>
+          <td>USA</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 style="font-size:14px;font-weight:600;color:var(--text);margin:20px 0 10px">Transferts hors UE</h3>
+    <p>Les transferts vers les États-Unis (Google Firebase, GitHub, Tavily) sont encadrés par :</p>
     <ul>
-      <li><strong style="color:var(--text)">Google Firebase</strong> (authentification, base de données, stockage) — Google Ireland Limited, Gordon House, Dublin 4, Irlande. <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Politique Firebase →</a></li>
+      <li>Pour Google : certification au <a href="https://www.dataprivacyframework.gov/" target="_blank" rel="noopener">EU-U.S. Data Privacy Framework</a></li>
+      <li>Pour les autres : <a href="https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection/standard-contractual-clauses-scc_fr" target="_blank" rel="noopener">Clauses Contractuelles Types (CCT)</a> approuvées par la Commission européenne</li>
     </ul>
-    <p>Google est certifié conforme au mécanisme EU-U.S. Data Privacy Framework, garantissant un niveau de protection adéquat pour les transferts hors UE.</p>
   </div>
 
   <div class="legal-section">
