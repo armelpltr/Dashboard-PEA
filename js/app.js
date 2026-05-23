@@ -8032,9 +8032,8 @@ function renderPerformancePage(result, portfolio, txs) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          callbacks: {
-            label: c => (c.raw >= 0 ? '+' : '') + c.raw.toFixed(2) + ' %'
-          }
+          enabled: false,
+          external: perfAnnualChartTooltip
         }
       },
       scales: {
@@ -8047,6 +8046,39 @@ function renderPerformancePage(result, portfolio, txs) {
     },
     plugins: [zeroLinePlugin]
   });
+}
+
+function perfAnnualChartTooltip(context) {
+  const { chart, tooltip } = context;
+  let el = document.getElementById('perf-annual-tooltip');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'perf-annual-tooltip';
+    el.style.cssText = 'position:absolute;pointer-events:none;background:#10121c;' +
+      'border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;' +
+      'font-size:12px;opacity:0;transition:opacity .12s;z-index:50;' +
+      'box-shadow:0 8px 24px rgba(0,0,0,0.5);white-space:nowrap';
+    const parent = chart.canvas.parentNode;
+    if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative';
+    parent.appendChild(el);
+  }
+  if (tooltip.opacity === 0) { el.style.opacity = 0; return; }
+  const title = (tooltip.title && tooltip.title[0]) || '';
+  const dp = (tooltip.dataPoints || [])[0];
+  if (!dp) { el.style.opacity = 0; return; }
+  const v = dp.parsed.y;
+  const isPos = v >= 0;
+  const icon = isPos ? IC.trending : IC.trendDown;
+  const color = isPos ? '#00e09e' : '#ff4d6a';
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;gap:6px;color:#8892a8;margin-bottom:4px">' +
+      IC.calendar + '<span>' + title + '</span></div>' +
+    '<div style="display:flex;align-items:center;gap:6px;color:' + color + ';font-weight:600">' +
+      icon + '<span>' + (isPos ? '+' : '') + v.toFixed(2) + ' %</span></div>';
+  el.style.opacity = 1;
+  el.style.left = (chart.canvas.offsetLeft + tooltip.caretX) + 'px';
+  el.style.top  = (chart.canvas.offsetTop + tooltip.caretY) + 'px';
+  el.style.transform = 'translate(-50%, calc(-100% - 10px))';
 }
 
 // ═══════════════════════════════════════════════════════════
