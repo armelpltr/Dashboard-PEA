@@ -6729,12 +6729,8 @@ const COLLAPSE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="non
 function _findChartContainer(canvasId) {
   const c = document.getElementById(canvasId);
   if (!c) return null;
-  // Remonte au parent qui peut être agrandi (section-card ou wrap)
-  let p = c.parentElement;
-  while (p && !p.classList.contains('section-card') && !p.classList.contains('portf-canvas-wrap') && p.tagName !== 'BODY') {
-    p = p.parentElement;
-  }
-  return p || c.parentElement;
+  // Wrap direct du canvas (div position:relative ou portf-canvas-wrap)
+  return c.parentElement;
 }
 function toggleChartFullscreen(canvasId, btn) {
   const container = _findChartContainer(canvasId);
