@@ -102,11 +102,12 @@
       { "ticker": "CW8.PA",   "name": "Amundi MSCI World",   "qty": 80,  "price": 542.10, "prev": 538.40, "changePct": 0.69 },
       { "ticker": "PE500.PA", "name": "Amundi PEA S&P 500",  "qty": 120, "price": 35.40,  "prev": 35.10,  "changePct": 0.85 }
     ],
-    "summary": "Séance positive sur l'ensemble du portefeuille. Schneider Electric mène la hausse (+1.90 %) porté par les anticipations d'investissement dans les réseaux électriques. Le luxe (LVMH, L'Oréal) reste résilient. ETF Monde et S&P 500 prolongent leur tendance haussière. Aucun titre dans le rouge aujourd'hui.",
+    "summary": "**📊 Synthèse du jour** — Séance résolument positive : votre portefeuille progresse de **+0,82 %** (+447 €), porté par **9 lignes vertes sur 9**. Aucun titre dans le rouge aujourd'hui.\n\n**🏆 Top performers** : Schneider Electric mène avec **+1,90 %** sur l'annonce d'un contrat majeur dans les data centers européens. Sanofi (+1,34 %) profite de résultats cliniques positifs sur un nouvel anti-inflammatoire.\n\n**🇪🇺 Contexte macro** : La BCE a confirmé hier sa pause sur les taux, l'inflation zone euro reflue à 2,1 %. Le CAC 40 termine en hausse de +0,6 %, dans le sillage des bonnes nouvelles sur le luxe et l'industrie.\n\n**💡 À surveiller** : TotalEnergies (+0,62 %) reste sous pression du baril volatil à 78 $. Vos ETF World et S&P 500 prolongent leur tendance haussière, tirés par les valeurs tech US.\n\n**📈 Performance cumulée** : Votre PEA atteint **54 680 €** (+22 % depuis ouverture). Le solde espèces de 1 955 € vous permet une nouvelle entrée si une opportunité se présente.",
     "news": [
-      { "title": "Schneider Electric : nouveau contrat majeur dans les data centers", "source": "Les Echos", "url": "#" },
-      { "title": "BCE : pause sur les taux confirmée, l'inflation reflue à 2.1 %",    "source": "Reuters",   "url": "#" },
-      { "title": "Sanofi : essai clinique positif sur traitement anti-inflammatoire", "source": "Le Figaro", "url": "#" }
+      { "title": "Schneider Electric : contrat de 800 M€ pour équiper les data centers européens", "source": "Les Echos",   "url": "#" },
+      { "title": "BCE : pause sur les taux confirmée, l'inflation reflue à 2,1 %",                 "source": "Reuters",     "url": "#" },
+      { "title": "Sanofi : phase III positive sur un traitement anti-inflammatoire",               "source": "Le Figaro",   "url": "#" },
+      { "title": "LVMH : la maroquinerie résiste, la Chine montre des signes de reprise",          "source": "Bloomberg",   "url": "#" }
     ]
   },
   "weeklyRecap": {

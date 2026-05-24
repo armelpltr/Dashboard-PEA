@@ -833,9 +833,25 @@ function showPage(id) {
   document.querySelectorAll('.mobile-nav-item').forEach(b => {
     b.classList.toggle('active', b.dataset.mob === id);
   });
+  if (window.IS_DEMO && id === 'performance') { _renderDemoBlocked('page-performance', 'Analyse de performance'); return; }
   if (id === 'graphiques')  initCharts();
   if (id === 'recap')       renderRecapPage();
   if (id === 'alertes')     renderAlertsList();
+}
+
+function _renderDemoBlocked(pageId, sectionTitle) {
+  const el = document.getElementById(pageId);
+  if (!el) return;
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:center;min-height:60vh;padding:32px">'
+    + '<div style="text-align:center;max-width:520px;padding:48px 32px;background:var(--s1);border:1px solid var(--border2);border-radius:20px">'
+    + '<div style="width:64px;height:64px;margin:0 auto 20px;border-radius:50%;background:rgba(245,183,49,0.15);display:flex;align-items:center;justify-content:center">'
+    + '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
+    + '</div>'
+    + '<div style="font-size:20px;color:var(--text);font-weight:700;margin-bottom:10px">' + sectionTitle + ' indisponible</div>'
+    + '<div style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:24px">Cette section nécessite vos vraies données et un import CSV de votre courtier.<br><br>Créez un compte gratuit pour y accéder.</div>'
+    + '<a href="app.html?signup=1" class="btn btn-primary" style="padding:12px 28px;font-size:14px">Créer un compte gratuit →</a>'
+    + '</div></div>';
 }
 
 function showPageMobile(id) {
@@ -848,6 +864,7 @@ function showPageMobile(id) {
     const onclick = n.getAttribute('onclick') || '';
     if (onclick.includes("'" + id + "'")) n.classList.add('active');
   });
+  if (window.IS_DEMO && id === 'performance') { _renderDemoBlocked('page-performance', 'Analyse de performance'); return; }
   if (id === 'graphiques')  initCharts();
   if (id === 'recap')       renderRecapPage();
   if (id === 'alertes')     renderAlertsList();
