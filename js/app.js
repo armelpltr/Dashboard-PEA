@@ -129,7 +129,15 @@ _splashWatchdog = setTimeout(() => {
   // Google Sign-In désactivé : plus besoin de gérer getRedirectResult.
 
   if (window.IS_DEMO) {
-    startApp({ uid: 'demo-user', email: 'demo@capitalboard.app', displayName: 'Démo' });
+    startApp({
+      uid: 'demo-user',
+      email: 'demo@capitalboard.app',
+      displayName: 'Démo',
+      providerData: [{ providerId: 'password' }],
+      metadata: { creationTime: new Date().toISOString(), lastSignInTime: new Date().toISOString() },
+      emailVerified: true,
+      photoURL: null
+    });
   } else {
     auth.onAuthStateChanged(fbAuth, user => {
       if (user) { startApp(user); } else { stopApp(); }
