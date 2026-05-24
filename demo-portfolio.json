@@ -41,18 +41,96 @@
     { "ticker": "NVDA",     "name": "NVIDIA",           "addedAt": "2025-03-10" },
     { "ticker": "RMS.PA",   "name": "Hermès",           "addedAt": "2025-04-02" }
   ],
-  "dailyValues": [],
+  "dailyValues": [
+    { "date": "2024-03-01", "value": 5000 },
+    { "date": "2024-03-15", "value": 5180 },
+    { "date": "2024-04-01", "value": 5320 },
+    { "date": "2024-04-15", "value": 9450 },
+    { "date": "2024-05-01", "value": 9680 },
+    { "date": "2024-05-15", "value": 13050 },
+    { "date": "2024-06-01", "value": 13420 },
+    { "date": "2024-06-15", "value": 15010 },
+    { "date": "2024-07-01", "value": 15240 },
+    { "date": "2024-07-15", "value": 17800 },
+    { "date": "2024-08-01", "value": 18020 },
+    { "date": "2024-08-15", "value": 22640 },
+    { "date": "2024-09-01", "value": 22890 },
+    { "date": "2024-09-15", "value": 24050 },
+    { "date": "2024-10-01", "value": 32100 },
+    { "date": "2024-10-15", "value": 32480 },
+    { "date": "2024-11-01", "value": 33020 },
+    { "date": "2024-11-15", "value": 33450 },
+    { "date": "2024-12-01", "value": 37200 },
+    { "date": "2024-12-15", "value": 37580 },
+    { "date": "2024-12-31", "value": 39810 },
+    { "date": "2025-01-15", "value": 40250 },
+    { "date": "2025-02-01", "value": 43680 },
+    { "date": "2025-02-15", "value": 47820 },
+    { "date": "2025-03-01", "value": 48340 },
+    { "date": "2025-03-15", "value": 49150 },
+    { "date": "2025-04-01", "value": 49780 },
+    { "date": "2025-04-15", "value": 52910 },
+    { "date": "2025-05-01", "value": 53480 },
+    { "date": "2025-05-15", "value": 54120 },
+    { "date": "2025-05-23", "value": 54680 }
+  ],
   "alerts": [
     { "id": 1700200001, "ticker": "MC.PA",  "type": "high", "threshold": 750,  "active": true,  "createdAt": "2025-04-10" },
     { "id": 1700200002, "ticker": "TTE.PA", "type": "low",  "threshold": 55,   "active": true,  "createdAt": "2025-04-12" },
     { "id": 1700200003, "ticker": "ASML.AS","type": "low",  "threshold": 600,  "active": true,  "createdAt": "2025-05-01" }
   ],
-  "notifHistory": [],
+  "notifHistory": [
+    { "id": 1700300001, "type": "alert",  "title": "Alerte prix · TotalEnergies",  "body": "TTE.PA a franchi le seuil bas de 55 € (cours actuel : 54.30 €)", "date": "2025-05-12T09:14:00Z", "read": true },
+    { "id": 1700300002, "type": "recap",  "title": "Récap quotidien disponible",   "body": "Votre portefeuille a progressé de +0.82 % aujourd'hui.",          "date": "2025-05-20T20:00:00Z", "read": true },
+    { "id": 1700300003, "type": "dividende","title": "Dividende crédité · BNP Paribas", "body": "60 × 4.60 € = 276 € ajoutés au solde espèces.",                "date": "2025-05-26T08:00:00Z", "read": false },
+    { "id": 1700300004, "type": "recap",  "title": "Rapport hebdomadaire",         "body": "Semaine du 19 au 23 mai : +1.4 %. Meilleur : Schneider (+3.1 %).", "date": "2025-05-23T20:00:00Z", "read": false }
+  ],
   "trCohort": [],
   "settings": {
     "pushRecap": false,
     "avatarHue": 270
   },
-  "recap": null,
-  "weeklyRecap": null
+  "recap": {
+    "date": "2025-05-23",
+    "totalDayChange": 0.82,
+    "totalPnl": 12.4,
+    "totalValue": 54680,
+    "lines": [
+      { "ticker": "MC.PA",    "name": "LVMH",                "qty": 8,   "price": 712.40, "prev": 706.20, "changePct": 0.88 },
+      { "ticker": "AIR.PA",   "name": "Airbus",              "qty": 25,  "price": 168.50, "prev": 167.10, "changePct": 0.84 },
+      { "ticker": "TTE.PA",   "name": "TotalEnergies",       "qty": 50,  "price": 56.80,  "prev": 56.45,  "changePct": 0.62 },
+      { "ticker": "SAN.PA",   "name": "Sanofi",              "qty": 35,  "price": 98.40,  "prev": 97.10,  "changePct": 1.34 },
+      { "ticker": "OR.PA",    "name": "L'Oréal",             "qty": 12,  "price": 438.20, "prev": 435.50, "changePct": 0.62 },
+      { "ticker": "SU.PA",    "name": "Schneider Electric",  "qty": 20,  "price": 224.80, "prev": 220.60, "changePct": 1.90 },
+      { "ticker": "BNP.PA",   "name": "BNP Paribas",         "qty": 60,  "price": 71.20,  "prev": 70.85,  "changePct": 0.49 },
+      { "ticker": "CW8.PA",   "name": "Amundi MSCI World",   "qty": 80,  "price": 542.10, "prev": 538.40, "changePct": 0.69 },
+      { "ticker": "PE500.PA", "name": "Amundi PEA S&P 500",  "qty": 120, "price": 35.40,  "prev": 35.10,  "changePct": 0.85 }
+    ],
+    "summary": "Séance positive sur l'ensemble du portefeuille. Schneider Electric mène la hausse (+1.90 %) porté par les anticipations d'investissement dans les réseaux électriques. Le luxe (LVMH, L'Oréal) reste résilient. ETF Monde et S&P 500 prolongent leur tendance haussière. Aucun titre dans le rouge aujourd'hui.",
+    "news": [
+      { "title": "Schneider Electric : nouveau contrat majeur dans les data centers", "source": "Les Echos", "url": "#" },
+      { "title": "BCE : pause sur les taux confirmée, l'inflation reflue à 2.1 %",    "source": "Reuters",   "url": "#" },
+      { "title": "Sanofi : essai clinique positif sur traitement anti-inflammatoire", "source": "Le Figaro", "url": "#" }
+    ]
+  },
+  "weeklyRecap": {
+    "weekStart": "2025-05-19",
+    "weekEnd": "2025-05-23",
+    "weekChange": 1.42,
+    "weekValue": 54680,
+    "best":  { "ticker": "SU.PA", "name": "Schneider Electric", "weekPct": 3.12 },
+    "worst": { "ticker": "TTE.PA", "name": "TotalEnergies",     "weekPct": -0.45 },
+    "lines": [
+      { "ticker": "MC.PA",    "name": "LVMH",                "qty": 8,   "price": 712.40, "weekPct": 1.85 },
+      { "ticker": "AIR.PA",   "name": "Airbus",              "qty": 25,  "price": 168.50, "weekPct": 2.10 },
+      { "ticker": "TTE.PA",   "name": "TotalEnergies",       "qty": 50,  "price": 56.80,  "weekPct": -0.45 },
+      { "ticker": "SAN.PA",   "name": "Sanofi",              "qty": 35,  "price": 98.40,  "weekPct": 2.45 },
+      { "ticker": "OR.PA",    "name": "L'Oréal",             "qty": 12,  "price": 438.20, "weekPct": 1.20 },
+      { "ticker": "SU.PA",    "name": "Schneider Electric",  "qty": 20,  "price": 224.80, "weekPct": 3.12 },
+      { "ticker": "BNP.PA",   "name": "BNP Paribas",         "qty": 60,  "price": 71.20,  "weekPct": 1.55 },
+      { "ticker": "CW8.PA",   "name": "Amundi MSCI World",   "qty": 80,  "price": 542.10, "weekPct": 1.30 },
+      { "ticker": "PE500.PA", "name": "Amundi PEA S&P 500",  "qty": 120, "price": 35.40,  "weekPct": 1.62 }
+    ],
+    "summary": "Semaine globalement positive (+1.42 %). Schneider Electric domine avec +3.12 % sur les annonces data centers. Le secteur santé profite des bons résultats Sanofi. Seule TotalEnergies recule légèrement (-0.45 %) après détachement du dividende. Le portefeuille atteint un nouveau plus haut historique à 54 680 €."
+  }
 }
