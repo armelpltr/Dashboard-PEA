@@ -14,11 +14,27 @@ Reprise des évolutions UX/UI du dashboard.
 
 ## Prochain chantier principal
 
-### Conversion démo → inscription avec migration dataset
+### Vérification email à l'inscription
 
-Lors d'un signup depuis le mode démo, copier automatiquement le portefeuille démo dans le nouveau compte Firestore. Permet à l'user de garder ses ajustements faits pendant la démo.
+Envoyer un mail de vérification à l'inscription via Firebase Auth (`sendEmailVerification`). Bloquer l'accès à certaines features (ou tout l'app) tant que `user.emailVerified === false`.
 
-**Bloqueur:** aucun
+**Sous-tâches:**
+- [ ] Au signup réussi : `sendEmailVerification(user)` + écran "Vérifiez votre email"
+- [ ] Bandeau persistant dans l'app si email non vérifié + bouton "Renvoyer le mail"
+- [ ] (Optionnel) Bloquer accès Support / création tickets tant que non vérifié
+- [ ] Page `verify-email.html` ou flow inline avec polling `user.reload()` pour détecter validation
+- [ ] Personnaliser le template d'email dans Firebase Console (sujet, domaine d'action)
+
+**Bloqueur:** aucun. Firebase Auth gère tout côté serveur (template + lien).
+
+---
+
+### À suivre
+
+- Conversion démo → inscription avec migration dataset
+- Calculateur fiscal PEA
+- Heatmap secteurs portfolio
+- Export PDF rapport mensuel
 
 ---
 
