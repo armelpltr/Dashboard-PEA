@@ -1922,9 +1922,30 @@ body.sb-collapsed .main { margin-left: 58px; }
 .chart-expand-bar .chart-expand-btn { position: static; }
 .chart-expand-bar-fullscreen { position: fixed; top: 14px; right: 14px; z-index: 10000; padding: 0; }
 
+/* Bouton Accueil dans la sidebar desktop */
+.sidebar-home-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 0 12px 10px;
+  padding: 9px 12px;
+  font-size: 12px; font-weight: 600;
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.18s ease;
+}
+.sidebar-home-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(96,165,250,0.12), rgba(96,165,250,0.04));
+  transform: translateY(-1px);
+}
+.sidebar-home-btn svg { flex-shrink: 0; }
+
 /* Liens légaux dans la sidebar desktop */
 .sidebar-legal-links {
-  display: flex; align-items: center; gap: 4px;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
   font-size: 10px; color: var(--text3);
   padding: 0 12px 8px;
   flex-wrap: wrap;
