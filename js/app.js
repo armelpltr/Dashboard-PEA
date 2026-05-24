@@ -8980,33 +8980,56 @@ let _typingClearTimer = null;
 let _supportThreadDocUnsub = null;
 const ADMIN_DISPLAY_NAME = "Armel";
 
-// Modal de saisie (remplace window.prompt).
-window.showPromptModal = function({ title, body, placeholder, okLabel, cancelLabel, onConfirm }) {
+// Modal de saisie multi-champs (remplace window.prompt).
+// fields: [{ name, label, placeholder, type, required }]
+// onConfirm reçoit un objet { name: value }. Backward-compat: si pas de "fields",
+// utilise placeholder/okLabel et passe directement la valeur string.
+window.showPromptModal = function({ title, body, placeholder, fields, okLabel, cancelLabel, onConfirm }) {
   const existing = document.getElementById("prompt-modal-dyn");
   if (existing) existing.remove();
+  const useFields = Array.isArray(fields) && fields.length > 0
+    ? fields
+    : [{ name: "_v", label: "", placeholder: placeholder || "", type: "text", required: true }];
   const wrap = document.createElement("div");
   wrap.id = "prompt-modal-dyn";
   wrap.className = "modal-overlay open";
+  const fieldsHtml = useFields.map(f => {
+    const lbl = f.label ? '<label style="display:block;font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600">' + _escapeHtmlChat(f.label) + (f.required ? ' *' : '') + '</label>' : '';
+    if (f.type === "textarea") {
+      return lbl + '<textarea data-name="' + f.name + '" placeholder="' + _escapeHtmlChat(f.placeholder || "") + '" rows="3" style="width:100%;padding:10px 12px;background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;resize:vertical;margin-bottom:12px"></textarea>';
+    }
+    return lbl + '<input data-name="' + f.name + '" type="text" placeholder="' + _escapeHtmlChat(f.placeholder || "") + '" style="width:100%;padding:11px 13px;background:var(--s3);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-size:13px;font-family:inherit;margin-bottom:12px">';
+  }).join("");
   wrap.innerHTML =
     '<div class="modal">'
     + '<div class="modal-title">' + _escapeHtmlChat(title || "") + '</div>'
     + (body ? '<div class="modal-sub">' + _escapeHtmlChat(body) + '</div>' : '')
-    + '<input id="prompt-modal-input" type="text" placeholder="' + _escapeHtmlChat(placeholder || "") + '" style="width:100%;padding:11px 13px;background:var(--s3);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-size:13px;font-family:inherit">'
+    + fieldsHtml
     + '<div class="modal-footer">'
     + '<button class="btn-secondary" id="prompt-modal-cancel">' + (cancelLabel || "Annuler") + '</button>'
     + '<button class="btn-primary" id="prompt-modal-ok">' + (okLabel || "Valider") + '</button>'
     + '</div></div>';
   document.body.appendChild(wrap);
-  const input = document.getElementById("prompt-modal-input");
-  input.focus();
+  const inputs = wrap.querySelectorAll("[data-name]");
+  if (inputs[0]) inputs[0].focus();
   const close = () => wrap.remove();
   document.getElementById("prompt-modal-cancel").onclick = close;
   document.getElementById("prompt-modal-ok").onclick = () => {
-    const v = input.value.trim();
+    const out = {};
+    let ok = true;
+    inputs.forEach(inp => {
+      const v = (inp.value || "").trim();
+      const field = useFields.find(f => f.name === inp.dataset.name);
+      if (field && field.required && !v) ok = false;
+      out[inp.dataset.name] = v;
+    });
+    if (!ok) { alert("Champs obligatoires manquants."); return; }
     close();
-    if (v && onConfirm) onConfirm(v);
+    if (onConfirm) onConfirm(fields ? out : out._v);
   };
-  input.addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("prompt-modal-ok").click(); });
+  inputs.forEach(inp => inp.addEventListener("keydown", e => {
+    if (e.key === "Enter" && inp.tagName !== "TEXTAREA") document.getElementById("prompt-modal-ok").click();
+  }));
   wrap.addEventListener("click", e => { if (e.target === wrap) close(); });
 };
 
@@ -9102,12 +9125,15 @@ async function renderSupportUser() {
     userEmail: (u && u.email) || "",
   };
   let closed = false;
+  let exists = false;
   try {
     const snap = await getFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser));
-    closed = snap.exists() && snap.data().closed === true;
+    exists = snap.exists();
+    closed = exists && snap.data().closed === true;
   } catch(_) {}
 
   window._supportUserClosed = closed;
+  window._supportNoThread = !exists;
   const ticketId = _genTicketId(currentUser);
   _currentThreadMeta.ticketId = ticketId;
   const el = document.getElementById("support-content");
@@ -9209,10 +9235,15 @@ function _renderAdminThreads(threads) {
 window._openNewChatPrompt = function() {
   showPromptModal({
     title: "Nouveau chat",
-    body: "Entrez l'email ou l'UID Firebase du user à contacter.",
-    placeholder: "email@exemple.com ou UID",
+    body: "Initier une conversation avec un utilisateur.",
     okLabel: "Créer",
-    onConfirm: async (v) => {
+    fields: [
+      { name: "contact", label: "Email ou UID Firebase", placeholder: "email@exemple.com ou UID", type: "text", required: true },
+      { name: "reason",  label: "Raison du chat",         placeholder: "Ex : suivi inscription, retour bug…", type: "textarea", required: true },
+    ],
+    onConfirm: async (out) => {
+      const v = out.contact;
+      const reason = out.reason;
       let uid = v;
       if (v.includes("@")) {
         try {
@@ -9229,14 +9260,16 @@ window._openNewChatPrompt = function() {
         const existing = await getFirestoreDoc(threadRef);
         if (!existing.exists()) {
           await setFirestoreDoc(threadRef, {
-            lastMsg: "(conversation initiée par l'admin)",
+            lastMsg: "📝 " + reason.slice(0, 60),
             lastAt: serverTimestamp(),
             lastFrom: "admin",
-            unreadAdmin: 0, unreadUser: 0,
+            unreadAdmin: 0, unreadUser: 1,
             userEmail: v.includes("@") ? v : "",
             ticketId: _genTicketId(uid),
+            reason: reason,
           });
           await _postSystemMessage(uid, "🆕 Conversation initiée par l'admin");
+          await _postSystemMessage(uid, "📝 Sujet : " + reason);
         }
         _openAdminThread(uid);
       } catch(e) {
@@ -9439,18 +9472,38 @@ window.sendSupportMessage = async function() {
   if (!text) return;
   const targetUid = isAdmin() ? _activeSupportThread : currentUser;
   if (!targetUid) return;
+
+  // User : si nouveau ticket (fermé ou inexistant), demander raison d'abord
+  if (!isAdmin()) {
+    const needsReason = window._supportUserClosed === true || window._supportNoThread === true;
+    if (needsReason) {
+      showPromptModal({
+        title: "Raison du contact",
+        body: "Précisez brièvement le sujet de votre message. L'admin en aura connaissance.",
+        placeholder: "Ex : problème de connexion, question facturation…",
+        okLabel: "Continuer",
+        onConfirm: async (reason) => {
+          input.value = "";
+          try {
+            await setFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser), {
+              closed: false, reopenedAt: serverTimestamp(), reason: reason,
+            }, { merge: true });
+            await _postSystemMessage(currentUser, "🆕 Nouvelle conversation ouverte");
+            await _postSystemMessage(currentUser, "📝 Sujet : " + reason);
+            window._supportUserClosed = false;
+            window._supportNoThread = false;
+            await _sendSupportPayload(targetUid, { type: "text", text });
+            renderSupportUser();
+          } catch(e) { console.error(e); alert("Erreur envoi"); input.value = text; }
+        },
+      });
+      return;
+    }
+  }
+
   input.value = "";
   try {
-    // Si user et thread fermé : auto-réouverture
-    if (!isAdmin() && window._supportUserClosed) {
-      await setFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser), {
-        closed: false, reopenedAt: serverTimestamp()
-      }, { merge: true });
-      await _postSystemMessage(currentUser, "🆕 Nouvelle conversation ouverte");
-      window._supportUserClosed = false;
-    }
     await _sendSupportPayload(targetUid, { type: "text", text });
-    if (!isAdmin() && !_supportUnsub) renderSupportUser();
   }
   catch(e) { console.error("send support:", e); alert("Erreur envoi"); input.value = text; }
 };
