@@ -9076,6 +9076,24 @@ function _subscribeThreadDoc(uid) {
   if (_supportThreadDocUnsub) { _supportThreadDocUnsub(); _supportThreadDocUnsub = null; }
   _supportThreadDocUnsub = onSnapshot(firestoreDoc(db, "supportThreads", uid), snap => {
     const d = snap.exists() ? snap.data() : {};
+
+    // Si l'état closed/archived change → re-render
+    const wasClosed = window._supportUserClosed === true;
+    const nowClosed = d.closed === true;
+    if (!isAdmin() && nowClosed !== wasClosed) {
+      window._supportUserClosed = nowClosed;
+      if (window._supportUserView === "chat") _renderSupportUserChat();
+      return;
+    }
+    if (isAdmin()) {
+      // Re-render barre actions admin si état change
+      const inputEl = document.getElementById("chat-input");
+      const sendEl = document.getElementById("chat-send");
+      if (inputEl) inputEl.disabled = nowClosed;
+      if (sendEl) sendEl.disabled = nowClosed;
+    }
+
+    // Typing indicator
     const otherField = isAdmin() ? "userTyping" : "adminTyping";
     const otherFieldAt = otherField + "At";
     const atMs = (d[otherFieldAt] && d[otherFieldAt].toDate) ? d[otherFieldAt].toDate().getTime() : 0;
