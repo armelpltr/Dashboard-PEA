@@ -169,16 +169,6 @@
   .stat-val.blue { color: var(--text1); }
   .stat-val.red { color: var(--text1); }
   .stat-lbl { font-size: 14px; color: var(--text2); line-height: 1.6; }
-  .stat-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-  .stat-tag {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 4px 10px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    font-size: 11px; font-weight: 500;
-    color: var(--text2);
-  }
 
   /* ═══ SECTION ═══ */
   section { padding: 100px 0; position: relative; z-index: 1; }
@@ -327,11 +317,6 @@
       </div>
       <div class="stat-val">Données en temps réel</div>
       <div class="stat-lbl">Cours, volumes et historiques mis à jour toutes les 60 secondes via l'API publique <strong>Yahoo Finance</strong>. Accès aux mêmes données que les pros, sans abonnement payant.</div>
-      <div class="stat-tags">
-        <span class="stat-tag">Yahoo Finance API</span>
-        <span class="stat-tag">Refresh 60s</span>
-        <span class="stat-tag">Historiques complets</span>
-      </div>
     </div>
 
     <div class="stat">
@@ -340,11 +325,6 @@
       </div>
       <div class="stat-val">Analyse IA quotidienne</div>
       <div class="stat-lbl">Chaque soir, votre portefeuille est analysé : contexte marché, mouvements clés, dividendes à venir, anomalies. Rapport généré par <strong>Mistral AI</strong> à partir de recherches web <strong>Tavily</strong>.</div>
-      <div class="stat-tags">
-        <span class="stat-tag">Mistral AI</span>
-        <span class="stat-tag">Tavily Search</span>
-        <span class="stat-tag">Rapport 20h</span>
-      </div>
     </div>
 
     <div class="stat">
@@ -353,11 +333,6 @@
       </div>
       <div class="stat-val">100% open source</div>
       <div class="stat-lbl">L'intégralité du code source est publique sur GitHub. Auditez-le, forkez-le, contribuez. Aucune boîte noire, aucun algorithme caché. Vous savez exactement ce que fait l'app avec vos données.</div>
-      <div class="stat-tags">
-        <span class="stat-tag">GitHub public</span>
-        <span class="stat-tag">MIT-style</span>
-        <span class="stat-tag">Auditable</span>
-      </div>
     </div>
 
     <div class="stat">
@@ -366,11 +341,6 @@
       </div>
       <div class="stat-val">Sécurisé par design</div>
       <div class="stat-lbl">Authentification gérée par <strong>Firebase Auth</strong> (Google). Données stockées en Europe, chiffrées au repos et en transit (TLS 1.3). Aucun mot de passe stocké en clair. Hosting sur GitHub Pages (HTTPS forcé).</div>
-      <div class="stat-tags">
-        <span class="stat-tag">Firebase Auth</span>
-        <span class="stat-tag">TLS 1.3</span>
-        <span class="stat-tag">Données UE</span>
-      </div>
     </div>
 
     <div class="stat">
@@ -379,11 +349,6 @@
       </div>
       <div class="stat-val">Zéro connexion bancaire</div>
       <div class="stat-lbl">L'app ne se connecte <strong>jamais</strong> à votre banque. Pas d'agrégation type Bridge/Powens. Vous saisissez vos transactions vous-même (ou CSV) : aucun risque de fuite d'identifiants, aucune dépendance à un tiers bancaire.</div>
-      <div class="stat-tags">
-        <span class="stat-tag">No screen-scraping</span>
-        <span class="stat-tag">No DSP2</span>
-        <span class="stat-tag">Saisie manuelle/CSV</span>
-      </div>
     </div>
 
   </div>
