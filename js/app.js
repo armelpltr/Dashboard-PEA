@@ -9067,34 +9067,27 @@ async function renderSupportUser() {
     closed = snap.exists() && snap.data().closed === true;
   } catch(_) {}
 
-  const el = document.getElementById("support-content");
-  if (closed) {
-    el.innerHTML =
-      '<div class="chat-wrap" style="align-items:center;justify-content:center;text-align:center;padding:40px">'
-      + '<div style="max-width:420px">'
-      + '<div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:10px">Conversation fermée</div>'
-      + '<div style="font-size:13px;color:var(--text2);margin-bottom:24px">Vous avez fermé cette conversation. Vous pouvez télécharger la transcription ou en démarrer une nouvelle.</div>'
-      + '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'
-      + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="padding:9px 16px;font-size:13px">📄 Télécharger transcription</button>'
-      + '<button onclick="reopenSupportThread()" style="padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">Nouvelle conversation</button>'
-      + '</div></div></div>';
-    return;
-  }
+  window._supportUserClosed = closed;
   const ticketId = _genTicketId(currentUser);
   _currentThreadMeta.ticketId = ticketId;
+  const el = document.getElementById("support-content");
   el.innerHTML =
     '<div class="chat-wrap">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border)">'
-    + '<span style="font-family:monospace;font-size:11px;color:var(--text2);background:var(--s3);padding:3px 8px;border-radius:6px">#' + ticketId + '</span>'
+    + '<span style="font-family:monospace;font-size:11px;color:var(--text2);background:var(--s3);padding:3px 8px;border-radius:6px">#' + ticketId + (closed ? ' · Nouveau' : '') + '</span>'
     + '<div style="display:flex;gap:6px">'
-    + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
-    + '<button onclick="closeSupportThreadUser()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">✕ Fermer</button>'
+    + (closed ? '' : '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>')
+    + (closed ? '' : '<button onclick="closeSupportThreadUser()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">✕ Fermer</button>')
     + '</div></div>'
-    + '<div class="chat-messages" id="chat-messages"></div>'
-    + _chatInputBarHtml("Écrivez votre message…", null, false)
+    + '<div class="chat-messages" id="chat-messages">'
+    + (closed ? '<div class="chat-empty">Démarrez une nouvelle conversation — votre message rouvrira un ticket auprès du support.</div>' : '')
+    + '</div>'
+    + _chatInputBarHtml(closed ? "Démarrer une nouvelle conversation…" : "Écrivez votre message…", null, false)
     + '</div>';
-  _subscribeSupportThread(currentUser);
-  _markThreadReadByUser(currentUser);
+  if (!closed) {
+    _subscribeSupportThread(currentUser);
+    _markThreadReadByUser(currentUser);
+  }
 }
 
 function renderSupportAdmin() {
@@ -9404,7 +9397,18 @@ window.sendSupportMessage = async function() {
   const targetUid = isAdmin() ? _activeSupportThread : currentUser;
   if (!targetUid) return;
   input.value = "";
-  try { await _sendSupportPayload(targetUid, { type: "text", text }); }
+  try {
+    // Si user et thread fermé : auto-réouverture
+    if (!isAdmin() && window._supportUserClosed) {
+      await setFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser), {
+        closed: false, reopenedAt: serverTimestamp()
+      }, { merge: true });
+      await _postSystemMessage(currentUser, "🆕 Nouvelle conversation ouverte");
+      window._supportUserClosed = false;
+    }
+    await _sendSupportPayload(targetUid, { type: "text", text });
+    if (!isAdmin() && !_supportUnsub) renderSupportUser();
+  }
   catch(e) { console.error("send support:", e); alert("Erreur envoi"); input.value = text; }
 };
 
