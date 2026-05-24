@@ -1948,6 +1948,35 @@ body.sb-collapsed .main { margin-left: 58px; }
   .external-presentation { display: none !important; }
 }
 
+/* Bandeau Mode démo */
+#demo-banner {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 50000;
+  background: linear-gradient(90deg, #f5b731, #ff7139);
+  color: #1a0f00;
+  font-size: 13px; font-weight: 600;
+  padding: 10px 16px;
+  display: flex; justify-content: center; align-items: center;
+  gap: 18px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  flex-wrap: wrap;
+}
+#demo-banner a {
+  color: #1a0f00;
+  background: rgba(0,0,0,0.15);
+  padding: 5px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 700;
+  transition: background 0.15s;
+}
+#demo-banner a:hover { background: rgba(0,0,0,0.25); }
+body.has-demo-banner { padding-top: 40px; }
+@media (max-width: 640px) {
+  #demo-banner { font-size: 11px; padding: 8px 12px; gap: 10px; }
+  #demo-banner a { padding: 4px 10px; font-size: 11px; }
+}
+
 /* Liens légaux dans la sidebar desktop */
 .sidebar-legal-links {
   display: flex; align-items: center; justify-content: center; gap: 4px;

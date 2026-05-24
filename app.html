@@ -43,11 +43,23 @@
   </div>
 </div>
 <script>
+  window.IS_DEMO = new URLSearchParams(location.search).get('demo') === '1';
   (function() {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     if (standalone) {
       document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.external-presentation').forEach(el => el.style.display = 'none');
+      });
+    }
+  })();
+  (function() {
+    if (window.IS_DEMO) {
+      document.addEventListener('DOMContentLoaded', () => {
+        const bar = document.createElement('div');
+        bar.id = 'demo-banner';
+        bar.innerHTML = '<span><strong>Mode démo</strong> · Données fictives, modifications non sauvegardées</span><a href="app.html?signup=1">Créer un compte gratuit →</a>';
+        document.body.appendChild(bar);
+        document.body.classList.add('has-demo-banner');
       });
     }
   })();

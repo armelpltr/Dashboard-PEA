@@ -128,9 +128,13 @@ _splashWatchdog = setTimeout(() => {
 
   // Google Sign-In désactivé : plus besoin de gérer getRedirectResult.
 
-  auth.onAuthStateChanged(fbAuth, user => {
-    if (user) { startApp(user); } else { stopApp(); }
-  });
+  if (window.IS_DEMO) {
+    startApp({ uid: 'demo-user', email: 'demo@capitalboard.app', displayName: 'Démo' });
+  } else {
+    auth.onAuthStateChanged(fbAuth, user => {
+      if (user) { startApp(user); } else { stopApp(); }
+    });
+  }
  } catch(e) {
    console.error('Échec initialisation Firebase:', e);
    _splashError("Impossible de charger l'application. Vérifiez votre connexion internet puis rechargez la page.");
@@ -157,7 +161,28 @@ const _localCache = {};
 
 // Charge toutes les données depuis Firestore au démarrage
 async function loadAllUserData(uid) {
-  if (!uid || !db) return;
+  if (!uid) return;
+  if (window.IS_DEMO) {
+    try {
+      const resp = await fetch('demo-portfolio.json', { cache: 'no-store' });
+      const data = await resp.json();
+      _localCache[uid + '_portfolio']    = data.portfolio    || [];
+      _localCache[uid + '_transactions'] = data.transactions || [];
+      _localCache[uid + '_versements']   = data.versements   || [];
+      _localCache[uid + '_watchlist']    = data.watchlist    || [];
+      _localCache[uid + '_dailyValues']  = data.dailyValues  || [];
+      _localCache[uid + '_alerts']       = data.alerts       || [];
+      _localCache[uid + '_notifHistory'] = data.notifHistory || [];
+      _localCache[uid + '_trCohort']     = data.trCohort     || [];
+      _localCache[uid + '_settings']     = data.settings     || { pushRecap: false };
+      _localCache[uid + '_recap']        = data.recap        || null;
+      _localCache[uid + '_weeklyRecap']  = data.weeklyRecap  || null;
+    } catch(e) {
+      console.error('Demo dataset load failed:', e);
+    }
+    return;
+  }
+  if (!db) return;
   // Enregistrer l'email pour la recherche par email (gestion des rôles)
   const _u = fbAuth.currentUser;
   if (_u) setFirestoreDoc(firestoreDoc(db, 'users', uid), { email: _u.email }, { merge: true }).catch(() => {});
@@ -213,6 +238,7 @@ async function saveUserSettings(uid, settings) {
   const current = getUserSettings(uid);
   const merged  = { ...current, ...settings };
   _localCache[(uid||currentUser) + '_settings'] = merged;
+  if (window.IS_DEMO) return;
   if (!db) return;
   await setFirestoreDoc(firestoreDoc(db, 'users', uid||currentUser, 'data', 'settings'), merged);
 }
@@ -344,6 +370,7 @@ window.importAllUserData = importAllUserData;
 
 function _fsWrite(uid, col, data) {
   _localCache[uid + '_' + col] = data;
+  if (window.IS_DEMO) return;
   if (!db) return;
   setFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', col), { items: data })
     .catch(e => console.warn('Firestore write error:', col, e));
@@ -505,7 +532,7 @@ async function startApp(user) {
 
     // Avatar + sync roles APRÈS chargement des settings (avatarHue dispo)
     updateMobileAvatar(user);
-    setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { avatarHue: _avatarHue(user.uid) }, { merge: true }).catch(() => {});
+    if (!window.IS_DEMO) setFirestoreDoc(firestoreDoc(db, 'roles', user.uid), { avatarHue: _avatarHue(user.uid) }, { merge: true }).catch(() => {});
     loadProfilePage(user);
     window.renderPortfolio();
     window.fetchAllLogos();
@@ -518,7 +545,7 @@ async function startApp(user) {
     // l'utilisateur clique dessus.
     setTimeout(() => { preloadAll().catch(e => console.warn('Preload:', e)); }, 200);
     _updateNotifBadge();
-    if (Notification.permission === 'granted') initPush(user.uid).catch(() => {});
+    if (!window.IS_DEMO && Notification.permission === 'granted') initPush(user.uid).catch(() => {});
   } catch(e) {
     console.error('startApp error:', e);
   } finally {
