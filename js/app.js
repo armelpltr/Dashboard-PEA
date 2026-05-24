@@ -47,6 +47,7 @@ let fbApp, fbAuth, db,
     addFirestoreDoc, onSnapshot, firestoreQuery, firestoreWhere, firestoreOrderBy, serverTimestamp,
     firestoreArrayUnion, firestoreArrayRemove, firestoreOr, firestoreDeleteField;
 
+let fbStorage = null, fbStorageRef, fbStorageUploadBytes, fbStorageGetDownloadURL;
 let fcmMessaging = null, getFCMToken, onFCMMessage;
 // VAPID key : Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Generate key pair
 const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vNXI1EL2xQKA1Nr6tmKaSX5hcGJY';
@@ -125,6 +126,14 @@ _splashWatchdog = setTimeout(() => {
     onFCMMessage = msg.onMessage;
     fcmMessaging = msg.getMessaging(fbApp);
   } catch(e) { console.warn('FCM unavailable:', e.message); }
+
+  try {
+    const storage = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
+    fbStorage = storage.getStorage(fbApp);
+    fbStorageRef = storage.ref;
+    fbStorageUploadBytes = storage.uploadBytes;
+    fbStorageGetDownloadURL = storage.getDownloadURL;
+  } catch(e) { console.warn('Storage unavailable:', e.message); }
 
   // Google Sign-In désactivé : plus besoin de gérer getRedirectResult.
 
@@ -555,6 +564,7 @@ async function startApp(user) {
     _updateNotifBadge();
     if (!window.IS_DEMO && Notification.permission === 'granted') initPush(user.uid).catch(() => {});
     try { _initSupportBadge(); } catch(e) { console.warn('support badge:', e); }
+    try { _startPresenceHeartbeat(); } catch(e) { console.warn('presence:', e); }
   } catch(e) {
     console.error('startApp error:', e);
   } finally {
@@ -8960,10 +8970,47 @@ const ADMIN_UID = "A6nZQ8PcxdURytSesA17xK81I9T2";
 
 let _supportUnsub = null;
 let _supportThreadsUnsub = null;
+let _supportPresenceUnsub = null;
 let _activeSupportThread = null;
 let _currentThreadMeta = null;
 let _supportAdminTab = "active"; // 'active' | 'archived'
+let _presenceHeartbeat = null;
 const ADMIN_DISPLAY_NAME = "Armel";
+
+// Génère un ticket ID stable à partir d'un UID (6 hex chars).
+function _genTicketId(uid) {
+  let h = 0;
+  for (let i = 0; i < uid.length; i++) h = ((h << 5) - h + uid.charCodeAt(i)) | 0;
+  return 'CB-' + Math.abs(h).toString(16).toUpperCase().padStart(6, '0').slice(0, 6);
+}
+
+// "Vu il y a X" — formatte un timestamp Firestore en relative time.
+function _formatLastSeen(ts) {
+  if (!ts) return "jamais vu";
+  let date;
+  try { date = ts.toDate ? ts.toDate() : new Date(ts); } catch(_) { return ""; }
+  const diff = Date.now() - date.getTime();
+  if (diff < 60000) return "à l'instant";
+  if (diff < 3600000) return "il y a " + Math.floor(diff / 60000) + " min";
+  if (diff < 86400000) return "il y a " + Math.floor(diff / 3600000) + " h";
+  return "il y a " + Math.floor(diff / 86400000) + " j";
+}
+
+// Heartbeat presence : écrit online + lastSeen toutes les 30s.
+function _startPresenceHeartbeat() {
+  if (window.IS_DEMO || !db || !currentUser) return;
+  if (_presenceHeartbeat) clearInterval(_presenceHeartbeat);
+  const ping = () => {
+    setFirestoreDoc(firestoreDoc(db, "presence", currentUser),
+      { online: true, lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
+  };
+  ping();
+  _presenceHeartbeat = setInterval(ping, 30000);
+  window.addEventListener("beforeunload", () => {
+    setFirestoreDoc(firestoreDoc(db, "presence", currentUser),
+      { online: false, lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
+  });
+}
 
 function isAdmin() { return currentUser === ADMIN_UID; }
 
@@ -9003,17 +9050,19 @@ async function renderSupportUser() {
       + '</div></div></div>';
     return;
   }
+  const ticketId = _genTicketId(currentUser);
+  _currentThreadMeta.ticketId = ticketId;
   el.innerHTML =
     '<div class="chat-wrap">'
-    + '<div style="display:flex;justify-content:flex-end;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border)">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border)">'
+    + '<span style="font-family:monospace;font-size:11px;color:var(--text2);background:var(--s3);padding:3px 8px;border-radius:6px">#' + ticketId + '</span>'
+    + '<div style="display:flex;gap:6px">'
     + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
     + '<button onclick="closeSupportThreadUser()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">✕ Fermer</button>'
-    + '</div>'
+    + '</div></div>'
     + '<div class="chat-messages" id="chat-messages"></div>'
-    + '<div class="chat-input-bar">'
-    + '<input id="chat-input" placeholder="Écrivez votre message..." onkeydown="if(event.key===&quot;Enter&quot;)sendSupportMessage()">'
-    + '<button onclick="sendSupportMessage()">Envoyer</button>'
-    + '</div></div>';
+    + _chatInputBarHtml("Écrivez votre message…", null, false)
+    + '</div>';
   _subscribeSupportThread(currentUser);
   _markThreadReadByUser(currentUser);
 }
@@ -9034,10 +9083,8 @@ function renderSupportAdmin() {
     + '<div class="chat-messages-pane" style="display:flex;flex-direction:column;height:100%">'
     + '<div id="chat-actions-bar" style="display:none;padding:8px 12px;border-bottom:1px solid var(--border);gap:6px;justify-content:flex-end"></div>'
     + '<div class="chat-messages" id="chat-messages"><div class="chat-empty">Sélectionnez une conversation à gauche.</div></div>'
-    + '<div class="chat-input-bar">'
-    + '<input id="chat-input" placeholder="Répondre…" disabled onkeydown="if(event.key===&quot;Enter&quot;)sendSupportMessage()">'
-    + '<button id="chat-send" onclick="sendSupportMessage()" disabled>Envoyer</button>'
-    + '</div></div></div></div>';
+    + _chatInputBarHtml("Répondre…", "chat-send", true)
+    + '</div></div></div>';
   _subscribeAdminThreads();
 }
 
@@ -9054,6 +9101,13 @@ function _subscribeSupportThread(uid) {
     const msgs = [];
     snap.forEach(d => msgs.push(Object.assign({ id: d.id }, d.data())));
     _renderChatMessages(msgs);
+    // Marque les messages reçus de l'autre partie comme lus
+    const myRole = isAdmin() ? "admin" : "user";
+    msgs.forEach(m => {
+      if (m.from !== myRole && m.read === false) {
+        setFirestoreDoc(firestoreDoc(db, "supportChats", uid, "messages", m.id), { read: true }, { merge: true }).catch(() => {});
+      }
+    });
   }, err => console.error("support msg snap:", err));
 }
 
@@ -9127,18 +9181,28 @@ window._openNewChatPrompt = async function() {
 window._openAdminThread = async function(uid) {
   _activeSupportThread = uid;
   let closed = false;
+  let ticketId = "";
   try {
     const snap = await getFirestoreDoc(firestoreDoc(db, "supportThreads", uid));
     const d = snap.exists() ? snap.data() : {};
     closed = d.closed === true;
+    ticketId = d.ticketId || _genTicketId(uid);
     _currentThreadMeta = {
       userUid: uid,
       userName: d.userName || (d.userEmail ? d.userEmail.split("@")[0] : uid.slice(0, 6)),
       userEmail: d.userEmail || "",
+      ticketId: ticketId,
     };
   } catch(_) {
-    _currentThreadMeta = { userUid: uid, userName: uid.slice(0, 6), userEmail: "" };
+    ticketId = _genTicketId(uid);
+    _currentThreadMeta = { userUid: uid, userName: uid.slice(0, 6), userEmail: "", ticketId };
   }
+  // Subscribe presence du user pour cette conv
+  if (_supportPresenceUnsub) { _supportPresenceUnsub(); _supportPresenceUnsub = null; }
+  _supportPresenceUnsub = onSnapshot(firestoreDoc(db, "presence", uid), snap => {
+    const p = snap.exists() ? snap.data() : {};
+    _renderPresenceBadge(p);
+  }, () => {});
   const input = document.getElementById("chat-input");
   const send = document.getElementById("chat-send");
   if (input) { input.disabled = closed; if (!closed) input.focus(); }
@@ -9147,14 +9211,19 @@ window._openAdminThread = async function(uid) {
   const bar = document.getElementById("chat-actions-bar");
   if (bar) {
     bar.style.display = "flex";
+    const leftInfo =
+      '<div style="margin-right:auto;display:flex;align-items:center;gap:10px">'
+      + '<span style="font-family:monospace;font-size:11px;color:var(--text2);background:var(--s3);padding:3px 8px;border-radius:6px">#' + ticketId + '</span>'
+      + '<span id="presence-badge" style="font-size:11px;color:var(--text3)">…</span>'
+      + '</div>';
     if (closed) {
-      bar.innerHTML =
-        '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
+      bar.innerHTML = leftInfo
+        + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
         + '<button onclick="reopenSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">↺ Réouvrir</button>'
         + '<button onclick="deleteSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">🗑 Supprimer définitivement</button>';
     } else {
-      bar.innerHTML =
-        '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
+      bar.innerHTML = leftInfo
+        + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
         + '<button onclick="closeSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">✕ Archiver</button>';
     }
   }
@@ -9164,6 +9233,19 @@ window._openAdminThread = async function(uid) {
   _subscribeAdminThreads();
 };
 
+function _renderPresenceBadge(p) {
+  const el = document.getElementById("presence-badge");
+  if (!el) return;
+  if (!p) { el.textContent = ""; return; }
+  const lastSeenMs = p.lastSeen && p.lastSeen.toDate ? p.lastSeen.toDate().getTime() : 0;
+  const isOnline = p.online === true && lastSeenMs > 0 && (Date.now() - lastSeenMs) < 60000;
+  if (isOnline) {
+    el.innerHTML = '<span style="display:inline-block;width:8px;height:8px;background:#00e09e;border-radius:50%;margin-right:5px;vertical-align:middle"></span>En ligne';
+  } else {
+    el.innerHTML = '<span style="display:inline-block;width:8px;height:8px;background:#6b7385;border-radius:50%;margin-right:5px;vertical-align:middle"></span>Hors ligne · ' + _formatLastSeen(p.lastSeen);
+  }
+}
+
 function _renderChatMessages(msgs) {
   const c = document.getElementById("chat-messages");
   if (!c) return;
@@ -9172,10 +9254,9 @@ function _renderChatMessages(msgs) {
     return;
   }
   const meta = _currentThreadMeta || {};
+  const myRole = isAdmin() ? "admin" : "user";
   c.innerHTML = msgs.map(m => {
     const isAdminMsg = m.from === "admin";
-    // Côté user : ses msgs à droite, admin à gauche.
-    // Côté admin : msgs user à gauche, ses propres msgs à droite.
     let sideCls;
     if (isAdmin()) sideCls = isAdminMsg ? "from-user" : "from-admin";
     else           sideCls = isAdminMsg ? "from-admin" : "from-user";
@@ -9192,13 +9273,32 @@ function _renderChatMessages(msgs) {
       if (t) time = t.toLocaleTimeString("fr-FR", {hour:"2-digit",minute:"2-digit"});
     } catch(_) {}
 
+    // Contenu (texte ou image)
+    let body;
+    if (m.type === "image" && m.imageUrl) {
+      body = '<a href="' + m.imageUrl + '" target="_blank" rel="noopener"><img src="' + m.imageUrl + '" alt="img" style="max-width:240px;max-height:240px;border-radius:8px;display:block"></a>';
+      if (m.text) body += '<div style="margin-top:6px">' + _escapeHtmlChat(m.text) + '</div>';
+    } else {
+      body = _escapeHtmlChat(m.text || "");
+    }
+
+    // Read receipt (uniquement sur ses propres messages)
+    let receipt = "";
+    if (m.from === myRole) {
+      receipt = m.read
+        ? '<span title="Lu" style="color:#5b8dee">✓✓</span>'
+        : '<span title="Envoyé">✓</span>';
+    }
+
     const avatar = '<div class="chat-avatar">' + defaultAvatarHtml(authorUid) + '</div>';
     const header =
       '<div class="chat-author">'
       + '<span class="chat-author-name">' + _escapeHtmlChat(authorName) + '</span>'
       + '<span class="chat-author-role" style="color:' + roleColor + '">' + authorRole + '</span>'
       + '</div>';
-    const bubble = '<div class="chat-msg ' + sideCls + '">' + _escapeHtmlChat(m.text) + '<div class="msg-meta">' + time + '</div></div>';
+    const bubble =
+      '<div class="chat-msg ' + sideCls + '">' + body
+      + '<div class="msg-meta">' + time + ' ' + receipt + '</div></div>';
     const inner = '<div class="chat-msg-content">' + header + bubble + '</div>';
 
     return '<div class="chat-row ' + (isRight ? 'right' : 'left') + '">'
@@ -9206,6 +9306,50 @@ function _renderChatMessages(msgs) {
       + '</div>';
   }).join("");
   c.scrollTop = c.scrollHeight;
+}
+
+// Construit la barre input (emoji + image + texte + send).
+function _chatInputBarHtml(placeholder, sendId, sendDisabled) {
+  const emojis = ["😀","😂","😍","🤔","👍","👎","🙏","🎉","🔥","💯","✨","❤️","😢","😡","✅","❌","💡","💰","📈","📉","⭐","🚀","🤝","👀","🎯","🤷","🤯"];
+  const panel = '<div id="emoji-panel" class="emoji-panel">'
+    + emojis.map(e => '<button onclick="insertEmoji(\'' + e + '\')" class="emoji-btn">' + e + '</button>').join("")
+    + '</div>';
+  return panel
+    + '<div class="chat-input-bar">'
+    + '<button type="button" onclick="toggleEmojiPanel()" class="chat-tool-btn" title="Emoji">😀</button>'
+    + '<label class="chat-tool-btn" title="Joindre image">📎'
+    + '<input type="file" accept="image/*" onchange="uploadSupportImage(this)" style="display:none">'
+    + '</label>'
+    + '<input id="chat-input" placeholder="' + placeholder + '" ' + (sendDisabled ? "disabled " : "") + 'onkeydown="if(event.key===&quot;Enter&quot;)sendSupportMessage()">'
+    + '<button ' + (sendId ? 'id="' + sendId + '" ' : '') + 'onclick="sendSupportMessage()" ' + (sendDisabled ? "disabled" : "") + '>Envoyer</button>'
+    + '</div>';
+}
+
+async function _sendSupportPayload(targetUid, payload) {
+  await addFirestoreDoc(firestoreCollection(db, "supportChats", targetUid, "messages"), Object.assign({
+    from: isAdmin() ? "admin" : "user",
+    createdAt: serverTimestamp(),
+    authorUid: currentUser,
+    read: false,
+  }, payload));
+  const u = fbAuth.currentUser;
+  const userEmail = isAdmin() ? null : ((u && u.email) || "");
+  const userName  = isAdmin() ? null : ((u && (u.displayName || (u.email || "").split("@")[0])) || "");
+  const threadRef = firestoreDoc(db, "supportThreads", targetUid);
+  const existing = await getFirestoreDoc(threadRef);
+  const prev = existing.exists() ? existing.data() : {};
+  const preview = payload.type === "image" ? "📎 Image" : (payload.text || "");
+  const update = {
+    lastMsg: preview,
+    lastAt: serverTimestamp(),
+    lastFrom: isAdmin() ? "admin" : "user",
+    unreadAdmin: isAdmin() ? 0 : ((prev.unreadAdmin || 0) + 1),
+    unreadUser: isAdmin() ? ((prev.unreadUser || 0) + 1) : 0,
+  };
+  if (userEmail && !prev.userEmail) update.userEmail = userEmail;
+  if (userName  && !prev.userName)  update.userName  = userName;
+  if (!prev.ticketId) update.ticketId = _genTicketId(targetUid);
+  await setFirestoreDoc(threadRef, update, { merge: true });
 }
 
 window.sendSupportMessage = async function() {
@@ -9216,34 +9360,48 @@ window.sendSupportMessage = async function() {
   const targetUid = isAdmin() ? _activeSupportThread : currentUser;
   if (!targetUid) return;
   input.value = "";
+  try { await _sendSupportPayload(targetUid, { type: "text", text }); }
+  catch(e) { console.error("send support:", e); alert("Erreur envoi"); input.value = text; }
+};
+
+window.uploadSupportImage = async function(fileInput) {
+  const file = fileInput.files && fileInput.files[0];
+  fileInput.value = "";
+  if (!file) return;
+  if (!file.type.startsWith("image/")) { alert("Image uniquement."); return; }
+  if (file.size > 5 * 1024 * 1024) { alert("Max 5 Mo."); return; }
+  if (!fbStorage) { alert("Storage non disponible."); return; }
+  const targetUid = isAdmin() ? _activeSupportThread : currentUser;
+  if (!targetUid) return;
+  const sendBtn = document.getElementById("chat-send");
+  if (sendBtn) sendBtn.disabled = true;
   try {
-    await addFirestoreDoc(firestoreCollection(db, "supportChats", targetUid, "messages"), {
-      from: isAdmin() ? "admin" : "user",
-      text: text,
-      createdAt: serverTimestamp(),
-      authorUid: currentUser,
-    });
-    const u = fbAuth.currentUser;
-    const userEmail = isAdmin() ? null : ((u && u.email) || "");
-    const userName  = isAdmin() ? null : ((u && (u.displayName || (u.email || "").split("@")[0])) || "");
-    const threadRef = firestoreDoc(db, "supportThreads", targetUid);
-    const existing = await getFirestoreDoc(threadRef);
-    const prev = existing.exists() ? existing.data() : {};
-    const update = {
-      lastMsg: text,
-      lastAt: serverTimestamp(),
-      lastFrom: isAdmin() ? "admin" : "user",
-      unreadAdmin: isAdmin() ? 0 : ((prev.unreadAdmin || 0) + 1),
-      unreadUser: isAdmin() ? ((prev.unreadUser || 0) + 1) : 0,
-    };
-    if (userEmail && !prev.userEmail) update.userEmail = userEmail;
-    if (userName && !prev.userName) update.userName = userName;
-    await setFirestoreDoc(threadRef, update, { merge: true });
+    const path = "support-attachments/" + targetUid + "/" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const sref = fbStorageRef(fbStorage, path);
+    await fbStorageUploadBytes(sref, file);
+    const url = await fbStorageGetDownloadURL(sref);
+    await _sendSupportPayload(targetUid, { type: "image", imageUrl: url, fileName: file.name });
   } catch(e) {
-    console.error("send support:", e);
-    alert("Erreur envoi du message");
-    input.value = text;
+    console.error("upload:", e);
+    alert("Erreur upload : " + (e.message || e));
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
   }
+};
+
+window.insertEmoji = function(emo) {
+  const input = document.getElementById("chat-input");
+  if (!input) return;
+  input.value = (input.value || "") + emo;
+  input.focus();
+  const panel = document.getElementById("emoji-panel");
+  if (panel) panel.style.display = "none";
+};
+
+window.toggleEmojiPanel = function() {
+  const panel = document.getElementById("emoji-panel");
+  if (!panel) return;
+  panel.style.display = panel.style.display === "block" ? "none" : "block";
 };
 
 window.closeSupportThreadUser = async function() {

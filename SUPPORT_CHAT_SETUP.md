@@ -39,7 +39,29 @@ match /supportThreads/{userId} {
 
 Console Firebase → Firestore Database → Rules → Publier.
 
-## 4. Test
+## 4. Firebase Storage (pour images)
+
+Console Firebase → Storage → Rules :
+
+```javascript
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function _isAdmin() {
+      return request.auth != null &&
+        firestore.get(/databases/(default)/documents/roles/$(request.auth.uid)).data.role == 'superadmin';
+    }
+    match /support-attachments/{userId}/{file=**} {
+      allow read:  if request.auth != null && (request.auth.uid == userId || _isAdmin());
+      allow write: if request.auth != null && (request.auth.uid == userId || _isAdmin())
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
+```
+
+## 5. Test
 
 - Compte user lambda : page Support → message → Envoyer
 - Toi (admin) : page Support → vois conversation dans liste gauche → clique → réponds
