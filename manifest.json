@@ -3,7 +3,7 @@
   "short_name": "Capital Board",
   "description": "Suivi de portefeuille PEA",
   "start_url": "./app.html",
-  "scope": "./",
+  "scope": "./app.html",
   "display": "standalone",
   "background_color": "#04060b",
   "theme_color": "#12111f",
