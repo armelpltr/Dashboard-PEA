@@ -139,7 +139,7 @@
   /* ═══ Stats cards ═══ */
   .stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     max-width: 1100px; margin: 0 auto;
     gap: 16px;
     padding: 0 24px;
@@ -148,7 +148,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 24px 20px;
+    padding: 28px;
     text-align: left;
     transition: all 0.2s ease;
   }
@@ -157,18 +157,28 @@
     transform: translateY(-2px);
   }
   .stat-ico {
-    width: 40px; height: 40px;
+    width: 44px; height: 44px;
     border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
   }
-  .stat-val { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
-  .stat-val.purple { color: var(--purple); }
-  .stat-val.green { color: var(--green); }
-  .stat-val.gold { color: var(--gold); }
-  .stat-val.blue { color: var(--blue); }
-  .stat-val.red { color: var(--red); }
-  .stat-lbl { font-size: 13px; color: var(--text3); margin-top: 4px; }
+  .stat-val { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 8px; }
+  .stat-val.purple { color: var(--text1); }
+  .stat-val.green { color: var(--text1); }
+  .stat-val.gold { color: var(--text1); }
+  .stat-val.blue { color: var(--text1); }
+  .stat-val.red { color: var(--text1); }
+  .stat-lbl { font-size: 14px; color: var(--text2); line-height: 1.6; }
+  .stat-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .stat-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    color: var(--text2);
+  }
 
   /* ═══ SECTION ═══ */
   section { padding: 100px 0; position: relative; z-index: 1; }
@@ -310,41 +320,72 @@
   <div class="hero-note" data-auth="in" style="display:none" id="hero-welcome"></div>
 
   <div class="stats" style="margin-top:80px">
+
     <div class="stat">
-      <div class="stat-ico ico-green">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <div class="stat-ico" style="background:rgba(96,0,162,0.15);color:#7e1fff">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 4L13 11l-1.2-2.4L9 4H4.5l5.6 10v6h3.4v-6L19 4z"/></svg>
       </div>
-      <div class="stat-val green">Temps réel</div>
-      <div class="stat-lbl">Yahoo Finance</div>
+      <div class="stat-val">Données en temps réel</div>
+      <div class="stat-lbl">Cours, volumes et historiques mis à jour toutes les 60 secondes via l'API publique <strong>Yahoo Finance</strong>. Accès aux mêmes données que les pros, sans abonnement payant.</div>
+      <div class="stat-tags">
+        <span class="stat-tag">Yahoo Finance API</span>
+        <span class="stat-tag">Refresh 60s</span>
+        <span class="stat-tag">Historiques complets</span>
+      </div>
     </div>
+
     <div class="stat">
       <div class="stat-ico ico-gold">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 1 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
       </div>
-      <div class="stat-val gold">IA</div>
-      <div class="stat-lbl">Récap quotidien</div>
+      <div class="stat-val">Analyse IA quotidienne</div>
+      <div class="stat-lbl">Chaque soir, votre portefeuille est analysé : contexte marché, mouvements clés, dividendes à venir, anomalies. Rapport généré par <strong>Mistral AI</strong> à partir de recherches web <strong>Tavily</strong>.</div>
+      <div class="stat-tags">
+        <span class="stat-tag">Mistral AI</span>
+        <span class="stat-tag">Tavily Search</span>
+        <span class="stat-tag">Rapport 20h</span>
+      </div>
     </div>
+
     <div class="stat">
       <div class="stat-ico ico-purple">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
       </div>
-      <div class="stat-val purple">Open source</div>
-      <div class="stat-lbl">Code vérifiable</div>
+      <div class="stat-val">100% open source</div>
+      <div class="stat-lbl">L'intégralité du code source est publique sur GitHub. Auditez-le, forkez-le, contribuez. Aucune boîte noire, aucun algorithme caché. Vous savez exactement ce que fait l'app avec vos données.</div>
+      <div class="stat-tags">
+        <span class="stat-tag">GitHub public</span>
+        <span class="stat-tag">MIT-style</span>
+        <span class="stat-tag">Auditable</span>
+      </div>
     </div>
+
     <div class="stat">
       <div class="stat-ico ico-blue">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
       </div>
-      <div class="stat-val blue">Sécurisé</div>
-      <div class="stat-lbl">Chiffrement TLS</div>
+      <div class="stat-val">Sécurisé par design</div>
+      <div class="stat-lbl">Authentification gérée par <strong>Firebase Auth</strong> (Google). Données stockées en Europe, chiffrées au repos et en transit (TLS 1.3). Aucun mot de passe stocké en clair. Hosting sur GitHub Pages (HTTPS forcé).</div>
+      <div class="stat-tags">
+        <span class="stat-tag">Firebase Auth</span>
+        <span class="stat-tag">TLS 1.3</span>
+        <span class="stat-tag">Données UE</span>
+      </div>
     </div>
+
     <div class="stat">
       <div class="stat-ico ico-red">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="4" y1="20" x2="20" y2="4"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="4" y1="20" x2="20" y2="4"/></svg>
       </div>
-      <div class="stat-val red">Zéro banque</div>
-      <div class="stat-lbl">Aucune connexion bancaire</div>
+      <div class="stat-val">Zéro connexion bancaire</div>
+      <div class="stat-lbl">L'app ne se connecte <strong>jamais</strong> à votre banque. Pas d'agrégation type Bridge/Powens. Vous saisissez vos transactions vous-même (ou CSV) : aucun risque de fuite d'identifiants, aucune dépendance à un tiers bancaire.</div>
+      <div class="stat-tags">
+        <span class="stat-tag">No screen-scraping</span>
+        <span class="stat-tag">No DSP2</span>
+        <span class="stat-tag">Saisie manuelle/CSV</span>
+      </div>
     </div>
+
   </div>
 </section>
 
