@@ -1947,6 +1947,10 @@ body.sb-collapsed .main { margin-left: 58px; }
 @media (display-mode: standalone) {
   .external-presentation { display: none !important; }
 }
+/* Cache aussi sur mobile (largeur réduite) — desktop navigateur uniquement */
+@media (max-width: 900px) {
+  .desktop-only { display: none !important; }
+}
 
 /* Mode démo : cache le login dès le chargement (avant Firebase) */
 html.demo-mode #login-screen { display: none !important; }
