@@ -73,6 +73,7 @@
 <div id="login-screen" style="display:none">
   <div class="login-bg"></div>
   <div class="login-grid"></div>
+  <a href="index.html" style="position:absolute;top:20px;left:20px;z-index:10;color:#aab2c3;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid rgba(255,255,255,0.12);border-radius:8px;background:rgba(0,0,0,0.3);backdrop-filter:blur(10px)">← Retour à l'accueil</a>
 
   <!-- VUE CONNEXION -->
   <div class="login-card" id="login-view">
@@ -221,6 +222,9 @@
       <div class="mobile-drawer-item" onclick="openProfilModal();closeMobileDrawer()">
         <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>Mon profil
       </div>
+      <a class="mobile-drawer-item" href="index.html" style="text-decoration:none">
+        <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>Accueil
+      </a>
       <div class="mobile-drawer-section">Informations légales</div>
       <a class="mobile-drawer-item" href="cgu.html" target="_blank" style="text-decoration:none">
         <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8892a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>CGU
@@ -280,6 +284,8 @@
     </nav>
     <div class="sidebar-user">
       <div class="sidebar-legal-links">
+        <a href="index.html" title="Retour à l'accueil">← Accueil</a>
+        <span>·</span>
         <a href="cgu.html" target="_blank">CGU</a>
         <span>·</span>
         <a href="politique-confidentialite.html" target="_blank">Confidentialité</a>
