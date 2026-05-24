@@ -8063,6 +8063,19 @@ function computeShortPerf() {
 }
 
 function renderPerformancePage(result, portfolio, txs) {
+  if (window.IS_DEMO) {
+    const el = document.getElementById('performance-content') || document.querySelector('#performance .page-content') || document.getElementById('performance');
+    if (el) {
+      el.innerHTML =
+        '<div class="section-card" style="text-align:center;padding:64px 32px;max-width:600px;margin:40px auto">'
+        + '<div style="margin-bottom:16px;opacity:0.6"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#a29bfe" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
+        + '<div style="font-size:16px;color:var(--text);font-weight:600;margin-bottom:8px">Performance non disponible en démo</div>'
+        + '<div style="font-size:13px;color:var(--text2);line-height:1.6">Cette page calcule votre performance réelle à partir d\'un import CSV de votre courtier (Bourse Direct, Boursorama, Trade Republic…).<br><br>Créez un compte gratuit pour importer vos transactions et débloquer cette analyse.</div>'
+        + '<a href="app.html?signup=1" class="btn btn-primary" style="margin-top:20px;display:inline-block">Créer un compte gratuit →</a>'
+        + '</div>';
+    }
+    return;
+  }
   const rows = result.years;
 
   // ── KPIs globaux ──
