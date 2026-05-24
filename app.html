@@ -43,17 +43,14 @@
   </div>
 </div>
 <script>
-  function openExternal(e, url) {
+  (function() {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     if (standalone) {
-      e.preventDefault();
-      const absUrl = new URL(url, window.location.href).href;
-      const w = window.open(absUrl, '_blank');
-      if (!w) window.location.href = absUrl;
-      return false;
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.external-presentation').forEach(el => el.style.display = 'none');
+      });
     }
-    return true;
-  }
+  })();
   (function() {
     if (!localStorage.getItem('cookie_consent')) {
       document.addEventListener('DOMContentLoaded', () => {
@@ -84,7 +81,7 @@
 <div id="login-screen" style="display:none">
   <div class="login-bg"></div>
   <div class="login-grid"></div>
-  <a href="index.html" target="_blank" rel="noopener" onclick="return openExternal(event, 'index.html')" style="position:absolute;top:20px;left:20px;z-index:10;color:#aab2c3;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid rgba(255,255,255,0.12);border-radius:8px;background:rgba(0,0,0,0.3);backdrop-filter:blur(10px)">Voir la présentation ↗</a>
+  <a href="index.html" target="_blank" rel="noopener" class="external-presentation" style="position:absolute;top:20px;left:20px;z-index:10;color:#aab2c3;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid rgba(255,255,255,0.12);border-radius:8px;background:rgba(0,0,0,0.3);backdrop-filter:blur(10px)">Voir la présentation ↗</a>
 
   <!-- VUE CONNEXION -->
   <div class="login-card" id="login-view">
@@ -294,7 +291,7 @@
       </div>
     </nav>
     <div class="sidebar-user">
-      <a href="index.html?stay=1" class="sidebar-home-btn" target="_blank" rel="noopener" onclick="return openExternal(event, 'index.html?stay=1')" title="Voir la présentation du projet (nouvel onglet)">
+      <a href="index.html?stay=1" class="sidebar-home-btn external-presentation" target="_blank" rel="noopener" title="Voir la présentation du projet (nouvel onglet)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
         <span>Voir la présentation</span>
       </a>

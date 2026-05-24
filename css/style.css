@@ -1943,6 +1943,11 @@ body.sb-collapsed .main { margin-left: 58px; }
 }
 .sidebar-home-btn svg { flex-shrink: 0; }
 
+/* Cache liens vers landing en mode PWA standalone (iOS bloque l'ouverture externe) */
+@media (display-mode: standalone) {
+  .external-presentation { display: none !important; }
+}
+
 /* Liens légaux dans la sidebar desktop */
 .sidebar-legal-links {
   display: flex; align-items: center; justify-content: center; gap: 4px;
