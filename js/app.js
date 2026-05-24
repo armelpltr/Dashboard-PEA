@@ -8460,6 +8460,7 @@ window.switchRecapView = function(v) {
 };
 
 async function _refreshRecap() {
+  if (window.IS_DEMO) return;
   if (!currentUser || !db) return;
   try {
     const snap = await getFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'recap'));
@@ -8469,6 +8470,7 @@ async function _refreshRecap() {
 }
 
 async function _refreshWeeklyRecap() {
+  if (window.IS_DEMO) return;
   if (!currentUser || !db) return;
   try {
     const snap = await getFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'weeklyRecap'));
