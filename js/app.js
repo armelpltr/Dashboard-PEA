@@ -8977,6 +8977,36 @@ let _supportAdminTab = "active"; // 'active' | 'archived'
 let _presenceHeartbeat = null;
 const ADMIN_DISPLAY_NAME = "Armel";
 
+// Modal de saisie (remplace window.prompt).
+window.showPromptModal = function({ title, body, placeholder, okLabel, cancelLabel, onConfirm }) {
+  const existing = document.getElementById("prompt-modal-dyn");
+  if (existing) existing.remove();
+  const wrap = document.createElement("div");
+  wrap.id = "prompt-modal-dyn";
+  wrap.className = "modal-overlay open";
+  wrap.innerHTML =
+    '<div class="modal">'
+    + '<div class="modal-title">' + _escapeHtmlChat(title || "") + '</div>'
+    + (body ? '<div class="modal-sub">' + _escapeHtmlChat(body) + '</div>' : '')
+    + '<input id="prompt-modal-input" type="text" placeholder="' + _escapeHtmlChat(placeholder || "") + '" style="width:100%;padding:11px 13px;background:var(--s3);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-size:13px;font-family:inherit">'
+    + '<div class="modal-footer">'
+    + '<button class="btn-secondary" id="prompt-modal-cancel">' + (cancelLabel || "Annuler") + '</button>'
+    + '<button class="btn-primary" id="prompt-modal-ok">' + (okLabel || "Valider") + '</button>'
+    + '</div></div>';
+  document.body.appendChild(wrap);
+  const input = document.getElementById("prompt-modal-input");
+  input.focus();
+  const close = () => wrap.remove();
+  document.getElementById("prompt-modal-cancel").onclick = close;
+  document.getElementById("prompt-modal-ok").onclick = () => {
+    const v = input.value.trim();
+    close();
+    if (v && onConfirm) onConfirm(v);
+  };
+  input.addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("prompt-modal-ok").click(); });
+  wrap.addEventListener("click", e => { if (e.target === wrap) close(); });
+};
+
 // Génère un ticket ID stable à partir d'un UID (6 hex chars).
 function _genTicketId(uid) {
   let h = 0;
@@ -9142,40 +9172,45 @@ function _renderAdminThreads(threads) {
   }).join("");
 }
 
-window._openNewChatPrompt = async function() {
-  const input = prompt("Email ou UID du user à contacter :");
-  if (!input) return;
-  const v = input.trim();
-  if (!v) return;
-  let uid = v;
-  if (v.includes("@")) {
-    try {
-      const snap = await getDocs(firestoreQuery(firestoreCollection(db, "users"), firestoreWhere("email", "==", v)));
-      if (snap.empty) { alert("Aucun user avec cet email."); return; }
-      uid = snap.docs[0].id;
-    } catch(e) {
-      alert("Recherche email impossible. Tape directement l'UID.");
-      return;
-    }
-  }
-  try {
-    const threadRef = firestoreDoc(db, "supportThreads", uid);
-    const existing = await getFirestoreDoc(threadRef);
-    if (!existing.exists()) {
-      await setFirestoreDoc(threadRef, {
-        lastMsg: "(conversation initiée par l'admin)",
-        lastAt: serverTimestamp(),
-        lastFrom: "admin",
-        unreadAdmin: 0,
-        unreadUser: 0,
-        userEmail: v.includes("@") ? v : "",
-      });
-    }
-    _openAdminThread(uid);
-  } catch(e) {
-    console.error(e);
-    alert("Erreur création thread.");
-  }
+window._openNewChatPrompt = function() {
+  showPromptModal({
+    title: "Nouveau chat",
+    body: "Entrez l'email ou l'UID Firebase du user à contacter.",
+    placeholder: "email@exemple.com ou UID",
+    okLabel: "Créer",
+    onConfirm: async (v) => {
+      let uid = v;
+      if (v.includes("@")) {
+        try {
+          const snap = await getDocs(firestoreQuery(firestoreCollection(db, "users"), firestoreWhere("email", "==", v)));
+          if (snap.empty) { alert("Aucun user avec cet email."); return; }
+          uid = snap.docs[0].id;
+        } catch(e) {
+          alert("Recherche email impossible. Tape directement l'UID.");
+          return;
+        }
+      }
+      try {
+        const threadRef = firestoreDoc(db, "supportThreads", uid);
+        const existing = await getFirestoreDoc(threadRef);
+        if (!existing.exists()) {
+          await setFirestoreDoc(threadRef, {
+            lastMsg: "(conversation initiée par l'admin)",
+            lastAt: serverTimestamp(),
+            lastFrom: "admin",
+            unreadAdmin: 0, unreadUser: 0,
+            userEmail: v.includes("@") ? v : "",
+            ticketId: _genTicketId(uid),
+          });
+          await _postSystemMessage(uid, "🆕 Conversation initiée par l'admin");
+        }
+        _openAdminThread(uid);
+      } catch(e) {
+        console.error(e);
+        alert("Erreur création thread.");
+      }
+    },
+  });
 };
 
 window._openAdminThread = async function(uid) {
@@ -9256,6 +9291,15 @@ function _renderChatMessages(msgs) {
   const meta = _currentThreadMeta || {};
   const myRole = isAdmin() ? "admin" : "user";
   c.innerHTML = msgs.map(m => {
+    // Message système (ouverture/fermeture ticket)
+    if (m.type === "system" || m.from === "system") {
+      let time = "";
+      try {
+        const t = (m.createdAt && m.createdAt.toDate) ? m.createdAt.toDate() : null;
+        if (t) time = t.toLocaleString("fr-FR", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+      } catch(_) {}
+      return '<div class="chat-system">' + _escapeHtmlChat(m.text || "") + (time ? ' · <span style="opacity:0.7">' + time + '</span>' : '') + '</div>';
+    }
     const isAdminMsg = m.from === "admin";
     let sideCls;
     if (isAdmin()) sideCls = isAdminMsg ? "from-user" : "from-admin";
@@ -9404,19 +9448,35 @@ window.toggleEmojiPanel = function() {
   panel.style.display = panel.style.display === "block" ? "none" : "block";
 };
 
-window.closeSupportThreadUser = async function() {
-  if (!confirm("Fermer cette conversation ? Vous ne la verrez plus mais l'admin la conservera en archive.")) return;
+async function _postSystemMessage(uid, text) {
   try {
-    await setFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser), {
-      closed: true, closedAt: serverTimestamp(), closedBy: "user"
-    }, { merge: true });
-    if (_supportUnsub) { _supportUnsub(); _supportUnsub = null; }
-    renderSupportUser();
-  } catch(e) { console.error(e); alert("Erreur fermeture."); }
+    await addFirestoreDoc(firestoreCollection(db, "supportChats", uid, "messages"), {
+      type: "system", text, createdAt: serverTimestamp(), from: "system", authorUid: currentUser, read: true,
+    });
+  } catch(e) { console.warn("system msg:", e); }
+}
+
+window.closeSupportThreadUser = function() {
+  showConfirmModal({
+    title: "Fermer la conversation",
+    body: "Vous ne la verrez plus, mais l'admin la conservera en archive.",
+    okLabel: "Fermer", cancelLabel: "Annuler", danger: true,
+    onConfirm: async () => {
+      try {
+        await _postSystemMessage(currentUser, "🔒 Ticket fermé par l'utilisateur");
+        await setFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser), {
+          closed: true, closedAt: serverTimestamp(), closedBy: "user"
+        }, { merge: true });
+        if (_supportUnsub) { _supportUnsub(); _supportUnsub = null; }
+        renderSupportUser();
+      } catch(e) { console.error(e); alert("Erreur fermeture."); }
+    },
+  });
 };
 
 window.reopenSupportThread = async function() {
   try {
+    await _postSystemMessage(currentUser, "🔓 Ticket rouvert par l'utilisateur");
     await setFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser), {
       closed: false, reopenedAt: serverTimestamp()
     }, { merge: true });
@@ -9424,39 +9484,55 @@ window.reopenSupportThread = async function() {
   } catch(e) { console.error(e); alert("Erreur réouverture."); }
 };
 
-window.closeSupportThreadAdmin = async function() {
+window.closeSupportThreadAdmin = function() {
   if (!_activeSupportThread) return;
-  if (!confirm("Archiver cette conversation ?")) return;
-  try {
-    await setFirestoreDoc(firestoreDoc(db, "supportThreads", _activeSupportThread), {
-      closed: true, closedAt: serverTimestamp(), closedBy: "admin"
-    }, { merge: true });
-    _openAdminThread(_activeSupportThread);
-  } catch(e) { console.error(e); alert("Erreur archivage."); }
+  const uid = _activeSupportThread;
+  showConfirmModal({
+    title: "Archiver la conversation",
+    body: "Le ticket passera en Archivés. Vous pourrez le rouvrir ou le supprimer.",
+    okLabel: "Archiver", cancelLabel: "Annuler",
+    onConfirm: async () => {
+      try {
+        await _postSystemMessage(uid, "🔒 Ticket archivé par l'admin");
+        await setFirestoreDoc(firestoreDoc(db, "supportThreads", uid), {
+          closed: true, closedAt: serverTimestamp(), closedBy: "admin"
+        }, { merge: true });
+        _openAdminThread(uid);
+      } catch(e) { console.error(e); alert("Erreur archivage."); }
+    },
+  });
 };
 
 window.reopenSupportThreadAdmin = async function() {
   if (!_activeSupportThread) return;
+  const uid = _activeSupportThread;
   try {
-    await setFirestoreDoc(firestoreDoc(db, "supportThreads", _activeSupportThread), {
+    await _postSystemMessage(uid, "🔓 Ticket rouvert par l'admin");
+    await setFirestoreDoc(firestoreDoc(db, "supportThreads", uid), {
       closed: false, reopenedAt: serverTimestamp()
     }, { merge: true });
-    _openAdminThread(_activeSupportThread);
+    _openAdminThread(uid);
   } catch(e) { console.error(e); alert("Erreur réouverture."); }
 };
 
-window.deleteSupportThreadAdmin = async function() {
+window.deleteSupportThreadAdmin = function() {
   if (!_activeSupportThread) return;
-  if (!confirm("Supprimer DÉFINITIVEMENT cette conversation et tous ses messages ? Action irréversible.")) return;
   const uid = _activeSupportThread;
-  try {
-    const msgsCol = firestoreCollection(db, "supportChats", uid, "messages");
-    const snap = await getDocs(msgsCol);
-    await Promise.all(snap.docs.map(d => deleteFirestoreDoc(firestoreDoc(db, "supportChats", uid, "messages", d.id))));
-    await deleteFirestoreDoc(firestoreDoc(db, "supportThreads", uid));
-    _activeSupportThread = null;
-    renderSupportAdmin();
-  } catch(e) { console.error(e); alert("Erreur suppression."); }
+  showConfirmModal({
+    title: "Suppression définitive",
+    body: "Cette conversation et tous ses messages seront supprimés. Action irréversible.",
+    okLabel: "Supprimer", cancelLabel: "Annuler", danger: true,
+    onConfirm: async () => {
+      try {
+        const msgsCol = firestoreCollection(db, "supportChats", uid, "messages");
+        const snap = await getDocs(msgsCol);
+        await Promise.all(snap.docs.map(d => deleteFirestoreDoc(firestoreDoc(db, "supportChats", uid, "messages", d.id))));
+        await deleteFirestoreDoc(firestoreDoc(db, "supportThreads", uid));
+        _activeSupportThread = null;
+        renderSupportAdmin();
+      } catch(e) { console.error(e); alert("Erreur suppression."); }
+    },
+  });
 };
 
 window.downloadSupportTranscript = async function() {

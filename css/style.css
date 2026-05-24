@@ -2015,6 +2015,14 @@ html.demo-mode #login-screen { display: none !important; }
   font-size: 18px; cursor: pointer; border-radius: 6px;
 }
 .emoji-btn:hover { background: var(--s3); }
+.chat-system {
+  align-self: center;
+  font-size: 11px; color: var(--text3);
+  background: var(--s2); border: 1px dashed var(--border2);
+  padding: 5px 12px; border-radius: 999px;
+  margin: 6px 0;
+  font-style: italic;
+}
 @media (max-width: 720px) {
   .chat-admin-layout { grid-template-columns: 1fr; }
   .chat-threads { display: none; }
