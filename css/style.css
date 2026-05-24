@@ -1982,6 +1982,15 @@ html.demo-mode #login-screen { display: none !important; }
 .chat-input-bar button:hover { background: #6b5ee8; }
 .chat-input-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
 .chat-empty { padding: 40px; text-align: center; color: var(--text3); font-size: 13px; }
+.chat-tab {
+  flex: 1; padding: 7px 10px;
+  background: transparent; border: 1px solid var(--border2);
+  border-radius: 6px; color: var(--text2);
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  transition: all 0.15s;
+}
+.chat-tab:hover { color: var(--text); border-color: var(--accent); }
+.chat-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 @media (max-width: 720px) {
   .chat-admin-layout { grid-template-columns: 1fr; }
   .chat-threads { display: none; }

@@ -8962,6 +8962,7 @@ let _supportUnsub = null;
 let _supportThreadsUnsub = null;
 let _activeSupportThread = null;
 let _currentThreadMeta = null;
+let _supportAdminTab = "active"; // 'active' | 'archived'
 const ADMIN_DISPLAY_NAME = "Armel";
 
 function isAdmin() { return currentUser === ADMIN_UID; }
@@ -8976,35 +8977,62 @@ function renderSupportPage() {
   else renderSupportUser();
 }
 
-function renderSupportUser() {
-  const el = document.getElementById("support-content");
-  el.innerHTML =
-    '<div class="chat-wrap">'
-    + '<div class="chat-messages" id="chat-messages"></div>'
-    + '<div class="chat-input-bar">'
-    + '<input id="chat-input" placeholder="Écrivez votre message..." onkeydown="if(event.key===&quot;Enter&quot;)sendSupportMessage()">'
-    + '<button onclick="sendSupportMessage()">Envoyer</button>'
-    + '</div></div>';
+async function renderSupportUser() {
   const u = fbAuth.currentUser;
   _currentThreadMeta = {
     userUid: currentUser,
     userName: (u && (u.displayName || (u.email || "").split("@")[0])) || "Vous",
     userEmail: (u && u.email) || "",
   };
+  let closed = false;
+  try {
+    const snap = await getFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser));
+    closed = snap.exists() && snap.data().closed === true;
+  } catch(_) {}
+
+  const el = document.getElementById("support-content");
+  if (closed) {
+    el.innerHTML =
+      '<div class="chat-wrap" style="align-items:center;justify-content:center;text-align:center;padding:40px">'
+      + '<div style="max-width:420px">'
+      + '<div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:10px">Conversation fermée</div>'
+      + '<div style="font-size:13px;color:var(--text2);margin-bottom:24px">Vous avez fermé cette conversation. Vous pouvez télécharger la transcription ou en démarrer une nouvelle.</div>'
+      + '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'
+      + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="padding:9px 16px;font-size:13px">📄 Télécharger transcription</button>'
+      + '<button onclick="reopenSupportThread()" style="padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">Nouvelle conversation</button>'
+      + '</div></div></div>';
+    return;
+  }
+  el.innerHTML =
+    '<div class="chat-wrap">'
+    + '<div style="display:flex;justify-content:flex-end;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border)">'
+    + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
+    + '<button onclick="closeSupportThreadUser()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">✕ Fermer</button>'
+    + '</div>'
+    + '<div class="chat-messages" id="chat-messages"></div>'
+    + '<div class="chat-input-bar">'
+    + '<input id="chat-input" placeholder="Écrivez votre message..." onkeydown="if(event.key===&quot;Enter&quot;)sendSupportMessage()">'
+    + '<button onclick="sendSupportMessage()">Envoyer</button>'
+    + '</div></div>';
   _subscribeSupportThread(currentUser);
   _markThreadReadByUser(currentUser);
 }
 
 function renderSupportAdmin() {
   const el = document.getElementById("support-content");
+  const tabActive   = _supportAdminTab === "active";
   el.innerHTML =
     '<div class="chat-wrap"><div class="chat-admin-layout">'
     + '<div class="chat-threads">'
     + '<div style="padding:10px;border-bottom:1px solid var(--border2);background:var(--s3)">'
-    + '<button onclick="_openNewChatPrompt()" style="width:100%;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">+ Nouveau chat (email ou UID)</button>'
-    + '</div>'
+    + '<button onclick="_openNewChatPrompt()" style="width:100%;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:8px">+ Nouveau chat</button>'
+    + '<div style="display:flex;gap:4px">'
+    + '<button onclick="_setAdminTab(\'active\')" class="chat-tab' + (tabActive ? ' active' : '') + '">Actifs</button>'
+    + '<button onclick="_setAdminTab(\'archived\')" class="chat-tab' + (!tabActive ? ' active' : '') + '">Archivés</button>'
+    + '</div></div>'
     + '<div id="chat-threads"><div class="chat-empty">Chargement…</div></div></div>'
     + '<div class="chat-messages-pane" style="display:flex;flex-direction:column;height:100%">'
+    + '<div id="chat-actions-bar" style="display:none;padding:8px 12px;border-bottom:1px solid var(--border);gap:6px;justify-content:flex-end"></div>'
     + '<div class="chat-messages" id="chat-messages"><div class="chat-empty">Sélectionnez une conversation à gauche.</div></div>'
     + '<div class="chat-input-bar">'
     + '<input id="chat-input" placeholder="Répondre…" disabled onkeydown="if(event.key===&quot;Enter&quot;)sendSupportMessage()">'
@@ -9012,6 +9040,12 @@ function renderSupportAdmin() {
     + '</div></div></div></div>';
   _subscribeAdminThreads();
 }
+
+window._setAdminTab = function(tab) {
+  _supportAdminTab = tab;
+  _activeSupportThread = null;
+  renderSupportAdmin();
+};
 
 function _subscribeSupportThread(uid) {
   if (_supportUnsub) { _supportUnsub(); _supportUnsub = null; }
@@ -9036,8 +9070,12 @@ function _subscribeAdminThreads() {
 function _renderAdminThreads(threads) {
   const el = document.getElementById("chat-threads");
   if (!el) return;
-  if (!threads.length) { el.innerHTML = '<div class="chat-empty">Aucune conversation.</div>'; return; }
-  el.innerHTML = threads.map(t => {
+  const filtered = threads.filter(t => _supportAdminTab === "archived" ? t.closed === true : t.closed !== true);
+  if (!filtered.length) {
+    el.innerHTML = '<div class="chat-empty">' + (_supportAdminTab === "archived" ? "Aucune conversation archivée." : "Aucune conversation active.") + '</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(t => {
     const unread = (t.unreadAdmin > 0) ? '<span class="ct-unread">' + t.unreadAdmin + '</span>' : "";
     const cls = (t.uid === _activeSupportThread) ? "chat-thread-item active" : "chat-thread-item";
     const preview = _escapeHtmlChat(t.lastMsg || "").slice(0, 50);
@@ -9088,13 +9126,11 @@ window._openNewChatPrompt = async function() {
 
 window._openAdminThread = async function(uid) {
   _activeSupportThread = uid;
-  const input = document.getElementById("chat-input");
-  const send = document.getElementById("chat-send");
-  if (input) { input.disabled = false; input.focus(); }
-  if (send) send.disabled = false;
+  let closed = false;
   try {
     const snap = await getFirestoreDoc(firestoreDoc(db, "supportThreads", uid));
     const d = snap.exists() ? snap.data() : {};
+    closed = d.closed === true;
     _currentThreadMeta = {
       userUid: uid,
       userName: d.userName || (d.userEmail ? d.userEmail.split("@")[0] : uid.slice(0, 6)),
@@ -9103,6 +9139,26 @@ window._openAdminThread = async function(uid) {
   } catch(_) {
     _currentThreadMeta = { userUid: uid, userName: uid.slice(0, 6), userEmail: "" };
   }
+  const input = document.getElementById("chat-input");
+  const send = document.getElementById("chat-send");
+  if (input) { input.disabled = closed; if (!closed) input.focus(); }
+  if (send) send.disabled = closed;
+
+  const bar = document.getElementById("chat-actions-bar");
+  if (bar) {
+    bar.style.display = "flex";
+    if (closed) {
+      bar.innerHTML =
+        '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
+        + '<button onclick="reopenSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">↺ Réouvrir</button>'
+        + '<button onclick="deleteSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">🗑 Supprimer définitivement</button>';
+    } else {
+      bar.innerHTML =
+        '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
+        + '<button onclick="closeSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">✕ Archiver</button>';
+    }
+  }
+
   _subscribeSupportThread(uid);
   _markThreadReadByAdmin(uid);
   _subscribeAdminThreads();
@@ -9188,6 +9244,90 @@ window.sendSupportMessage = async function() {
     alert("Erreur envoi du message");
     input.value = text;
   }
+};
+
+window.closeSupportThreadUser = async function() {
+  if (!confirm("Fermer cette conversation ? Vous ne la verrez plus mais l'admin la conservera en archive.")) return;
+  try {
+    await setFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser), {
+      closed: true, closedAt: serverTimestamp(), closedBy: "user"
+    }, { merge: true });
+    if (_supportUnsub) { _supportUnsub(); _supportUnsub = null; }
+    renderSupportUser();
+  } catch(e) { console.error(e); alert("Erreur fermeture."); }
+};
+
+window.reopenSupportThread = async function() {
+  try {
+    await setFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser), {
+      closed: false, reopenedAt: serverTimestamp()
+    }, { merge: true });
+    renderSupportUser();
+  } catch(e) { console.error(e); alert("Erreur réouverture."); }
+};
+
+window.closeSupportThreadAdmin = async function() {
+  if (!_activeSupportThread) return;
+  if (!confirm("Archiver cette conversation ?")) return;
+  try {
+    await setFirestoreDoc(firestoreDoc(db, "supportThreads", _activeSupportThread), {
+      closed: true, closedAt: serverTimestamp(), closedBy: "admin"
+    }, { merge: true });
+    _openAdminThread(_activeSupportThread);
+  } catch(e) { console.error(e); alert("Erreur archivage."); }
+};
+
+window.reopenSupportThreadAdmin = async function() {
+  if (!_activeSupportThread) return;
+  try {
+    await setFirestoreDoc(firestoreDoc(db, "supportThreads", _activeSupportThread), {
+      closed: false, reopenedAt: serverTimestamp()
+    }, { merge: true });
+    _openAdminThread(_activeSupportThread);
+  } catch(e) { console.error(e); alert("Erreur réouverture."); }
+};
+
+window.deleteSupportThreadAdmin = async function() {
+  if (!_activeSupportThread) return;
+  if (!confirm("Supprimer DÉFINITIVEMENT cette conversation et tous ses messages ? Action irréversible.")) return;
+  const uid = _activeSupportThread;
+  try {
+    const msgsCol = firestoreCollection(db, "supportChats", uid, "messages");
+    const snap = await getDocs(msgsCol);
+    await Promise.all(snap.docs.map(d => deleteFirestoreDoc(firestoreDoc(db, "supportChats", uid, "messages", d.id))));
+    await deleteFirestoreDoc(firestoreDoc(db, "supportThreads", uid));
+    _activeSupportThread = null;
+    renderSupportAdmin();
+  } catch(e) { console.error(e); alert("Erreur suppression."); }
+};
+
+window.downloadSupportTranscript = async function() {
+  const uid = isAdmin() ? _activeSupportThread : currentUser;
+  if (!uid) return;
+  try {
+    const q = firestoreQuery(firestoreCollection(db, "supportChats", uid, "messages"), firestoreOrderBy("createdAt", "asc"));
+    const snap = await getDocs(q);
+    const lines = ["=== Transcription support Capital Board ===\n"];
+    snap.forEach(d => {
+      const m = d.data();
+      let time = "";
+      try {
+        const t = m.createdAt && m.createdAt.toDate ? m.createdAt.toDate() : null;
+        if (t) time = t.toLocaleString("fr-FR");
+      } catch(_) {}
+      const author = m.from === "admin" ? ADMIN_DISPLAY_NAME + " (Admin)" : ((_currentThreadMeta && _currentThreadMeta.userName) || "Utilisateur");
+      lines.push("[" + time + "] " + author + " :\n" + (m.text || "") + "\n");
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "support-" + uid.slice(0, 8) + "-" + new Date().toISOString().slice(0, 10) + ".txt";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch(e) { console.error(e); alert("Erreur transcription."); }
 };
 
 async function _markThreadReadByUser(uid) {
