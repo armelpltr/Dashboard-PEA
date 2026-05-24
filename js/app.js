@@ -8961,6 +8961,8 @@ const ADMIN_UID = "A6nZQ8PcxdURytSesA17xK81I9T2";
 let _supportUnsub = null;
 let _supportThreadsUnsub = null;
 let _activeSupportThread = null;
+let _currentThreadMeta = null;
+const ADMIN_DISPLAY_NAME = "Armel";
 
 function isAdmin() { return currentUser === ADMIN_UID; }
 
@@ -8983,6 +8985,12 @@ function renderSupportUser() {
     + '<input id="chat-input" placeholder="Écrivez votre message..." onkeydown="if(event.key===&quot;Enter&quot;)sendSupportMessage()">'
     + '<button onclick="sendSupportMessage()">Envoyer</button>'
     + '</div></div>';
+  const u = fbAuth.currentUser;
+  _currentThreadMeta = {
+    userUid: currentUser,
+    userName: (u && (u.displayName || (u.email || "").split("@")[0])) || "Vous",
+    userEmail: (u && u.email) || "",
+  };
   _subscribeSupportThread(currentUser);
   _markThreadReadByUser(currentUser);
 }
@@ -9078,12 +9086,23 @@ window._openNewChatPrompt = async function() {
   }
 };
 
-window._openAdminThread = function(uid) {
+window._openAdminThread = async function(uid) {
   _activeSupportThread = uid;
   const input = document.getElementById("chat-input");
   const send = document.getElementById("chat-send");
   if (input) { input.disabled = false; input.focus(); }
   if (send) send.disabled = false;
+  try {
+    const snap = await getFirestoreDoc(firestoreDoc(db, "supportThreads", uid));
+    const d = snap.exists() ? snap.data() : {};
+    _currentThreadMeta = {
+      userUid: uid,
+      userName: d.userName || (d.userEmail ? d.userEmail.split("@")[0] : uid.slice(0, 6)),
+      userEmail: d.userEmail || "",
+    };
+  } catch(_) {
+    _currentThreadMeta = { userUid: uid, userName: uid.slice(0, 6), userEmail: "" };
+  }
   _subscribeSupportThread(uid);
   _markThreadReadByAdmin(uid);
   _subscribeAdminThreads();
@@ -9096,18 +9115,39 @@ function _renderChatMessages(msgs) {
     c.innerHTML = '<div class="chat-empty">Aucun message pour le moment.</div>';
     return;
   }
+  const meta = _currentThreadMeta || {};
   c.innerHTML = msgs.map(m => {
-    // Côté user : ses msgs à droite (from-user), réponses admin à gauche (from-admin).
+    const isAdminMsg = m.from === "admin";
+    // Côté user : ses msgs à droite, admin à gauche.
     // Côté admin : msgs user à gauche, ses propres msgs à droite.
     let sideCls;
-    if (isAdmin()) sideCls = (m.from === "admin") ? "from-user" : "from-admin";
-    else           sideCls = (m.from === "admin") ? "from-admin" : "from-user";
+    if (isAdmin()) sideCls = isAdminMsg ? "from-user" : "from-admin";
+    else           sideCls = isAdminMsg ? "from-admin" : "from-user";
+    const isRight = sideCls === "from-user";
+
+    const authorName = isAdminMsg ? ADMIN_DISPLAY_NAME : (meta.userName || "User");
+    const authorRole = isAdminMsg ? "Admin" : "Utilisateur";
+    const authorUid  = m.authorUid || (isAdminMsg ? ADMIN_UID : meta.userUid);
+    const roleColor  = isAdminMsg ? "var(--accent)" : "var(--text3)";
+
     let time = "";
     try {
       const t = (m.createdAt && m.createdAt.toDate) ? m.createdAt.toDate() : (m.createdAt ? new Date(m.createdAt) : null);
       if (t) time = t.toLocaleTimeString("fr-FR", {hour:"2-digit",minute:"2-digit"});
     } catch(_) {}
-    return '<div class="chat-msg ' + sideCls + '">' + _escapeHtmlChat(m.text) + '<div class="msg-meta">' + time + '</div></div>';
+
+    const avatar = '<div class="chat-avatar">' + defaultAvatarHtml(authorUid) + '</div>';
+    const header =
+      '<div class="chat-author">'
+      + '<span class="chat-author-name">' + _escapeHtmlChat(authorName) + '</span>'
+      + '<span class="chat-author-role" style="color:' + roleColor + '">' + authorRole + '</span>'
+      + '</div>';
+    const bubble = '<div class="chat-msg ' + sideCls + '">' + _escapeHtmlChat(m.text) + '<div class="msg-meta">' + time + '</div></div>';
+    const inner = '<div class="chat-msg-content">' + header + bubble + '</div>';
+
+    return '<div class="chat-row ' + (isRight ? 'right' : 'left') + '">'
+      + (isRight ? inner + avatar : avatar + inner)
+      + '</div>';
   }).join("");
   c.scrollTop = c.scrollHeight;
 }
