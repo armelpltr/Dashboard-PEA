@@ -9191,13 +9191,6 @@ function _subscribeSupportThread(uid) {
     const msgs = [];
     snap.forEach(d => msgs.push(Object.assign({ id: d.id }, d.data())));
     _renderChatMessages(msgs);
-    // Marque les messages reçus de l'autre partie comme lus
-    const myRole = isAdmin() ? "admin" : "user";
-    msgs.forEach(m => {
-      if (m.from !== myRole && m.read === false) {
-        setFirestoreDoc(firestoreDoc(db, "supportChats", uid, "messages", m.id), { read: true }, { merge: true }).catch(() => {});
-      }
-    });
   }, err => console.error("support msg snap:", err));
 }
 
@@ -9394,14 +9387,6 @@ function _renderChatMessages(msgs) {
       body = _escapeHtmlChat(m.text || "");
     }
 
-    // Read receipt (uniquement sur ses propres messages)
-    let receipt = "";
-    if (m.from === myRole) {
-      receipt = m.read
-        ? '<span title="Lu" style="color:#5b8dee">✓✓</span>'
-        : '<span title="Envoyé">✓</span>';
-    }
-
     const avatar = '<div class="chat-avatar">' + defaultAvatarHtml(authorUid) + '</div>';
     const header =
       '<div class="chat-author">'
@@ -9410,7 +9395,7 @@ function _renderChatMessages(msgs) {
       + '</div>';
     const bubble =
       '<div class="chat-msg ' + sideCls + '">' + body
-      + '<div class="msg-meta">' + time + ' ' + receipt + '</div></div>';
+      + '<div class="msg-meta">' + time + '</div></div>';
     const inner = '<div class="chat-msg-content">' + header + bubble + '</div>';
 
     return '<div class="chat-row ' + (isRight ? 'right' : 'left') + '">'
