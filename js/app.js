@@ -9033,8 +9033,11 @@ function _renderAdminThreads(threads) {
     const unread = (t.unreadAdmin > 0) ? '<span class="ct-unread">' + t.unreadAdmin + '</span>' : "";
     const cls = (t.uid === _activeSupportThread) ? "chat-thread-item active" : "chat-thread-item";
     const preview = _escapeHtmlChat(t.lastMsg || "").slice(0, 50);
+    const email = t.userEmail || t.uid;
+    const name = t.userName || (email.includes("@") ? email.split("@")[0] : email);
     return '<div class="' + cls + '" onclick="_openAdminThread(\'' + t.uid + '\')">'
-      + '<div class="ct-name">' + _escapeHtmlChat(t.userEmail || t.uid) + unread + '</div>'
+      + '<div class="ct-name">' + _escapeHtmlChat(name) + unread + '</div>'
+      + '<div class="ct-preview" style="color:var(--text2);font-size:11px;margin-bottom:3px">' + _escapeHtmlChat(email) + '</div>'
       + '<div class="ct-preview">' + preview + '</div></div>';
   }).join("");
 }
@@ -9124,7 +9127,9 @@ window.sendSupportMessage = async function() {
       createdAt: serverTimestamp(),
       authorUid: currentUser,
     });
-    const userEmail = isAdmin() ? null : ((fbAuth.currentUser && fbAuth.currentUser.email) || "");
+    const u = fbAuth.currentUser;
+    const userEmail = isAdmin() ? null : ((u && u.email) || "");
+    const userName  = isAdmin() ? null : ((u && (u.displayName || (u.email || "").split("@")[0])) || "");
     const threadRef = firestoreDoc(db, "supportThreads", targetUid);
     const existing = await getFirestoreDoc(threadRef);
     const prev = existing.exists() ? existing.data() : {};
@@ -9136,6 +9141,7 @@ window.sendSupportMessage = async function() {
       unreadUser: isAdmin() ? ((prev.unreadUser || 0) + 1) : 0,
     };
     if (userEmail && !prev.userEmail) update.userEmail = userEmail;
+    if (userName && !prev.userName) update.userName = userName;
     await setFirestoreDoc(threadRef, update, { merge: true });
   } catch(e) {
     console.error("send support:", e);
