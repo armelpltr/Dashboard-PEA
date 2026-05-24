@@ -8991,7 +8991,11 @@ function renderSupportAdmin() {
   const el = document.getElementById("support-content");
   el.innerHTML =
     '<div class="chat-wrap"><div class="chat-admin-layout">'
-    + '<div class="chat-threads" id="chat-threads"><div class="chat-empty">Chargement…</div></div>'
+    + '<div class="chat-threads">'
+    + '<div style="padding:10px;border-bottom:1px solid var(--border2);background:var(--s3)">'
+    + '<button onclick="_openNewChatPrompt()" style="width:100%;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">+ Nouveau chat (email ou UID)</button>'
+    + '</div>'
+    + '<div id="chat-threads"><div class="chat-empty">Chargement…</div></div></div>'
     + '<div class="chat-messages-pane" style="display:flex;flex-direction:column;height:100%">'
     + '<div class="chat-messages" id="chat-messages"><div class="chat-empty">Sélectionnez une conversation à gauche.</div></div>'
     + '<div class="chat-input-bar">'
@@ -9034,6 +9038,42 @@ function _renderAdminThreads(threads) {
       + '<div class="ct-preview">' + preview + '</div></div>';
   }).join("");
 }
+
+window._openNewChatPrompt = async function() {
+  const input = prompt("Email ou UID du user à contacter :");
+  if (!input) return;
+  const v = input.trim();
+  if (!v) return;
+  let uid = v;
+  if (v.includes("@")) {
+    try {
+      const snap = await getDocs(firestoreQuery(firestoreCollection(db, "users"), firestoreWhere("email", "==", v)));
+      if (snap.empty) { alert("Aucun user avec cet email."); return; }
+      uid = snap.docs[0].id;
+    } catch(e) {
+      alert("Recherche email impossible. Tape directement l'UID.");
+      return;
+    }
+  }
+  try {
+    const threadRef = firestoreDoc(db, "supportThreads", uid);
+    const existing = await getFirestoreDoc(threadRef);
+    if (!existing.exists()) {
+      await setFirestoreDoc(threadRef, {
+        lastMsg: "(conversation initiée par l'admin)",
+        lastAt: serverTimestamp(),
+        lastFrom: "admin",
+        unreadAdmin: 0,
+        unreadUser: 0,
+        userEmail: v.includes("@") ? v : "",
+      });
+    }
+    _openAdminThread(uid);
+  } catch(e) {
+    console.error(e);
+    alert("Erreur création thread.");
+  }
+};
 
 window._openAdminThread = function(uid) {
   _activeSupportThread = uid;
