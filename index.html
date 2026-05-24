@@ -866,6 +866,13 @@
   }
 
   onAuthStateChanged(auth, user => {
+    if (user) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('stay') !== '1') {
+        window.location.replace('app.html');
+        return;
+      }
+    }
     setAuthUI(!!user, user);
   });
 
