@@ -57,14 +57,12 @@
   nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     background: transparent;
-    border-bottom: 1px solid transparent;
-    transition: background 0.25s ease, border-color 0.25s ease, backdrop-filter 0.25s ease;
+    transition: background 0.25s ease, backdrop-filter 0.25s ease;
   }
   nav.scrolled {
-    background: rgba(4,6,11,0.75);
-    border-bottom-color: var(--border);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    background: rgba(4,6,11,0.35);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
   }
   .nav-inner {
     max-width: 1200px; margin: 0 auto;
