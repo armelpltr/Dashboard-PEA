@@ -9424,14 +9424,9 @@ window._openAdminThread = async function(uid) {
       + '</div>';
     let actions = '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>';
     if (!closed) {
-      // Ouvert → admin peut fermer
       actions += '<button onclick="closeSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:#f5b731;border-color:rgba(245,183,49,0.3)">✕ Fermer le ticket</button>';
-    } else if (closed && !archived) {
-      // Fermé non archivé → réouvrir ou archiver
-      actions += '<button onclick="reopenSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">↺ Réouvrir</button>';
-      actions += '<button onclick="archiveSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">📦 Archiver</button>';
     } else {
-      // Archivé → réouvrir ou supprimer
+      // Fermé (= archivé) → réouvrir ou supprimer
       actions += '<button onclick="reopenSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">↺ Réouvrir</button>';
       actions += '<button onclick="deleteSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">🗑 Supprimer définitivement</button>';
     }
@@ -9714,36 +9709,20 @@ window.closeSupportThreadAdmin = function() {
   const uid = _activeSupportThread;
   showConfirmModal({
     title: "Fermer le ticket",
-    body: "Le chat sera coupé : ni vous ni l'utilisateur ne pourrez écrire. Vous pourrez l'archiver ou le rouvrir ensuite.",
+    body: "Le chat sera coupé et le ticket archivé. Vous pourrez le rouvrir ou le supprimer depuis l'onglet Archivés.",
     okLabel: "Fermer", cancelLabel: "Annuler",
     onConfirm: async () => {
       try {
         await _postSystemMessage(uid, "🔒 Ticket fermé par l'admin");
         await setFirestoreDoc(firestoreDoc(db, "supportThreads", uid), {
-          closed: true, closedAt: serverTimestamp(), closedBy: "admin", archived: false,
-        }, { merge: true });
-        _openAdminThread(uid);
-      } catch(e) { console.error(e); alert("Erreur fermeture."); }
-    },
-  });
-};
-
-window.archiveSupportThreadAdmin = function() {
-  if (!_activeSupportThread) return;
-  const uid = _activeSupportThread;
-  showConfirmModal({
-    title: "Archiver le ticket",
-    body: "Le ticket passera dans l'onglet Archivés. Vous pourrez toujours le rouvrir ou le supprimer.",
-    okLabel: "Archiver", cancelLabel: "Annuler",
-    onConfirm: async () => {
-      try {
-        await setFirestoreDoc(firestoreDoc(db, "supportThreads", uid), {
-          archived: true, archivedAt: serverTimestamp(),
+          closed: true, archived: true,
+          closedAt: serverTimestamp(), archivedAt: serverTimestamp(),
+          closedBy: "admin",
         }, { merge: true });
         _activeSupportThread = null;
         _supportAdminTab = "active";
         renderSupportAdmin();
-      } catch(e) { console.error(e); alert("Erreur archivage."); }
+      } catch(e) { console.error(e); alert("Erreur fermeture."); }
     },
   });
 };
