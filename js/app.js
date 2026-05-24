@@ -6558,15 +6558,17 @@ function initDividendes() {
     // Dividendes auto-détectés Yahoo, date de versement passée, pas encore
     // enregistrés → demander confirmation à l'utilisateur via popup.
     const existingDiv = (getTransactions(currentUser) || []).filter(t => t.type === 'dividend');
-    rows.forEach(x => x.allReceived.forEach(e => {
-      if (!e.auto || !e.qty || !e.price) return;
-      const key = e.ticker + '|' + e.date;
-      if (existingDiv.find(t => t.ticker === e.ticker && t.date === e.date)) return;
-      if (_divDeclined.has(key)) return;
-      if (_divPromptQueue.find(q => q.ticker === e.ticker && q.date === e.date)) return;
-      _divPromptQueue.push({ ticker: e.ticker, name: e.name || e.ticker, qty: e.qty, price: e.price, date: e.date });
-    }));
-    _processDivPromptQueue();
+    if (!window.IS_DEMO) {
+      rows.forEach(x => x.allReceived.forEach(e => {
+        if (!e.auto || !e.qty || !e.price) return;
+        const key = e.ticker + '|' + e.date;
+        if (existingDiv.find(t => t.ticker === e.ticker && t.date === e.date)) return;
+        if (_divDeclined.has(key)) return;
+        if (_divPromptQueue.find(q => q.ticker === e.ticker && q.date === e.date)) return;
+        _divPromptQueue.push({ ticker: e.ticker, name: e.name || e.ticker, qty: e.qty, price: e.price, date: e.date });
+      }));
+      _processDivPromptQueue();
+    }
 
     // Mettre à jour KPIs dynamiques
     const totalHolding   = rows.reduce((s, x) => s + x.duringHolding.length, 0);

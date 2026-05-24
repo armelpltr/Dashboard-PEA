@@ -27,13 +27,13 @@
     { "id": 1700000014, "type": "dividend", "ticker": "BNP.PA",   "name": "BNP Paribas",         "qty": 60,  "price": 4.60,   "date": "2025-05-26", "currency": "EUR" }
   ],
   "versements": [
-    { "id": 1700100001, "amount": 5000,  "date": "2024-03-01", "label": "Versement initial" },
-    { "id": 1700100002, "amount": 3500,  "date": "2024-05-15", "label": "Versement mensuel" },
-    { "id": 1700100003, "amount": 2000,  "date": "2024-07-10", "label": "Versement mensuel" },
-    { "id": 1700100004, "amount": 8000,  "date": "2024-10-01", "label": "Prime annuelle" },
-    { "id": 1700100005, "amount": 2500,  "date": "2024-12-20", "label": "Versement mensuel" },
-    { "id": 1700100006, "amount": 4000,  "date": "2025-02-05", "label": "Versement mensuel" },
-    { "id": 1700100007, "amount": 3000,  "date": "2025-04-15", "label": "Versement mensuel" }
+    { "id": 1700100001, "amount": 20000, "date": "2024-03-01", "label": "Versement initial" },
+    { "id": 1700100002, "amount": 8000,  "date": "2024-05-15", "label": "Versement mensuel" },
+    { "id": 1700100003, "amount": 5000,  "date": "2024-07-10", "label": "Versement mensuel" },
+    { "id": 1700100004, "amount": 12000, "date": "2024-10-01", "label": "Prime annuelle" },
+    { "id": 1700100005, "amount": 7000,  "date": "2024-12-20", "label": "Versement mensuel" },
+    { "id": 1700100006, "amount": 12000, "date": "2025-02-05", "label": "Bonus" },
+    { "id": 1700100007, "amount": 8200,  "date": "2025-04-15", "label": "Versement mensuel" }
   ],
   "watchlist": [
     { "ticker": "ASML.AS",  "name": "ASML Holding",     "addedAt": "2025-01-15" },
