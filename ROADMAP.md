@@ -4,6 +4,14 @@
 
 ---
 
+## Modifs dashboard en cours
+
+Reprise des évolutions UX/UI du dashboard. Liste à compléter au fil des changements.
+
+- [ ] _(en attente: prochaine demande)_
+
+---
+
 ## Prochain chantier principal
 
 ### Conversion démo → inscription avec migration dataset
@@ -16,7 +24,10 @@ Lors d'un signup depuis le mode démo, copier automatiquement le portefeuille d�
 
 ## Livré récemment
 
-- **Mode démo sans inscription** (`?demo=1`) — dataset fictif PEA, bandeau persistant, bypass Firestore
+- **Mode démo sans inscription** (`?demo=1`) — dataset fictif PEA enrichi (9 lignes + 14 tx + 7 versements + recap IA), bandeau orange persistant, bypass Firestore/Auth/Push, page Performance bloquée avec CTA signup, popup dividende auto désactivé
+- **PWA scope restreint** (`./app.html`) + hide liens externes en standalone iOS
+- **Auto-redirect landing → app** si user authentifié (bypass via `?stay=1`)
+- **Navbar landing** floating pill sticky avec ancres + burger mobile
 - Analyse IA quotidienne (Mistral + Tavily)
 - Alertes prix push (Web Push iOS/Android)
 - Section comparatif vs concurrents (Yahoo Finance / Trade Republic / Finary)
