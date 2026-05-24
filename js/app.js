@@ -9133,8 +9133,13 @@ async function renderSupportUser() {
   let exists = false, closed = false, data = {};
   try {
     const snap = await getFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser));
-    exists = snap.exists();
-    if (exists) { data = snap.data(); closed = data.closed === true; }
+    if (snap.exists()) {
+      data = snap.data();
+      // On considère qu'un ticket existe seulement si une raison ou un msg a été posté
+      // (évite d'afficher un thread vide créé par du legacy)
+      exists = !!(data.reason || data.lastMsg);
+      closed = data.closed === true;
+    }
   } catch(_) {}
   window._supportNoThread = !exists;
   window._supportUserClosed = closed;
