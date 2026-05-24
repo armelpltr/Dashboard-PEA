@@ -6,9 +6,9 @@
 
 ## Modifs dashboard en cours
 
-Reprise des évolutions UX/UI du dashboard. Liste à compléter au fil des changements.
+Reprise des évolutions UX/UI du dashboard.
 
-- [ ] _(en attente: prochaine demande)_
+- [x] **Chat support 1-to-1 user ↔ admin** — Firestore temps réel, badge non-lu, vue admin avec liste threads. Setup: voir `SUPPORT_CHAT_SETUP.md` (config ADMIN_UID + règles Firestore requises).
 
 ---
 

@@ -554,6 +554,7 @@ async function startApp(user) {
     setTimeout(() => { preloadAll().catch(e => console.warn('Preload:', e)); }, 200);
     _updateNotifBadge();
     if (!window.IS_DEMO && Notification.permission === 'granted') initPush(user.uid).catch(() => {});
+    try { _initSupportBadge(); } catch(e) { console.warn('support badge:', e); }
   } catch(e) {
     console.error('startApp error:', e);
   } finally {
@@ -837,6 +838,7 @@ function showPage(id) {
   if (id === 'graphiques')  initCharts();
   if (id === 'recap')       renderRecapPage();
   if (id === 'alertes')     renderAlertsList();
+  if (id === 'support')     renderSupportPage();
 }
 
 function _renderDemoBlocked(pageId, sectionTitle) {
@@ -868,6 +870,7 @@ function showPageMobile(id) {
   if (id === 'graphiques')  initCharts();
   if (id === 'recap')       renderRecapPage();
   if (id === 'alertes')     renderAlertsList();
+  if (id === 'support')     renderSupportPage();
 }
 
 // ─── PORTFOLIO ────────────────────────────────────────
@@ -8948,3 +8951,189 @@ function resetAlert(i) {
   saveAlerts(currentUser, alerts);
   renderAlertsList();
 }
+
+// ─── SUPPORT CHAT ────────────────────────────────────────
+// Chat 1-to-1 entre user et admin (toi). Firestore:
+//   supportChats/{userUid}/messages/{msgId}
+//   supportThreads/{userUid}  → metadata thread pour vue admin
+const ADMIN_UID = "REPLACE_WITH_YOUR_FIREBASE_UID";
+
+let _supportUnsub = null;
+let _supportThreadsUnsub = null;
+let _activeSupportThread = null;
+
+function isAdmin() { return currentUser === ADMIN_UID; }
+
+function _escapeHtmlChat(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function renderSupportPage() {
+  if (window.IS_DEMO) { _renderDemoBlocked("page-support", "Support"); return; }
+  if (ADMIN_UID === "REPLACE_WITH_YOUR_FIREBASE_UID") {
+    document.getElementById("support-content").innerHTML =
+      '<div class="chat-empty">⚠️ ADMIN_UID non configuré dans js/app.js (remplacer la constante par votre UID Firebase).</div>';
+    return;
+  }
+  if (isAdmin()) renderSupportAdmin();
+  else renderSupportUser();
+}
+
+function renderSupportUser() {
+  const el = document.getElementById("support-content");
+  el.innerHTML =
+    '<div class="chat-wrap">'
+    + '<div class="chat-messages" id="chat-messages"></div>'
+    + '<div class="chat-input-bar">'
+    + '<input id="chat-input" placeholder="Écrivez votre message..." onkeydown="if(event.key===&quot;Enter&quot;)sendSupportMessage()">'
+    + '<button onclick="sendSupportMessage()">Envoyer</button>'
+    + '</div></div>';
+  _subscribeSupportThread(currentUser);
+  _markThreadReadByUser(currentUser);
+}
+
+function renderSupportAdmin() {
+  const el = document.getElementById("support-content");
+  el.innerHTML =
+    '<div class="chat-wrap"><div class="chat-admin-layout">'
+    + '<div class="chat-threads" id="chat-threads"><div class="chat-empty">Chargement…</div></div>'
+    + '<div class="chat-messages-pane" style="display:flex;flex-direction:column;height:100%">'
+    + '<div class="chat-messages" id="chat-messages"><div class="chat-empty">Sélectionnez une conversation à gauche.</div></div>'
+    + '<div class="chat-input-bar">'
+    + '<input id="chat-input" placeholder="Répondre…" disabled onkeydown="if(event.key===&quot;Enter&quot;)sendSupportMessage()">'
+    + '<button id="chat-send" onclick="sendSupportMessage()" disabled>Envoyer</button>'
+    + '</div></div></div></div>';
+  _subscribeAdminThreads();
+}
+
+function _subscribeSupportThread(uid) {
+  if (_supportUnsub) { _supportUnsub(); _supportUnsub = null; }
+  const q = firestoreQuery(firestoreCollection(db, "supportChats", uid, "messages"), firestoreOrderBy("createdAt", "asc"));
+  _supportUnsub = onSnapshot(q, snap => {
+    const msgs = [];
+    snap.forEach(d => msgs.push(Object.assign({ id: d.id }, d.data())));
+    _renderChatMessages(msgs);
+  }, err => console.error("support msg snap:", err));
+}
+
+function _subscribeAdminThreads() {
+  if (_supportThreadsUnsub) { _supportThreadsUnsub(); _supportThreadsUnsub = null; }
+  const q = firestoreQuery(firestoreCollection(db, "supportThreads"), firestoreOrderBy("lastAt", "desc"));
+  _supportThreadsUnsub = onSnapshot(q, snap => {
+    const threads = [];
+    snap.forEach(d => threads.push(Object.assign({ uid: d.id }, d.data())));
+    _renderAdminThreads(threads);
+  }, err => console.error("threads snap:", err));
+}
+
+function _renderAdminThreads(threads) {
+  const el = document.getElementById("chat-threads");
+  if (!el) return;
+  if (!threads.length) { el.innerHTML = '<div class="chat-empty">Aucune conversation.</div>'; return; }
+  el.innerHTML = threads.map(t => {
+    const unread = (t.unreadAdmin > 0) ? '<span class="ct-unread">' + t.unreadAdmin + '</span>' : "";
+    const cls = (t.uid === _activeSupportThread) ? "chat-thread-item active" : "chat-thread-item";
+    const preview = _escapeHtmlChat(t.lastMsg || "").slice(0, 50);
+    return '<div class="' + cls + '" onclick="_openAdminThread(\'' + t.uid + '\')">'
+      + '<div class="ct-name">' + _escapeHtmlChat(t.userEmail || t.uid) + unread + '</div>'
+      + '<div class="ct-preview">' + preview + '</div></div>';
+  }).join("");
+}
+
+window._openAdminThread = function(uid) {
+  _activeSupportThread = uid;
+  const input = document.getElementById("chat-input");
+  const send = document.getElementById("chat-send");
+  if (input) { input.disabled = false; input.focus(); }
+  if (send) send.disabled = false;
+  _subscribeSupportThread(uid);
+  _markThreadReadByAdmin(uid);
+  _subscribeAdminThreads();
+};
+
+function _renderChatMessages(msgs) {
+  const c = document.getElementById("chat-messages");
+  if (!c) return;
+  if (!msgs.length) {
+    c.innerHTML = '<div class="chat-empty">Aucun message pour le moment.</div>';
+    return;
+  }
+  c.innerHTML = msgs.map(m => {
+    // Côté user : ses msgs à droite (from-user), réponses admin à gauche (from-admin).
+    // Côté admin : msgs user à gauche, ses propres msgs à droite.
+    let sideCls;
+    if (isAdmin()) sideCls = (m.from === "admin") ? "from-user" : "from-admin";
+    else           sideCls = (m.from === "admin") ? "from-admin" : "from-user";
+    let time = "";
+    try {
+      const t = (m.createdAt && m.createdAt.toDate) ? m.createdAt.toDate() : (m.createdAt ? new Date(m.createdAt) : null);
+      if (t) time = t.toLocaleTimeString("fr-FR", {hour:"2-digit",minute:"2-digit"});
+    } catch(_) {}
+    return '<div class="chat-msg ' + sideCls + '">' + _escapeHtmlChat(m.text) + '<div class="msg-meta">' + time + '</div></div>';
+  }).join("");
+  c.scrollTop = c.scrollHeight;
+}
+
+window.sendSupportMessage = async function() {
+  const input = document.getElementById("chat-input");
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  const targetUid = isAdmin() ? _activeSupportThread : currentUser;
+  if (!targetUid) return;
+  input.value = "";
+  try {
+    await addFirestoreDoc(firestoreCollection(db, "supportChats", targetUid, "messages"), {
+      from: isAdmin() ? "admin" : "user",
+      text: text,
+      createdAt: serverTimestamp(),
+      authorUid: currentUser,
+    });
+    const userEmail = isAdmin() ? null : ((fbAuth.currentUser && fbAuth.currentUser.email) || "");
+    const threadRef = firestoreDoc(db, "supportThreads", targetUid);
+    const existing = await getFirestoreDoc(threadRef);
+    const prev = existing.exists() ? existing.data() : {};
+    const update = {
+      lastMsg: text,
+      lastAt: serverTimestamp(),
+      lastFrom: isAdmin() ? "admin" : "user",
+      unreadAdmin: isAdmin() ? 0 : ((prev.unreadAdmin || 0) + 1),
+      unreadUser: isAdmin() ? ((prev.unreadUser || 0) + 1) : 0,
+    };
+    if (userEmail && !prev.userEmail) update.userEmail = userEmail;
+    await setFirestoreDoc(threadRef, update, { merge: true });
+  } catch(e) {
+    console.error("send support:", e);
+    alert("Erreur envoi du message");
+    input.value = text;
+  }
+};
+
+async function _markThreadReadByUser(uid) {
+  try { await setFirestoreDoc(firestoreDoc(db, "supportThreads", uid), { unreadUser: 0 }, { merge: true }); } catch(_) {}
+}
+async function _markThreadReadByAdmin(uid) {
+  try { await setFirestoreDoc(firestoreDoc(db, "supportThreads", uid), { unreadAdmin: 0 }, { merge: true }); } catch(_) {}
+}
+
+// Badge non-lu sur item nav Support
+function _initSupportBadge() {
+  if (window.IS_DEMO || !db || !currentUser) return;
+  if (ADMIN_UID === "REPLACE_WITH_YOUR_FIREBASE_UID") return;
+  if (isAdmin()) {
+    onSnapshot(firestoreCollection(db, "supportThreads"), snap => {
+      let total = 0;
+      snap.forEach(d => total += (d.data().unreadAdmin || 0));
+      const b = document.getElementById("support-badge");
+      if (b) { b.textContent = total; b.style.display = total > 0 ? "inline-block" : "none"; }
+    });
+  } else {
+    onSnapshot(firestoreDoc(db, "supportThreads", currentUser), snap => {
+      const n = snap.exists() ? (snap.data().unreadUser || 0) : 0;
+      const b = document.getElementById("support-badge");
+      if (b) { b.textContent = n; b.style.display = n > 0 ? "inline-block" : "none"; }
+    });
+  }
+}
+window.renderSupportPage = renderSupportPage;
+window._initSupportBadge = _initSupportBadge;
