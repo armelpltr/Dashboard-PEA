@@ -535,7 +535,12 @@ function stopApp() {
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('input-email').value = '';
   document.getElementById('input-pass').value = '';
-  showLoginView();
+  const params = new URLSearchParams(location.search);
+  if (params.get('signup') === '1') {
+    showRegisterView();
+  } else {
+    showLoginView();
+  }
 }
 
 // ─── OBSERVATEUR géré dans initFirebase() ─────
