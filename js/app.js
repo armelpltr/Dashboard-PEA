@@ -8980,6 +8980,27 @@ let _typingClearTimer = null;
 let _supportThreadDocUnsub = null;
 const ADMIN_DISPLAY_NAME = "Armel";
 
+// Sons chat via Web Audio API (pas de fichier externe).
+let _audioCtx = null;
+function _playTone(freq, duration, type) {
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_audioCtx.state === "suspended") _audioCtx.resume();
+    const osc = _audioCtx.createOscillator();
+    const gain = _audioCtx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.001, _audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.15, _audioCtx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(_audioCtx.destination);
+    osc.start();
+    osc.stop(_audioCtx.currentTime + duration);
+  } catch(_) {}
+}
+function _playMessageSound() { _playTone(880, 0.18, "sine"); setTimeout(() => _playTone(1175, 0.15, "sine"), 70); }
+function _playOpenChatSound() { _playTone(523, 0.08, "sine"); setTimeout(() => _playTone(659, 0.12, "sine"), 50); }
+
 // Modal de saisie multi-champs (remplace window.prompt).
 // fields: [{ name, label, placeholder, type, required }]
 // onConfirm reçoit un objet { name: value }. Backward-compat: si pas de "fields",
@@ -9260,6 +9281,7 @@ async function _renderSupportUserChat() {
   _subscribeSupportThread(currentUser);
   _markThreadReadByUser(currentUser);
   _subscribeThreadDoc(currentUser);
+  _playOpenChatSound();
 }
 
 function renderSupportAdmin() {
@@ -9289,12 +9311,26 @@ window._setAdminTab = function(tab) {
   renderSupportAdmin();
 };
 
+let _lastMsgCount = 0;
+let _lastMsgId = null;
 function _subscribeSupportThread(uid) {
   if (_supportUnsub) { _supportUnsub(); _supportUnsub = null; }
+  _lastMsgCount = 0;
+  _lastMsgId = null;
   const q = firestoreQuery(firestoreCollection(db, "supportChats", uid, "messages"), firestoreOrderBy("createdAt", "asc"));
   _supportUnsub = onSnapshot(q, snap => {
     const msgs = [];
     snap.forEach(d => msgs.push(Object.assign({ id: d.id }, d.data())));
+    // Son si nouveau message reçu de l'autre partie (skip premier rendu)
+    if (_lastMsgCount > 0 && msgs.length > _lastMsgCount) {
+      const last = msgs[msgs.length - 1];
+      const myRole = isAdmin() ? "admin" : "user";
+      if (last.from !== myRole && last.from !== "system" && last.id !== _lastMsgId) {
+        _playMessageSound();
+      }
+    }
+    _lastMsgCount = msgs.length;
+    _lastMsgId = msgs.length ? msgs[msgs.length - 1].id : null;
     _renderChatMessages(msgs);
   }, err => console.error("support msg snap:", err));
 }
@@ -9437,6 +9473,7 @@ window._openAdminThread = async function(uid) {
   _markThreadReadByAdmin(uid);
   _subscribeAdminThreads();
   _subscribeThreadDoc(uid);
+  _playOpenChatSound();
 };
 
 function _renderPresenceBadge(p) {
