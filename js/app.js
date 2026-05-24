@@ -556,6 +556,11 @@ async function startApp(user) {
 
 function stopApp() {
   _hideSplash();
+  if (window.IS_DEMO) {
+    // En démo, rediriger vers signup au lieu d'afficher login (l'écran de login est masqué)
+    location.href = 'app.html?signup=1';
+    return;
+  }
   currentUser = null;
   window.currentUser = null;
   document.getElementById('app').style.display = 'none';

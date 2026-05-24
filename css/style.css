@@ -1948,6 +1948,9 @@ body.sb-collapsed .main { margin-left: 58px; }
   .external-presentation { display: none !important; }
 }
 
+/* Mode démo : cache le login dès le chargement (avant Firebase) */
+html.demo-mode #login-screen { display: none !important; }
+
 /* Bandeau Mode démo */
 #demo-banner {
   position: fixed; top: 0; left: 0; right: 0;

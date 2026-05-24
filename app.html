@@ -44,6 +44,9 @@
 </div>
 <script>
   window.IS_DEMO = new URLSearchParams(location.search).get('demo') === '1';
+  if (window.IS_DEMO) {
+    document.documentElement.classList.add('demo-mode');
+  }
   (function() {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     if (standalone) {
