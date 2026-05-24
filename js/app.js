@@ -9114,7 +9114,7 @@ function _escapeHtmlChat(s) {
 function renderSupportPage() {
   if (window.IS_DEMO) { _renderDemoBlocked("page-support", "Support"); return; }
   if (isAdmin()) renderSupportAdmin();
-  else renderSupportUser();
+  else { window._supportUserView = "list"; renderSupportUser(); }
 }
 
 async function renderSupportUser() {
@@ -9124,38 +9124,94 @@ async function renderSupportUser() {
     userName: (u && (u.displayName || (u.email || "").split("@")[0])) || "Vous",
     userEmail: (u && u.email) || "",
   };
-  let closed = false;
-  let exists = false;
+  // Si on est en mode "vue chat" pour cet user, on rend le chat. Sinon landing.
+  if (window._supportUserView === "chat") {
+    _renderSupportUserChat();
+    return;
+  }
+  // Landing = liste des tickets de l'user + bouton nouveau
+  let exists = false, closed = false, data = {};
+  try {
+    const snap = await getFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser));
+    exists = snap.exists();
+    if (exists) { data = snap.data(); closed = data.closed === true; }
+  } catch(_) {}
+  window._supportNoThread = !exists;
+  window._supportUserClosed = closed;
+
+  const ticketId = data.ticketId || _genTicketId(currentUser);
+  const reason = data.reason || "(sans sujet)";
+  const lastMsg = data.lastMsg || "—";
+  const unread = data.unreadUser || 0;
+
+  let ticketCard = "";
+  if (exists) {
+    const stateBadge = closed
+      ? '<span style="font-size:10px;color:#f5b731;background:rgba(245,183,49,0.15);padding:3px 9px;border-radius:999px;font-weight:600">Fermé</span>'
+      : '<span style="font-size:10px;color:#00e09e;background:rgba(0,224,158,0.12);padding:3px 9px;border-radius:999px;font-weight:600">Ouvert</span>';
+    const unreadBadge = unread > 0
+      ? '<span style="background:#ff4d6a;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:8px">' + unread + '</span>'
+      : '';
+    const action = closed
+      ? '<button onclick="_openExistingTicket()" class="btn-outline" style="font-size:12px;padding:6px 14px">Voir</button>'
+      : '<button onclick="_openExistingTicket()" style="font-size:12px;padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer">Ouvrir le chat →</button>';
+    ticketCard =
+      '<div style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:18px;margin-bottom:18px;text-align:left">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px">'
+      + '<span style="font-family:monospace;font-size:11px;color:var(--text2);background:var(--s3);padding:3px 8px;border-radius:6px">#' + ticketId + '</span>'
+      + stateBadge + unreadBadge
+      + '</div>'
+      + '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">' + _escapeHtmlChat(reason) + '</div>'
+      + '<div style="font-size:12px;color:var(--text3);margin-bottom:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _escapeHtmlChat(lastMsg) + '</div>'
+      + '<div style="display:flex;justify-content:flex-end">' + action + '</div>'
+      + '</div>';
+  }
+
+  const newBtnLabel = exists ? (closed ? "+ Nouveau ticket" : "+ Ouvrir un autre ticket") : "+ Ouvrir un ticket";
+  const newBtnDisabled = exists && !closed;
+  const el = document.getElementById("support-content");
+  el.innerHTML =
+    '<div style="max-width:560px;margin:30px auto;padding:0 16px">'
+    + '<div style="text-align:center;margin-bottom:24px">'
+    + '<div style="font-size:34px;margin-bottom:10px">💬</div>'
+    + '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px">Support</div>'
+    + '<div style="font-size:12px;color:var(--text2)">Vos tickets et conversations avec l\'équipe.</div>'
+    + '</div>'
+    + ticketCard
+    + (newBtnDisabled
+        ? '<div style="text-align:center;font-size:12px;color:var(--text3)">Fermez votre ticket en cours pour en ouvrir un nouveau.</div>'
+        : '<button onclick="openNewTicketForm()" style="width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer">' + newBtnLabel + '</button>')
+    + '</div>';
+}
+
+window._openExistingTicket = function() {
+  window._supportUserView = "chat";
+  _renderSupportUserChat();
+};
+
+window._backToSupportList = function() {
+  window._supportUserView = "list";
+  if (_supportUnsub) { _supportUnsub(); _supportUnsub = null; }
+  if (_supportThreadDocUnsub) { _supportThreadDocUnsub(); _supportThreadDocUnsub = null; }
+  renderSupportUser();
+};
+
+async function _renderSupportUserChat() {
+  let closed = false, exists = false;
   try {
     const snap = await getFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser));
     exists = snap.exists();
     closed = exists && snap.data().closed === true;
   } catch(_) {}
+  const ticketId = _genTicketId(currentUser);
+  _currentThreadMeta.ticketId = ticketId;
+  const el = document.getElementById("support-content");
 
-  window._supportUserClosed = closed;
-  window._supportNoThread = !exists;
-
-  // Aucun thread → landing page de création
-  if (!exists) {
-    const el = document.getElementById("support-content");
-    el.innerHTML =
-      '<div class="chat-wrap" style="align-items:center;justify-content:center;text-align:center;padding:40px">'
-      + '<div style="max-width:480px">'
-      + '<div style="font-size:42px;margin-bottom:16px">💬</div>'
-      + '<div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:10px">Comment pouvons-nous vous aider ?</div>'
-      + '<div style="font-size:13px;color:var(--text2);margin-bottom:28px;line-height:1.6">Ouvrez un ticket de support. L\'équipe répond généralement sous 24h.</div>'
-      + '<button onclick="openNewTicketForm()" style="padding:12px 28px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer">+ Nouveau ticket</button>'
-      + '</div></div>';
-    return;
-  }
-
-  // Thread fermé côté user = lecture seule. Pas de réouverture user-side.
   if (closed) {
-    const ticketId = _genTicketId(currentUser);
-    const el = document.getElementById("support-content");
     el.innerHTML =
       '<div class="chat-wrap" style="align-items:center;justify-content:center;text-align:center;padding:40px">'
       + '<div style="max-width:440px">'
+      + '<button onclick="_backToSupportList()" class="btn-outline" style="position:absolute;top:14px;left:14px;font-size:11px;padding:5px 10px">← Retour</button>'
       + '<div style="font-size:32px;margin-bottom:14px">🔒</div>'
       + '<div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px">Conversation fermée</div>'
       + '<div style="font-family:monospace;font-size:11px;color:var(--text2);background:var(--s3);padding:3px 8px;border-radius:6px;display:inline-block;margin-bottom:18px">#' + ticketId + '</div>'
@@ -9164,13 +9220,13 @@ async function renderSupportUser() {
       + '</div></div>';
     return;
   }
-  const ticketId = _genTicketId(currentUser);
-  _currentThreadMeta.ticketId = ticketId;
-  const el = document.getElementById("support-content");
   el.innerHTML =
     '<div class="chat-wrap">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border)">'
+    + '<div style="display:flex;align-items:center;gap:8px">'
+    + '<button onclick="_backToSupportList()" class="btn-outline" style="font-size:11px;padding:5px 10px">← Retour</button>'
     + '<span style="font-family:monospace;font-size:11px;color:var(--text2);background:var(--s3);padding:3px 8px;border-radius:6px">#' + ticketId + '</span>'
+    + '</div>'
     + '<div style="display:flex;gap:6px">'
     + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
     + '<button onclick="closeSupportThreadUser()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">✕ Fermer</button>'
@@ -9595,6 +9651,7 @@ window.openNewTicketForm = function() {
         await _postSystemMessage(currentUser, "📝 Sujet : " + out.subject);
         await _sendSupportPayload(currentUser, { type: "text", text: out.message });
         window._supportNoThread = false;
+        window._supportUserView = "chat";
         renderSupportUser();
       } catch(e) { console.error(e); alert("Erreur ouverture ticket."); }
     },
