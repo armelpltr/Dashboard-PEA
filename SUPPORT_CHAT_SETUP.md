@@ -25,10 +25,14 @@ function _isAdmin() {
 match /supportChats/{userId}/messages/{msgId} {
   allow read:   if request.auth != null && (request.auth.uid == userId || _isAdmin());
   allow create: if request.auth != null && (
-    (request.auth.uid == userId && request.resource.data.from == 'user') ||
-    (_isAdmin() && request.resource.data.from == 'admin')
+    (request.auth.uid == userId && request.resource.data.from in ['user','system']) ||
+    (_isAdmin() && request.resource.data.from in ['admin','system'])
   );
-  allow update, delete: if _isAdmin();
+  // Destinataire peut marquer read=true (uniquement ce champ)
+  allow update: if request.auth != null
+    && (request.auth.uid == userId || _isAdmin())
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+  allow delete: if _isAdmin();
 }
 
 match /supportThreads/{userId} {

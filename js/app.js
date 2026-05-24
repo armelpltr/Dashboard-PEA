@@ -8975,6 +8975,9 @@ let _activeSupportThread = null;
 let _currentThreadMeta = null;
 let _supportAdminTab = "active"; // 'active' | 'archived'
 let _presenceHeartbeat = null;
+let _typingTimer = null;
+let _typingClearTimer = null;
+let _supportThreadDocUnsub = null;
 const ADMIN_DISPLAY_NAME = "Armel";
 
 // Modal de saisie (remplace window.prompt).
@@ -9024,6 +9027,43 @@ function _formatLastSeen(ts) {
   if (diff < 3600000) return "il y a " + Math.floor(diff / 60000) + " min";
   if (diff < 86400000) return "il y a " + Math.floor(diff / 3600000) + " h";
   return "il y a " + Math.floor(diff / 86400000) + " j";
+}
+
+// Indique que je suis en train d'écrire (debounced, auto-clear après 3s).
+window.signalTyping = function() {
+  const targetUid = isAdmin() ? _activeSupportThread : currentUser;
+  if (!targetUid || !db) return;
+  const field = isAdmin() ? "adminTyping" : "userTyping";
+  const update = {};
+  update[field] = true;
+  update[field + "At"] = serverTimestamp();
+  if (_typingTimer) clearTimeout(_typingTimer);
+  _typingTimer = setTimeout(() => {
+    setFirestoreDoc(firestoreDoc(db, "supportThreads", targetUid), update, { merge: true }).catch(() => {});
+  }, 200);
+  if (_typingClearTimer) clearTimeout(_typingClearTimer);
+  _typingClearTimer = setTimeout(() => {
+    const clr = {};
+    clr[field] = false;
+    setFirestoreDoc(firestoreDoc(db, "supportThreads", targetUid), clr, { merge: true }).catch(() => {});
+  }, 3500);
+};
+
+function _subscribeThreadDoc(uid) {
+  if (_supportThreadDocUnsub) { _supportThreadDocUnsub(); _supportThreadDocUnsub = null; }
+  _supportThreadDocUnsub = onSnapshot(firestoreDoc(db, "supportThreads", uid), snap => {
+    const d = snap.exists() ? snap.data() : {};
+    const otherField = isAdmin() ? "userTyping" : "adminTyping";
+    const otherFieldAt = otherField + "At";
+    const atMs = (d[otherFieldAt] && d[otherFieldAt].toDate) ? d[otherFieldAt].toDate().getTime() : 0;
+    const recent = atMs > 0 && (Date.now() - atMs) < 5000;
+    const typing = d[otherField] === true && recent;
+    const el = document.getElementById("typing-indicator");
+    if (el) {
+      const otherName = isAdmin() ? ((_currentThreadMeta && _currentThreadMeta.userName) || "L'utilisateur") : ADMIN_DISPLAY_NAME;
+      el.innerHTML = typing ? '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span> ' + _escapeHtmlChat(otherName) + ' écrit…' : '';
+    }
+  }, () => {});
 }
 
 // Heartbeat presence : écrit online + lastSeen toutes les 30s.
@@ -9087,6 +9127,7 @@ async function renderSupportUser() {
   if (!closed) {
     _subscribeSupportThread(currentUser);
     _markThreadReadByUser(currentUser);
+    _subscribeThreadDoc(currentUser);
   }
 }
 
@@ -9259,6 +9300,7 @@ window._openAdminThread = async function(uid) {
   _subscribeSupportThread(uid);
   _markThreadReadByAdmin(uid);
   _subscribeAdminThreads();
+  _subscribeThreadDoc(uid);
 };
 
 function _renderPresenceBadge(p) {
@@ -9351,13 +9393,14 @@ function _chatInputBarHtml(placeholder, sendId, sendDisabled) {
   const panel = '<div id="emoji-panel" class="emoji-panel">'
     + emojis.map(e => '<button onclick="insertEmoji(\'' + e + '\')" class="emoji-btn">' + e + '</button>').join("")
     + '</div>';
-  return panel
+  return '<div id="typing-indicator" class="typing-indicator"></div>'
+    + panel
     + '<div class="chat-input-bar">'
     + '<button type="button" onclick="toggleEmojiPanel()" class="chat-tool-btn" title="Emoji">😀</button>'
     + '<label class="chat-tool-btn" title="Joindre image">📎'
     + '<input type="file" accept="image/*" onchange="uploadSupportImage(this)" style="display:none">'
     + '</label>'
-    + '<input id="chat-input" placeholder="' + placeholder + '" ' + (sendDisabled ? "disabled " : "") + 'onkeydown="if(event.key===&quot;Enter&quot;)sendSupportMessage()">'
+    + '<input id="chat-input" placeholder="' + placeholder + '" ' + (sendDisabled ? "disabled " : "") + 'oninput="signalTyping()" onkeydown="if(event.key===&quot;Enter&quot;)sendSupportMessage()">'
     + '<button ' + (sendId ? 'id="' + sendId + '" ' : '') + 'onclick="sendSupportMessage()" ' + (sendDisabled ? "disabled" : "") + '>Envoyer</button>'
     + '</div>';
 }
