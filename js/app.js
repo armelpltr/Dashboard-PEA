@@ -9134,27 +9134,39 @@ async function renderSupportUser() {
 
   window._supportUserClosed = closed;
   window._supportNoThread = !exists;
+
+  // Thread fermé côté user = lecture seule. Pas de réouverture user-side.
+  if (closed) {
+    const ticketId = _genTicketId(currentUser);
+    const el = document.getElementById("support-content");
+    el.innerHTML =
+      '<div class="chat-wrap" style="align-items:center;justify-content:center;text-align:center;padding:40px">'
+      + '<div style="max-width:440px">'
+      + '<div style="font-size:32px;margin-bottom:14px">🔒</div>'
+      + '<div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px">Conversation fermée</div>'
+      + '<div style="font-family:monospace;font-size:11px;color:var(--text2);background:var(--s3);padding:3px 8px;border-radius:6px;display:inline-block;margin-bottom:18px">#' + ticketId + '</div>'
+      + '<div style="font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6">Ce ticket a été fermé. Seul l\'admin peut le rouvrir.<br>Vous pouvez télécharger la transcription pour archive personnelle.</div>'
+      + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="padding:9px 18px;font-size:13px">📄 Télécharger transcription</button>'
+      + '</div></div>';
+    return;
+  }
   const ticketId = _genTicketId(currentUser);
   _currentThreadMeta.ticketId = ticketId;
   const el = document.getElementById("support-content");
   el.innerHTML =
     '<div class="chat-wrap">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border)">'
-    + '<span style="font-family:monospace;font-size:11px;color:var(--text2);background:var(--s3);padding:3px 8px;border-radius:6px">#' + ticketId + (closed ? ' · Nouveau' : '') + '</span>'
+    + '<span style="font-family:monospace;font-size:11px;color:var(--text2);background:var(--s3);padding:3px 8px;border-radius:6px">#' + ticketId + '</span>'
     + '<div style="display:flex;gap:6px">'
-    + (closed ? '' : '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>')
-    + (closed ? '' : '<button onclick="closeSupportThreadUser()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">✕ Fermer</button>')
+    + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
+    + '<button onclick="closeSupportThreadUser()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">✕ Fermer</button>'
     + '</div></div>'
-    + '<div class="chat-messages" id="chat-messages">'
-    + (closed ? '<div class="chat-empty">Démarrez une nouvelle conversation — votre message rouvrira un ticket auprès du support.</div>' : '')
-    + '</div>'
-    + _chatInputBarHtml(closed ? "Démarrer une nouvelle conversation…" : "Écrivez votre message…", null, false)
+    + '<div class="chat-messages" id="chat-messages"></div>'
+    + _chatInputBarHtml("Écrivez votre message…", null, false)
     + '</div>';
-  if (!closed) {
-    _subscribeSupportThread(currentUser);
-    _markThreadReadByUser(currentUser);
-    _subscribeThreadDoc(currentUser);
-  }
+  _subscribeSupportThread(currentUser);
+  _markThreadReadByUser(currentUser);
+  _subscribeThreadDoc(currentUser);
 }
 
 function renderSupportAdmin() {
@@ -9207,7 +9219,7 @@ function _subscribeAdminThreads() {
 function _renderAdminThreads(threads) {
   const el = document.getElementById("chat-threads");
   if (!el) return;
-  const filtered = threads.filter(t => _supportAdminTab === "archived" ? t.closed === true : t.closed !== true);
+  const filtered = threads.filter(t => _supportAdminTab === "archived" ? t.archived === true : t.archived !== true);
   if (!filtered.length) {
     el.innerHTML = '<div class="chat-empty">' + (_supportAdminTab === "archived" ? "Aucune conversation archivée." : "Aucune conversation active.") + '</div>';
     return;
@@ -9276,11 +9288,13 @@ window._openNewChatPrompt = function() {
 window._openAdminThread = async function(uid) {
   _activeSupportThread = uid;
   let closed = false;
+  let archived = false;
   let ticketId = "";
   try {
     const snap = await getFirestoreDoc(firestoreDoc(db, "supportThreads", uid));
     const d = snap.exists() ? snap.data() : {};
     closed = d.closed === true;
+    archived = d.archived === true;
     ticketId = d.ticketId || _genTicketId(uid);
     _currentThreadMeta = {
       userUid: uid,
@@ -9306,21 +9320,29 @@ window._openAdminThread = async function(uid) {
   const bar = document.getElementById("chat-actions-bar");
   if (bar) {
     bar.style.display = "flex";
+    const stateBadge = archived ? '<span style="font-size:10px;color:#aab2c3;background:#2a2638;padding:2px 8px;border-radius:999px">Archivé</span>'
+      : closed ? '<span style="font-size:10px;color:#f5b731;background:rgba(245,183,49,0.15);padding:2px 8px;border-radius:999px">Fermé</span>'
+      : '<span style="font-size:10px;color:#00e09e;background:rgba(0,224,158,0.12);padding:2px 8px;border-radius:999px">Ouvert</span>';
     const leftInfo =
-      '<div style="margin-right:auto;display:flex;align-items:center;gap:10px">'
+      '<div style="margin-right:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
       + '<span style="font-family:monospace;font-size:11px;color:var(--text2);background:var(--s3);padding:3px 8px;border-radius:6px">#' + ticketId + '</span>'
+      + stateBadge
       + '<span id="presence-badge" style="font-size:11px;color:var(--text3)">…</span>'
       + '</div>';
-    if (closed) {
-      bar.innerHTML = leftInfo
-        + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
-        + '<button onclick="reopenSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">↺ Réouvrir</button>'
-        + '<button onclick="deleteSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">🗑 Supprimer définitivement</button>';
+    let actions = '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>';
+    if (!closed) {
+      // Ouvert → admin peut fermer
+      actions += '<button onclick="closeSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:#f5b731;border-color:rgba(245,183,49,0.3)">✕ Fermer le ticket</button>';
+    } else if (closed && !archived) {
+      // Fermé non archivé → réouvrir ou archiver
+      actions += '<button onclick="reopenSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">↺ Réouvrir</button>';
+      actions += '<button onclick="archiveSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">📦 Archiver</button>';
     } else {
-      bar.innerHTML = leftInfo
-        + '<button onclick="downloadSupportTranscript()" class="btn-outline" style="font-size:11px;padding:5px 10px">📄 Transcription</button>'
-        + '<button onclick="closeSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">✕ Archiver</button>';
+      // Archivé → réouvrir ou supprimer
+      actions += '<button onclick="reopenSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px">↺ Réouvrir</button>';
+      actions += '<button onclick="deleteSupportThreadAdmin()" class="btn-outline" style="font-size:11px;padding:5px 10px;color:var(--negative);border-color:rgba(255,77,106,0.3)">🗑 Supprimer définitivement</button>';
     }
+    bar.innerHTML = leftInfo + actions;
   }
 
   _subscribeSupportThread(uid);
@@ -9458,32 +9480,29 @@ window.sendSupportMessage = async function() {
   const targetUid = isAdmin() ? _activeSupportThread : currentUser;
   if (!targetUid) return;
 
-  // User : si nouveau ticket (fermé ou inexistant), demander raison d'abord
-  if (!isAdmin()) {
-    const needsReason = window._supportUserClosed === true || window._supportNoThread === true;
-    if (needsReason) {
-      showPromptModal({
-        title: "Raison du contact",
-        body: "Précisez brièvement le sujet de votre message. L'admin en aura connaissance.",
-        placeholder: "Ex : problème de connexion, question facturation…",
-        okLabel: "Continuer",
-        onConfirm: async (reason) => {
-          input.value = "";
-          try {
-            await setFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser), {
-              closed: false, reopenedAt: serverTimestamp(), reason: reason,
-            }, { merge: true });
-            await _postSystemMessage(currentUser, "🆕 Nouvelle conversation ouverte");
-            await _postSystemMessage(currentUser, "📝 Sujet : " + reason);
-            window._supportUserClosed = false;
-            window._supportNoThread = false;
-            await _sendSupportPayload(targetUid, { type: "text", text });
-            renderSupportUser();
-          } catch(e) { console.error(e); alert("Erreur envoi"); input.value = text; }
-        },
-      });
-      return;
-    }
+  // User : si nouveau ticket (inexistant uniquement), demander raison d'abord.
+  // Si fermé, user ne peut pas réouvrir (page bloquée en lecture seule).
+  if (!isAdmin() && window._supportNoThread === true) {
+    showPromptModal({
+      title: "Raison du contact",
+      body: "Précisez brièvement le sujet de votre message. L'admin en aura connaissance.",
+      placeholder: "Ex : problème de connexion, question facturation…",
+      okLabel: "Continuer",
+      onConfirm: async (reason) => {
+        input.value = "";
+        try {
+          await setFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser), {
+            closed: false, reason: reason, ticketId: _genTicketId(currentUser),
+          }, { merge: true });
+          await _postSystemMessage(currentUser, "🆕 Nouvelle conversation ouverte");
+          await _postSystemMessage(currentUser, "📝 Sujet : " + reason);
+          window._supportNoThread = false;
+          await _sendSupportPayload(targetUid, { type: "text", text });
+          renderSupportUser();
+        } catch(e) { console.error(e); alert("Erreur envoi"); input.value = text; }
+      },
+    });
+    return;
   }
 
   input.value = "";
@@ -9544,7 +9563,7 @@ async function _postSystemMessage(uid, text) {
 window.closeSupportThreadUser = function() {
   showConfirmModal({
     title: "Fermer la conversation",
-    body: "Vous ne la verrez plus, mais l'admin la conservera en archive.",
+    body: "Cette action coupe votre accès au chat. Seul l'admin pourra le rouvrir.",
     okLabel: "Fermer", cancelLabel: "Annuler", danger: true,
     onConfirm: async () => {
       try {
@@ -9573,16 +9592,36 @@ window.closeSupportThreadAdmin = function() {
   if (!_activeSupportThread) return;
   const uid = _activeSupportThread;
   showConfirmModal({
-    title: "Archiver la conversation",
-    body: "Le ticket passera en Archivés. Vous pourrez le rouvrir ou le supprimer.",
+    title: "Fermer le ticket",
+    body: "Le chat sera coupé : ni vous ni l'utilisateur ne pourrez écrire. Vous pourrez l'archiver ou le rouvrir ensuite.",
+    okLabel: "Fermer", cancelLabel: "Annuler",
+    onConfirm: async () => {
+      try {
+        await _postSystemMessage(uid, "🔒 Ticket fermé par l'admin");
+        await setFirestoreDoc(firestoreDoc(db, "supportThreads", uid), {
+          closed: true, closedAt: serverTimestamp(), closedBy: "admin", archived: false,
+        }, { merge: true });
+        _openAdminThread(uid);
+      } catch(e) { console.error(e); alert("Erreur fermeture."); }
+    },
+  });
+};
+
+window.archiveSupportThreadAdmin = function() {
+  if (!_activeSupportThread) return;
+  const uid = _activeSupportThread;
+  showConfirmModal({
+    title: "Archiver le ticket",
+    body: "Le ticket passera dans l'onglet Archivés. Vous pourrez toujours le rouvrir ou le supprimer.",
     okLabel: "Archiver", cancelLabel: "Annuler",
     onConfirm: async () => {
       try {
-        await _postSystemMessage(uid, "🔒 Ticket archivé par l'admin");
         await setFirestoreDoc(firestoreDoc(db, "supportThreads", uid), {
-          closed: true, closedAt: serverTimestamp(), closedBy: "admin"
+          archived: true, archivedAt: serverTimestamp(),
         }, { merge: true });
-        _openAdminThread(uid);
+        _activeSupportThread = null;
+        _supportAdminTab = "active";
+        renderSupportAdmin();
       } catch(e) { console.error(e); alert("Erreur archivage."); }
     },
   });
@@ -9594,8 +9633,9 @@ window.reopenSupportThreadAdmin = async function() {
   try {
     await _postSystemMessage(uid, "🔓 Ticket rouvert par l'admin");
     await setFirestoreDoc(firestoreDoc(db, "supportThreads", uid), {
-      closed: false, reopenedAt: serverTimestamp()
+      closed: false, archived: false, reopenedAt: serverTimestamp()
     }, { merge: true });
+    _supportAdminTab = "active";
     _openAdminThread(uid);
   } catch(e) { console.error(e); alert("Erreur réouverture."); }
 };
