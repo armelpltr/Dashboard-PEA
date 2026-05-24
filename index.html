@@ -509,5 +509,42 @@
   </div>
 </footer>
 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDvZ_0loJ9Lf_jhz-ZDGsydG9AE21CU5Uc",
+    authDomain: "dashboard-pea.firebaseapp.com",
+    projectId: "dashboard-pea",
+    storageBucket: "dashboard-pea.firebasestorage.app",
+    messagingSenderId: "1040263468997",
+    appId: "1:1040263468997:web:ffbafd62cf9b672b1f9dac"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  function setAuthUI(loggedIn, user) {
+    document.querySelectorAll('[data-auth="in"]').forEach(el => {
+      el.style.display = loggedIn ? '' : 'none';
+    });
+    document.querySelectorAll('[data-auth="out"]').forEach(el => {
+      el.style.display = loggedIn ? 'none' : '';
+    });
+  }
+
+  onAuthStateChanged(auth, user => {
+    setAuthUI(!!user, user);
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btn-logout');
+    if (btn) btn.addEventListener('click', async () => {
+      try { await signOut(auth); } catch(e) { console.error(e); }
+    });
+  });
+</script>
+
 </body>
 </html>
