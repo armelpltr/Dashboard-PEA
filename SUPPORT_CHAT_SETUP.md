@@ -26,7 +26,7 @@ service cloud.firestore {
 
     // Chat support : user voit/écrit son thread, admin voit tout
     function isAdmin() {
-      return request.auth.uid == "TON_ADMIN_UID_ICI";
+      return request.auth.uid == "A6nZQ8PcxdURytSesA17xK81I9T2";
     }
 
     match /supportChats/{userId}/messages/{msgId} {
@@ -44,7 +44,7 @@ service cloud.firestore {
 }
 ```
 
-Remplacer `TON_ADMIN_UID_ICI` par le même UID qu'à l'étape 2.
+Remplacer `A6nZQ8PcxdURytSesA17xK81I9T2` par le même UID qu'à l'étape 2.
 
 ## 4. Test
 

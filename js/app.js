@@ -8956,7 +8956,7 @@ function resetAlert(i) {
 // Chat 1-to-1 entre user et admin (toi). Firestore:
 //   supportChats/{userUid}/messages/{msgId}
 //   supportThreads/{userUid}  → metadata thread pour vue admin
-const ADMIN_UID = "REPLACE_WITH_YOUR_FIREBASE_UID";
+const ADMIN_UID = "A6nZQ8PcxdURytSesA17xK81I9T2";
 
 let _supportUnsub = null;
 let _supportThreadsUnsub = null;
@@ -8970,11 +8970,6 @@ function _escapeHtmlChat(s) {
 
 function renderSupportPage() {
   if (window.IS_DEMO) { _renderDemoBlocked("page-support", "Support"); return; }
-  if (ADMIN_UID === "REPLACE_WITH_YOUR_FIREBASE_UID") {
-    document.getElementById("support-content").innerHTML =
-      '<div class="chat-empty">⚠️ ADMIN_UID non configuré dans js/app.js (remplacer la constante par votre UID Firebase).</div>';
-    return;
-  }
   if (isAdmin()) renderSupportAdmin();
   else renderSupportUser();
 }
@@ -9119,7 +9114,6 @@ async function _markThreadReadByAdmin(uid) {
 // Badge non-lu sur item nav Support
 function _initSupportBadge() {
   if (window.IS_DEMO || !db || !currentUser) return;
-  if (ADMIN_UID === "REPLACE_WITH_YOUR_FIREBASE_UID") return;
   if (isAdmin()) {
     onSnapshot(firestoreCollection(db, "supportThreads"), snap => {
       let total = 0;
