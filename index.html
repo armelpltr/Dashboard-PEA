@@ -266,33 +266,6 @@
   .foot-links a:hover { color: var(--text1); }
   .foot-copy { color: var(--text3); font-size: 13px; }
 
-  /* ═══ Cookies banner ═══ */
-  #cookie-banner {
-    position: fixed; bottom: 16px; left: 16px; right: 16px;
-    max-width: 720px; margin: 0 auto;
-    background: var(--surface2);
-    border: 1px solid var(--border2);
-    border-radius: 14px;
-    padding: 16px 20px;
-    z-index: 1000;
-    backdrop-filter: blur(20px);
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-    display: none;
-  }
-  .cookie-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .cookie-row .txt { flex: 1; min-width: 240px; font-size: 13px; color: var(--text2); }
-  .cookie-row .txt strong { color: var(--text1); display: block; margin-bottom: 4px; font-weight: 600; }
-  .cookie-row .txt a { color: var(--purple); }
-  .cookie-row .acts { display: flex; gap: 8px; }
-  .cookie-row button {
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-family: inherit; font-size: 13px; font-weight: 600;
-    border: none; cursor: pointer;
-  }
-  .cookie-btn-refuse { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
-  .cookie-btn-accept { background: var(--purple); color: white; }
-
   @media (max-width: 640px) {
     .hero { padding: 60px 20px 60px; }
     section { padding: 60px 0; }
@@ -475,19 +448,6 @@
   </div>
 </footer>
 
-<div id="cookie-banner">
-  <div class="cookie-row">
-    <div class="txt">
-      <strong>Cookies & stockage local</strong>
-      Capital Board utilise le stockage local (préférences). Aucun cookie publicitaire ni tracker tiers. <a href="politique-confidentialite.html">En savoir plus</a>
-    </div>
-    <div class="acts">
-      <button onclick="cookieConsent('refuse')" class="cookie-btn-refuse">Refuser</button>
-      <button onclick="cookieConsent('accept')" class="cookie-btn-accept">Accepter</button>
-    </div>
-  </div>
-</div>
-
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -527,23 +487,6 @@
       try { await signOut(auth); } catch(e) { console.error(e); }
     });
   });
-</script>
-
-<script>
-  (function() {
-    if (!localStorage.getItem('cookie_consent')) {
-      document.addEventListener('DOMContentLoaded', () => {
-        const b = document.getElementById('cookie-banner');
-        if (b) b.style.display = 'block';
-      });
-    }
-    window.cookieConsent = function(choice) {
-      localStorage.setItem('cookie_consent', choice);
-      localStorage.setItem('cookie_consent_date', new Date().toISOString());
-      const b = document.getElementById('cookie-banner');
-      if (b) b.style.display = 'none';
-    };
-  })();
 </script>
 
 </body>
