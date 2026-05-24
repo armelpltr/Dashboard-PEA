@@ -53,17 +53,6 @@
       radial-gradient(ellipse 700px 500px at 85% 30%, rgba(91,141,238,0.12), transparent 60%),
       radial-gradient(ellipse 600px 400px at 50% 90%, rgba(0,224,158,0.08), transparent 60%);
   }
-  .grid-bg {
-    position: fixed; inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    background-image:
-      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-    background-size: 60px 60px;
-    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
-  }
-
   /* ═══ NAV ═══ */
   nav {
     position: absolute; top: 0; left: 0; right: 0; z-index: 100;
@@ -279,7 +268,6 @@
 <body>
 
 <div class="ambient"></div>
-<div class="grid-bg"></div>
 
 <nav>
   <div class="nav-inner">
