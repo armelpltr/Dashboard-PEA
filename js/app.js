@@ -9135,6 +9135,20 @@ async function renderSupportUser() {
   window._supportUserClosed = closed;
   window._supportNoThread = !exists;
 
+  // Aucun thread → landing page de création
+  if (!exists) {
+    const el = document.getElementById("support-content");
+    el.innerHTML =
+      '<div class="chat-wrap" style="align-items:center;justify-content:center;text-align:center;padding:40px">'
+      + '<div style="max-width:480px">'
+      + '<div style="font-size:42px;margin-bottom:16px">💬</div>'
+      + '<div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:10px">Comment pouvons-nous vous aider ?</div>'
+      + '<div style="font-size:13px;color:var(--text2);margin-bottom:28px;line-height:1.6">Ouvrez un ticket de support. L\'équipe répond généralement sous 24h.</div>'
+      + '<button onclick="openNewTicketForm()" style="padding:12px 28px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer">+ Nouveau ticket</button>'
+      + '</div></div>';
+    return;
+  }
+
   // Thread fermé côté user = lecture seule. Pas de réouverture user-side.
   if (closed) {
     const ticketId = _genTicketId(currentUser);
@@ -9559,6 +9573,33 @@ async function _postSystemMessage(uid, text) {
     });
   } catch(e) { console.warn("system msg:", e); }
 }
+
+window.openNewTicketForm = function() {
+  showPromptModal({
+    title: "Nouveau ticket",
+    body: "Décrivez votre demande pour ouvrir une conversation avec le support.",
+    okLabel: "Ouvrir le ticket",
+    fields: [
+      { name: "subject", label: "Sujet", placeholder: "Ex : problème de connexion", type: "text", required: true },
+      { name: "message", label: "Votre message", placeholder: "Détaillez votre demande…", type: "textarea", required: true },
+    ],
+    onConfirm: async (out) => {
+      try {
+        await setFirestoreDoc(firestoreDoc(db, "supportThreads", currentUser), {
+          closed: false, archived: false,
+          reason: out.subject,
+          ticketId: _genTicketId(currentUser),
+          createdAt: serverTimestamp(),
+        }, { merge: true });
+        await _postSystemMessage(currentUser, "🆕 Ticket ouvert");
+        await _postSystemMessage(currentUser, "📝 Sujet : " + out.subject);
+        await _sendSupportPayload(currentUser, { type: "text", text: out.message });
+        window._supportNoThread = false;
+        renderSupportUser();
+      } catch(e) { console.error(e); alert("Erreur ouverture ticket."); }
+    },
+  });
+};
 
 window.closeSupportThreadUser = function() {
   showConfirmModal({
