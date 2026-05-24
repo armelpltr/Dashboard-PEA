@@ -27,14 +27,30 @@ Permettre l'exploration complète du dashboard sans création de compte, avec un
 
 ## Livré récemment
 
+- Analyse IA quotidienne (Mistral + Tavily)
+- Alertes prix push (Web Push iOS/Android)
 - Section comparatif vs concurrents (Yahoo Finance / Trade Republic / Finary)
 - Section sécurité détaillée (8 garanties)
-- Stack technique (badges)
-- Roadmap publique (cette section)
 - FAQ (8 questions)
 - Badge GitHub stars live
 - Refonte bouton Accueil sidebar
 - Bio créateur sur landing
+
+---
+
+## Stack technique
+
+| Couche | Techno |
+|---|---|
+| Auth | Firebase Auth |
+| Database | Firestore (europe-west1) |
+| IA | Mistral AI + Tavily Search |
+| Données marché | Yahoo Finance API |
+| Charts | Chart.js |
+| Notifications | Web Push (VAPID) |
+| Hosting | GitHub Pages |
+| Cron jobs | GitHub Actions |
+| Backend scripts | Python 3.11 |
 
 ---
 
