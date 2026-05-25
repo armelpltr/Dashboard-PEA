@@ -169,6 +169,31 @@
       <a href="cgu.html" target="_blank">CGU</a>
     </div>
   </div>
+
+  <!-- VUE VÉRIFICATION EMAIL -->
+  <div class="login-card" id="verify-view" style="display:none">
+    <div class="login-logo">
+      <div class="logo-icon"><img src="logo.png" alt="logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
+      <div class="login-title">Vérifie ton email</div>
+      <div class="login-subtitle">Capital Board</div>
+    </div>
+    <div style="text-align:center;font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:18px">
+      Un email de vérification a été envoyé à<br>
+      <strong id="verify-email-display" style="color:var(--text)">—</strong>
+    </div>
+    <div style="font-size:12px;color:var(--text3);line-height:1.55;margin-bottom:18px;padding:12px 14px;background:var(--s2);border:1px solid var(--border2);border-radius:10px">
+      1. Ouvre ta boîte mail (et le dossier spam)<br>
+      2. Clique sur le lien de vérification<br>
+      3. Reviens sur cette page — l'accès se débloque automatiquement
+    </div>
+    <div class="login-error" id="verify-error" style="display:none"></div>
+    <div class="login-success" id="verify-success" style="display:none;color:#00e09e;font-size:12px;margin-bottom:10px;text-align:center"></div>
+    <button class="btn-login" id="btn-verify-check" onclick="veCheck()">J'ai vérifié</button>
+    <button class="btn-login" id="btn-verify-resend" onclick="veResend()" style="margin-top:10px;background:var(--s2);color:var(--text)">Renvoyer le mail</button>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
+      <span onclick="veLogout()" style="color:var(--accent);cursor:pointer;font-weight:600">Se déconnecter</span>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ APP ═════════════════════════════════════════ -->

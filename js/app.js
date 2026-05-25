@@ -39,7 +39,7 @@ const IC = {
 // ─── FIREBASE AUTH ────────────────────────────────────
 // ─── FIREBASE (chargement dynamique, compatible sans bundler) ─────
 let fbApp, fbAuth, db,
-    createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification,
     signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
     signInWithRedirect, getRedirectResult,
     updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser,
@@ -86,6 +86,7 @@ _splashWatchdog = setTimeout(() => {
 
   createUserWithEmailAndPassword = auth.createUserWithEmailAndPassword;
   signInWithEmailAndPassword     = auth.signInWithEmailAndPassword;
+  sendEmailVerification          = auth.sendEmailVerification;
   signOut                        = auth.signOut;
   onAuthStateChanged             = auth.onAuthStateChanged;
   GoogleAuthProvider             = auth.GoogleAuthProvider;
@@ -148,8 +149,16 @@ _splashWatchdog = setTimeout(() => {
       photoURL: null
     });
   } else {
-    auth.onAuthStateChanged(fbAuth, user => {
-      if (user) { startApp(user); } else { stopApp(); }
+    auth.onAuthStateChanged(fbAuth, async user => {
+      if (!user) { stopApp(); return; }
+      // Gate vérification email — providers OAuth (Google) ont emailVerified=true direct
+      try { await user.reload(); } catch(_) {}
+      const u = fbAuth.currentUser || user;
+      if (!u.emailVerified) {
+        showVerifyView(u.email);
+        return;
+      }
+      startApp(u);
     });
   }
  } catch(e) {
@@ -433,12 +442,114 @@ function setLoading(btnId, loading) {
 window.showLoginView = function() {
   document.getElementById('login-view').style.display = 'block';
   document.getElementById('register-view').style.display = 'none';
+  const vv = document.getElementById('verify-view'); if (vv) vv.style.display = 'none';
   document.getElementById('login-error').textContent = '';
+  stopVerifyPolling();
 };
 window.showRegisterView = function() {
   document.getElementById('login-view').style.display = 'none';
   document.getElementById('register-view').style.display = 'block';
+  const vv = document.getElementById('verify-view'); if (vv) vv.style.display = 'none';
   document.getElementById('register-error').textContent = '';
+  stopVerifyPolling();
+};
+
+// ─── VÉRIFICATION EMAIL ──────────────────────────────
+let _veLastSent = 0;
+let _vePollTimer = null;
+
+function showVerifyView(email) {
+  document.getElementById('login-screen').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('register-view').style.display = 'none';
+  const view = document.getElementById('verify-view');
+  if (view) view.style.display = 'block';
+  const eDisp = document.getElementById('verify-email-display');
+  if (eDisp) eDisp.textContent = email || '';
+  _hideSplash();
+  startVerifyPolling();
+}
+
+function startVerifyPolling() {
+  stopVerifyPolling();
+  _vePollTimer = setInterval(_veSilentCheck, 4000);
+  window.addEventListener('focus', _veSilentCheck);
+  document.addEventListener('visibilitychange', _veSilentCheck);
+}
+function stopVerifyPolling() {
+  if (_vePollTimer) { clearInterval(_vePollTimer); _vePollTimer = null; }
+  window.removeEventListener('focus', _veSilentCheck);
+  document.removeEventListener('visibilitychange', _veSilentCheck);
+}
+async function _veSilentCheck() {
+  if (document.hidden) return;
+  if (!fbAuth || !fbAuth.currentUser) return;
+  try {
+    await fbAuth.currentUser.reload();
+    if (fbAuth.currentUser.emailVerified) {
+      stopVerifyPolling();
+      startApp(fbAuth.currentUser);
+    }
+  } catch(_) {}
+}
+
+window.veCheck = async function() {
+  const err = document.getElementById('verify-error');
+  const ok  = document.getElementById('verify-success');
+  err.style.display = 'none'; ok.style.display = 'none';
+  if (!fbAuth || !fbAuth.currentUser) return;
+  setLoading('btn-verify-check', true);
+  try {
+    await fbAuth.currentUser.reload();
+    if (fbAuth.currentUser.emailVerified) {
+      stopVerifyPolling();
+      startApp(fbAuth.currentUser);
+    } else {
+      err.textContent = "Email pas encore vérifié. Clique le lien reçu puis réessaie.";
+      err.style.display = 'block';
+      setLoading('btn-verify-check', false);
+    }
+  } catch(e) {
+    err.textContent = "Erreur de vérification. Réessaie.";
+    err.style.display = 'block';
+    setLoading('btn-verify-check', false);
+  }
+};
+
+window.veResend = async function() {
+  const err = document.getElementById('verify-error');
+  const ok  = document.getElementById('verify-success');
+  err.style.display = 'none'; ok.style.display = 'none';
+  if (!fbAuth || !fbAuth.currentUser) return;
+  const now = Date.now();
+  if (now - _veLastSent < 60000) {
+    const wait = Math.ceil((60000 - (now - _veLastSent)) / 1000);
+    err.textContent = `Attends ${wait}s avant de renvoyer.`;
+    err.style.display = 'block';
+    return;
+  }
+  setLoading('btn-verify-resend', true);
+  try {
+    await sendEmailVerification(fbAuth.currentUser, {
+      url: window.location.origin + window.location.pathname + '?verified=1',
+      handleCodeInApp: false
+    });
+    _veLastSent = now;
+    ok.textContent = "Mail renvoyé. Vérifie ta boîte (et le spam).";
+    ok.style.display = 'block';
+  } catch(e) {
+    err.textContent = "Échec d'envoi. Réessaie plus tard.";
+    err.style.display = 'block';
+  } finally {
+    setLoading('btn-verify-resend', false);
+  }
+};
+
+window.veLogout = async function() {
+  stopVerifyPolling();
+  try { await signOut(fbAuth); } catch(_) {}
+  showLoginView();
 };
 
 // ─── LOGIN ────────────────────────────────────────────
@@ -476,10 +587,20 @@ window.doRegister = async function() {
   setLoading('btn-register-submit', true);
   const wantsRecap = document.getElementById('reg-recap')?.checked !== false;
   try {
-    await createUserWithEmailAndPassword(fbAuth, email, pass);
+    const cred = await createUserWithEmailAndPassword(fbAuth, email, pass);
     // Sauvegarder préférence recap — onAuthStateChanged prend le relai ensuite
     // On sauvegarde après le login via startApp, mais on stocke en attendant
     window._pendingRecapPref = wantsRecap;
+    // Envoi mail de vérification — onAuthStateChanged va aussi router vers verify-view
+    try {
+      await sendEmailVerification(cred.user, {
+        url: window.location.origin + window.location.pathname + '?verified=1',
+        handleCodeInApp: false
+      });
+      _veLastSent = Date.now();
+    } catch(eMail) {
+      console.warn('sendEmailVerification failed:', eMail);
+    }
   } catch(e) {
     err.textContent = firebaseErrorMsg(e.code);
     err.style.display = 'block';
