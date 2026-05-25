@@ -4,6 +4,53 @@
 ## Notes de collaboration
 - Ne pas hésiter à proposer l'utilisation de Claude Opus pour les tâches complexes (refactoring majeur, architecture, optimisation avancée).
 
+## Session 2026-05-25
+
+### Vérification email obligatoire à l'inscription
+- `sendEmailVerification` envoyé automatiquement au signup (`doRegister` dans `js/app.js`).
+- Gate dans `onAuthStateChanged` : si `!user.emailVerified` → `showVerifyView()` au lieu de `startApp()`.
+- Nouvelle vue `#verify-view` dans `app.html` (carte login style) : email affiché, instructions 3 étapes, boutons "J'ai vérifié" + "Renvoyer le mail" (throttle 60s) + "Se déconnecter".
+- Polling 4s + listeners `focus` + `visibilitychange` → `user.reload()` auto pour débloquer au retour sur l'app (clé pour PWA iPhone : user clique lien Gmail → Safari valide → reviens sur PWA → unlock).
+- Fonctions : `showVerifyView`, `startVerifyPolling`, `stopVerifyPolling`, `_veSilentCheck`, `veCheck`, `veResend`, `veLogout`. Vars : `_veLastSent`, `_vePollTimer`.
+- `showLoginView` / `showRegisterView` mises à jour pour cacher verify-view + stop polling.
+- Bug centrage corrigé : `showVerifyView` doit set `login-screen.style.display = 'flex'` (pas `'block'`, sinon casse le flex centering).
+
+### Firestore rules — gate `email_verified`
+- Helper `_isVerified()` ajouté (check `request.auth.token.email_verified == true`).
+- Writes gatés : `users/{uid}`, `ideas` (root + messages), `presence`, `supportChats` create+update, `supportThreads`.
+- Reads laissés ouverts (sinon UI casse). `roles` write **non gaté** (sinon signup casse, user doit pouvoir créer son doc rôle). `config` inchangé (superadmin déjà fiable).
+- Storage `support-attachments/{uid}/{file}` doit aussi gater write si activé.
+
+### Suppression compte — modal stylé + cleanup Firebase complet
+- Remplace `confirm()` + `prompt()` natifs par modal 2 étapes `#delete-account-modal` (icône poubelle rouge → warning → continuer → étape mot de passe avec input dédié → supprimer).
+- Provider Google → skip étape mdp (réauth popup non gérée).
+- `deleteAllUserData(uid)` étendu (`js/app.js` ~ligne 406) supprime :
+  - Tous docs `users/{uid}/data/*` : portfolio, transactions, versements, watchlist, dailyValues, alerts, notifHistory, trCohort, settings, recap, weeklyRecap, fcmTokens.
+  - Doc racine `users/{uid}` (email mapping pour gestion rôles).
+  - `supportChats/{uid}/messages/*` (iter `getDocs` + `deleteDoc`) + `supportChats/{uid}` + `supportThreads/{uid}`.
+  - `presence/{uid}` + `roles/{uid}`.
+  - Storage : `support-attachments/{uid}/*` (import dynamique `listAll` + `deleteObject`).
+- Mapping erreurs Firebase Auth en français inline (`wrong-password`, `requires-recent-login`, etc.).
+- Fonctions : `confirmDeleteAccount` (ouvre modal), `closeDeleteAccountModal`, `delGoToStep2`, `delBackToStep1`, `delFinalize`.
+
+### Checkboxes register — bug fix
+- Bug : `<div onclick=".click()">` parent + click direct sur checkbox = double toggle = annule.
+- Fix : `onclick="event.stopPropagation()"` sur checkbox + guard `if(event.target.id!=='reg-rgpd')` sur parent (idem reg-recap).
+
+### Cache busting `app.js`
+- `<script src="js/app.js?v=YYYYMMDDx">` dans `app.html` (ligne 1289) — bump à chaque release notable. Évite que GitHub Pages / browsers servent vieille version.
+- Actuel : `?v=20260525b`.
+
+### À faire côté Firebase Console (manuel)
+- Authentication → Templates → Email verification → langue **French** + sujet "Confirme ton email Capital Board" + corps FR custom.
+- (Optionnel) Custom domain `auth.capitalboard.app` pour réduire spam (templates → "Customize domain" → DNS CNAME).
+
+## À reprendre (prochaine session)
+- CSS mobile : revue générale à poursuivre.
+- (Optionnel) Migration vers custom domain email Firebase pour éviter spam.
+- Vérifier templates email FR appliqués dans Console Firebase (à faire manuellement).
+- Prochain chantier ROADMAP : conversion démo → inscription avec migration dataset, calculateur fiscal PEA, heatmap secteurs, export PDF mensuel.
+
 ## Session 2026-05-22
 
 ### Dividendes → solde espèces
@@ -29,9 +76,6 @@
 ### Historique des transactions
 - Affiche les 10 transactions les plus récentes par défaut. Bouton « Afficher plus (N) » / « Afficher moins » (`toggleTxHistory`, `_txShowAll`, `TX_HISTORY_LIMIT`, conteneur `#tx-show-more-wrap`).
 - Scroll interne 400px retiré : le tableau s'étend en pleine hauteur, la page scrolle (`overflow-x:auto` gardé pour mobile).
-
-## À reprendre (prochaine session)
-- CSS mobile : revue générale à poursuivre.
 
 ## Notifications push & Récap (2026-05-17)
 

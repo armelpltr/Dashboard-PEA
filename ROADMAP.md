@@ -1,6 +1,6 @@
 # Roadmap Capital Board
 
-État des chantiers du projet. À jour au 2026-05-24.
+État des chantiers du projet. À jour au 2026-05-25.
 
 ---
 
@@ -14,18 +14,15 @@ Reprise des évolutions UX/UI du dashboard.
 
 ## Prochain chantier principal
 
-### Vérification email à l'inscription
+### Conversion démo → inscription avec migration dataset
 
-Envoyer un mail de vérification à l'inscription via Firebase Auth (`sendEmailVerification`). Bloquer l'accès à certaines features (ou tout l'app) tant que `user.emailVerified === false`.
+Permettre à un utilisateur en mode démo (`?demo=1`) de s'inscrire et de garder/migrer le dataset démo enrichi vers son nouveau compte Firestore.
 
 **Sous-tâches:**
-- [ ] Au signup réussi : `sendEmailVerification(user)` + écran "Vérifiez votre email"
-- [ ] Bandeau persistant dans l'app si email non vérifié + bouton "Renvoyer le mail"
-- [ ] (Optionnel) Bloquer accès Support / création tickets tant que non vérifié
-- [ ] Page `verify-email.html` ou flow inline avec polling `user.reload()` pour détecter validation
-- [ ] Personnaliser le template d'email dans Firebase Console (sujet, domaine d'action)
-
-**Bloqueur:** aucun. Firebase Auth gère tout côté serveur (template + lien).
+- [ ] CTA "Créer mon compte" visible en mode démo
+- [ ] Au signup réussi depuis démo : copier `_localCache` démo → Firestore `users/{uid}/data/*`
+- [ ] Bypass popup dividende auto pendant migration
+- [ ] Confirmer succès + redirect dashboard
 
 ---
 
@@ -40,6 +37,8 @@ Envoyer un mail de vérification à l'inscription via Firebase Auth (`sendEmailV
 
 ## Livré récemment
 
+- **Vérification email à l'inscription** (2026-05-25) — `sendEmailVerification` au signup, gate `onAuthStateChanged` bloque dashboard tant que `!emailVerified`, vue `#verify-view` dédiée avec polling 4s + listeners focus/visibilitychange pour unlock auto au retour sur PWA iPhone, throttle renvoi 60s. Firestore rules gatées via `request.auth.token.email_verified`.
+- **Suppression compte complète Firebase** (2026-05-25) — modal stylé 2 étapes (warning + mdp), `deleteAllUserData` nettoie tous les docs `users/{uid}/data/*` + doc racine + supportChats messages + supportThreads + presence + roles + Storage `support-attachments/{uid}/*`. Mapping erreurs Auth en FR.
 - **Mode démo sans inscription** (`?demo=1`) — dataset fictif PEA enrichi (9 lignes + 14 tx + 7 versements + recap IA), bandeau orange persistant, bypass Firestore/Auth/Push, page Performance bloquée avec CTA signup, popup dividende auto désactivé
 - **PWA scope restreint** (`./app.html`) + hide liens externes en standalone iOS
 - **Auto-redirect landing → app** si user authentifié (bypass via `?stay=1`)
