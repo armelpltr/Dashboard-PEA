@@ -404,10 +404,41 @@ function _fsWrite(uid, col, data) {
 
 // Suppression complète des données utilisateur
 async function deleteAllUserData(uid) {
-  const cols = ['portfolio', 'transactions', 'versements', 'watchlist', 'dailyValues'];
-  await Promise.all(cols.map(col =>
-    deleteFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', col)).catch(() => {})
+  // 1. Tous les docs sous users/{uid}/data
+  const dataDocs = [
+    'portfolio', 'transactions', 'versements', 'watchlist',
+    'dailyValues', 'alerts', 'notifHistory', 'trCohort',
+    'settings', 'recap', 'weeklyRecap', 'fcmTokens'
+  ];
+  await Promise.all(dataDocs.map(d =>
+    deleteFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', d)).catch(() => {})
   ));
+
+  // 2. Doc racine users/{uid} (email mapping)
+  await deleteFirestoreDoc(firestoreDoc(db, 'users', uid)).catch(() => {});
+
+  // 3. Support chat — messages sous-collection + thread
+  try {
+    const msgsCol = firestoreCollection(db, 'supportChats', uid, 'messages');
+    const msgs = await getDocs(msgsCol);
+    await Promise.all(msgs.docs.map(d => deleteFirestoreDoc(d.ref).catch(() => {})));
+  } catch(_) {}
+  await deleteFirestoreDoc(firestoreDoc(db, 'supportChats', uid)).catch(() => {});
+  await deleteFirestoreDoc(firestoreDoc(db, 'supportThreads', uid)).catch(() => {});
+
+  // 4. Présence + rôle
+  await deleteFirestoreDoc(firestoreDoc(db, 'presence', uid)).catch(() => {});
+  await deleteFirestoreDoc(firestoreDoc(db, 'roles', uid)).catch(() => {});
+
+  // 5. Storage — pièces jointes support
+  if (fbStorage && fbStorageRef) {
+    try {
+      const { listAll, deleteObject } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
+      const dirRef = fbStorageRef(fbStorage, `support-attachments/${uid}`);
+      const all = await listAll(dirRef);
+      await Promise.all(all.items.map(it => deleteObject(it).catch(() => {})));
+    } catch(_) {}
+  }
 }
 
 // logTransaction reste synchrone
@@ -846,23 +877,72 @@ window.saveNewPassword = async function() {
   }
 };
 
-window.confirmDeleteAccount = async function() {
-  if (!confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.')) return;
+// ─── SUPPRESSION COMPTE — modal 2 étapes ────────────
+window.confirmDeleteAccount = function() {
+  const modal = document.getElementById('delete-account-modal');
+  if (!modal) return;
+  document.getElementById('del-step-1').style.display = 'block';
+  document.getElementById('del-step-2').style.display = 'none';
+  document.getElementById('del-error').style.display = 'none';
+  const pi = document.getElementById('del-pass-input');
+  if (pi) pi.value = '';
+  modal.style.display = 'flex';
+};
+
+window.closeDeleteAccountModal = function() {
+  const modal = document.getElementById('delete-account-modal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.delGoToStep2 = function() {
   const user = fbAuth.currentUser;
+  const isGoogle = user && user.providerData.some(p => p.providerId === 'google.com');
+  // Provider Google : pas de mot de passe → finaliser direct
+  if (isGoogle) { delFinalize(); return; }
+  document.getElementById('del-step-1').style.display = 'none';
+  document.getElementById('del-step-2').style.display = 'block';
+  setTimeout(() => document.getElementById('del-pass-input').focus(), 50);
+};
+
+window.delBackToStep1 = function() {
+  document.getElementById('del-step-2').style.display = 'none';
+  document.getElementById('del-step-1').style.display = 'block';
+  document.getElementById('del-error').style.display = 'none';
+};
+
+window.delFinalize = async function() {
+  const err = document.getElementById('del-error');
+  err.style.display = 'none';
+  const user = fbAuth.currentUser;
+  if (!user) return;
   const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+  setLoading('del-final-btn', true);
   try {
     if (!isGoogle) {
-      const pass = prompt('Entrez votre mot de passe pour confirmer la suppression :');
-      if (!pass) return;
+      const pass = document.getElementById('del-pass-input').value;
+      if (!pass) {
+        err.textContent = 'Mot de passe requis.';
+        err.style.display = 'block';
+        setLoading('del-final-btn', false);
+        return;
+      }
       const cred = EmailAuthProvider.credential(user.email, pass);
       await reauthenticateWithCredential(user, cred);
     }
-    // Supprimer toutes les données Firestore
     await deleteAllUserData(user.uid);
     await deleteUser(user);
+    closeDeleteAccountModal();
     // onAuthStateChanged → stopApp()
   } catch(e) {
-    alert('Erreur lors de la suppression : ' + e.message);
+    const map = {
+      'auth/wrong-password': 'Mot de passe incorrect.',
+      'auth/invalid-credential': 'Mot de passe incorrect.',
+      'auth/too-many-requests': 'Trop de tentatives. Réessaie plus tard.',
+      'auth/requires-recent-login': 'Reconnecte-toi puis recommence.',
+    };
+    err.textContent = map[e.code] || ('Erreur : ' + (e.message || e.code));
+    err.style.display = 'block';
+    setLoading('del-final-btn', false);
   }
 };
 
