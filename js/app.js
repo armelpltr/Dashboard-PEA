@@ -459,7 +459,7 @@ let _veLastSent = 0;
 let _vePollTimer = null;
 
 function showVerifyView(email) {
-  document.getElementById('login-screen').style.display = 'block';
+  document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-view').style.display = 'none';
   document.getElementById('register-view').style.display = 'none';
