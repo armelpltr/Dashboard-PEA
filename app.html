@@ -141,15 +141,15 @@
       <label class="form-label">Confirmer le mot de passe</label>
       <input type="password" class="form-input" id="reg-pass2" placeholder="••••••••" autocomplete="new-password">
     </div>
-    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:12px 14px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.2);border-radius:10px;cursor:pointer" onclick="document.getElementById('reg-recap').click()">
-      <input type="checkbox" id="reg-recap" checked style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0">
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:12px 14px;background:var(--accent-d);border:1px solid rgba(124,109,245,0.2);border-radius:10px;cursor:pointer" onclick="if(event.target.id!=='reg-recap')document.getElementById('reg-recap').click()">
+      <input type="checkbox" id="reg-recap" checked style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0" onclick="event.stopPropagation()">
       <div>
         <div style="font-size:12px;font-weight:600;color:var(--text)">Récap quotidien par notification</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px">Recevez chaque soir à 20h une notification résumant la performance de votre PEA.</div>
       </div>
     </div>
-    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;cursor:pointer" onclick="document.getElementById('reg-rgpd').click()">
-      <input type="checkbox" id="reg-rgpd" style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0">
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;cursor:pointer" onclick="if(event.target.id!=='reg-rgpd')document.getElementById('reg-rgpd').click()">
+      <input type="checkbox" id="reg-rgpd" style="margin-top:2px;accent-color:var(--accent);cursor:pointer;width:15px;height:15px;flex-shrink:0" onclick="event.stopPropagation()">
       <div>
         <div style="font-size:12px;font-weight:600;color:var(--text)">J'accepte les CGU, la politique de confidentialité et les mentions légales <span style="color:#e55">*</span></div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px">En créant un compte, vous acceptez nos <a href="cgu.html" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent)">CGU</a>, notre <a href="politique-confidentialite.html" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent)">politique de confidentialité</a> et nos <a href="mentions-legales.html" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent)">mentions légales</a>.</div>
