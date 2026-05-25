@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-18",
+  "generated_at": "2026-05-25",
   "dividends": {
     "AI.PA": {
       "ticker": "AI.PA",
@@ -9,7 +9,11 @@
     "TTE.PA": {
       "ticker": "TTE.PA",
       "name": "TotalEnergies",
-      "next": null
+      "next": {
+        "date": "2026-06-30",
+        "amount_estimated": 0.85,
+        "confirmed": true
+      }
     },
     "BNP.PA": {
       "ticker": "BNP.PA",
@@ -19,7 +23,11 @@
     "ACA.PA": {
       "ticker": "ACA.PA",
       "name": "Crédit Agricole",
-      "next": null
+      "next": {
+        "date": "2026-05-28",
+        "amount_estimated": 1.13,
+        "confirmed": true
+      }
     },
     "SAN.PA": {
       "ticker": "SAN.PA",
