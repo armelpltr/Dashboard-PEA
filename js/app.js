@@ -931,7 +931,7 @@ window.delFinalize = async function() {
   try {
     const origin = window.location.origin;
     const path = window.location.pathname.replace(/[^/]*$/, '');
-    const url = `${origin}${path}delete-confirm.html`;
+    const url = `${origin}${path}delete-confirm.html?email=${encodeURIComponent(user.email)}`;
     console.log('[delete] sending sign-in link to', user.email, 'url=', url);
     await sendSignInLinkToEmail(fbAuth, user.email, {
       url,

@@ -306,7 +306,13 @@ async function signInThenAskPassword(email){
     return;
   }
   let email = '';
-  try{ email = localStorage.getItem('delete_pending_email') || ''; }catch(_){}
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    email = urlParams.get('email') || '';
+  } catch(_){}
+  if (!email) {
+    try{ email = localStorage.getItem('delete_pending_email') || ''; }catch(_){}
+  }
   if (email) {
     await signInThenAskPassword(email);
   } else {
