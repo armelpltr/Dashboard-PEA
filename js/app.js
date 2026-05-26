@@ -404,41 +404,46 @@ function _fsWrite(uid, col, data) {
 
 // Suppression complète des données utilisateur
 async function deleteAllUserData(uid) {
-  // 1. Tous les docs sous users/{uid}/data
+  const del = (path) => deleteFirestoreDoc(firestoreDoc(db, ...path)).catch(() => {});
+
+  // Docs sous users/{uid}/data
   const dataDocs = [
     'portfolio', 'transactions', 'versements', 'watchlist',
     'dailyValues', 'alerts', 'notifHistory', 'trCohort',
     'settings', 'recap', 'weeklyRecap', 'fcmTokens'
   ];
-  await Promise.all(dataDocs.map(d =>
-    deleteFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', d)).catch(() => {})
-  ));
 
-  // 2. Doc racine users/{uid} (email mapping)
-  await deleteFirestoreDoc(firestoreDoc(db, 'users', uid)).catch(() => {});
+  // Support chat messages (besoin getDocs avant delete)
+  const supportMsgsTask = (async () => {
+    try {
+      const msgsCol = firestoreCollection(db, 'supportChats', uid, 'messages');
+      const msgs = await getDocs(msgsCol);
+      await Promise.all(msgs.docs.map(d => deleteFirestoreDoc(d.ref).catch(() => {})));
+    } catch(_) {}
+  })();
 
-  // 3. Support chat — messages sous-collection + thread
-  try {
-    const msgsCol = firestoreCollection(db, 'supportChats', uid, 'messages');
-    const msgs = await getDocs(msgsCol);
-    await Promise.all(msgs.docs.map(d => deleteFirestoreDoc(d.ref).catch(() => {})));
-  } catch(_) {}
-  await deleteFirestoreDoc(firestoreDoc(db, 'supportChats', uid)).catch(() => {});
-  await deleteFirestoreDoc(firestoreDoc(db, 'supportThreads', uid)).catch(() => {});
-
-  // 4. Présence + rôle
-  await deleteFirestoreDoc(firestoreDoc(db, 'presence', uid)).catch(() => {});
-  await deleteFirestoreDoc(firestoreDoc(db, 'roles', uid)).catch(() => {});
-
-  // 5. Storage — pièces jointes support
-  if (fbStorage && fbStorageRef) {
+  // Storage — pièces jointes support
+  const storageTask = (async () => {
+    if (!fbStorage || !fbStorageRef) return;
     try {
       const { listAll, deleteObject } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
       const dirRef = fbStorageRef(fbStorage, `support-attachments/${uid}`);
       const all = await listAll(dirRef);
       await Promise.all(all.items.map(it => deleteObject(it).catch(() => {})));
     } catch(_) {}
-  }
+  })();
+
+  // Tout en parallèle
+  await Promise.all([
+    ...dataDocs.map(d => del(['users', uid, 'data', d])),
+    del(['users', uid]),
+    del(['supportChats', uid]),
+    del(['supportThreads', uid]),
+    del(['presence', uid]),
+    del(['roles', uid]),
+    supportMsgsTask,
+    storageTask,
+  ]);
 }
 
 // logTransaction reste synchrone
