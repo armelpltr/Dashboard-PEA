@@ -553,7 +553,7 @@ window.veCheck = async function() {
       setLoading('btn-verify-check', false);
     }
   } catch(e) {
-    err.textContent = "Erreur de vérification. Réessaie.";
+    err.textContent = "Erreur de vérification. Réessayez.";
     err.style.display = 'block';
     setLoading('btn-verify-check', false);
   }
@@ -578,10 +578,10 @@ window.veResend = async function() {
       handleCodeInApp: false
     });
     _veLastSent = now;
-    ok.textContent = "Mail renvoyé. Vérifie ta boîte (et le spam).";
+    ok.textContent = "Mail renvoyé. Vérifiez votre boîte (et le spam).";
     ok.style.display = 'block';
   } catch(e) {
-    err.textContent = "Échec d'envoi. Réessaie plus tard.";
+    err.textContent = "Échec d'envoi. Réessayez plus tard.";
     err.style.display = 'block';
   } finally {
     setLoading('btn-verify-resend', false);
@@ -955,8 +955,8 @@ window.delFinalize = async function() {
     console.error('[delete] sendSignInLinkToEmail error:', e);
     const map = {
       'auth/operation-not-allowed': "Connexion par lien email désactivée dans Firebase Console (Authentication → Sign-in method → Email link).",
-      'auth/too-many-requests': 'Trop de tentatives. Réessaie plus tard.',
-      'auth/network-request-failed': 'Erreur réseau. Vérifie ta connexion.',
+      'auth/too-many-requests': 'Trop de tentatives. Réessayez plus tard.',
+      'auth/network-request-failed': 'Erreur réseau. Vérifiez votre connexion.',
       'auth/unauthorized-continue-uri': "Domaine non autorisé pour redirection (à ajouter dans Firebase Console).",
       'auth/invalid-continue-uri': "URL de continuation invalide.",
     };

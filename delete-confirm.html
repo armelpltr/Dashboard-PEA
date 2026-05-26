@@ -146,8 +146,8 @@ function renderError(msg){
 function renderPasswordStep(email, onSubmit){
   content.innerHTML = `
     <div class="status-icon warn">${ICON_WARN}</div>
-    <h1>Confirme avec ton mot de passe</h1>
-    <p class="desc">Tu vas supprimer définitivement le compte <span class="email-highlight">${email}</span>. Cette action est <strong style="color:var(--red)">irréversible</strong>. Entre ton mot de passe pour valider.</p>
+    <h1>Confirmez avec votre mot de passe</h1>
+    <p class="desc">Vous allez supprimer définitivement le compte <span class="email-highlight">${email}</span>. Cette action est <strong style="color:var(--red)">irréversible</strong>. Entrez votre mot de passe pour valider.</p>
     <div class="field">
       <label>Mot de passe</label>
       <input type="password" id="pw" autocomplete="current-password" placeholder="Mot de passe">
@@ -170,7 +170,7 @@ function renderPasswordStep(email, onSubmit){
       const map = {
         'auth/wrong-password': 'Mot de passe incorrect.',
         'auth/invalid-credential': 'Mot de passe incorrect.',
-        'auth/too-many-requests': 'Trop de tentatives. Réessaie plus tard.',
+        'auth/too-many-requests': 'Trop de tentatives. Réessayez plus tard.',
         'auth/network-request-failed': 'Erreur réseau.',
       };
       errEl.textContent = map[e.code] || ('Erreur : ' + (e.message || e.code));
@@ -185,8 +185,8 @@ function renderPasswordStep(email, onSubmit){
 function renderEmailMissing(onSubmit){
   content.innerHTML = `
     <div class="status-icon warn">${ICON_WARN}</div>
-    <h1>Confirme ton email</h1>
-    <p class="desc">Pour des raisons de sécurité, confirme l'adresse email du compte à supprimer.</p>
+    <h1>Confirmez votre email</h1>
+    <p class="desc">Pour des raisons de sécurité, confirmez l'adresse email du compte à supprimer.</p>
     <div class="field">
       <label>Adresse email</label>
       <input type="email" id="em" autocomplete="email" placeholder="toi@exemple.com">
@@ -222,7 +222,7 @@ function renderSuccess(){
   content.innerHTML = `
     <div class="status-icon ok">${ICON_OK}</div>
     <h1>Compte supprimé</h1>
-    <p class="desc">Toutes tes données ont été effacées. Merci d'avoir utilisé Capital Board.</p>
+    <p class="desc">Toutes vos données ont été effacées. Merci d'avoir utilisé Capital Board.</p>
     <a class="btn" href="./index.html">Retour à l'accueil</a>
     <div class="footer">Capital Board</div>
   `;
@@ -287,8 +287,8 @@ async function signInThenAskPassword(email){
   }catch(e){
     console.error('[delete] signInWithEmailLink:', e);
     const map = {
-      'auth/invalid-action-code': "Lien expiré ou déjà utilisé. Recommence depuis l'application.",
-      'auth/expired-action-code': "Lien expiré. Recommence depuis l'application.",
+      'auth/invalid-action-code': "Lien expiré ou déjà utilisé. Recommencez depuis l'application.",
+      'auth/expired-action-code': "Lien expiré. Recommencez depuis l'application.",
       'auth/invalid-email': "Email invalide.",
     };
     renderError(map[e.code] || ("Connexion échouée : " + (e.message || e.code)));
