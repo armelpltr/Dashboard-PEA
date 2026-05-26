@@ -1,6 +1,6 @@
 # Roadmap Capital Board
 
-État des chantiers du projet. À jour au 2026-05-25.
+État des chantiers du projet. À jour au 2026-05-26.
 
 ---
 
@@ -9,6 +9,8 @@
 Reprise des évolutions UX/UI du dashboard.
 
 - [x] **Chat support 1-to-1 user ↔ admin** — Firestore temps réel, badge non-lu, vue admin avec liste threads. Setup: voir `SUPPORT_CHAT_SETUP.md` (config ADMIN_UID + règles Firestore requises).
+- [x] **Page custom auth-action.html** (2026-05-26) — remplace UI Firebase défaut pour verifyEmail/resetPassword/recoverEmail/signIn, theme Capital Board. À configurer Console Firebase → "Customize action URL".
+- [ ] **Suppression compte via mail confirmation** — flow magic link Firebase **abandonné** (quota 5/jour Spark plan, non prod-viable). À reprendre : soit Blaze upgrade, soit OTP custom via EmailJS, soit retour flow mdp simple + email confirmation EmailJS post-suppression.
 
 ---
 

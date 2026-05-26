@@ -4,6 +4,37 @@
 ## Notes de collaboration
 - Ne pas hésiter à proposer l'utilisation de Claude Opus pour les tâches complexes (refactoring majeur, architecture, optimisation avancée).
 
+## Session 2026-05-26
+
+### Page custom auth-action.html (remplace UI Firebase défaut)
+- `auth-action.html` créée à la racine — gère 4 modes Firebase Auth : `verifyEmail`, `resetPassword`, `recoverEmail`, `verifyAndChangeEmail`. Theme Capital Board (dark, accent violet, Switzer/JetBrains Mono).
+- Form mot de passe inline pour reset password (validation 6 char min + confirm).
+- Mapping erreurs FR (`expired-action-code`, `invalid-action-code`, etc.).
+- Handler `signIn` mode ajouté : redirige vers `continueUrl` en préservant tous les params query (pour magic link sign-in).
+- **À faire Console Firebase** : Authentication → Templates → "Customize action URL" → `https://armelpltr.github.io/Dashboard-PEA/auth-action.html` (ou domaine custom).
+- Corps emails toujours en français standard Firebase (édition corps locked tant que custom domain non configuré).
+
+### Suppression compte via magic link email + mot de passe (FLOW NON PROD-READY)
+- Nouveau flow `delFinalize` dans `js/app.js` : envoie `sendSignInLinkToEmail` (au lieu de reauth password direct) avec `continueUrl=delete-confirm.html?email={user.email}`.
+- `delete-confirm.html` créée : reçoit le lien, signIn silencieux, puis demande mot de passe (form stylé) → `reauthenticateWithCredential` → `deleteAllUserData` + `deleteUser`.
+- Email confirmation post-suppression via **EmailJS** (client-side, gratuit 200/mois). Keys configurés dans `EMAILJS_CONFIG` (public + service + template).
+- **PROBLÈME PROD** : Firebase Spark (gratuit) limite ~5 sign-in emails/jour/projet → quota dépassé pendant tests (`auth/quota-exceeded`).
+- **DÉCISION** : flow magic link à abandonner en prod, à reprendre avec alternative (cf. À reprendre).
+- Cleanup `deleteAllUserData` optimisé : tout en `Promise.all` global (avant : séquentiel, 6 awaits → maintenant 1 race + timeout 15s).
+- Modal suppression : step 3 ajoutée (spinner SVG rouge animé + "Suppression en cours…") au lieu d'un bouton "Chargement…" figé.
+
+### Vouvoiement UI
+- Tous les textes user (verify-view, delete modal, delete-confirm, messages erreurs auth) basculés tutoiement → vouvoiement (`tu`→`vous`, `ton`→`votre`, `Confirme`→`Confirmez`, etc.).
+- Règle persistée en mémoire (`feedback_vouvoiement.md`).
+
+### À reprendre (session suivante)
+- **Refonte flow suppression** : magic link Firebase **non viable** en prod (quota 5/jour Spark plan). Options à évaluer :
+  1. Upgrade Blaze (gratuit jusqu'à 10K/mois, mais besoin CB)
+  2. Revenir au flow mot de passe simple (avant magic link) + garder email confirmation EmailJS post-suppression
+  3. OTP custom via EmailJS (génère code 6 chiffres, stocke Firestore avec TTL, envoie via EmailJS) — pas de limite Firebase
+- Tester `auth-action.html` end-to-end après config Console (action URL custom).
+- Vérifier templates email FR appliqués Console Firebase.
+
 ## Session 2026-05-25
 
 ### Vérification email obligatoire à l'inscription
