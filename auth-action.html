@@ -255,7 +255,31 @@ async function handleResetPassword(){
   pw2.addEventListener('keydown', e => { if(e.key === 'Enter') btn.click(); });
 }
 
-if(!mode || !oobCode){
+function handleSignIn(){
+  // Sign-in via email link : on ne traite pas ici, on redirige vers continueUrl
+  // en préservant tous les params (mode, oobCode, etc.) pour que la page cible
+  // puisse appeler signInWithEmailLink avec window.location.href.
+  if(!continueUrl){
+    renderError("Lien de connexion sans destination.");
+    return;
+  }
+  try{
+    const target = new URL(continueUrl, window.location.origin);
+    for(const [k,v] of params.entries()){
+      if(k === 'continueUrl') continue;
+      target.searchParams.set(k, v);
+    }
+    window.location.replace(target.toString());
+  }catch(e){
+    renderError("URL de continuation invalide.");
+  }
+}
+
+if(!mode){
+  renderError("Lien incomplet. Utilisez le lien envoyé par email.");
+}else if(mode === 'signIn'){
+  handleSignIn();
+}else if(!oobCode){
   renderError("Lien incomplet. Utilisez le lien envoyé par email.");
 }else{
   switch(mode){
