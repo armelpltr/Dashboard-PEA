@@ -466,7 +466,11 @@ function setLoading(btnId, loading) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
   btn.disabled = loading;
-  btn.textContent = loading ? 'Chargement…' : (btnId === 'btn-login-submit' ? 'Connexion' : 'Créer le compte');
+  const labels = {
+    'btn-login-submit': 'Connexion',
+    'del-final-btn': 'Supprimer',
+  };
+  btn.textContent = loading ? 'Chargement…' : (labels[btnId] || 'Créer le compte');
 }
 
 // ─── NAVIGATION LOGIN / REGISTER ─────────────────────
@@ -917,32 +921,46 @@ window.delFinalize = async function() {
   if (!user) return;
   const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
   setLoading('del-final-btn', true);
+  let success = false;
   try {
     if (!isGoogle) {
       const pass = document.getElementById('del-pass-input').value;
       if (!pass) {
         err.textContent = 'Mot de passe requis.';
         err.style.display = 'block';
-        setLoading('del-final-btn', false);
         return;
       }
+      console.log('[delete] reauth...');
       const cred = EmailAuthProvider.credential(user.email, pass);
       await reauthenticateWithCredential(user, cred);
     }
-    await deleteAllUserData(user.uid);
+    console.log('[delete] deleting user data...');
+    await Promise.race([
+      deleteAllUserData(user.uid),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout-data')), 15000))
+    ]).catch(e => { console.warn('[delete] data cleanup partial:', e.message); });
+    console.log('[delete] deleting auth user...');
     await deleteUser(user);
-    closeDeleteAccountModal();
-    // onAuthStateChanged → stopApp()
+    console.log('[delete] success');
+    success = true;
   } catch(e) {
+    console.error('[delete] error:', e);
     const map = {
       'auth/wrong-password': 'Mot de passe incorrect.',
       'auth/invalid-credential': 'Mot de passe incorrect.',
       'auth/too-many-requests': 'Trop de tentatives. Réessaie plus tard.',
       'auth/requires-recent-login': 'Reconnecte-toi puis recommence.',
+      'auth/network-request-failed': 'Erreur réseau. Vérifie ta connexion.',
     };
-    err.textContent = map[e.code] || ('Erreur : ' + (e.message || e.code));
+    err.textContent = map[e.code] || ('Erreur : ' + (e.message || e.code || 'inconnue'));
     err.style.display = 'block';
+  } finally {
     setLoading('del-final-btn', false);
+    if (success) {
+      try { closeDeleteAccountModal(); } catch(_) {}
+      // onAuthStateChanged → stopApp() ; fallback reload si bloqué
+      setTimeout(() => { if (fbAuth.currentUser === null) location.reload(); }, 1500);
+    }
   }
 };
 
