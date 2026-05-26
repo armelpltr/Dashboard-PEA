@@ -1286,7 +1286,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=20260526c"></script>
+<script src="js/app.js?v=20260526d"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
@@ -1336,25 +1336,36 @@
     </div>
     <style>@keyframes del-spin{to{transform:rotate(360deg)}}</style>
 
-    <!-- Étape 2 : confirmation mot de passe -->
+    <!-- Étape 2 : confirmation email -->
     <div id="del-step-2" style="display:none">
       <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:rgba(124,109,245,0.12);display:flex;align-items:center;justify-content:center">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7c6df5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
         </svg>
       </div>
-      <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:10px;text-align:center">Confirme avec ton mot de passe</div>
+      <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:10px;text-align:center">Confirmation par email</div>
       <div style="font-size:12px;color:#8892a8;text-align:center;line-height:1.55;margin-bottom:18px">
-        Par sécurité, entre ton mot de passe pour finaliser la suppression.
-      </div>
-      <div style="margin-bottom:14px">
-        <input type="password" id="del-pass-input" placeholder="Mot de passe" autocomplete="current-password" style="width:100%;padding:12px 14px;border-radius:10px;border:1px solid #2a2b3d;background:#0f1018;color:#fff;font-size:13px;font-family:var(--sans);outline:none;box-sizing:border-box" onkeydown="if(event.key==='Enter')delFinalize()">
+        Un email de confirmation sera envoyé à<br><strong id="del-email-display" style="color:#edf0f7;font-family:var(--mono)">—</strong><br>Clique le lien dans ce mail pour finaliser la suppression.
       </div>
       <div id="del-error" style="display:none;font-size:12px;color:#ff4d6a;margin-bottom:12px;text-align:center;padding:8px 12px;background:rgba(255,77,106,0.08);border-radius:8px"></div>
       <div style="display:flex;gap:10px">
         <button onclick="delBackToStep1()" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2b3d;background:#13141c;color:#cbd1de;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans)">Retour</button>
-        <button id="del-final-btn" onclick="delFinalize()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#ff4d6a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)">Supprimer</button>
+        <button id="del-final-btn" onclick="delFinalize()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#ff4d6a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)">Envoyer le mail</button>
       </div>
+    </div>
+
+    <!-- Étape 4 : email envoyé -->
+    <div id="del-step-4" style="display:none;text-align:center">
+      <div style="width:56px;height:56px;margin:0 auto 16px;border-radius:50%;background:rgba(34,217,138,0.12);display:flex;align-items:center;justify-content:center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22d98a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:10px">Email envoyé</div>
+      <div style="font-size:12px;color:#8892a8;line-height:1.6;margin-bottom:18px">
+        Un lien de confirmation a été envoyé à<br><strong id="del-email-sent-display" style="color:#edf0f7;font-family:var(--mono)">—</strong><br><br>Vérifie ta boîte mail (et les spams). Clique le lien pour finaliser la suppression définitive.
+      </div>
+      <button onclick="closeDeleteAccountModal()" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a2b3d;background:#13141c;color:#cbd1de;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans)">Fermer</button>
     </div>
 
   </div>

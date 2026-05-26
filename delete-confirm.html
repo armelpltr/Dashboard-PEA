@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capital Board — Suppression du compte</title>
+<link rel="icon" type="image/png" href="logo.png">
+<meta name="theme-color" content="#04060b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700,800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#04060b; --s1:#0a0c14; --s2:#10121c; --s3:#181b28;
+    --border2:rgba(255,255,255,0.09);
+    --text:#edf0f7; --text2:#a8b0c2; --text3:#8892a8;
+    --accent:#7c6df5; --accent2:#9d8cff;
+    --green:#22d98a; --red:#ff4d6a;
+    --sans:'Switzer',system-ui,-apple-system,sans-serif;
+    --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--sans);
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; padding:24px;
+    background-image:
+      radial-gradient(ellipse at top, rgba(255,77,106,0.06), transparent 60%),
+      radial-gradient(ellipse at bottom, rgba(124,109,245,0.04), transparent 60%);
+  }
+  .card{
+    width:100%; max-width:440px;
+    background:var(--s1); border:1px solid var(--border2);
+    border-radius:16px; padding:36px 28px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.4); text-align:center;
+  }
+  .logo{
+    width:56px; height:56px; margin:0 auto 20px;
+    border-radius:14px; background:var(--s2);
+    display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--border2);
+  }
+  .logo img{ width:36px; height:36px; object-fit:contain }
+  h1{ font-size:20px; font-weight:700; margin-bottom:10px }
+  p.desc{ font-size:13px; color:var(--text2); line-height:1.6; margin-bottom:22px }
+  .status-icon{
+    width:64px; height:64px; margin:0 auto 18px;
+    border-radius:50%; display:flex; align-items:center; justify-content:center;
+  }
+  .status-icon.ok{ background:rgba(34,217,138,0.12); color:var(--green) }
+  .status-icon.err{ background:rgba(255,77,106,0.12); color:var(--red) }
+  .status-icon.warn{ background:rgba(255,77,106,0.12); color:var(--red) }
+  .status-icon.pending{ background:rgba(124,109,245,0.12); color:var(--accent) }
+  .spinner{
+    width:36px; height:36px; border:3px solid var(--border2);
+    border-top-color:var(--red); border-radius:50%;
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{transform:rotate(360deg)} }
+  .btn{
+    display:inline-block; width:100%;
+    background:var(--accent); color:#fff;
+    border:none; border-radius:10px; padding:13px 16px;
+    font-size:14px; font-weight:600; font-family:var(--sans);
+    cursor:pointer; text-decoration:none; transition:background 0.15s;
+  }
+  .btn:hover{ background:var(--accent2) }
+  .btn.danger{ background:var(--red) }
+  .btn.danger:hover{ background:#ff6b82 }
+  .btn.secondary{
+    background:var(--s2); color:var(--text);
+    border:1px solid var(--border2); margin-top:10px;
+  }
+  .btn.secondary:hover{ background:var(--s3) }
+  .field{ text-align:left; margin-bottom:14px }
+  .field label{
+    display:block; font-size:11px; color:var(--text3);
+    text-transform:uppercase; letter-spacing:0.7px;
+    margin-bottom:6px; font-weight:600;
+  }
+  .field input{
+    width:100%; background:var(--s3); border:1px solid var(--border2);
+    border-radius:8px; padding:11px 13px;
+    color:var(--text); font-size:14px; font-family:var(--mono);
+    outline:none; transition:border-color 0.15s;
+  }
+  .field input:focus{ border-color:var(--accent) }
+  .footer{ margin-top:22px; font-size:11px; color:var(--text3) }
+  .email-highlight{ color:var(--text); font-weight:600; font-family:var(--mono) }
+  .err-msg{ color:var(--red); font-size:12px; margin-top:8px; min-height:16px }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="logo"><img src="logo.png" alt="Capital Board"></div>
+  <div id="content">
+    <div class="status-icon pending"><div class="spinner"></div></div>
+    <h1>Vérification du lien…</h1>
+    <p class="desc">Patiente quelques instants.</p>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, isSignInWithEmailLink, signInWithEmailLink, deleteUser
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, doc, deleteDoc, collection, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getStorage, ref as storageRef, listAll, deleteObject
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDvZ_0loJ9Lf_jhz-ZDGsydG9AE21CU5Uc",
+  authDomain: "dashboard-pea.firebaseapp.com",
+  projectId: "dashboard-pea",
+  storageBucket: "dashboard-pea.firebasestorage.app",
+  messagingSenderId: "1040263468997",
+  appId: "1:1040263468997:web:ffbafd62cf9b672b1f9dac"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+const content = document.getElementById('content');
+const ICON_OK = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+const ICON_ERR = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+const ICON_WARN = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+
+function renderError(msg){
+  content.innerHTML = `
+    <div class="status-icon err">${ICON_ERR}</div>
+    <h1>Lien invalide</h1>
+    <p class="desc">${msg}</p>
+    <a class="btn secondary" href="./app.html">Retour à l'application</a>
+    <div class="footer">Capital Board</div>
+  `;
+}
+
+function renderConfirm(email, onConfirm){
+  content.innerHTML = `
+    <div class="status-icon warn">${ICON_WARN}</div>
+    <h1>Confirmer la suppression</h1>
+    <p class="desc">Tu es sur le point de supprimer définitivement le compte <span class="email-highlight">${email}</span>. Cette action est <strong style="color:var(--red)">irréversible</strong> : toutes tes données seront effacées.</p>
+    <button class="btn danger" id="btn-confirm">Supprimer définitivement</button>
+    <a class="btn secondary" href="./app.html">Annuler</a>
+    <div class="footer">Capital Board</div>
+  `;
+  document.getElementById('btn-confirm').addEventListener('click', onConfirm);
+}
+
+function renderProgress(){
+  content.innerHTML = `
+    <div class="status-icon pending"><div class="spinner"></div></div>
+    <h1>Suppression en cours…</h1>
+    <p class="desc">Effacement des données et du compte. Ne ferme pas la page.</p>
+  `;
+}
+
+function renderSuccess(){
+  content.innerHTML = `
+    <div class="status-icon ok">${ICON_OK}</div>
+    <h1>Compte supprimé</h1>
+    <p class="desc">Toutes tes données ont été effacées. Merci d'avoir utilisé Capital Board.</p>
+    <a class="btn" href="./index.html">Retour à l'accueil</a>
+    <div class="footer">Capital Board</div>
+  `;
+}
+
+async function deleteAllUserData(uid){
+  const del = (segs) => deleteDoc(doc(db, ...segs)).catch(() => {});
+  const dataDocs = [
+    'portfolio', 'transactions', 'versements', 'watchlist',
+    'dailyValues', 'alerts', 'notifHistory', 'trCohort',
+    'settings', 'recap', 'weeklyRecap', 'fcmTokens'
+  ];
+  const supportMsgsTask = (async () => {
+    try{
+      const msgs = await getDocs(collection(db, 'supportChats', uid, 'messages'));
+      await Promise.all(msgs.docs.map(d => deleteDoc(d.ref).catch(() => {})));
+    }catch(_){}
+  })();
+  const storageTask = (async () => {
+    try{
+      const dirRef = storageRef(storage, `support-attachments/${uid}`);
+      const all = await listAll(dirRef);
+      await Promise.all(all.items.map(it => deleteObject(it).catch(() => {})));
+    }catch(_){}
+  })();
+  await Promise.all([
+    ...dataDocs.map(d => del(['users', uid, 'data', d])),
+    del(['users', uid]),
+    del(['supportChats', uid]),
+    del(['supportThreads', uid]),
+    del(['presence', uid]),
+    del(['roles', uid]),
+    supportMsgsTask,
+    storageTask,
+  ]);
+}
+
+async function performDelete(){
+  renderProgress();
+  const user = auth.currentUser;
+  if (!user) { renderError("Session perdue. Réessaie depuis l'application."); return; }
+  try{
+    await Promise.race([
+      deleteAllUserData(user.uid),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000))
+    ]).catch(e => console.warn('[delete] data partial:', e.message));
+    await deleteUser(user);
+    try{
+      localStorage.removeItem('delete_pending_email');
+      localStorage.removeItem('delete_pending_uid');
+      localStorage.removeItem('delete_pending_ts');
+    }catch(_){}
+    renderSuccess();
+  }catch(e){
+    console.error('[delete] error:', e);
+    renderError("Erreur durant la suppression : " + (e.message || e.code || 'inconnue'));
+  }
+}
+
+(async () => {
+  const link = window.location.href;
+  if (!isSignInWithEmailLink(auth, link)) {
+    renderError("Ce lien n'est pas un lien de confirmation valide.");
+    return;
+  }
+  let email = '';
+  try{ email = localStorage.getItem('delete_pending_email') || ''; }catch(_){}
+  if (!email) {
+    email = window.prompt("Confirme ton adresse email pour valider la suppression :") || '';
+    if (!email) { renderError("Email requis pour confirmer."); return; }
+  }
+  try{
+    await signInWithEmailLink(auth, email, link);
+  }catch(e){
+    console.error('[delete] signInWithEmailLink:', e);
+    const map = {
+      'auth/invalid-action-code': "Lien expiré ou déjà utilisé. Recommence depuis l'application.",
+      'auth/expired-action-code': "Lien expiré. Recommence depuis l'application.",
+      'auth/invalid-email': "Email invalide.",
+    };
+    renderError(map[e.code] || ("Connexion échouée : " + (e.message || e.code)));
+    return;
+  }
+  const user = auth.currentUser;
+  if (!user) { renderError("Session non établie."); return; }
+  renderConfirm(user.email || email, performDelete);
+})();
+</script>
+</body>
+</html>

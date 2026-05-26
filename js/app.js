@@ -43,6 +43,7 @@ let fbApp, fbAuth, db,
     signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
     signInWithRedirect, getRedirectResult,
     updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser,
+    sendSignInLinkToEmail,
     getFirestoreDoc, setFirestoreDoc, firestoreDoc, firestoreCollection, deleteFirestoreDoc, getDocs,
     addFirestoreDoc, onSnapshot, firestoreQuery, firestoreWhere, firestoreOrderBy, serverTimestamp,
     firestoreArrayUnion, firestoreArrayRemove, firestoreOr, firestoreDeleteField;
@@ -98,6 +99,7 @@ _splashWatchdog = setTimeout(() => {
   reauthenticateWithCredential   = auth.reauthenticateWithCredential;
   EmailAuthProvider              = auth.EmailAuthProvider;
   deleteUser                     = auth.deleteUser;
+  sendSignInLinkToEmail          = auth.sendSignInLinkToEmail;
 
   const firestore = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
   getFirestoreDoc     = firestore.getDoc;
@@ -473,7 +475,7 @@ function setLoading(btnId, loading) {
   btn.disabled = loading;
   const labels = {
     'btn-login-submit': 'Connexion',
-    'del-final-btn': 'Supprimer',
+    'del-final-btn': 'Envoyer le mail',
   };
   btn.textContent = loading ? 'Chargement…' : (labels[btnId] || 'Créer le compte');
 }
@@ -905,16 +907,17 @@ window.closeDeleteAccountModal = function() {
 
 window.delGoToStep2 = function() {
   const user = fbAuth.currentUser;
-  const isGoogle = user && user.providerData.some(p => p.providerId === 'google.com');
-  // Provider Google : pas de mot de passe → finaliser direct
-  if (isGoogle) { delFinalize(); return; }
+  if (!user || !user.email) return;
   document.getElementById('del-step-1').style.display = 'none';
   document.getElementById('del-step-2').style.display = 'block';
-  setTimeout(() => document.getElementById('del-pass-input').focus(), 50);
+  const disp = document.getElementById('del-email-display');
+  if (disp) disp.textContent = user.email;
 };
 
 window.delBackToStep1 = function() {
   document.getElementById('del-step-2').style.display = 'none';
+  const s3 = document.getElementById('del-step-3'); if (s3) s3.style.display = 'none';
+  const s4 = document.getElementById('del-step-4'); if (s4) s4.style.display = 'none';
   document.getElementById('del-step-1').style.display = 'block';
   document.getElementById('del-error').style.display = 'none';
 };
@@ -923,61 +926,44 @@ window.delFinalize = async function() {
   const err = document.getElementById('del-error');
   err.style.display = 'none';
   const user = fbAuth.currentUser;
-  if (!user) return;
-  const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+  if (!user || !user.email) return;
   setLoading('del-final-btn', true);
-  let success = false;
-  const showProgress = () => {
-    const s2 = document.getElementById('del-step-2');
-    const s3 = document.getElementById('del-step-3');
-    if (s2) s2.style.display = 'none';
-    if (s3) s3.style.display = 'block';
-  };
   try {
-    if (!isGoogle) {
-      const pass = document.getElementById('del-pass-input').value;
-      if (!pass) {
-        err.textContent = 'Mot de passe requis.';
-        err.style.display = 'block';
-        return;
-      }
-      console.log('[delete] reauth...');
-      const cred = EmailAuthProvider.credential(user.email, pass);
-      await reauthenticateWithCredential(user, cred);
+    const origin = window.location.origin;
+    const path = window.location.pathname.replace(/[^/]*$/, '');
+    const url = `${origin}${path}delete-confirm.html`;
+    console.log('[delete] sending sign-in link to', user.email, 'url=', url);
+    await sendSignInLinkToEmail(fbAuth, user.email, {
+      url,
+      handleCodeInApp: true,
+    });
+    // Stocke email + intention pour la page de confirmation
+    try {
+      window.localStorage.setItem('delete_pending_email', user.email);
+      window.localStorage.setItem('delete_pending_uid', user.uid);
+      window.localStorage.setItem('delete_pending_ts', String(Date.now()));
+    } catch(_) {}
+    // Affiche étape 4 (email envoyé)
+    document.getElementById('del-step-2').style.display = 'none';
+    const s4 = document.getElementById('del-step-4');
+    if (s4) {
+      s4.style.display = 'block';
+      const disp = document.getElementById('del-email-sent-display');
+      if (disp) disp.textContent = user.email;
     }
-    showProgress();
-    console.log('[delete] deleting user data...');
-    await Promise.race([
-      deleteAllUserData(user.uid),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout-data')), 15000))
-    ]).catch(e => { console.warn('[delete] data cleanup partial:', e.message); });
-    console.log('[delete] deleting auth user...');
-    await deleteUser(user);
-    console.log('[delete] success');
-    success = true;
   } catch(e) {
-    console.error('[delete] error:', e);
+    console.error('[delete] sendSignInLinkToEmail error:', e);
     const map = {
-      'auth/wrong-password': 'Mot de passe incorrect.',
-      'auth/invalid-credential': 'Mot de passe incorrect.',
+      'auth/operation-not-allowed': "Connexion par lien email désactivée dans Firebase Console (Authentication → Sign-in method → Email link).",
       'auth/too-many-requests': 'Trop de tentatives. Réessaie plus tard.',
-      'auth/requires-recent-login': 'Reconnecte-toi puis recommence.',
       'auth/network-request-failed': 'Erreur réseau. Vérifie ta connexion.',
+      'auth/unauthorized-continue-uri': "Domaine non autorisé pour redirection (à ajouter dans Firebase Console).",
+      'auth/invalid-continue-uri': "URL de continuation invalide.",
     };
     err.textContent = map[e.code] || ('Erreur : ' + (e.message || e.code || 'inconnue'));
     err.style.display = 'block';
-    // retour étape mdp si erreur après lancement
-    const s2 = document.getElementById('del-step-2');
-    const s3 = document.getElementById('del-step-3');
-    if (s3) s3.style.display = 'none';
-    if (s2) s2.style.display = 'block';
   } finally {
     setLoading('del-final-btn', false);
-    if (success) {
-      try { closeDeleteAccountModal(); } catch(_) {}
-      // onAuthStateChanged → stopApp() ; fallback reload si bloqué
-      setTimeout(() => { if (fbAuth.currentUser === null) location.reload(); }, 1500);
-    }
   }
 };
 
