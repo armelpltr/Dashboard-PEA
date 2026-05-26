@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700,800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   :root{
     --bg:#04060b; --s1:#0a0c14; --s2:#10121c; --s3:#181b28;
@@ -127,6 +128,31 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+
+// ─── EmailJS config (à remplir Console EmailJS → https://www.emailjs.com) ───
+const EMAILJS_CONFIG = {
+  publicKey:  'YOUR_EMAILJS_PUBLIC_KEY',   // EmailJS → Account → General → Public Key
+  serviceId:  'YOUR_EMAILJS_SERVICE_ID',   // EmailJS → Email Services → Service ID
+  templateId: 'YOUR_EMAILJS_TEMPLATE_ID',  // EmailJS → Email Templates → Template ID
+};
+try { if (window.emailjs && EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY') emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey }); } catch(_){}
+
+async function sendDeleteConfirmationEmail(email){
+  if (!window.emailjs || EMAILJS_CONFIG.publicKey === 'YOUR_EMAILJS_PUBLIC_KEY') {
+    console.warn('[email] EmailJS non configuré, skip');
+    return;
+  }
+  try{
+    await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+      to_email: email,
+      date: new Date().toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' }),
+      app_name: 'Capital Board',
+    });
+    console.log('[email] confirmation envoyée à', email);
+  }catch(e){
+    console.error('[email] envoi échoué:', e);
+  }
+}
 
 const content = document.getElementById('content');
 const ICON_OK = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
@@ -268,10 +294,13 @@ async function performDeleteFlow(password){
   await reauthenticateWithCredential(user, cred);
   // Progression
   renderProgress();
+  const userEmail = user.email;
   await Promise.race([
     deleteAllUserData(user.uid),
     new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000))
   ]).catch(e => console.warn('[delete] data partial:', e.message));
+  // Envoi email confirmation AVANT deleteUser (user encore authentifié, pas critique si échoue)
+  await sendDeleteConfirmationEmail(userEmail).catch(() => {});
   await deleteUser(user);
   try{
     localStorage.removeItem('delete_pending_email');
