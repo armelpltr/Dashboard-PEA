@@ -105,7 +105,8 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getAuth, isSignInWithEmailLink, signInWithEmailLink, deleteUser
+  getAuth, isSignInWithEmailLink, signInWithEmailLink, deleteUser,
+  EmailAuthProvider, reauthenticateWithCredential
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, doc, deleteDoc, collection, getDocs
@@ -142,16 +143,71 @@ function renderError(msg){
   `;
 }
 
-function renderConfirm(email, onConfirm){
+function renderPasswordStep(email, onSubmit){
   content.innerHTML = `
     <div class="status-icon warn">${ICON_WARN}</div>
-    <h1>Confirmer la suppression</h1>
-    <p class="desc">Tu es sur le point de supprimer définitivement le compte <span class="email-highlight">${email}</span>. Cette action est <strong style="color:var(--red)">irréversible</strong> : toutes tes données seront effacées.</p>
+    <h1>Confirme avec ton mot de passe</h1>
+    <p class="desc">Tu vas supprimer définitivement le compte <span class="email-highlight">${email}</span>. Cette action est <strong style="color:var(--red)">irréversible</strong>. Entre ton mot de passe pour valider.</p>
+    <div class="field">
+      <label>Mot de passe</label>
+      <input type="password" id="pw" autocomplete="current-password" placeholder="Mot de passe">
+    </div>
+    <div class="err-msg" id="pw-err"></div>
     <button class="btn danger" id="btn-confirm">Supprimer définitivement</button>
     <a class="btn secondary" href="./app.html">Annuler</a>
     <div class="footer">Capital Board</div>
   `;
-  document.getElementById('btn-confirm').addEventListener('click', onConfirm);
+  const pw = document.getElementById('pw');
+  const errEl = document.getElementById('pw-err');
+  const btn = document.getElementById('btn-confirm');
+  const submit = async () => {
+    errEl.textContent = '';
+    if(!pw.value){ errEl.textContent = 'Mot de passe requis.'; return; }
+    btn.disabled = true; btn.textContent = 'Vérification…';
+    try{
+      await onSubmit(pw.value);
+    }catch(e){
+      const map = {
+        'auth/wrong-password': 'Mot de passe incorrect.',
+        'auth/invalid-credential': 'Mot de passe incorrect.',
+        'auth/too-many-requests': 'Trop de tentatives. Réessaie plus tard.',
+        'auth/network-request-failed': 'Erreur réseau.',
+      };
+      errEl.textContent = map[e.code] || ('Erreur : ' + (e.message || e.code));
+      btn.disabled = false; btn.textContent = 'Supprimer définitivement';
+    }
+  };
+  btn.addEventListener('click', submit);
+  pw.addEventListener('keydown', e => { if(e.key === 'Enter') submit(); });
+  setTimeout(() => pw.focus(), 50);
+}
+
+function renderEmailMissing(onSubmit){
+  content.innerHTML = `
+    <div class="status-icon warn">${ICON_WARN}</div>
+    <h1>Confirme ton email</h1>
+    <p class="desc">Pour des raisons de sécurité, confirme l'adresse email du compte à supprimer.</p>
+    <div class="field">
+      <label>Adresse email</label>
+      <input type="email" id="em" autocomplete="email" placeholder="toi@exemple.com">
+    </div>
+    <div class="err-msg" id="em-err"></div>
+    <button class="btn" id="btn-em">Continuer</button>
+    <a class="btn secondary" href="./app.html">Annuler</a>
+    <div class="footer">Capital Board</div>
+  `;
+  const em = document.getElementById('em');
+  const errEl = document.getElementById('em-err');
+  const btn = document.getElementById('btn-em');
+  const submit = () => {
+    errEl.textContent = '';
+    const v = em.value.trim();
+    if(!v || !v.includes('@')){ errEl.textContent = 'Email invalide.'; return; }
+    onSubmit(v);
+  };
+  btn.addEventListener('click', submit);
+  em.addEventListener('keydown', e => { if(e.key === 'Enter') submit(); });
+  setTimeout(() => em.focus(), 50);
 }
 
 function renderProgress(){
@@ -204,42 +260,30 @@ async function deleteAllUserData(uid){
   ]);
 }
 
-async function performDelete(){
-  renderProgress();
+async function performDeleteFlow(password){
   const user = auth.currentUser;
-  if (!user) { renderError("Session perdue. Réessaie depuis l'application."); return; }
+  if (!user) throw { code: 'session-lost', message: "Session perdue." };
+  // Reauth avec mdp
+  const cred = EmailAuthProvider.credential(user.email, password);
+  await reauthenticateWithCredential(user, cred);
+  // Progression
+  renderProgress();
+  await Promise.race([
+    deleteAllUserData(user.uid),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000))
+  ]).catch(e => console.warn('[delete] data partial:', e.message));
+  await deleteUser(user);
   try{
-    await Promise.race([
-      deleteAllUserData(user.uid),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000))
-    ]).catch(e => console.warn('[delete] data partial:', e.message));
-    await deleteUser(user);
-    try{
-      localStorage.removeItem('delete_pending_email');
-      localStorage.removeItem('delete_pending_uid');
-      localStorage.removeItem('delete_pending_ts');
-    }catch(_){}
-    renderSuccess();
-  }catch(e){
-    console.error('[delete] error:', e);
-    renderError("Erreur durant la suppression : " + (e.message || e.code || 'inconnue'));
-  }
+    localStorage.removeItem('delete_pending_email');
+    localStorage.removeItem('delete_pending_uid');
+    localStorage.removeItem('delete_pending_ts');
+  }catch(_){}
+  renderSuccess();
 }
 
-(async () => {
-  const link = window.location.href;
-  if (!isSignInWithEmailLink(auth, link)) {
-    renderError("Ce lien n'est pas un lien de confirmation valide.");
-    return;
-  }
-  let email = '';
-  try{ email = localStorage.getItem('delete_pending_email') || ''; }catch(_){}
-  if (!email) {
-    email = window.prompt("Confirme ton adresse email pour valider la suppression :") || '';
-    if (!email) { renderError("Email requis pour confirmer."); return; }
-  }
+async function signInThenAskPassword(email){
   try{
-    await signInWithEmailLink(auth, email, link);
+    await signInWithEmailLink(auth, email, window.location.href);
   }catch(e){
     console.error('[delete] signInWithEmailLink:', e);
     const map = {
@@ -252,7 +296,25 @@ async function performDelete(){
   }
   const user = auth.currentUser;
   if (!user) { renderError("Session non établie."); return; }
-  renderConfirm(user.email || email, performDelete);
+  renderPasswordStep(user.email || email, performDeleteFlow);
+}
+
+(async () => {
+  const link = window.location.href;
+  if (!isSignInWithEmailLink(auth, link)) {
+    renderError("Ce lien n'est pas un lien de confirmation valide.");
+    return;
+  }
+  let email = '';
+  try{ email = localStorage.getItem('delete_pending_email') || ''; }catch(_){}
+  if (email) {
+    await signInThenAskPassword(email);
+  } else {
+    // Email manquant (ouvert sur autre appareil) → demande email styled
+    renderEmailMissing(async (em) => {
+      await signInThenAskPassword(em);
+    });
+  }
 })();
 </script>
 </body>
