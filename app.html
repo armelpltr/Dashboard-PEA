@@ -1286,7 +1286,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=20260526b"></script>
+<script src="js/app.js?v=20260526c"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
@@ -1322,6 +1322,19 @@
         <button onclick="delGoToStep2()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#ff4d6a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)">Continuer</button>
       </div>
     </div>
+
+    <!-- Étape 3 : progression -->
+    <div id="del-step-3" style="display:none;text-align:center;padding:10px 0">
+      <div style="width:64px;height:64px;margin:0 auto 18px;position:relative">
+        <svg width="64" height="64" viewBox="0 0 50 50" style="animation:del-spin 1s linear infinite">
+          <circle cx="25" cy="25" r="20" fill="none" stroke="rgba(255,77,106,0.15)" stroke-width="4"/>
+          <circle cx="25" cy="25" r="20" fill="none" stroke="#ff4d6a" stroke-width="4" stroke-linecap="round" stroke-dasharray="90 200"/>
+        </svg>
+      </div>
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">Suppression en cours…</div>
+      <div style="font-size:12px;color:#8892a8;line-height:1.6">Effacement des données, du chat et du compte.<br>Cela peut prendre quelques secondes, ne ferme pas la page.</div>
+    </div>
+    <style>@keyframes del-spin{to{transform:rotate(360deg)}}</style>
 
     <!-- Étape 2 : confirmation mot de passe -->
     <div id="del-step-2" style="display:none">

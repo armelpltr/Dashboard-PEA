@@ -927,6 +927,12 @@ window.delFinalize = async function() {
   const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
   setLoading('del-final-btn', true);
   let success = false;
+  const showProgress = () => {
+    const s2 = document.getElementById('del-step-2');
+    const s3 = document.getElementById('del-step-3');
+    if (s2) s2.style.display = 'none';
+    if (s3) s3.style.display = 'block';
+  };
   try {
     if (!isGoogle) {
       const pass = document.getElementById('del-pass-input').value;
@@ -939,6 +945,7 @@ window.delFinalize = async function() {
       const cred = EmailAuthProvider.credential(user.email, pass);
       await reauthenticateWithCredential(user, cred);
     }
+    showProgress();
     console.log('[delete] deleting user data...');
     await Promise.race([
       deleteAllUserData(user.uid),
@@ -959,6 +966,11 @@ window.delFinalize = async function() {
     };
     err.textContent = map[e.code] || ('Erreur : ' + (e.message || e.code || 'inconnue'));
     err.style.display = 'block';
+    // retour étape mdp si erreur après lancement
+    const s2 = document.getElementById('del-step-2');
+    const s3 = document.getElementById('del-step-3');
+    if (s3) s3.style.display = 'none';
+    if (s2) s2.style.display = 'block';
   } finally {
     setLoading('del-final-btn', false);
     if (success) {
