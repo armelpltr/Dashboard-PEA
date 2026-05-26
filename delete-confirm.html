@@ -131,15 +131,15 @@ const storage = getStorage(app);
 
 // ─── EmailJS config (à remplir Console EmailJS → https://www.emailjs.com) ───
 const EMAILJS_CONFIG = {
-  publicKey:  'YOUR_EMAILJS_PUBLIC_KEY',   // EmailJS → Account → General → Public Key
-  serviceId:  'YOUR_EMAILJS_SERVICE_ID',   // EmailJS → Email Services → Service ID
-  templateId: 'YOUR_EMAILJS_TEMPLATE_ID',  // EmailJS → Email Templates → Template ID
+  publicKey:  'FQN2IWcgPaxa56jT5',
+  serviceId:  'service_do5j0pl',
+  templateId: 'template_l1uno1h',
 };
-try { if (window.emailjs && EMAILJS_CONFIG.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY') emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey }); } catch(_){}
+try { if (window.emailjs) emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey }); } catch(_){}
 
 async function sendDeleteConfirmationEmail(email){
-  if (!window.emailjs || EMAILJS_CONFIG.publicKey === 'YOUR_EMAILJS_PUBLIC_KEY') {
-    console.warn('[email] EmailJS non configuré, skip');
+  if (!window.emailjs) {
+    console.warn('[email] EmailJS SDK non chargé, skip');
     return;
   }
   try{
