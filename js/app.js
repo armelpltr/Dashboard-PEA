@@ -806,41 +806,77 @@ window.dvLogout = async function() {
 const _EYE_OPEN_SVG = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
 const _EYE_OFF_SVG  = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
 
+// Remplace les chiffres par • dans les text nodes contenant € / % / $ etc.
+// Plus propre que blur (pas de carré moche autour).
 const _MONEY_RE = /[€$£¥%]|\bEUR\b|\bUSD\b/;
+const _origTextMap = new WeakMap();
 let _hideObserver = null;
+let _hideActive = false;
 
-// Marque les éléments feuille contenant € ou % avec classe .sensitive
-function _markSensitiveIn(root) {
-  if (!root) return;
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode: n => _MONEY_RE.test(n.nodeValue || '') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
-  });
-  let n;
-  while ((n = walker.nextNode())) {
-    const el = n.parentElement;
-    if (!el) continue;
-    // Skip scripts, styles, et conteneurs trop larges (parent de plusieurs éléments)
-    if (el.closest('script,style,#device-verify-view,#verify-view,#login-view,#register-view')) continue;
-    if (!el.classList.contains('sensitive')) el.classList.add('sensitive');
+function _maskTextNode(n) {
+  if (!_origTextMap.has(n)) _origTextMap.set(n, n.nodeValue);
+  const orig = _origTextMap.get(n);
+  // Remplace chiffres par • (garde €, %, espaces, séparateurs alphabétiques)
+  n.nodeValue = orig.replace(/\d/g, '•');
+}
+
+function _unmaskTextNode(n) {
+  if (_origTextMap.has(n)) {
+    n.nodeValue = _origTextMap.get(n);
+    _origTextMap.delete(n);
   }
 }
 
+function _maskSensitiveIn(root) {
+  if (!root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => {
+      if (!_MONEY_RE.test(n.nodeValue || '')) return NodeFilter.FILTER_REJECT;
+      const p = n.parentElement;
+      if (!p) return NodeFilter.FILTER_REJECT;
+      if (p.closest('script,style,#device-verify-view,#verify-view,#login-view,#register-view')) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  let n;
+  const nodes = [];
+  while ((n = walker.nextNode())) nodes.push(n);
+  nodes.forEach(_maskTextNode);
+}
+
 function _startHideObserver() {
-  _markSensitiveIn(document.body);
+  _hideActive = true;
+  _maskSensitiveIn(document.body);
   if (_hideObserver) return;
   _hideObserver = new MutationObserver(mutations => {
+    if (!_hideActive) return;
     for (const m of mutations) {
       if (m.type === 'childList') {
         m.addedNodes.forEach(node => {
-          if (node.nodeType === 1) _markSensitiveIn(node);
+          if (node.nodeType === 1) _maskSensitiveIn(node);
           else if (node.nodeType === 3 && _MONEY_RE.test(node.nodeValue || '')) {
             const p = node.parentElement;
-            if (p && !p.classList.contains('sensitive')) p.classList.add('sensitive');
+            if (p && !p.closest('script,style,#device-verify-view,#verify-view,#login-view,#register-view')) {
+              _maskTextNode(node);
+            }
           }
         });
-      } else if (m.type === 'characterData' && _MONEY_RE.test(m.target.nodeValue || '')) {
-        const p = m.target.parentElement;
-        if (p && !p.classList.contains('sensitive')) p.classList.add('sensitive');
+      } else if (m.type === 'characterData') {
+        const node = m.target;
+        if (node.nodeType !== 3) continue;
+        // Si valeur change et qu'on l'avait masquée, mettre à jour l'original
+        if (_origTextMap.has(node)) {
+          // Si la nouvelle valeur n'est pas elle-même masquée (donc app a re-écrit)
+          if (!/^[•\s€$£¥%a-zA-Z,.]+$/.test(node.nodeValue) || /\d/.test(node.nodeValue)) {
+            _origTextMap.set(node, node.nodeValue);
+            _maskTextNode(node);
+          }
+        } else if (_MONEY_RE.test(node.nodeValue || '')) {
+          const p = node.parentElement;
+          if (p && !p.closest('script,style,#device-verify-view,#verify-view,#login-view,#register-view')) {
+            _maskTextNode(node);
+          }
+        }
       }
     }
   });
@@ -848,8 +884,14 @@ function _startHideObserver() {
 }
 
 function _stopHideObserver() {
+  _hideActive = false;
   if (_hideObserver) { _hideObserver.disconnect(); _hideObserver = null; }
-  document.querySelectorAll('.sensitive').forEach(el => el.classList.remove('sensitive'));
+  // Restore tous les nodes masqués
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+  let n;
+  const nodes = [];
+  while ((n = walker.nextNode())) if (_origTextMap.has(n)) nodes.push(n);
+  nodes.forEach(_unmaskTextNode);
 }
 
 function _applyHideBalances(hidden) {
