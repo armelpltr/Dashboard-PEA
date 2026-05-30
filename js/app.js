@@ -201,20 +201,16 @@ _splashWatchdog = setTimeout(() => {
         console.error('[2fa] device check échoué:', e);
         // En cas d'erreur Firestore : fail-open (laisse passer) pour éviter lockout
       }
-      // Gate PIN — obligatoire pour tous les users
+      // Gate PIN — obligatoire pour tous les users, à chaque chargement (refresh inclus)
       try {
-        let alreadyUnlocked = false;
-        try { alreadyUnlocked = sessionStorage.getItem('pin_unlocked') === '1'; } catch(_) {}
         const pinOn = await _isPinEnabled(u.uid);
         if (!pinOn) {
           // Compte sans PIN : force la configuration avant l'accès
           showPinSetupView(u);
           return;
         }
-        if (!alreadyUnlocked) {
-          showPinLockView(u);
-          return;
-        }
+        showPinLockView(u);
+        return;
       } catch(e) {
         console.error('[pin] check échoué:', e);
         // Fail-open : laisse passer en cas d'erreur Firestore (évite lockout)
@@ -882,7 +878,6 @@ window.pinSetupViewSubmit = async function() {
   try {
     try { await user.reload(); await user.getIdToken(true); } catch(_) {}
     await _setupPin(user.uid, val);
-    try { sessionStorage.setItem('pin_unlocked', '1'); } catch(_) {}
     document.getElementById('pin-setup-view').style.display = 'none';
     _pinSetupViewUser = null; _pinSetupViewStep1 = '';
     startApp(user);
@@ -952,7 +947,6 @@ window.pinLockSubmit = async function() {
   try {
     const ok = await _verifyPin(user.uid, val);
     if (ok) {
-      try { sessionStorage.setItem('pin_unlocked', '1'); } catch(_) {}
       document.getElementById('pin-lock-view').style.display = 'none';
       _pinLockAttempts = 0;
       startApp(user);
@@ -980,7 +974,6 @@ window.pinLockSubmit = async function() {
 
 window.pinLockLogout = async function() {
   _pinLockUser = null;
-  try { sessionStorage.removeItem('pin_unlocked'); } catch(_) {}
   try { await signOut(fbAuth); } catch(_) {}
   showLoginView();
 };
@@ -995,14 +988,13 @@ window.refreshPinStatus = async function() {
   try {
     const enabled = await _isPinEnabled(user.uid);
     if (enabled) {
-      box.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;color:#22d98a;font-weight:600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Code PIN activé</span><div style="font-size:11px;color:var(--text3);margin-top:4px">Demandé à chaque ouverture de l\'app.</div>';
+      box.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;color:#22d98a;font-weight:600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Code PIN actif</span><div style="font-size:11px;color:var(--text3);margin-top:4px">Demandé à chaque ouverture et à chaque rechargement de l\'application. Obligatoire, non désactivable.</div>';
       actions.innerHTML = `
         <button onclick="openPinSetupModal('change')" style="flex:1;padding:9px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)">Changer le code</button>
-        <button onclick="pinDisable()" style="flex:1;padding:9px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);color:#ff4d6a;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)">Désactiver</button>
       `;
     } else {
-      box.innerHTML = '<span style="color:var(--text3)">Code PIN non configuré.</span>';
-      actions.innerHTML = `<button onclick="openPinSetupModal('setup')" style="flex:1;padding:9px;background:#7c6df5;border:none;color:#fff;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans)">Configurer un code PIN</button>`;
+      box.innerHTML = '<span style="color:#ff4d6a;font-weight:600">⚠ Code PIN obligatoire — non configuré.</span><div style="font-size:11px;color:var(--text3);margin-top:4px">Sera demandé au prochain rechargement.</div>';
+      actions.innerHTML = `<button onclick="openPinSetupModal('setup')" style="flex:1;padding:9px;background:#7c6df5;border:none;color:#fff;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans)">Configurer maintenant</button>`;
     }
   } catch(e) {
     box.textContent = 'Erreur de chargement.';
@@ -1069,8 +1061,6 @@ window.pinSetupSubmit = async function() {
   try {
     try { await user.reload(); await user.getIdToken(true); } catch(_) {}
     await _setupPin(user.uid, val);
-    // Marque session courante comme déjà déverrouillée (évite re-prompt immédiat)
-    try { sessionStorage.setItem('pin_unlocked', '1'); } catch(_) {}
     window.closePinSetupModal();
     await window.refreshPinStatus();
   } catch(e) {
@@ -1081,27 +1071,7 @@ window.pinSetupSubmit = async function() {
   }
 };
 
-window.pinDisable = function() {
-  const user = fbAuth.currentUser;
-  if (!user) return;
-  showConfirmModal({
-    icon: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff4d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
-    title: 'Désactiver le code PIN ?',
-    body: 'Votre application ne sera plus protégée par un code PIN à l\'ouverture.',
-    okLabel: 'Désactiver',
-    cancelLabel: 'Annuler',
-    danger: true,
-    onConfirm: async () => {
-      try {
-        await _disablePin(user.uid);
-        try { sessionStorage.removeItem('pin_unlocked'); } catch(_) {}
-        await window.refreshPinStatus();
-      } catch(e) {
-        console.error('[pin] disable échoué:', e);
-      }
-    },
-  });
-};
+// Désactivation PIN supprimée : code obligatoire, non désactivable.
 
 // ─── CODE PIN 6 CHIFFRES — App lock au démarrage ───────
 // Stockage: users/{uid}/data/security = { pinHash, pinSalt, enabled, createdAt }
