@@ -52,12 +52,12 @@ let fcmMessaging = null, getFCMToken, onFCMMessage;
 // VAPID key : Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Generate key pair
 const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vNXI1EL2xQKA1Nr6tmKaSX5hcGJY';
 
-// EmailJS — service mail client-side (200 mails/mois free)
+// EmailJS — service mail client-side (200 mails/mois free, 2 templates max)
 const EMAILJS_CONFIG = {
-  publicKey:       'FQN2IWcgPaxa56jT5',
-  serviceId:       'service_do5j0pl',
-  templateOtp:     'template_8qr2a3g',  // code 6 chiffres (suppression compte + nouvel appareil)
-  templateConfirm: 'template_l1uno1h',  // confirmation post-suppression
+  publicKey:    'FQN2IWcgPaxa56jT5',
+  serviceId:    'service_do5j0pl',
+  templateOtp:  'template_8qr2a3g',  // OTP suppression compte
+  template2fa:  'template_l1uno1h',  // OTP 2FA nouvel appareil (avec device_label + location)
 };
 
 // 2FA device-based — durée trust appareil
@@ -183,7 +183,10 @@ _splashWatchdog = setTimeout(() => {
         try { autoTrust = localStorage.getItem('signup_auto_trust') === '1'; } catch(_) {}
         if (autoTrust) {
           try { await u.getIdToken(true); } catch(_) {}
-          try { await _addTrustedDevice(u.uid, deviceId, _getDeviceLabel()); } catch(_) {}
+          try {
+            const ipInfo = await _fetchIpInfo();
+            await _addTrustedDevice(u.uid, deviceId, _getDeviceLabel(), ipInfo);
+          } catch(_) {}
           try { localStorage.removeItem('signup_auto_trust'); } catch(_) {}
         } else {
           const trusted = await _isDeviceTrusted(u.uid, deviceId);
@@ -677,8 +680,16 @@ async function _dvGenerateAndSend(user) {
   const code = _genOtp();
   const expiresAt = Date.now() + 10 * 60 * 1000;
   const deviceId = _getDeviceId();
+  const deviceLabel = _getDeviceLabel();
+  // Fetch IP/location en parallèle (best-effort, non bloquant si échoue)
+  const ipInfo = await _fetchIpInfo();
+  // Stocke IP info dans deviceOtp pour pouvoir l'ajouter au trustedDevice après vérif
   const ref = firestoreDoc(db, 'users', user.uid, 'data', 'deviceOtp');
-  const payload = { code, expiresAt, attempts: 0, deviceId, createdAt: Date.now() };
+  const payload = {
+    code, expiresAt, attempts: 0, deviceId, deviceLabel,
+    ipInfo: ipInfo || null,
+    createdAt: Date.now(),
+  };
   try {
     await setFirestoreDoc(ref, payload);
   } catch(e) {
@@ -688,7 +699,8 @@ async function _dvGenerateAndSend(user) {
       await setFirestoreDoc(ref, payload);
     } else { throw e; }
   }
-  await _sendOtpEmail(user.email, code);
+  const location = _fmtLocation(ipInfo) || 'Lieu inconnu';
+  await _send2faOtpEmail(user.email, code, deviceLabel, location);
   _dvLastSent = Date.now();
 }
 
@@ -770,9 +782,9 @@ window.dvVerifyOtp = async function() {
       if (ve) { ve.textContent = `Code incorrect. ${left} tentative(s) restante(s).`; ve.style.display = 'block'; }
       return;
     }
-    // OK → ajoute device trusté + cleanup + démarre app
+    // OK → ajoute device trusté avec IP info stockée dans le doc OTP + cleanup + démarre app
     const deviceId = _getDeviceId();
-    await _addTrustedDevice(user.uid, deviceId, _getDeviceLabel());
+    await _addTrustedDevice(user.uid, deviceId, _getDeviceLabel(), data.ipInfo || null);
     try { await deleteFirestoreDoc(ref); } catch(_) {}
     // Cache vue
     document.getElementById('device-verify-view').style.display = 'none';
@@ -790,10 +802,47 @@ window.dvLogout = async function() {
   showLoginView();
 };
 
+// ─── MASQUER LE SOLDE (toggle œil) ──────────────────────
+const _EYE_OPEN_SVG = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+const _EYE_OFF_SVG  = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+
+function _applyHideBalances(hidden) {
+  document.body.classList.toggle('balance-hidden', !!hidden);
+  // Update icons + label
+  const mi = document.getElementById('mobile-hide-icon');
+  if (mi) mi.innerHTML = hidden ? _EYE_OFF_SVG : _EYE_OPEN_SVG;
+  const si = document.getElementById('sidebar-hide-icon');
+  if (si) si.innerHTML = hidden ? _EYE_OFF_SVG : _EYE_OPEN_SVG;
+  const lbl = document.getElementById('sidebar-hide-label');
+  if (lbl) lbl.textContent = hidden ? 'Afficher le solde' : 'Masquer le solde';
+}
+
+window.toggleHideBalances = function() {
+  const cur = document.body.classList.contains('balance-hidden');
+  const next = !cur;
+  try { localStorage.setItem('balance_hidden', next ? '1' : '0'); } catch(_) {}
+  _applyHideBalances(next);
+};
+
+// Restore au démarrage de l'app
+function _restoreHideBalances() {
+  try {
+    const hidden = localStorage.getItem('balance_hidden') === '1';
+    _applyHideBalances(hidden);
+  } catch(_) {}
+}
+
 // ─── PROFIL — Appareils de confiance ────────────────────
 function _fmtDeviceDate(ts) {
   if (!ts) return '—';
   return new Date(ts).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+// ISO country code (2 lettres) → emoji drapeau
+function _countryFlag(cc) {
+  if (!cc || cc.length !== 2) return '';
+  const A = 0x1F1E6, codeA = 'A'.charCodeAt(0);
+  return String.fromCodePoint(...cc.toUpperCase().split('').map(c => A + (c.charCodeAt(0) - codeA)));
 }
 
 window.refreshTrustedDevices = async function() {
@@ -819,13 +868,19 @@ window.refreshTrustedDevices = async function() {
     container.innerHTML = entries.map(([id, d]) => {
       const isCurrent = id === currentId;
       const expiresIn = Math.max(0, Math.ceil((d.expiresAt - Date.now()) / (24*60*60*1000)));
+      const loc = [d.city, d.region, d.country].filter(Boolean).join(', ');
+      const flag = d.countryCode ? _countryFlag(d.countryCode) : '';
+      const ipLine = (d.ip || loc)
+        ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;display:flex;align-items:center;gap:6px"><span style="font-family:var(--mono)">${_escapeHtmlChat(d.ip || '')}</span>${loc ? `<span>·</span><span>${flag} ${_escapeHtmlChat(loc)}</span>` : ''}</div>`
+        : '';
       return `
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:10px">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;color:var(--text);font-size:12px;display:flex;align-items:center;gap:6px">
+            <div style="font-weight:600;color:var(--text);font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               ${_escapeHtmlChat(d.label || 'Appareil inconnu')}
               ${isCurrent ? '<span style="font-size:10px;color:#22d98a;background:rgba(34,217,138,0.12);padding:2px 6px;border-radius:6px;font-weight:700">CET APPAREIL</span>' : ''}
             </div>
+            ${ipLine}
             <div style="font-size:10px;color:var(--text3);margin-top:3px">
               Ajouté ${_fmtDeviceDate(d.firstSeen)} · Vu ${_fmtDeviceDate(d.lastSeen)} · Expire dans ${expiresIn}j
             </div>
@@ -977,6 +1032,7 @@ async function startApp(user) {
     const displayName = user.displayName || user.email.split('@')[0];
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
+    _restoreHideBalances();
     document.getElementById('user-avatar').textContent = (displayName[0] || '?').toUpperCase();
     document.getElementById('user-name-display').textContent = displayName;
     const d = new Date();
@@ -1269,7 +1325,32 @@ async function _isDeviceTrusted(uid, deviceId) {
   return !!(d && d.expiresAt > Date.now());
 }
 
-async function _addTrustedDevice(uid, deviceId, label) {
+// Récupère IP publique + localisation approximative via ipapi.co (1000 req/jour gratuit, no key)
+async function _fetchIpInfo() {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const res = await fetch('https://ipapi.co/json/', { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const j = await res.json();
+    return {
+      ip:      j.ip || '',
+      city:    j.city || '',
+      region:  j.region || '',
+      country: j.country_name || '',
+      countryCode: j.country_code || '',
+    };
+  } catch(_) { return null; }
+}
+
+function _fmtLocation(info) {
+  if (!info) return '';
+  const parts = [info.city, info.region, info.country].filter(Boolean);
+  return parts.join(', ');
+}
+
+async function _addTrustedDevice(uid, deviceId, label, ipInfo) {
   const ref = firestoreDoc(db, 'users', uid, 'data', 'trustedDevices');
   const snap = await getFirestoreDoc(ref);
   const data = (snap.exists() && snap.data()) || {};
@@ -1284,6 +1365,11 @@ async function _addTrustedDevice(uid, deviceId, label) {
     firstSeen: devices[deviceId]?.firstSeen || now,
     lastSeen: now,
     expiresAt: now + DEVICE_TRUST_MS,
+    ip: ipInfo?.ip || devices[deviceId]?.ip || '',
+    city: ipInfo?.city || devices[deviceId]?.city || '',
+    region: ipInfo?.region || devices[deviceId]?.region || '',
+    country: ipInfo?.country || devices[deviceId]?.country || '',
+    countryCode: ipInfo?.countryCode || devices[deviceId]?.countryCode || '',
   };
   await setFirestoreDoc(ref, { devices });
 }
@@ -1322,18 +1408,17 @@ async function _sendOtpEmail(toEmail, code) {
   });
 }
 
-// Envoi mail confirmation post-suppression
-async function _sendDeleteConfirmationEmail(toEmail) {
-  if (!window.emailjs) { console.warn('[email] EmailJS SDK non chargé, skip'); return; }
-  try {
-    await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateConfirm, {
-      to_email: toEmail,
-      date: new Date().toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' }),
-      app_name: 'Capital Board',
-    });
-  } catch(e) {
-    console.error('[email] confirmation post-suppression échouée:', e);
-  }
+// Envoi mail OTP 2FA nouvel appareil (template dédié avec device_label + location)
+async function _send2faOtpEmail(toEmail, code, deviceLabel, location) {
+  if (!window.emailjs) throw new Error('EmailJS SDK non chargé');
+  return emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.template2fa, {
+    email: toEmail,
+    to_email: toEmail,
+    code,
+    device_label: deviceLabel || 'Appareil inconnu',
+    location: location || 'Lieu inconnu',
+    app_name: 'Capital Board',
+  });
 }
 
 let _delLastSent = 0;
@@ -1485,7 +1570,6 @@ window.delVerifyOtp = async function() {
     const s3 = document.getElementById('del-step-3');
     if (s3) s3.style.display = 'block';
 
-    const email = user.email;
     const uid = user.uid;
     // Cleanup OTP doc
     try { await deleteFirestoreDoc(ref); } catch(_) {}
@@ -1514,8 +1598,8 @@ window.delVerifyOtp = async function() {
     }
     // 2) Suppression données Firestore + Storage (compte Auth déjà supprimé)
     await deleteAllUserData(uid);
-    // 3) Mail confirmation post-suppression
-    await _sendDeleteConfirmationEmail(email);
+    // 3) (Mail confirmation post-suppression supprimé — template EmailJS réaffecté au 2FA,
+    //    quota 2 templates max sur plan gratuit. L'OTP suppression sert déjà de preuve d'action.)
     // 4) Ferme toutes modals + force retour login
     window.closeDeleteAccountModal();
     try { window.closeProfilModal && window.closeProfilModal(); } catch(_) {}

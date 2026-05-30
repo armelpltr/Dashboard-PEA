@@ -242,6 +242,9 @@
       <div class="mobile-header-title">Capital Board</div>
     </div>
     <div class="mobile-header-actions">
+      <div class="mobile-header-btn" onclick="toggleHideBalances()" id="mobile-hide-btn" title="Masquer/afficher solde">
+        <svg id="mobile-hide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </div>
       <div class="mobile-header-btn" onclick="openMobileDrawer()" title="Plus">☰</div>
       <div class="mobile-header-btn" onclick="openProfilModal()" id="mobile-avatar-btn" title="Profil">
         <span id="mobile-avatar-letter" style="font-size:13px;font-weight:700;font-family:var(--display)">?</span>
@@ -383,6 +386,10 @@
         <span>·</span>
         <a href="mentions-legales.html" target="_blank">Mentions</a>
       </div>
+      <button onclick="toggleHideBalances()" id="sidebar-hide-btn" title="Masquer/afficher solde" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px;background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);margin-bottom:8px">
+        <svg id="sidebar-hide-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span id="sidebar-hide-label">Masquer le solde</span>
+      </button>
       <div class="user-card" onclick="openProfilModal()" style="cursor:pointer" title="Mon profil">
         <div class="user-avatar" id="user-avatar">A</div>
         <div style="flex:1;min-width:0">
@@ -1337,7 +1344,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script src="js/app.js?v=20260530i"></script>
+<script src="js/app.js?v=20260530j"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
