@@ -941,34 +941,60 @@ window.refreshTrustedDevices = async function() {
   }
 };
 
-window.revokeTrustedDevice = async function(deviceId) {
+const _DEVICE_TRASH_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff4d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>';
+
+window.revokeTrustedDevice = function(deviceId) {
   const user = fbAuth.currentUser;
   if (!user) return;
-  if (!confirm('Révoquer cet appareil ? Il devra refaire une vérification email pour se reconnecter.')) return;
-  try {
-    await _revokeTrustedDevice(user.uid, deviceId);
-    await window.refreshTrustedDevices();
-  } catch(e) {
-    console.error('[2fa] revoke échoué:', e);
-    alert('Erreur révocation : ' + (e.message || e.code || 'inconnue'));
-  }
+  showConfirmModal({
+    icon: _DEVICE_TRASH_SVG,
+    title: 'Révoquer cet appareil ?',
+    body: 'Il devra refaire une vérification email pour se reconnecter à votre compte.',
+    okLabel: 'Révoquer',
+    cancelLabel: 'Annuler',
+    danger: true,
+    onConfirm: async () => {
+      try {
+        await _revokeTrustedDevice(user.uid, deviceId);
+        await window.refreshTrustedDevices();
+      } catch(e) {
+        console.error('[2fa] revoke échoué:', e);
+        showConfirmModal({
+          icon: _DEVICE_TRASH_SVG,
+          title: 'Erreur',
+          body: 'Échec révocation : ' + (e.message || e.code || 'inconnue'),
+          okLabel: 'OK',
+          cancelLabel: '',
+          onConfirm: () => {},
+        });
+      }
+    },
+  });
 };
 
-window.revokeAllOtherDevices = async function() {
+window.revokeAllOtherDevices = function() {
   const user = fbAuth.currentUser;
   if (!user) return;
-  if (!confirm('Révoquer tous les autres appareils ? Vous resterez connecté ici, mais les autres devront refaire la vérification email.')) return;
-  try {
-    const devices = await _getTrustedDevices(user.uid);
-    const currentId = _getDeviceId();
-    const kept = devices[currentId] ? { [currentId]: devices[currentId] } : {};
-    const ref = firestoreDoc(db, 'users', user.uid, 'data', 'trustedDevices');
-    await setFirestoreDoc(ref, { devices: kept });
-    await window.refreshTrustedDevices();
-  } catch(e) {
-    console.error('[2fa] revoke all échoué:', e);
-    alert('Erreur : ' + (e.message || e.code || 'inconnue'));
-  }
+  showConfirmModal({
+    icon: _DEVICE_TRASH_SVG,
+    title: 'Révoquer tous les autres appareils ?',
+    body: 'Vous resterez connecté ici, mais les autres appareils devront refaire la vérification email.',
+    okLabel: 'Révoquer tous',
+    cancelLabel: 'Annuler',
+    danger: true,
+    onConfirm: async () => {
+      try {
+        const devices = await _getTrustedDevices(user.uid);
+        const currentId = _getDeviceId();
+        const kept = devices[currentId] ? { [currentId]: devices[currentId] } : {};
+        const ref = firestoreDoc(db, 'users', user.uid, 'data', 'trustedDevices');
+        await setFirestoreDoc(ref, { devices: kept });
+        await window.refreshTrustedDevices();
+      } catch(e) {
+        console.error('[2fa] revoke all échoué:', e);
+      }
+    },
+  });
 };
 
 // ─── LOGIN ────────────────────────────────────────────
@@ -1371,17 +1397,31 @@ async function _isDeviceTrusted(uid, deviceId) {
   return !!(d && d.expiresAt > Date.now());
 }
 
-// Récupère IP publique + localisation approximative via ipapi.co (1000 req/jour gratuit, no key)
+// Récupère IPv4 publique + localisation. Chain: api.ipify.org (force IPv4) → ipapi.co (geoloc).
 async function _fetchIpInfo() {
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 4000);
-    const res = await fetch('https://ipapi.co/json/', { signal: ctrl.signal });
-    clearTimeout(timer);
-    if (!res.ok) return null;
+    // 1) IPv4 publique
+    let ipv4 = '';
+    try {
+      const ctrl1 = new AbortController();
+      const t1 = setTimeout(() => ctrl1.abort(), 3000);
+      const r1 = await fetch('https://api.ipify.org?format=json', { signal: ctrl1.signal });
+      clearTimeout(t1);
+      if (r1.ok) {
+        const j1 = await r1.json();
+        ipv4 = j1.ip || '';
+      }
+    } catch(_) {}
+    // 2) Geoloc via ipapi.co — si IPv4 récupérée, force avec /{ip}/json/, sinon auto
+    const url = ipv4 ? `https://ipapi.co/${ipv4}/json/` : 'https://ipapi.co/json/';
+    const ctrl2 = new AbortController();
+    const t2 = setTimeout(() => ctrl2.abort(), 4000);
+    const res = await fetch(url, { signal: ctrl2.signal });
+    clearTimeout(t2);
+    if (!res.ok) return ipv4 ? { ip: ipv4, city: '', region: '', country: '', countryCode: '' } : null;
     const j = await res.json();
     return {
-      ip:      j.ip || '',
+      ip:      ipv4 || j.ip || '',
       city:    j.city || '',
       region:  j.region || '',
       country: j.country_name || '',
