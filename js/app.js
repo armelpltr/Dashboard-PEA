@@ -435,15 +435,17 @@ async function deleteAllUserData(uid) {
     } catch(_) {}
   })();
 
-  // Storage — pièces jointes support
+  // Storage — pièces jointes support (timeout 5s pour éviter blocage CORS)
   const storageTask = (async () => {
     if (!fbStorage || !fbStorageRef) return;
-    try {
+    const work = (async () => {
       const { listAll, deleteObject } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
       const dirRef = fbStorageRef(fbStorage, `support-attachments/${uid}`);
       const all = await listAll(dirRef);
       await Promise.all(all.items.map(it => deleteObject(it).catch(() => {})));
-    } catch(_) {}
+    })();
+    const timeout = new Promise(r => setTimeout(r, 5000));
+    try { await Promise.race([work, timeout]); } catch(_) {}
   })();
 
   // Tout en parallèle
