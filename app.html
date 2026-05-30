@@ -170,6 +170,29 @@
     </div>
   </div>
 
+  <!-- VUE LOCK PIN -->
+  <div class="login-card" id="pin-lock-view" style="display:none">
+    <div class="login-logo">
+      <div class="logo-icon"><img src="logo.png" alt="logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
+      <div class="login-title">Code de déverrouillage</div>
+      <div class="login-subtitle">Capital Board</div>
+    </div>
+    <div style="text-align:center;font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:18px">
+      Saisissez votre code à 6 chiffres pour accéder à l'application.
+    </div>
+    <!-- Dots indicator -->
+    <div id="pin-dots" style="display:flex;justify-content:center;gap:12px;margin-bottom:18px">
+      <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+      <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+    </div>
+    <input id="pin-lock-input" type="tel" inputmode="numeric" autocomplete="off" maxlength="6" pattern="[0-9]{6}" placeholder="••••••" style="width:100%;padding:14px;border-radius:10px;border:1px solid var(--border2);background:var(--s2);color:var(--text);font-size:24px;font-family:var(--mono);font-weight:700;text-align:center;letter-spacing:10px;margin-bottom:12px;outline:none">
+    <div id="pin-lock-error" style="display:none;font-size:12px;color:#ff4d6a;margin-bottom:10px;text-align:center;padding:8px 12px;background:rgba(255,77,106,0.08);border-radius:8px"></div>
+    <button class="btn-login" id="pin-lock-btn" onclick="pinLockSubmit()">Déverrouiller</button>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
+      <span onclick="pinLockLogout()" style="color:var(--accent);cursor:pointer;font-weight:600">Code oublié ? Se déconnecter</span>
+    </div>
+  </div>
+
   <!-- VUE 2FA NOUVEL APPAREIL -->
   <div class="login-card" id="device-verify-view" style="display:none">
     <div class="login-logo">
@@ -1057,6 +1080,18 @@
       <input type="file" id="input-restore-json" accept=".json,application/json" style="display:none" onchange="importAllUserData(event)">
     </div>
 
+    <!-- Sécurité — Code PIN -->
+    <div style="height:1px;background:var(--border);margin:18px 0"></div>
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:6px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Code PIN
+    </div>
+    <div style="font-size:11px;color:var(--text3);line-height:1.55;margin-bottom:10px">
+      Un code à 6 chiffres demandé à chaque ouverture de l'application sur cet appareil et tous les autres.
+    </div>
+    <div id="pin-status-box" style="padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;font-size:12px;color:var(--text3)">Chargement…</div>
+    <div id="pin-actions" style="display:flex;gap:8px"></div>
+
     <!-- Sécurité — Appareils de confiance -->
     <div style="height:1px;background:var(--border);margin:18px 0"></div>
     <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:6px">
@@ -1344,7 +1379,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script src="js/app.js?v=20260530q"></script>
+<script src="js/app.js?v=20260530r"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
@@ -1358,6 +1393,23 @@
     </div>
   </div>
 </div>
+<!-- Modal setup / changement code PIN -->
+<div id="pin-setup-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px">
+  <div style="background:linear-gradient(180deg,#1a1b26 0%,#141520 100%);border:1px solid rgba(124,109,245,0.25);border-radius:18px;padding:28px 28px 22px;max-width:380px;width:100%;box-shadow:0 30px 70px rgba(0,0,0,0.7)">
+    <div style="width:52px;height:52px;margin:0 auto 14px;border-radius:50%;background:rgba(124,109,245,0.12);display:flex;align-items:center;justify-content:center">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7c6df5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div id="pin-setup-title" style="font-size:17px;font-weight:700;color:#fff;margin-bottom:8px;text-align:center">Configurer un code PIN</div>
+    <div id="pin-setup-sub" style="font-size:12px;color:#8892a8;text-align:center;line-height:1.55;margin-bottom:18px">Saisissez un code à 6 chiffres. Il sera demandé à chaque ouverture de l'application.</div>
+    <input id="pin-setup-input" type="tel" inputmode="numeric" autocomplete="off" maxlength="6" pattern="[0-9]{6}" placeholder="••••••" style="width:100%;padding:14px;border-radius:10px;border:1px solid #2a2b3d;background:#13141c;color:#fff;font-size:24px;font-family:var(--mono);font-weight:700;text-align:center;letter-spacing:10px;margin-bottom:12px;outline:none">
+    <div id="pin-setup-error" style="display:none;font-size:12px;color:#ff4d6a;margin-bottom:10px;text-align:center;padding:8px 12px;background:rgba(255,77,106,0.08);border-radius:8px"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closePinSetupModal()" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2b3d;background:#13141c;color:#cbd1de;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans)">Annuler</button>
+      <button id="pin-setup-btn" onclick="pinSetupSubmit()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#7c6df5;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)">Continuer</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal suppression compte (2 étapes : warning + mot de passe) -->
 <div id="delete-account-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px">
   <div style="background:linear-gradient(180deg,#1a1b26 0%,#141520 100%);border:1px solid rgba(255,77,106,0.25);border-radius:18px;padding:30px 28px 24px;max-width:420px;width:100%;box-shadow:0 30px 70px rgba(0,0,0,0.7),0 0 0 1px rgba(255,77,106,0.08)">

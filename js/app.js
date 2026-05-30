@@ -201,6 +201,21 @@ _splashWatchdog = setTimeout(() => {
         console.error('[2fa] device check échoué:', e);
         // En cas d'erreur Firestore : fail-open (laisse passer) pour éviter lockout
       }
+      // Gate PIN — si PIN configuré + pas déjà déverrouillé cette session
+      try {
+        let alreadyUnlocked = false;
+        try { alreadyUnlocked = sessionStorage.getItem('pin_unlocked') === '1'; } catch(_) {}
+        if (!alreadyUnlocked) {
+          const pinOn = await _isPinEnabled(u.uid);
+          if (pinOn) {
+            showPinLockView(u);
+            return;
+          }
+        }
+      } catch(e) {
+        console.error('[pin] check échoué:', e);
+        // Fail-open : laisse passer en cas d'erreur
+      }
       startApp(u);
     });
   }
@@ -520,6 +535,7 @@ window.showLoginView = function() {
   document.getElementById('register-view').style.display = 'none';
   const vv = document.getElementById('verify-view'); if (vv) vv.style.display = 'none';
   const dv = document.getElementById('device-verify-view'); if (dv) dv.style.display = 'none';
+  const pv = document.getElementById('pin-lock-view'); if (pv) pv.style.display = 'none';
   document.getElementById('login-error').textContent = '';
   stopVerifyPolling();
 };
@@ -528,6 +544,7 @@ window.showRegisterView = function() {
   document.getElementById('register-view').style.display = 'block';
   const vv = document.getElementById('verify-view'); if (vv) vv.style.display = 'none';
   const dv = document.getElementById('device-verify-view'); if (dv) dv.style.display = 'none';
+  const pv = document.getElementById('pin-lock-view'); if (pv) pv.style.display = 'none';
   document.getElementById('register-error').textContent = '';
   stopVerifyPolling();
 };
@@ -801,6 +818,267 @@ window.dvLogout = async function() {
   try { await signOut(fbAuth); } catch(_) {}
   showLoginView();
 };
+
+// ─── PIN LOCK SCREEN ──────────────────────────────────
+let _pinLockUser = null;
+let _pinLockAttempts = 0;
+const _PIN_MAX_ATTEMPTS = 5;
+
+function _updatePinDots(len) {
+  const dots = document.querySelectorAll('#pin-dots .pin-dot');
+  dots.forEach((d, i) => d.classList.toggle('filled', i < len));
+}
+
+function _shakePinDots() {
+  const dots = document.querySelectorAll('#pin-dots .pin-dot');
+  dots.forEach(d => { d.classList.add('shake'); setTimeout(() => d.classList.remove('shake'), 400); });
+}
+
+function showPinLockView(user) {
+  _pinLockUser = user;
+  _pinLockAttempts = 0;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('register-view').style.display = 'none';
+  const vv = document.getElementById('verify-view'); if (vv) vv.style.display = 'none';
+  const dv = document.getElementById('device-verify-view'); if (dv) dv.style.display = 'none';
+  const view = document.getElementById('pin-lock-view');
+  if (view) view.style.display = 'block';
+  const inp = document.getElementById('pin-lock-input');
+  if (inp) {
+    inp.value = '';
+    _updatePinDots(0);
+    setTimeout(() => inp.focus(), 50);
+    inp.oninput = () => {
+      const v = inp.value.replace(/\D/g, '').slice(0, 6);
+      inp.value = v;
+      _updatePinDots(v.length);
+      if (v.length === 6) window.pinLockSubmit();
+    };
+    inp.onkeydown = e => { if (e.key === 'Enter') window.pinLockSubmit(); };
+  }
+  const err = document.getElementById('pin-lock-error'); if (err) err.style.display = 'none';
+  _hideSplash();
+}
+
+window.pinLockSubmit = async function() {
+  const inp = document.getElementById('pin-lock-input');
+  const err = document.getElementById('pin-lock-error');
+  if (err) err.style.display = 'none';
+  const val = (inp?.value || '').trim();
+  if (!/^\d{6}$/.test(val)) {
+    if (err) { err.textContent = 'Saisissez 6 chiffres.'; err.style.display = 'block'; }
+    return;
+  }
+  const user = _pinLockUser || fbAuth.currentUser;
+  if (!user) return;
+  setLoading('pin-lock-btn', true);
+  try {
+    const ok = await _verifyPin(user.uid, val);
+    if (ok) {
+      try { sessionStorage.setItem('pin_unlocked', '1'); } catch(_) {}
+      document.getElementById('pin-lock-view').style.display = 'none';
+      _pinLockAttempts = 0;
+      startApp(user);
+    } else {
+      _pinLockAttempts++;
+      _shakePinDots();
+      inp.value = '';
+      _updatePinDots(0);
+      const remain = _PIN_MAX_ATTEMPTS - _pinLockAttempts;
+      if (remain <= 0) {
+        if (err) { err.textContent = 'Trop de tentatives. Déconnexion.'; err.style.display = 'block'; }
+        setTimeout(() => window.pinLockLogout(), 1500);
+      } else {
+        if (err) { err.textContent = `Code incorrect. ${remain} tentative(s) restante(s).`; err.style.display = 'block'; }
+        setTimeout(() => inp.focus(), 50);
+      }
+    }
+  } catch(e) {
+    console.error('[pin] verify échoué:', e);
+    if (err) { err.textContent = 'Erreur : ' + (e.message || e.code || 'inconnue'); err.style.display = 'block'; }
+  } finally {
+    setLoading('pin-lock-btn', false);
+  }
+};
+
+window.pinLockLogout = async function() {
+  _pinLockUser = null;
+  try { sessionStorage.removeItem('pin_unlocked'); } catch(_) {}
+  try { await signOut(fbAuth); } catch(_) {}
+  showLoginView();
+};
+
+// ─── PIN — UI Profil (status + actions) ───────────────
+window.refreshPinStatus = async function() {
+  const box = document.getElementById('pin-status-box');
+  const actions = document.getElementById('pin-actions');
+  if (!box || !actions) return;
+  const user = fbAuth.currentUser;
+  if (!user) { box.textContent = 'Non connecté'; actions.innerHTML = ''; return; }
+  try {
+    const enabled = await _isPinEnabled(user.uid);
+    if (enabled) {
+      box.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;color:#22d98a;font-weight:600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Code PIN activé</span><div style="font-size:11px;color:var(--text3);margin-top:4px">Demandé à chaque ouverture de l\'app.</div>';
+      actions.innerHTML = `
+        <button onclick="openPinSetupModal('change')" style="flex:1;padding:9px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)">Changer le code</button>
+        <button onclick="pinDisable()" style="flex:1;padding:9px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);color:#ff4d6a;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)">Désactiver</button>
+      `;
+    } else {
+      box.innerHTML = '<span style="color:var(--text3)">Code PIN non configuré.</span>';
+      actions.innerHTML = `<button onclick="openPinSetupModal('setup')" style="flex:1;padding:9px;background:#7c6df5;border:none;color:#fff;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans)">Configurer un code PIN</button>`;
+    }
+  } catch(e) {
+    box.textContent = 'Erreur de chargement.';
+    actions.innerHTML = '';
+  }
+};
+
+let _pinSetupMode = 'setup'; // 'setup' | 'change'
+let _pinSetupStep1 = '';     // valeur 1ère saisie
+
+window.openPinSetupModal = function(mode) {
+  _pinSetupMode = mode || 'setup';
+  _pinSetupStep1 = '';
+  const m = document.getElementById('pin-setup-modal');
+  if (!m) return;
+  document.getElementById('pin-setup-title').textContent = mode === 'change' ? 'Changer le code PIN' : 'Configurer un code PIN';
+  document.getElementById('pin-setup-sub').textContent = 'Saisissez un nouveau code à 6 chiffres.';
+  document.getElementById('pin-setup-btn').textContent = 'Continuer';
+  const inp = document.getElementById('pin-setup-input');
+  if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 50); }
+  const err = document.getElementById('pin-setup-error'); if (err) err.style.display = 'none';
+  m.style.display = 'flex';
+};
+
+window.closePinSetupModal = function() {
+  const m = document.getElementById('pin-setup-modal');
+  if (m) m.style.display = 'none';
+  _pinSetupStep1 = '';
+};
+
+window.pinSetupSubmit = async function() {
+  const inp = document.getElementById('pin-setup-input');
+  const err = document.getElementById('pin-setup-error');
+  const btn = document.getElementById('pin-setup-btn');
+  const val = (inp?.value || '').trim();
+  if (err) err.style.display = 'none';
+  if (!/^\d{6}$/.test(val)) {
+    if (err) { err.textContent = 'Le code doit faire exactement 6 chiffres.'; err.style.display = 'block'; }
+    return;
+  }
+  if (!_pinSetupStep1) {
+    // Étape 1 → mémorise + passe à étape 2
+    _pinSetupStep1 = val;
+    inp.value = '';
+    document.getElementById('pin-setup-sub').textContent = 'Confirmez votre code en le saisissant à nouveau.';
+    btn.textContent = 'Valider';
+    setTimeout(() => inp.focus(), 50);
+    return;
+  }
+  // Étape 2 → compare
+  if (val !== _pinSetupStep1) {
+    if (err) { err.textContent = 'Les codes ne correspondent pas. Recommencez.'; err.style.display = 'block'; }
+    _pinSetupStep1 = '';
+    inp.value = '';
+    document.getElementById('pin-setup-sub').textContent = 'Saisissez un nouveau code à 6 chiffres.';
+    btn.textContent = 'Continuer';
+    setTimeout(() => inp.focus(), 50);
+    return;
+  }
+  // Confirme → enregistre Firestore
+  const user = fbAuth.currentUser;
+  if (!user) return;
+  setLoading('pin-setup-btn', true);
+  try {
+    try { await user.reload(); await user.getIdToken(true); } catch(_) {}
+    await _setupPin(user.uid, val);
+    // Marque session courante comme déjà déverrouillée (évite re-prompt immédiat)
+    try { sessionStorage.setItem('pin_unlocked', '1'); } catch(_) {}
+    window.closePinSetupModal();
+    await window.refreshPinStatus();
+  } catch(e) {
+    console.error('[pin] setup échoué:', e);
+    if (err) { err.textContent = 'Erreur : ' + (e.message || e.code || 'inconnue'); err.style.display = 'block'; }
+  } finally {
+    setLoading('pin-setup-btn', false);
+  }
+};
+
+window.pinDisable = function() {
+  const user = fbAuth.currentUser;
+  if (!user) return;
+  showConfirmModal({
+    icon: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff4d6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    title: 'Désactiver le code PIN ?',
+    body: 'Votre application ne sera plus protégée par un code PIN à l\'ouverture.',
+    okLabel: 'Désactiver',
+    cancelLabel: 'Annuler',
+    danger: true,
+    onConfirm: async () => {
+      try {
+        await _disablePin(user.uid);
+        try { sessionStorage.removeItem('pin_unlocked'); } catch(_) {}
+        await window.refreshPinStatus();
+      } catch(e) {
+        console.error('[pin] disable échoué:', e);
+      }
+    },
+  });
+};
+
+// ─── CODE PIN 6 CHIFFRES — App lock au démarrage ───────
+// Stockage: users/{uid}/data/security = { pinHash, pinSalt, enabled, createdAt }
+// Hash: SHA-256(salt + pin) via SubtleCrypto.
+
+async function _sha256(str) {
+  const buf = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function _genSalt() {
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function _loadSecurity(uid) {
+  try {
+    const ref = firestoreDoc(db, 'users', uid, 'data', 'security');
+    const snap = await getFirestoreDoc(ref);
+    if (!snap.exists()) return null;
+    return snap.data();
+  } catch(_) { return null; }
+}
+
+async function _isPinEnabled(uid) {
+  const sec = await _loadSecurity(uid);
+  return !!(sec && sec.enabled && sec.pinHash && sec.pinSalt);
+}
+
+async function _setupPin(uid, pin) {
+  if (!/^\d{6}$/.test(pin)) throw new Error('PIN doit faire 6 chiffres');
+  const salt = _genSalt();
+  const pinHash = await _sha256(salt + pin);
+  const ref = firestoreDoc(db, 'users', uid, 'data', 'security');
+  await setFirestoreDoc(ref, {
+    pinHash, pinSalt: salt, enabled: true, createdAt: Date.now(),
+  });
+}
+
+async function _verifyPin(uid, pin) {
+  const sec = await _loadSecurity(uid);
+  if (!sec || !sec.pinHash || !sec.pinSalt) return false;
+  const h = await _sha256(sec.pinSalt + pin);
+  return h === sec.pinHash;
+}
+
+async function _disablePin(uid) {
+  const ref = firestoreDoc(db, 'users', uid, 'data', 'security');
+  try { await deleteFirestoreDoc(ref); } catch(_) {}
+}
 
 // ─── MASQUER LE SOLDE (toggle œil) — masque tout texte avec € ou % ──
 const _EYE_OPEN_SVG = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
@@ -1291,6 +1569,7 @@ function stopApp() {
 window.openProfilModal = function() {
   // Charge liste appareils confiance à l'ouverture
   try { window.refreshTrustedDevices && window.refreshTrustedDevices(); } catch(_) {}
+  try { window.refreshPinStatus && window.refreshPinStatus(); } catch(_) {}
   document.getElementById('profil-modal-overlay').classList.add('open');
   loadProfilePage(fbAuth.currentUser);
 };

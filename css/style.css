@@ -685,6 +685,25 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 /* ─── Masquer le solde : JS remplace les chiffres par bullets (• via WeakMap) ───
    Pas de blur (boîte moche). Approche text-level. */
 
+/* ─── Lock PIN dots ───────────────────────────────── */
+.pin-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--border2);
+  background: transparent;
+  transition: all 0.15s;
+}
+.pin-dot.filled {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(124,109,245,0.4);
+}
+.pin-dot.shake { animation: pin-shake 0.4s; }
+@keyframes pin-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
 /* ═══════════════════════════════════════════════════
    PORTFOLIO CHART SECTION
    ═══════════════════════════════════════════════════ */
