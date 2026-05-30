@@ -6,6 +6,34 @@
 
 ## Session 2026-05-30
 
+### Code PIN 6 chiffres obligatoire (app lock)
+- PIN **obligatoire** pour tous les users, demandé à **chaque rechargement** de page (refresh inclus). Non désactivable.
+- Stockage Firestore : `users/{uid}/data/security` = `{ pinHash, pinSalt, enabled, createdAt }`. Hash `SHA-256(salt + pin)` via SubtleCrypto, salt random 16 bytes hex.
+- 3 vues dédiées dans `login-screen` :
+  - `#pin-setup-view` : force config 2 étapes (nouveau + confirmation) pour comptes sans PIN. Fallback = déconnexion.
+  - `#pin-lock-view` : saisie code (6 dots indicateurs + shake animation si faux). 5 tentatives max → signOut forcé. Lien "Code oublié → Se déconnecter".
+  - Modal `#pin-setup-modal` : changer PIN depuis Profil (2 étapes pareil).
+- **Gate `onAuthStateChanged`** : après email verif + device trust → `_isPinEnabled()` check. Si false → `showPinSetupView`. Sinon → `showPinLockView` systématique (pas de skip session).
+- **Profil → section "Code PIN"** : badge "Code PIN actif" + bouton "Changer le code" (pas de désactivation). Si PIN non configuré → warning rouge "obligatoire, sera demandé au prochain rechargement" + bouton "Configurer maintenant".
+- **Keypad numérique custom** sous chaque input PIN : grille 3x4 (1-9, vide, 0, ⌫). Inputs en `type=password inputmode=none readonly caret-color:transparent -webkit-text-security:disc` → désactive clavier natif mobile et masque les chiffres saisis. Auto-submit à 6 chiffres.
+- Handlers : `_setupPin`, `_verifyPin`, `_isPinEnabled`, `_disablePin` (interne uniquement), `pinSetupSubmit`, `pinSetupViewSubmit`, `pinLockSubmit`, `pinLockLogout`, `openPinSetupModal`, `refreshPinStatus`, `_renderPinKeypad(keypadId, inputId, onComplete)`.
+- Fail-open si Firestore down (évite lockout total).
+
+### Masquer le solde (toggle œil)
+- Bouton œil dans **mobile header** (à côté burger) + **sidebar desktop** (au-dessus profil). Toggle persistant `localStorage.balance_hidden`.
+- Approche : MutationObserver walk DOM, remplace les chiffres (`\d`) par `•` dans tous les text nodes contenant `€`/`%`/`$`/`£`/`¥`/`EUR`/`USD`. Original sauvegardé dans WeakMap pour restore au untoggle.
+- Throttle `requestAnimationFrame` pour batch les re-masks (évite saturer main thread sur renders fréquents). Skip si valeur déjà masquée (no digit) pour éviter boucle infinie observer.
+- Skip vues `login`, `verify`, `device-verify`, `register`, `script`, `style`.
+
+### 2FA device-based : améliorations
+- **IP + localisation** via chain `api.ipify.org` (force IPv4) → `ipapi.co/{ipv4}/json/`. Précision améliorée (vs IPv6 mappé sur POP différent).
+- Affichage Profil : pays uniquement (skip région + ville) + drapeau emoji depuis country_code.
+- Traduction EN → FR pour pays courants (`_COUNTRY_FR` map).
+- **Template EmailJS dédié 2FA** `template_l1uno1h` (remplacé confirmation post-suppression car quota 2 templates max plan gratuit). Variables : `email`, `code`, `device_label`, `location`, `app_name`. Mail confirmation post-delete supprimé en conséquence.
+- **Refonte CSS carte appareil** : header (icône device + label + badge CET APPAREIL pill avec dot vert glowing) / grille 2 cols (IP, lieu, dates avec icônes SVG) / footer expiration italique. Gradient fond pour current device.
+- **Modal stylé Capital Board** (showConfirmModal) au lieu de `confirm()` natif pour révocation.
+- **Révocation appareil courant** autorisée : bouton "Révoquer & déconnecter" → remove Firestore + signOut + stopApp → 2FA redemande au prochain login.
+
 ### 2FA device-based obligatoire (vérif email nouvel appareil)
 - 2FA **obligatoire** pour tous les users (email/password + Google sign-in). Chaque nouvel appareil/navigateur déclenche un OTP email avant accès app.
 - `deviceId` unique par navigateur (UUID `crypto.randomUUID()`) stocké `localStorage.device_id`.
