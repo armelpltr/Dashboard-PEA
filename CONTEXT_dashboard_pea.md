@@ -6,6 +6,21 @@
 
 ## Session 2026-05-30
 
+### 2FA device-based obligatoire (vérif email nouvel appareil)
+- 2FA **obligatoire** pour tous les users (email/password + Google sign-in). Chaque nouvel appareil/navigateur déclenche un OTP email avant accès app.
+- `deviceId` unique par navigateur (UUID `crypto.randomUUID()`) stocké `localStorage.device_id`.
+- Trust persisté 90 jours (`DEVICE_TRUST_DAYS`), bumpé à chaque login.
+- Stockage Firestore : `users/{uid}/data/trustedDevices` = `{ devices: { [deviceId]: { label, firstSeen, lastSeen, expiresAt } } }`.
+- OTP : `users/{uid}/data/deviceOtp` (TTL 10min, max 5 tentatives), envoi via EmailJS template `template_8qr2a3g` (réutilisé du flow suppression compte).
+- Gate dans `onAuthStateChanged` après `emailVerified` check : si `_isDeviceTrusted()` false → `showDeviceVerifyView(email)`.
+- Vue `#device-verify-view` dans `login-screen` : étape A (envoi code) + étape B (saisie 6 chiffres + bouton renvoyer throttle 60s + déconnexion).
+- Handlers : `dvSendOtp`, `dvVerifyOtp`, `dvResendOtp`, `dvLogout`.
+- Helpers : `_getDeviceId`, `_getDeviceLabel` (parse userAgent → "Firefox sur Windows"), `_getTrustedDevices` (purge expirés au read), `_isDeviceTrusted`, `_addTrustedDevice`, `_updateDeviceLastSeen`, `_revokeTrustedDevice`.
+- **Signup** : flag `localStorage.signup_auto_trust=1` posé par `doRegister`. Au passage `emailVerified=true`, auto-add device trusted → skip 2FA pour 1er device (évite double mail vérif + OTP au signup).
+- **Profil → section "Appareils de confiance"** : liste devices (label, dates, expiration), badge "CET APPAREIL", bouton Révoquer + bouton "Révoquer tous les autres". Auto-load à `openProfilModal`.
+- Fail-open si Firestore down (évite lockout).
+- Cache busting `app.js?v=20260530i`.
+
 ### Refonte suppression compte — OTP custom EmailJS
 - Magic link Firebase abandonné définitivement (quota Spark 5/jour). Remplacé par OTP 6 chiffres via EmailJS.
 - Nouveau template EmailJS `template_8qr2a3g` (variables `to_email`, `code`, `app_name`). Confirmation post-suppression conservée (`template_l1uno1h`).

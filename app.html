@@ -170,6 +170,41 @@
     </div>
   </div>
 
+  <!-- VUE 2FA NOUVEL APPAREIL -->
+  <div class="login-card" id="device-verify-view" style="display:none">
+    <div class="login-logo">
+      <div class="logo-icon"><img src="logo.png" alt="logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
+      <div class="login-title">Nouvel appareil détecté</div>
+      <div class="login-subtitle">Capital Board</div>
+    </div>
+    <div style="text-align:center;font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:14px">
+      Pour votre sécurité, un code de vérification doit être envoyé à<br>
+      <strong id="dv-email-display" style="color:var(--text)">—</strong>
+    </div>
+    <div style="font-size:12px;color:var(--text3);line-height:1.55;margin-bottom:16px;padding:10px 14px;background:var(--s2);border:1px solid var(--border2);border-radius:10px">
+      Appareil : <strong id="dv-device-label" style="color:var(--text)">—</strong><br>
+      Cet appareil sera mémorisé pendant 90 jours.
+    </div>
+
+    <!-- Étape A : envoi du code -->
+    <div id="dv-step-send">
+      <div class="login-error" id="dv-send-error" style="display:none"></div>
+      <button class="btn-login" id="dv-send-btn" onclick="dvSendOtp()">Envoyer le code</button>
+    </div>
+
+    <!-- Étape B : saisie du code -->
+    <div id="dv-step-verify" style="display:none">
+      <input id="dv-otp-input" type="tel" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" style="width:100%;padding:14px;border-radius:10px;border:1px solid var(--border2);background:var(--s2);color:var(--text);font-size:22px;font-family:var(--mono);font-weight:700;text-align:center;letter-spacing:8px;margin-bottom:12px;outline:none">
+      <div id="dv-verify-error" style="display:none;font-size:12px;color:#ff4d6a;margin-bottom:10px;text-align:center;padding:8px 12px;background:rgba(255,77,106,0.08);border-radius:8px"></div>
+      <button class="btn-login" id="dv-verify-btn" onclick="dvVerifyOtp()">Confirmer</button>
+      <button class="btn-login" id="dv-resend-btn" onclick="dvResendOtp()" style="margin-top:10px;background:var(--s2);color:var(--text)">Renvoyer le code</button>
+    </div>
+
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
+      <span onclick="dvLogout()" style="color:var(--accent);cursor:pointer;font-weight:600">Se déconnecter</span>
+    </div>
+  </div>
+
   <!-- VUE VÉRIFICATION EMAIL -->
   <div class="login-card" id="verify-view" style="display:none">
     <div class="login-logo">
@@ -1015,6 +1050,21 @@
       <input type="file" id="input-restore-json" accept=".json,application/json" style="display:none" onchange="importAllUserData(event)">
     </div>
 
+    <!-- Sécurité — Appareils de confiance -->
+    <div style="height:1px;background:var(--border);margin:18px 0"></div>
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:6px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Appareils de confiance
+    </div>
+    <div style="font-size:11px;color:var(--text3);line-height:1.55;margin-bottom:10px">
+      Les appareils ci-dessous peuvent se connecter sans code de vérification pendant 90 jours après leur dernière connexion. Révoquez ceux que vous ne reconnaissez pas.
+    </div>
+    <div id="trusted-devices-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;font-size:12px">
+      <div style="color:var(--text3);font-style:italic;padding:8px 0">Chargement…</div>
+    </div>
+    <button onclick="refreshTrustedDevices()" style="width:100%;padding:8px;background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);margin-bottom:6px">Rafraîchir la liste</button>
+    <button onclick="revokeAllOtherDevices()" style="width:100%;padding:8px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);color:#ff4d6a;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans)">Révoquer tous les autres appareils</button>
+
     <!-- Mentions légales -->
     <div style="height:1px;background:var(--border);margin:18px 0"></div>
     <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:6px">
@@ -1287,7 +1337,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script src="js/app.js?v=20260530h"></script>
+<script src="js/app.js?v=20260530i"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">

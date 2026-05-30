@@ -56,9 +56,13 @@ const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vN
 const EMAILJS_CONFIG = {
   publicKey:       'FQN2IWcgPaxa56jT5',
   serviceId:       'service_do5j0pl',
-  templateOtp:     'template_8qr2a3g',  // code 6 chiffres suppression compte
+  templateOtp:     'template_8qr2a3g',  // code 6 chiffres (suppression compte + nouvel appareil)
   templateConfirm: 'template_l1uno1h',  // confirmation post-suppression
 };
+
+// 2FA device-based — durée trust appareil
+const DEVICE_TRUST_DAYS = 90;
+const DEVICE_TRUST_MS   = DEVICE_TRUST_DAYS * 24 * 60 * 60 * 1000;
 
 let _splashWatchdog = null;
 function _hideSplash() {
@@ -170,6 +174,29 @@ _splashWatchdog = setTimeout(() => {
       if (!u.emailVerified) {
         showVerifyView(u.email);
         return;
+      }
+      // Gate 2FA device — vérif appareil de confiance (90j)
+      try {
+        const deviceId = _getDeviceId();
+        // Signup : auto-trust 1er device après vérif email
+        let autoTrust = false;
+        try { autoTrust = localStorage.getItem('signup_auto_trust') === '1'; } catch(_) {}
+        if (autoTrust) {
+          try { await u.getIdToken(true); } catch(_) {}
+          try { await _addTrustedDevice(u.uid, deviceId, _getDeviceLabel()); } catch(_) {}
+          try { localStorage.removeItem('signup_auto_trust'); } catch(_) {}
+        } else {
+          const trusted = await _isDeviceTrusted(u.uid, deviceId);
+          if (!trusted) {
+            showDeviceVerifyView(u.email);
+            return;
+          }
+          // Trusted → bump lastSeen async (pas bloquant)
+          _updateDeviceLastSeen(u.uid, deviceId);
+        }
+      } catch(e) {
+        console.error('[2fa] device check échoué:', e);
+        // En cas d'erreur Firestore : fail-open (laisse passer) pour éviter lockout
       }
       startApp(u);
     });
@@ -489,6 +516,7 @@ window.showLoginView = function() {
   document.getElementById('login-view').style.display = 'block';
   document.getElementById('register-view').style.display = 'none';
   const vv = document.getElementById('verify-view'); if (vv) vv.style.display = 'none';
+  const dv = document.getElementById('device-verify-view'); if (dv) dv.style.display = 'none';
   document.getElementById('login-error').textContent = '';
   stopVerifyPolling();
 };
@@ -496,6 +524,7 @@ window.showRegisterView = function() {
   document.getElementById('login-view').style.display = 'none';
   document.getElementById('register-view').style.display = 'block';
   const vv = document.getElementById('verify-view'); if (vv) vv.style.display = 'none';
+  const dv = document.getElementById('device-verify-view'); if (dv) dv.style.display = 'none';
   document.getElementById('register-error').textContent = '';
   stopVerifyPolling();
 };
@@ -598,6 +627,249 @@ window.veLogout = async function() {
   showLoginView();
 };
 
+// ─── 2FA NOUVEL APPAREIL — UI ───────────────────────────
+let _dvLastSent = 0;
+let _dvResendTimer = null;
+
+function showDeviceVerifyView(email) {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('register-view').style.display = 'none';
+  const vv = document.getElementById('verify-view'); if (vv) vv.style.display = 'none';
+  const view = document.getElementById('device-verify-view');
+  if (view) view.style.display = 'block';
+  const eDisp = document.getElementById('dv-email-display');
+  if (eDisp) eDisp.textContent = email || '';
+  const dLabel = document.getElementById('dv-device-label');
+  if (dLabel) dLabel.textContent = _getDeviceLabel();
+  // Reset étapes
+  document.getElementById('dv-step-send').style.display = 'block';
+  document.getElementById('dv-step-verify').style.display = 'none';
+  const se = document.getElementById('dv-send-error'); if (se) se.style.display = 'none';
+  const ve = document.getElementById('dv-verify-error'); if (ve) ve.style.display = 'none';
+  const oi = document.getElementById('dv-otp-input'); if (oi) oi.value = '';
+  _hideSplash();
+}
+
+function _startDvResendCooldown() {
+  const btn = document.getElementById('dv-resend-btn');
+  if (!btn) return;
+  if (_dvResendTimer) clearInterval(_dvResendTimer);
+  const tick = () => {
+    const remain = Math.max(0, 60 - Math.floor((Date.now() - _dvLastSent) / 1000));
+    if (remain > 0) {
+      btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed';
+      btn.textContent = `Renvoyer le code (${remain}s)`;
+    } else {
+      btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
+      btn.textContent = 'Renvoyer le code';
+      clearInterval(_dvResendTimer); _dvResendTimer = null;
+    }
+  };
+  tick();
+  _dvResendTimer = setInterval(tick, 1000);
+}
+
+async function _dvGenerateAndSend(user) {
+  // Force refresh token (rules _isVerified)
+  try { await user.reload(); await user.getIdToken(true); } catch(_) {}
+  const code = _genOtp();
+  const expiresAt = Date.now() + 10 * 60 * 1000;
+  const deviceId = _getDeviceId();
+  const ref = firestoreDoc(db, 'users', user.uid, 'data', 'deviceOtp');
+  const payload = { code, expiresAt, attempts: 0, deviceId, createdAt: Date.now() };
+  try {
+    await setFirestoreDoc(ref, payload);
+  } catch(e) {
+    if (e.code === 'permission-denied') {
+      await new Promise(r => setTimeout(r, 800));
+      try { await user.getIdToken(true); } catch(_) {}
+      await setFirestoreDoc(ref, payload);
+    } else { throw e; }
+  }
+  await _sendOtpEmail(user.email, code);
+  _dvLastSent = Date.now();
+}
+
+window.dvSendOtp = async function() {
+  const err = document.getElementById('dv-send-error');
+  if (err) err.style.display = 'none';
+  const user = fbAuth.currentUser;
+  if (!user || !user.email) return;
+  setLoading('dv-send-btn', true);
+  try {
+    await _dvGenerateAndSend(user);
+    document.getElementById('dv-step-send').style.display = 'none';
+    document.getElementById('dv-step-verify').style.display = 'block';
+    const oi = document.getElementById('dv-otp-input');
+    if (oi) { oi.value = ''; setTimeout(() => oi.focus(), 50); }
+    _startDvResendCooldown();
+  } catch(e) {
+    console.error('[2fa] envoi code échoué:', e);
+    if (err) {
+      err.textContent = 'Erreur envoi du code : ' + (e.message || e.text || 'inconnue');
+      err.style.display = 'block';
+    }
+  } finally {
+    setLoading('dv-send-btn', false);
+  }
+};
+
+window.dvResendOtp = async function() {
+  if (Date.now() - _dvLastSent < 60 * 1000) return;
+  const user = fbAuth.currentUser;
+  if (!user || !user.email) return;
+  const ve = document.getElementById('dv-verify-error');
+  try {
+    await _dvGenerateAndSend(user);
+    _startDvResendCooldown();
+    if (ve) {
+      ve.textContent = 'Nouveau code envoyé.';
+      ve.style.color = '#22d98a'; ve.style.background = 'rgba(34,217,138,0.08)';
+      ve.style.display = 'block';
+      setTimeout(() => { ve.style.display = 'none'; ve.style.color = '#ff4d6a'; ve.style.background = 'rgba(255,77,106,0.08)'; }, 3000);
+    }
+  } catch(e) {
+    console.error('[2fa] renvoi code échoué:', e);
+    if (ve) { ve.textContent = 'Échec renvoi : ' + (e.message || e.text || 'inconnue'); ve.style.display = 'block'; }
+  }
+};
+
+window.dvVerifyOtp = async function() {
+  const ve = document.getElementById('dv-verify-error');
+  if (ve) ve.style.display = 'none';
+  const oi = document.getElementById('dv-otp-input');
+  const input = (oi?.value || '').trim();
+  if (!/^\d{6}$/.test(input)) {
+    if (ve) { ve.textContent = 'Code invalide (6 chiffres attendus).'; ve.style.display = 'block'; }
+    return;
+  }
+  const user = fbAuth.currentUser;
+  if (!user || !user.email) return;
+  setLoading('dv-verify-btn', true);
+  try {
+    const ref = firestoreDoc(db, 'users', user.uid, 'data', 'deviceOtp');
+    const snap = await getFirestoreDoc(ref);
+    if (!snap.exists()) {
+      if (ve) { ve.textContent = 'Code expiré. Renvoyez-en un nouveau.'; ve.style.display = 'block'; }
+      return;
+    }
+    const data = snap.data();
+    if (Date.now() > data.expiresAt) {
+      if (ve) { ve.textContent = 'Code expiré. Renvoyez-en un nouveau.'; ve.style.display = 'block'; }
+      return;
+    }
+    if ((data.attempts || 0) >= 5) {
+      if (ve) { ve.textContent = 'Trop de tentatives. Renvoyez un nouveau code.'; ve.style.display = 'block'; }
+      return;
+    }
+    if (data.code !== input) {
+      const left = 5 - ((data.attempts || 0) + 1);
+      await setFirestoreDoc(ref, { ...data, attempts: (data.attempts || 0) + 1 });
+      if (ve) { ve.textContent = `Code incorrect. ${left} tentative(s) restante(s).`; ve.style.display = 'block'; }
+      return;
+    }
+    // OK → ajoute device trusté + cleanup + démarre app
+    const deviceId = _getDeviceId();
+    await _addTrustedDevice(user.uid, deviceId, _getDeviceLabel());
+    try { await deleteFirestoreDoc(ref); } catch(_) {}
+    // Cache vue
+    document.getElementById('device-verify-view').style.display = 'none';
+    startApp(user);
+  } catch(e) {
+    console.error('[2fa] verify échoué:', e);
+    if (ve) { ve.textContent = 'Erreur : ' + (e.message || e.code || 'inconnue'); ve.style.display = 'block'; }
+  } finally {
+    setLoading('dv-verify-btn', false);
+  }
+};
+
+window.dvLogout = async function() {
+  try { await signOut(fbAuth); } catch(_) {}
+  showLoginView();
+};
+
+// ─── PROFIL — Appareils de confiance ────────────────────
+function _fmtDeviceDate(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+window.refreshTrustedDevices = async function() {
+  const container = document.getElementById('trusted-devices-list');
+  if (!container) return;
+  const user = fbAuth.currentUser;
+  if (!user) { container.innerHTML = '<div style="color:var(--text3);font-style:italic;padding:8px 0">Non connecté</div>'; return; }
+  container.innerHTML = '<div style="color:var(--text3);font-style:italic;padding:8px 0">Chargement…</div>';
+  try {
+    const devices = await _getTrustedDevices(user.uid);
+    const currentId = _getDeviceId();
+    const entries = Object.entries(devices);
+    if (!entries.length) {
+      container.innerHTML = '<div style="color:var(--text3);font-style:italic;padding:8px 0">Aucun appareil de confiance.</div>';
+      return;
+    }
+    // Tri : current first, puis lastSeen desc
+    entries.sort((a, b) => {
+      if (a[0] === currentId) return -1;
+      if (b[0] === currentId) return 1;
+      return (b[1].lastSeen || 0) - (a[1].lastSeen || 0);
+    });
+    container.innerHTML = entries.map(([id, d]) => {
+      const isCurrent = id === currentId;
+      const expiresIn = Math.max(0, Math.ceil((d.expiresAt - Date.now()) / (24*60*60*1000)));
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;color:var(--text);font-size:12px;display:flex;align-items:center;gap:6px">
+              ${_escapeHtmlChat(d.label || 'Appareil inconnu')}
+              ${isCurrent ? '<span style="font-size:10px;color:#22d98a;background:rgba(34,217,138,0.12);padding:2px 6px;border-radius:6px;font-weight:700">CET APPAREIL</span>' : ''}
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:3px">
+              Ajouté ${_fmtDeviceDate(d.firstSeen)} · Vu ${_fmtDeviceDate(d.lastSeen)} · Expire dans ${expiresIn}j
+            </div>
+          </div>
+          ${isCurrent ? '' : `<button onclick="revokeTrustedDevice('${id}')" style="padding:6px 10px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);color:#ff4d6a;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);flex-shrink:0">Révoquer</button>`}
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    console.error('[2fa] refresh devices échoué:', e);
+    container.innerHTML = '<div style="color:#ff4d6a;font-size:11px;padding:8px 0">Erreur de chargement.</div>';
+  }
+};
+
+window.revokeTrustedDevice = async function(deviceId) {
+  const user = fbAuth.currentUser;
+  if (!user) return;
+  if (!confirm('Révoquer cet appareil ? Il devra refaire une vérification email pour se reconnecter.')) return;
+  try {
+    await _revokeTrustedDevice(user.uid, deviceId);
+    await window.refreshTrustedDevices();
+  } catch(e) {
+    console.error('[2fa] revoke échoué:', e);
+    alert('Erreur révocation : ' + (e.message || e.code || 'inconnue'));
+  }
+};
+
+window.revokeAllOtherDevices = async function() {
+  const user = fbAuth.currentUser;
+  if (!user) return;
+  if (!confirm('Révoquer tous les autres appareils ? Vous resterez connecté ici, mais les autres devront refaire la vérification email.')) return;
+  try {
+    const devices = await _getTrustedDevices(user.uid);
+    const currentId = _getDeviceId();
+    const kept = devices[currentId] ? { [currentId]: devices[currentId] } : {};
+    const ref = firestoreDoc(db, 'users', user.uid, 'data', 'trustedDevices');
+    await setFirestoreDoc(ref, { devices: kept });
+    await window.refreshTrustedDevices();
+  } catch(e) {
+    console.error('[2fa] revoke all échoué:', e);
+    alert('Erreur : ' + (e.message || e.code || 'inconnue'));
+  }
+};
+
 // ─── LOGIN ────────────────────────────────────────────
 window.doLogin = async function() {
   const email = document.getElementById('input-email').value.trim();
@@ -647,6 +919,8 @@ window.doRegister = async function() {
     } catch(eMail) {
       console.warn('sendEmailVerification failed:', eMail);
     }
+    // Flag : auto-trust ce device au passage emailVerified=true (skip 2FA pour 1er device)
+    try { localStorage.setItem('signup_auto_trust', '1'); } catch(_) {}
   } catch(e) {
     err.textContent = firebaseErrorMsg(e.code);
     err.style.display = 'block';
@@ -765,6 +1039,8 @@ function stopApp() {
 
 // ─── PROFIL ───────────────────────────────────────────
 window.openProfilModal = function() {
+  // Charge liste appareils confiance à l'ouverture
+  try { window.refreshTrustedDevices && window.refreshTrustedDevices(); } catch(_) {}
   document.getElementById('profil-modal-overlay').classList.add('open');
   loadProfilePage(fbAuth.currentUser);
 };
@@ -931,6 +1207,108 @@ window.delBackToStep1 = function() {
 // Génère code 6 chiffres
 function _genOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+// ─── 2FA DEVICE TRUST ──────────────────────────────────────
+
+// ID unique persistant pour cet appareil/navigateur (stocké localStorage)
+function _getDeviceId() {
+  try {
+    let id = localStorage.getItem('device_id');
+    if (!id) {
+      id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+      localStorage.setItem('device_id', id);
+    }
+    return id;
+  } catch(_) {
+    // Fallback session-only
+    if (!window._sessionDeviceId) window._sessionDeviceId = 'sess_' + Date.now().toString(36);
+    return window._sessionDeviceId;
+  }
+}
+
+// Label lisible depuis userAgent : "Firefox sur Windows" / "Safari sur iPhone"
+function _getDeviceLabel() {
+  const ua = navigator.userAgent || '';
+  let browser = 'Navigateur';
+  if (/Edg\//.test(ua)) browser = 'Edge';
+  else if (/Chrome\//.test(ua) && !/Edg\//.test(ua) && !/OPR\//.test(ua)) browser = 'Chrome';
+  else if (/Firefox\//.test(ua)) browser = 'Firefox';
+  else if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) browser = 'Safari';
+  else if (/OPR\//.test(ua)) browser = 'Opera';
+  let os = 'OS inconnu';
+  if (/Windows NT/.test(ua)) os = 'Windows';
+  else if (/Mac OS X/.test(ua) && !/Mobile/.test(ua)) os = 'macOS';
+  else if (/iPhone|iPad|iPod/.test(ua)) os = 'iPhone/iPad';
+  else if (/Android/.test(ua)) os = 'Android';
+  else if (/Linux/.test(ua)) os = 'Linux';
+  return `${browser} sur ${os}`;
+}
+
+// Lit la liste des appareils trustés (purge expirés au passage)
+async function _getTrustedDevices(uid) {
+  try {
+    const ref = firestoreDoc(db, 'users', uid, 'data', 'trustedDevices');
+    const snap = await getFirestoreDoc(ref);
+    if (!snap.exists()) return {};
+    const data = snap.data() || {};
+    const devices = data.devices || {};
+    const now = Date.now();
+    // Filtre expirés
+    const valid = {};
+    for (const [id, d] of Object.entries(devices)) {
+      if (d && d.expiresAt && d.expiresAt > now) valid[id] = d;
+    }
+    return valid;
+  } catch(_) { return {}; }
+}
+
+async function _isDeviceTrusted(uid, deviceId) {
+  const devices = await _getTrustedDevices(uid);
+  const d = devices[deviceId];
+  return !!(d && d.expiresAt > Date.now());
+}
+
+async function _addTrustedDevice(uid, deviceId, label) {
+  const ref = firestoreDoc(db, 'users', uid, 'data', 'trustedDevices');
+  const snap = await getFirestoreDoc(ref);
+  const data = (snap.exists() && snap.data()) || {};
+  const devices = data.devices || {};
+  const now = Date.now();
+  // Purge expirés à l'écriture
+  for (const [id, d] of Object.entries(devices)) {
+    if (!d || !d.expiresAt || d.expiresAt <= now) delete devices[id];
+  }
+  devices[deviceId] = {
+    label: label || _getDeviceLabel(),
+    firstSeen: devices[deviceId]?.firstSeen || now,
+    lastSeen: now,
+    expiresAt: now + DEVICE_TRUST_MS,
+  };
+  await setFirestoreDoc(ref, { devices });
+}
+
+async function _updateDeviceLastSeen(uid, deviceId) {
+  try {
+    const ref = firestoreDoc(db, 'users', uid, 'data', 'trustedDevices');
+    const snap = await getFirestoreDoc(ref);
+    if (!snap.exists()) return;
+    const data = snap.data() || {};
+    const devices = data.devices || {};
+    if (!devices[deviceId]) return;
+    devices[deviceId].lastSeen = Date.now();
+    await setFirestoreDoc(ref, { devices });
+  } catch(_) {}
+}
+
+async function _revokeTrustedDevice(uid, deviceId) {
+  const ref = firestoreDoc(db, 'users', uid, 'data', 'trustedDevices');
+  const snap = await getFirestoreDoc(ref);
+  if (!snap.exists()) return;
+  const data = snap.data() || {};
+  const devices = data.devices || {};
+  delete devices[deviceId];
+  await setFirestoreDoc(ref, { devices });
 }
 
 // Envoi mail OTP via EmailJS

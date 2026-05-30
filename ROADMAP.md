@@ -39,6 +39,7 @@ Permettre à un utilisateur en mode démo (`?demo=1`) de s'inscrire et de garder
 
 ## Livré récemment
 
+- **2FA device-based obligatoire** (2026-05-30) — chaque nouvel appareil/navigateur déclenche un OTP email (template EmailJS `template_8qr2a3g`) avant accès app. `deviceId` UUID stocké localStorage, trust persisté 90 jours dans `users/{uid}/data/trustedDevices`. Vue dédiée `#device-verify-view`. Auto-trust 1er device au signup (skip 2FA pour éviter double mail). Section Profil "Appareils de confiance" avec liste + révocation individuelle + révoquer tous les autres.
 - **Vérification email à l'inscription** (2026-05-25) — `sendEmailVerification` au signup, gate `onAuthStateChanged` bloque dashboard tant que `!emailVerified`, vue `#verify-view` dédiée avec polling 4s + listeners focus/visibilitychange pour unlock auto au retour sur PWA iPhone, throttle renvoi 60s. Firestore rules gatées via `request.auth.token.email_verified`.
 - **Suppression compte complète Firebase** (2026-05-25) — modal stylé 2 étapes (warning + mdp), `deleteAllUserData` nettoie tous les docs `users/{uid}/data/*` + doc racine + supportChats messages + supportThreads + presence + roles + Storage `support-attachments/{uid}/*`. Mapping erreurs Auth en FR.
 - **Mode démo sans inscription** (`?demo=1`) — dataset fictif PEA enrichi (9 lignes + 14 tx + 7 versements + recap IA), bandeau orange persistant, bypass Firestore/Auth/Push, page Performance bloquée avec CTA signup, popup dividende auto désactivé
