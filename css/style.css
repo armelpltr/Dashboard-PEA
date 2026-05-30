@@ -682,20 +682,14 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .stat-change.pos { color: var(--positive); }
 .stat-change.neg { color: var(--negative); }
 
-/* ─── Masquer le solde (toggle bouton œil) ────────── */
-body.balance-hidden .stat-value,
-body.balance-hidden .stat-change,
-body.balance-hidden .sensitive,
-body.balance-hidden [data-sensitive] {
+/* ─── Masquer le solde — blur tout élément marqué .sensitive (auto via JS) ─── */
+body.balance-hidden .sensitive {
   filter: blur(8px);
   -webkit-filter: blur(8px);
   user-select: none;
   transition: filter .15s;
 }
-body.balance-hidden .stat-value:hover,
-body.balance-hidden .stat-change:hover,
-body.balance-hidden .sensitive:hover,
-body.balance-hidden [data-sensitive]:hover {
+body.balance-hidden .sensitive:hover {
   filter: blur(0);
   -webkit-filter: blur(0);
 }

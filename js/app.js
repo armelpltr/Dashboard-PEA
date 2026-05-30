@@ -802,13 +802,60 @@ window.dvLogout = async function() {
   showLoginView();
 };
 
-// ─── MASQUER LE SOLDE (toggle œil) ──────────────────────
+// ─── MASQUER LE SOLDE (toggle œil) — masque tout texte avec € ou % ──
 const _EYE_OPEN_SVG = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
 const _EYE_OFF_SVG  = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
 
+const _MONEY_RE = /[€$£¥%]|\bEUR\b|\bUSD\b/;
+let _hideObserver = null;
+
+// Marque les éléments feuille contenant € ou % avec classe .sensitive
+function _markSensitiveIn(root) {
+  if (!root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => _MONEY_RE.test(n.nodeValue || '') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+  });
+  let n;
+  while ((n = walker.nextNode())) {
+    const el = n.parentElement;
+    if (!el) continue;
+    // Skip scripts, styles, et conteneurs trop larges (parent de plusieurs éléments)
+    if (el.closest('script,style,#device-verify-view,#verify-view,#login-view,#register-view')) continue;
+    if (!el.classList.contains('sensitive')) el.classList.add('sensitive');
+  }
+}
+
+function _startHideObserver() {
+  _markSensitiveIn(document.body);
+  if (_hideObserver) return;
+  _hideObserver = new MutationObserver(mutations => {
+    for (const m of mutations) {
+      if (m.type === 'childList') {
+        m.addedNodes.forEach(node => {
+          if (node.nodeType === 1) _markSensitiveIn(node);
+          else if (node.nodeType === 3 && _MONEY_RE.test(node.nodeValue || '')) {
+            const p = node.parentElement;
+            if (p && !p.classList.contains('sensitive')) p.classList.add('sensitive');
+          }
+        });
+      } else if (m.type === 'characterData' && _MONEY_RE.test(m.target.nodeValue || '')) {
+        const p = m.target.parentElement;
+        if (p && !p.classList.contains('sensitive')) p.classList.add('sensitive');
+      }
+    }
+  });
+  _hideObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+}
+
+function _stopHideObserver() {
+  if (_hideObserver) { _hideObserver.disconnect(); _hideObserver = null; }
+  document.querySelectorAll('.sensitive').forEach(el => el.classList.remove('sensitive'));
+}
+
 function _applyHideBalances(hidden) {
   document.body.classList.toggle('balance-hidden', !!hidden);
-  // Update icons + label
+  if (hidden) _startHideObserver();
+  else _stopHideObserver();
   const mi = document.getElementById('mobile-hide-icon');
   if (mi) mi.innerHTML = hidden ? _EYE_OFF_SVG : _EYE_OPEN_SVG;
   const si = document.getElementById('sidebar-hide-icon');
@@ -824,7 +871,6 @@ window.toggleHideBalances = function() {
   _applyHideBalances(next);
 };
 
-// Restore au démarrage de l'app
 function _restoreHideBalances() {
   try {
     const hidden = localStorage.getItem('balance_hidden') === '1';
