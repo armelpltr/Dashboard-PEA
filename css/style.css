@@ -687,11 +687,6 @@ body.balance-hidden .sensitive {
   filter: blur(8px);
   -webkit-filter: blur(8px);
   user-select: none;
-  transition: filter .15s;
-}
-body.balance-hidden .sensitive:hover {
-  filter: blur(0);
-  -webkit-filter: blur(0);
 }
 
 /* ═══════════════════════════════════════════════════
