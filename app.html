@@ -170,6 +170,28 @@
     </div>
   </div>
 
+  <!-- VUE FORCE SETUP PIN (comptes sans PIN configuré) -->
+  <div class="login-card" id="pin-setup-view" style="display:none">
+    <div class="login-logo">
+      <div class="logo-icon"><img src="logo.png" alt="logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
+      <div class="login-title">Configurer votre code PIN</div>
+      <div class="login-subtitle">Capital Board</div>
+    </div>
+    <div style="text-align:center;font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:14px">
+      Pour la sécurité de vos données, un code à 6 chiffres est désormais requis pour accéder à l'application.
+    </div>
+    <div style="font-size:11px;color:var(--text3);line-height:1.55;margin-bottom:18px;padding:10px 14px;background:var(--s2);border:1px solid var(--border2);border-radius:10px">
+      Ce code vous sera demandé à chaque ouverture de l'application sur n'importe quel appareil.
+    </div>
+    <div id="pin-setup-view-step-label" style="font-size:12px;color:var(--text3);margin-bottom:8px;text-align:center;font-weight:600">Étape 1/2 — Saisissez un nouveau code</div>
+    <input id="pin-setup-view-input" type="tel" inputmode="numeric" autocomplete="off" maxlength="6" pattern="[0-9]{6}" placeholder="••••••" style="width:100%;padding:14px;border-radius:10px;border:1px solid var(--border2);background:var(--s2);color:var(--text);font-size:24px;font-family:var(--mono);font-weight:700;text-align:center;letter-spacing:10px;margin-bottom:12px;outline:none">
+    <div id="pin-setup-view-error" style="display:none;font-size:12px;color:#ff4d6a;margin-bottom:10px;text-align:center;padding:8px 12px;background:rgba(255,77,106,0.08);border-radius:8px"></div>
+    <button class="btn-login" id="pin-setup-view-btn" onclick="pinSetupViewSubmit()">Continuer</button>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
+      <span onclick="pinLockLogout()" style="color:var(--accent);cursor:pointer;font-weight:600">Se déconnecter</span>
+    </div>
+  </div>
+
   <!-- VUE LOCK PIN -->
   <div class="login-card" id="pin-lock-view" style="display:none">
     <div class="login-logo">
@@ -1379,7 +1401,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script src="js/app.js?v=20260530r"></script>
+<script src="js/app.js?v=20260530s"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">

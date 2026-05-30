@@ -201,20 +201,23 @@ _splashWatchdog = setTimeout(() => {
         console.error('[2fa] device check échoué:', e);
         // En cas d'erreur Firestore : fail-open (laisse passer) pour éviter lockout
       }
-      // Gate PIN — si PIN configuré + pas déjà déverrouillé cette session
+      // Gate PIN — obligatoire pour tous les users
       try {
         let alreadyUnlocked = false;
         try { alreadyUnlocked = sessionStorage.getItem('pin_unlocked') === '1'; } catch(_) {}
+        const pinOn = await _isPinEnabled(u.uid);
+        if (!pinOn) {
+          // Compte sans PIN : force la configuration avant l'accès
+          showPinSetupView(u);
+          return;
+        }
         if (!alreadyUnlocked) {
-          const pinOn = await _isPinEnabled(u.uid);
-          if (pinOn) {
-            showPinLockView(u);
-            return;
-          }
+          showPinLockView(u);
+          return;
         }
       } catch(e) {
         console.error('[pin] check échoué:', e);
-        // Fail-open : laisse passer en cas d'erreur
+        // Fail-open : laisse passer en cas d'erreur Firestore (évite lockout)
       }
       startApp(u);
     });
@@ -536,6 +539,7 @@ window.showLoginView = function() {
   const vv = document.getElementById('verify-view'); if (vv) vv.style.display = 'none';
   const dv = document.getElementById('device-verify-view'); if (dv) dv.style.display = 'none';
   const pv = document.getElementById('pin-lock-view'); if (pv) pv.style.display = 'none';
+  const ps = document.getElementById('pin-setup-view'); if (ps) ps.style.display = 'none';
   document.getElementById('login-error').textContent = '';
   stopVerifyPolling();
 };
@@ -545,6 +549,7 @@ window.showRegisterView = function() {
   const vv = document.getElementById('verify-view'); if (vv) vv.style.display = 'none';
   const dv = document.getElementById('device-verify-view'); if (dv) dv.style.display = 'none';
   const pv = document.getElementById('pin-lock-view'); if (pv) pv.style.display = 'none';
+  const ps = document.getElementById('pin-setup-view'); if (ps) ps.style.display = 'none';
   document.getElementById('register-error').textContent = '';
   stopVerifyPolling();
 };
@@ -817,6 +822,76 @@ window.dvVerifyOtp = async function() {
 window.dvLogout = async function() {
   try { await signOut(fbAuth); } catch(_) {}
   showLoginView();
+};
+
+// ─── PIN — VUE FORCE SETUP (comptes sans PIN) ─────────
+let _pinSetupViewUser = null;
+let _pinSetupViewStep1 = '';
+
+function showPinSetupView(user) {
+  _pinSetupViewUser = user;
+  _pinSetupViewStep1 = '';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('register-view').style.display = 'none';
+  const vv = document.getElementById('verify-view'); if (vv) vv.style.display = 'none';
+  const dv = document.getElementById('device-verify-view'); if (dv) dv.style.display = 'none';
+  const lv = document.getElementById('pin-lock-view'); if (lv) lv.style.display = 'none';
+  const view = document.getElementById('pin-setup-view');
+  if (view) view.style.display = 'block';
+  document.getElementById('pin-setup-view-step-label').textContent = 'Étape 1/2 — Saisissez un nouveau code';
+  document.getElementById('pin-setup-view-btn').textContent = 'Continuer';
+  const inp = document.getElementById('pin-setup-view-input');
+  if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 50); inp.onkeydown = e => { if (e.key === 'Enter') window.pinSetupViewSubmit(); }; }
+  const err = document.getElementById('pin-setup-view-error'); if (err) err.style.display = 'none';
+  _hideSplash();
+}
+
+window.pinSetupViewSubmit = async function() {
+  const inp = document.getElementById('pin-setup-view-input');
+  const err = document.getElementById('pin-setup-view-error');
+  const btn = document.getElementById('pin-setup-view-btn');
+  const stepLbl = document.getElementById('pin-setup-view-step-label');
+  const val = (inp?.value || '').trim();
+  if (err) err.style.display = 'none';
+  if (!/^\d{6}$/.test(val)) {
+    if (err) { err.textContent = 'Le code doit faire exactement 6 chiffres.'; err.style.display = 'block'; }
+    return;
+  }
+  if (!_pinSetupViewStep1) {
+    _pinSetupViewStep1 = val;
+    inp.value = '';
+    stepLbl.textContent = 'Étape 2/2 — Confirmez le code';
+    btn.textContent = 'Valider';
+    setTimeout(() => inp.focus(), 50);
+    return;
+  }
+  if (val !== _pinSetupViewStep1) {
+    if (err) { err.textContent = 'Les codes ne correspondent pas. Recommencez.'; err.style.display = 'block'; }
+    _pinSetupViewStep1 = '';
+    inp.value = '';
+    stepLbl.textContent = 'Étape 1/2 — Saisissez un nouveau code';
+    btn.textContent = 'Continuer';
+    setTimeout(() => inp.focus(), 50);
+    return;
+  }
+  const user = _pinSetupViewUser || fbAuth.currentUser;
+  if (!user) return;
+  setLoading('pin-setup-view-btn', true);
+  try {
+    try { await user.reload(); await user.getIdToken(true); } catch(_) {}
+    await _setupPin(user.uid, val);
+    try { sessionStorage.setItem('pin_unlocked', '1'); } catch(_) {}
+    document.getElementById('pin-setup-view').style.display = 'none';
+    _pinSetupViewUser = null; _pinSetupViewStep1 = '';
+    startApp(user);
+  } catch(e) {
+    console.error('[pin] force setup échoué:', e);
+    if (err) { err.textContent = 'Erreur : ' + (e.message || e.code || 'inconnue'); err.style.display = 'block'; }
+  } finally {
+    setLoading('pin-setup-view-btn', false);
+  }
 };
 
 // ─── PIN LOCK SCREEN ──────────────────────────────────
