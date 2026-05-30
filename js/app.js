@@ -1142,9 +1142,9 @@ window.delVerifyOtp = async function() {
     await deleteAllUserData(uid);
     // 3) Mail confirmation post-suppression
     await _sendDeleteConfirmationEmail(email);
-    // 4) Ferme modal + force retour login (deleteUser devrait trigger onAuthStateChanged
-    //    mais on force pour fiabilité si écouteurs Firestore bloquent le cycle)
+    // 4) Ferme toutes modals + force retour login
     window.closeDeleteAccountModal();
+    try { window.closeProfilModal && window.closeProfilModal(); } catch(_) {}
     try { await signOut(fbAuth); } catch(_) {}
     try { stopApp(); } catch(_) {}
   } catch(e) {
