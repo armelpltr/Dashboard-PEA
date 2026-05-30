@@ -931,7 +931,7 @@ window.refreshTrustedDevices = async function() {
               Ajouté ${_fmtDeviceDate(d.firstSeen)} · Vu ${_fmtDeviceDate(d.lastSeen)} · Expire dans ${expiresIn}j
             </div>
           </div>
-          ${isCurrent ? '' : `<button onclick="revokeTrustedDevice('${id}')" style="padding:6px 10px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);color:#ff4d6a;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);flex-shrink:0">Révoquer</button>`}
+          <button onclick="revokeTrustedDevice('${id}')" style="padding:6px 10px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);color:#ff4d6a;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);flex-shrink:0">${isCurrent ? 'Révoquer & déconnecter' : 'Révoquer'}</button>
         </div>
       `;
     }).join('');
@@ -946,17 +946,26 @@ const _DEVICE_TRASH_SVG = '<svg width="28" height="28" viewBox="0 0 24 24" fill=
 window.revokeTrustedDevice = function(deviceId) {
   const user = fbAuth.currentUser;
   if (!user) return;
+  const isCurrent = deviceId === _getDeviceId();
   showConfirmModal({
     icon: _DEVICE_TRASH_SVG,
-    title: 'Révoquer cet appareil ?',
-    body: 'Il devra refaire une vérification email pour se reconnecter à votre compte.',
-    okLabel: 'Révoquer',
+    title: isCurrent ? 'Révoquer cet appareil ?' : 'Révoquer cet appareil ?',
+    body: isCurrent
+      ? 'Vous allez être déconnecté immédiatement. Vous devrez refaire une vérification email pour vous reconnecter.'
+      : 'Il devra refaire une vérification email pour se reconnecter à votre compte.',
+    okLabel: isCurrent ? 'Révoquer & déconnecter' : 'Révoquer',
     cancelLabel: 'Annuler',
     danger: true,
     onConfirm: async () => {
       try {
         await _revokeTrustedDevice(user.uid, deviceId);
-        await window.refreshTrustedDevices();
+        if (isCurrent) {
+          try { window.closeProfilModal && window.closeProfilModal(); } catch(_) {}
+          try { await signOut(fbAuth); } catch(_) {}
+          try { stopApp(); } catch(_) {}
+        } else {
+          await window.refreshTrustedDevices();
+        }
       } catch(e) {
         console.error('[2fa] revoke échoué:', e);
         showConfirmModal({
