@@ -1359,7 +1359,7 @@ window.refreshTrustedDevices = async function() {
     container.innerHTML = entries.map(([id, d]) => {
       const isCurrent = id === currentId;
       const expiresIn = Math.max(0, Math.ceil((d.expiresAt - Date.now()) / (24*60*60*1000)));
-      const loc = [_trRegion(d.region), _trCountry(d.country)].filter(Boolean).join(', ');
+      const loc = _trCountry(d.country) || '';
       const flag = d.countryCode ? _countryFlag(d.countryCode) : '';
       const icoDevice = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
       const icoIp = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
@@ -1909,8 +1909,7 @@ async function _fetchIpInfo() {
 
 function _fmtLocation(info) {
   if (!info) return '';
-  const parts = [_trRegion(info.region), _trCountry(info.country)].filter(Boolean);
-  return parts.join(', ');
+  return _trCountry(info.country) || '';
 }
 
 async function _addTrustedDevice(uid, deviceId, label, ipInfo) {
