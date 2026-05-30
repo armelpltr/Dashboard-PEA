@@ -965,22 +965,44 @@ window.refreshTrustedDevices = async function() {
       const expiresIn = Math.max(0, Math.ceil((d.expiresAt - Date.now()) / (24*60*60*1000)));
       const loc = [_trRegion(d.region), _trCountry(d.country)].filter(Boolean).join(', ');
       const flag = d.countryCode ? _countryFlag(d.countryCode) : '';
-      const ipLine = (d.ip || loc)
-        ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;display:flex;align-items:center;gap:6px"><span style="font-family:var(--mono)">${_escapeHtmlChat(d.ip || '')}</span>${loc ? `<span>·</span><span>${flag} ${_escapeHtmlChat(loc)}</span>` : ''}</div>`
-        : '';
+      const icoDevice = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+      const icoIp = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+      const icoLoc = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+      const icoClock = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+      const icoTrash = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>';
+
+      const borderColor = isCurrent ? 'rgba(34,217,138,0.25)' : 'var(--border)';
+      const bgColor = isCurrent ? 'linear-gradient(180deg, rgba(34,217,138,0.04) 0%, var(--s2) 100%)' : 'var(--s2)';
+
       return `
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:10px">
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:600;color:var(--text);font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              ${_escapeHtmlChat(d.label || 'Appareil inconnu')}
-              ${isCurrent ? '<span style="font-size:10px;color:#22d98a;background:rgba(34,217,138,0.12);padding:2px 6px;border-radius:6px;font-weight:700">CET APPAREIL</span>' : ''}
+        <div style="background:${bgColor};border:1px solid ${borderColor};border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px">
+
+          <!-- Header : label + badge + bouton -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;color:var(--text2);margin-bottom:4px">
+                ${icoDevice}<span style="font-weight:700;color:var(--text);font-size:13px;font-family:var(--sans)">${_escapeHtmlChat(d.label || 'Appareil inconnu')}</span>
+              </div>
+              ${isCurrent ? '<div style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#22d98a;background:rgba(34,217,138,0.12);padding:3px 8px;border-radius:20px;font-weight:700;letter-spacing:0.4px"><span style="width:6px;height:6px;background:#22d98a;border-radius:50%;box-shadow:0 0 6px #22d98a"></span>CET APPAREIL</div>' : ''}
             </div>
-            ${ipLine}
-            <div style="font-size:10px;color:var(--text3);margin-top:3px">
-              Ajouté ${_fmtDeviceDate(d.firstSeen)} · Vu ${_fmtDeviceDate(d.lastSeen)} · Expire dans ${expiresIn}j
-            </div>
+            <button onclick="revokeTrustedDevice('${id}')" title="${isCurrent ? 'Révoquer cet appareil et se déconnecter' : 'Révoquer cet appareil'}" style="display:inline-flex;align-items:center;gap:5px;padding:7px 11px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.25);color:#ff4d6a;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);flex-shrink:0;transition:background .15s" onmouseover="this.style.background='rgba(255,77,106,0.15)'" onmouseout="this.style.background='rgba(255,77,106,0.08)'">
+              ${icoTrash}<span>${isCurrent ? 'Révoquer & déconnecter' : 'Révoquer'}</span>
+            </button>
           </div>
-          <button onclick="revokeTrustedDevice('${id}')" style="padding:6px 10px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);color:#ff4d6a;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);flex-shrink:0">${isCurrent ? 'Révoquer & déconnecter' : 'Révoquer'}</button>
+
+          <!-- Détails : grille 2 lignes -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:11px;color:var(--text3);padding-top:10px;border-top:1px solid var(--border)">
+            ${d.ip ? `<div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text2)">${icoIp}</span><span style="font-family:var(--mono);color:var(--text2)">${_escapeHtmlChat(d.ip)}</span></div>` : ''}
+            ${loc ? `<div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text2)">${icoLoc}</span><span>${flag} ${_escapeHtmlChat(loc)}</span></div>` : ''}
+            <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text2)">${icoClock}</span><span>Ajouté ${_fmtDeviceDate(d.firstSeen)}</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text2)">${icoClock}</span><span>Vu ${_fmtDeviceDate(d.lastSeen)}</span></div>
+          </div>
+
+          <!-- Footer : expiration -->
+          <div style="font-size:10px;color:var(--text3);text-align:right;font-style:italic">
+            Expire dans ${expiresIn} jour${expiresIn > 1 ? 's' : ''}
+          </div>
+
         </div>
       `;
     }).join('');
