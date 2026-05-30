@@ -1002,6 +1002,8 @@ window.delFinalize = async function() {
   if (!user || !user.email) return;
   setLoading('del-final-btn', true);
   try {
+    // Force refresh token (sinon email_verified claim peut être stale → rules deny)
+    try { await user.reload(); await user.getIdToken(true); } catch(_) {}
     const code = _genOtp();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
     await setFirestoreDoc(firestoreDoc(db, 'users', user.uid, 'data', 'deleteOtp'), {
@@ -1040,6 +1042,7 @@ window.delResendOtp = async function() {
   const oerr = document.getElementById('del-otp-error');
   if (oerr) oerr.style.display = 'none';
   try {
+    try { await user.reload(); await user.getIdToken(true); } catch(_) {}
     const code = _genOtp();
     const expiresAt = Date.now() + 10 * 60 * 1000;
     await setFirestoreDoc(firestoreDoc(db, 'users', user.uid, 'data', 'deleteOtp'), {
