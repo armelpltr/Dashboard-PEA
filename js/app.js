@@ -1168,10 +1168,15 @@ let _hideObserver = null;
 let _hideActive = false;
 
 function _maskTextNode(n) {
-  if (!_origTextMap.has(n)) _origTextMap.set(n, n.nodeValue);
+  // Si la valeur actuelle a des chiffres, c'est une nouvelle valeur originale → l'enregistrer
+  if (/\d/.test(n.nodeValue || '')) {
+    _origTextMap.set(n, n.nodeValue);
+  } else if (!_origTextMap.has(n)) {
+    return; // pas de chiffres et pas d'original connu → rien à masquer
+  }
   const orig = _origTextMap.get(n);
-  // Remplace chiffres par • (garde €, %, espaces, séparateurs alphabétiques)
-  n.nodeValue = orig.replace(/\d/g, '•');
+  const masked = orig.replace(/\d/g, '•');
+  if (n.nodeValue !== masked) n.nodeValue = masked;
 }
 
 function _unmaskTextNode(n) {
@@ -1198,41 +1203,39 @@ function _maskSensitiveIn(root) {
   nodes.forEach(_maskTextNode);
 }
 
+// Throttle re-mask pour éviter de saturer le main thread sur renders fréquents
+let _maskScheduled = false;
+function _scheduleRemaskAll() {
+  if (_maskScheduled) return;
+  _maskScheduled = true;
+  requestAnimationFrame(() => {
+    _maskScheduled = false;
+    if (_hideActive) _maskSensitiveIn(document.body);
+  });
+}
+
 function _startHideObserver() {
   _hideActive = true;
   _maskSensitiveIn(document.body);
   if (_hideObserver) return;
   _hideObserver = new MutationObserver(mutations => {
     if (!_hideActive) return;
+    let needsRemask = false;
     for (const m of mutations) {
       if (m.type === 'childList') {
-        m.addedNodes.forEach(node => {
-          if (node.nodeType === 1) _maskSensitiveIn(node);
-          else if (node.nodeType === 3 && _MONEY_RE.test(node.nodeValue || '')) {
-            const p = node.parentElement;
-            if (p && !p.closest('script,style,#device-verify-view,#verify-view,#login-view,#register-view')) {
-              _maskTextNode(node);
-            }
-          }
-        });
-      } else if (m.type === 'characterData') {
-        const node = m.target;
-        if (node.nodeType !== 3) continue;
-        // Si valeur change et qu'on l'avait masquée, mettre à jour l'original
-        if (_origTextMap.has(node)) {
-          // Si la nouvelle valeur n'est pas elle-même masquée (donc app a re-écrit)
-          if (!/^[•\s€$£¥%a-zA-Z,.]+$/.test(node.nodeValue) || /\d/.test(node.nodeValue)) {
-            _origTextMap.set(node, node.nodeValue);
-            _maskTextNode(node);
-          }
-        } else if (_MONEY_RE.test(node.nodeValue || '')) {
-          const p = node.parentElement;
-          if (p && !p.closest('script,style,#device-verify-view,#verify-view,#login-view,#register-view')) {
-            _maskTextNode(node);
+        for (const node of m.addedNodes) {
+          if (node.nodeType === 1 || (node.nodeType === 3 && _MONEY_RE.test(node.nodeValue || ''))) {
+            needsRemask = true; break;
           }
         }
+      } else if (m.type === 'characterData') {
+        const v = m.target.nodeValue || '';
+        // Skip si plus aucun chiffre (déjà masqué) — évite boucle infinie
+        if (/\d/.test(v)) { needsRemask = true; }
       }
+      if (needsRemask) break;
     }
+    if (needsRemask) _scheduleRemaskAll();
   });
   _hideObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
 }
