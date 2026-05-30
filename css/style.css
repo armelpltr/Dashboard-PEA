@@ -685,6 +685,33 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 /* ─── Masquer le solde : JS remplace les chiffres par bullets (• via WeakMap) ───
    Pas de blur (boîte moche). Approche text-level. */
 
+/* ─── Keypad PIN (mobile-style, désactive clavier natif) ─────── */
+.pin-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.pin-key {
+  padding: 16px 0;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--mono);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s, transform 0.05s;
+}
+.pin-key:hover { background: rgba(124,109,245,0.08); }
+.pin-key:active { background: rgba(124,109,245,0.18); transform: scale(0.96); }
+.pin-key.empty { visibility: hidden; cursor: default; }
+.pin-key.back { color: var(--accent); }
+.pin-key.back svg { display: inline-block; vertical-align: middle; }
+
 /* ─── Lock PIN dots ───────────────────────────────── */
 .pin-dot {
   width: 14px; height: 14px; border-radius: 50%;

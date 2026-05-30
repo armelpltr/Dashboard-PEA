@@ -820,6 +820,42 @@ window.dvLogout = async function() {
   showLoginView();
 };
 
+// ─── PIN KEYPAD (custom, désactive clavier natif iPhone/Android) ─────
+const _PIN_BACKSPACE_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>';
+
+function _renderPinKeypad(keypadId, inputId, onComplete) {
+  const kp = document.getElementById(keypadId);
+  if (!kp) return;
+  const keys = ['1','2','3','4','5','6','7','8','9','', '0','back'];
+  kp.innerHTML = keys.map(k => {
+    if (k === '') return '<button class="pin-key empty" tabindex="-1"></button>';
+    if (k === 'back') return `<button class="pin-key back" data-action="back" tabindex="-1">${_PIN_BACKSPACE_SVG}</button>`;
+    return `<button class="pin-key" data-digit="${k}" tabindex="-1">${k}</button>`;
+  }).join('');
+  // Click handlers
+  kp.querySelectorAll('.pin-key').forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      const inp = document.getElementById(inputId);
+      if (!inp) return;
+      const d = btn.getAttribute('data-digit');
+      const a = btn.getAttribute('data-action');
+      let v = (inp.value || '').replace(/\D/g, '');
+      if (d) {
+        if (v.length >= 6) return;
+        v += d;
+      } else if (a === 'back') {
+        v = v.slice(0, -1);
+      }
+      inp.value = v;
+      // Update dots si présent
+      if (inputId === 'pin-lock-input') _updatePinDots(v.length);
+      // Auto-submit à 6 chiffres
+      if (v.length === 6 && typeof onComplete === 'function') onComplete();
+    };
+  });
+}
+
 // ─── PIN — VUE FORCE SETUP (comptes sans PIN) ─────────
 let _pinSetupViewUser = null;
 let _pinSetupViewStep1 = '';
@@ -839,7 +875,8 @@ function showPinSetupView(user) {
   document.getElementById('pin-setup-view-step-label').textContent = 'Étape 1/2 — Saisissez un nouveau code';
   document.getElementById('pin-setup-view-btn').textContent = 'Continuer';
   const inp = document.getElementById('pin-setup-view-input');
-  if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 50); inp.onkeydown = e => { if (e.key === 'Enter') window.pinSetupViewSubmit(); }; }
+  if (inp) inp.value = '';
+  _renderPinKeypad('pin-setup-view-keypad', 'pin-setup-view-input', () => window.pinSetupViewSubmit());
   const err = document.getElementById('pin-setup-view-error'); if (err) err.style.display = 'none';
   _hideSplash();
 }
@@ -919,15 +956,8 @@ function showPinLockView(user) {
   if (inp) {
     inp.value = '';
     _updatePinDots(0);
-    setTimeout(() => inp.focus(), 50);
-    inp.oninput = () => {
-      const v = inp.value.replace(/\D/g, '').slice(0, 6);
-      inp.value = v;
-      _updatePinDots(v.length);
-      if (v.length === 6) window.pinLockSubmit();
-    };
-    inp.onkeydown = e => { if (e.key === 'Enter') window.pinLockSubmit(); };
   }
+  _renderPinKeypad('pin-lock-keypad', 'pin-lock-input', () => window.pinLockSubmit());
   const err = document.getElementById('pin-lock-error'); if (err) err.style.display = 'none';
   _hideSplash();
 }
@@ -1014,7 +1044,8 @@ window.openPinSetupModal = function(mode) {
   document.getElementById('pin-setup-sub').textContent = 'Saisissez un nouveau code à 6 chiffres.';
   document.getElementById('pin-setup-btn').textContent = 'Continuer';
   const inp = document.getElementById('pin-setup-input');
-  if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 50); }
+  if (inp) inp.value = '';
+  _renderPinKeypad('pin-setup-keypad', 'pin-setup-input', () => window.pinSetupSubmit());
   const err = document.getElementById('pin-setup-error'); if (err) err.style.display = 'none';
   m.style.display = 'flex';
 };
