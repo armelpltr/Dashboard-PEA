@@ -944,6 +944,7 @@ function _genOtp() {
 async function _sendOtpEmail(toEmail, code) {
   if (!window.emailjs) throw new Error('EmailJS SDK non chargé');
   return emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateOtp, {
+    email: toEmail,
     to_email: toEmail,
     code,
     app_name: 'Capital Board',
