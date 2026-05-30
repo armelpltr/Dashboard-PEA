@@ -43,7 +43,6 @@ let fbApp, fbAuth, db,
     signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
     signInWithRedirect, getRedirectResult,
     updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser,
-    sendSignInLinkToEmail,
     getFirestoreDoc, setFirestoreDoc, firestoreDoc, firestoreCollection, deleteFirestoreDoc, getDocs,
     addFirestoreDoc, onSnapshot, firestoreQuery, firestoreWhere, firestoreOrderBy, serverTimestamp,
     firestoreArrayUnion, firestoreArrayRemove, firestoreOr, firestoreDeleteField;
@@ -52,6 +51,14 @@ let fbStorage = null, fbStorageRef, fbStorageUploadBytes, fbStorageGetDownloadUR
 let fcmMessaging = null, getFCMToken, onFCMMessage;
 // VAPID key : Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Generate key pair
 const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vNXI1EL2xQKA1Nr6tmKaSX5hcGJY';
+
+// EmailJS — service mail client-side (200 mails/mois free)
+const EMAILJS_CONFIG = {
+  publicKey:       'FQN2IWcgPaxa56jT5',
+  serviceId:       'service_do5j0pl',
+  templateOtp:     'template_8qr2a3g',  // code 6 chiffres suppression compte
+  templateConfirm: 'template_l1uno1h',  // confirmation post-suppression
+};
 
 let _splashWatchdog = null;
 function _hideSplash() {
@@ -99,7 +106,11 @@ _splashWatchdog = setTimeout(() => {
   reauthenticateWithCredential   = auth.reauthenticateWithCredential;
   EmailAuthProvider              = auth.EmailAuthProvider;
   deleteUser                     = auth.deleteUser;
-  sendSignInLinkToEmail          = auth.sendSignInLinkToEmail;
+
+  // EmailJS init (SDK chargé via <script> dans app.html)
+  try {
+    if (window.emailjs) emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey });
+  } catch(_) {}
 
   const firestore = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
   getFirestoreDoc     = firestore.getDoc;
@@ -919,9 +930,68 @@ window.delBackToStep1 = function() {
   const s3 = document.getElementById('del-step-3'); if (s3) s3.style.display = 'none';
   const s4 = document.getElementById('del-step-4'); if (s4) s4.style.display = 'none';
   document.getElementById('del-step-1').style.display = 'block';
-  document.getElementById('del-error').style.display = 'none';
+  const err = document.getElementById('del-error'); if (err) err.style.display = 'none';
+  const oerr = document.getElementById('del-otp-error'); if (oerr) oerr.style.display = 'none';
+  const oi = document.getElementById('del-otp-input'); if (oi) oi.value = '';
 };
 
+// Génère code 6 chiffres
+function _genOtp() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+// Envoi mail OTP via EmailJS
+async function _sendOtpEmail(toEmail, code) {
+  if (!window.emailjs) throw new Error('EmailJS SDK non chargé');
+  return emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateOtp, {
+    to_email: toEmail,
+    code,
+    app_name: 'Capital Board',
+  });
+}
+
+// Envoi mail confirmation post-suppression
+async function _sendDeleteConfirmationEmail(toEmail) {
+  if (!window.emailjs) { console.warn('[email] EmailJS SDK non chargé, skip'); return; }
+  try {
+    await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateConfirm, {
+      to_email: toEmail,
+      date: new Date().toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' }),
+      app_name: 'Capital Board',
+    });
+  } catch(e) {
+    console.error('[email] confirmation post-suppression échouée:', e);
+  }
+}
+
+let _delLastSent = 0;
+let _delResendTimer = null;
+
+function _startResendCooldown() {
+  const btn = document.getElementById('del-resend-btn');
+  if (!btn) return;
+  if (_delResendTimer) clearInterval(_delResendTimer);
+  const tick = () => {
+    const remain = Math.max(0, 60 - Math.floor((Date.now() - _delLastSent) / 1000));
+    if (remain > 0) {
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
+      btn.textContent = `Renvoyer le code (${remain}s)`;
+    } else {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.textContent = 'Renvoyer le code';
+      clearInterval(_delResendTimer);
+      _delResendTimer = null;
+    }
+  };
+  tick();
+  _delResendTimer = setInterval(tick, 1000);
+}
+
+// Génère + stocke + envoie OTP. Bascule sur étape 4 (saisie code).
 window.delFinalize = async function() {
   const err = document.getElementById('del-error');
   err.style.display = 'none';
@@ -929,41 +999,148 @@ window.delFinalize = async function() {
   if (!user || !user.email) return;
   setLoading('del-final-btn', true);
   try {
-    const origin = window.location.origin;
-    const path = window.location.pathname.replace(/[^/]*$/, '');
-    const url = `${origin}${path}delete-confirm.html?email=${encodeURIComponent(user.email)}`;
-    console.log('[delete] sending sign-in link to', user.email, 'url=', url);
-    await sendSignInLinkToEmail(fbAuth, user.email, {
-      url,
-      handleCodeInApp: true,
+    const code = _genOtp();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
+    await setFirestoreDoc(firestoreDoc(db, 'users', user.uid, 'data', 'deleteOtp'), {
+      code,
+      expiresAt,
+      attempts: 0,
+      createdAt: Date.now(),
     });
-    // Stocke email + intention pour la page de confirmation
-    try {
-      window.localStorage.setItem('delete_pending_email', user.email);
-      window.localStorage.setItem('delete_pending_uid', user.uid);
-      window.localStorage.setItem('delete_pending_ts', String(Date.now()));
-    } catch(_) {}
-    // Affiche étape 4 (email envoyé)
+    await _sendOtpEmail(user.email, code);
+    _delLastSent = Date.now();
+    // Bascule étape 4 (saisie code)
     document.getElementById('del-step-2').style.display = 'none';
     const s4 = document.getElementById('del-step-4');
     if (s4) {
       s4.style.display = 'block';
       const disp = document.getElementById('del-email-sent-display');
       if (disp) disp.textContent = user.email;
+      const oi = document.getElementById('del-otp-input');
+      if (oi) { oi.value = ''; setTimeout(() => oi.focus(), 50); }
     }
+    _startResendCooldown();
   } catch(e) {
-    console.error('[delete] sendSignInLinkToEmail error:', e);
-    const map = {
-      'auth/operation-not-allowed': "Connexion par lien email désactivée dans Firebase Console (Authentication → Sign-in method → Email link).",
-      'auth/too-many-requests': 'Trop de tentatives. Réessayez plus tard.',
-      'auth/network-request-failed': 'Erreur réseau. Vérifiez votre connexion.',
-      'auth/unauthorized-continue-uri': "Domaine non autorisé pour redirection (à ajouter dans Firebase Console).",
-      'auth/invalid-continue-uri': "URL de continuation invalide.",
-    };
-    err.textContent = map[e.code] || ('Erreur : ' + (e.message || e.code || 'inconnue'));
+    console.error('[delete] envoi OTP échoué:', e);
+    err.textContent = 'Erreur envoi du code : ' + (e.message || e.text || 'inconnue') + '. Réessayez.';
     err.style.display = 'block';
   } finally {
     setLoading('del-final-btn', false);
+  }
+};
+
+// Renvoyer code (throttle 60s)
+window.delResendOtp = async function() {
+  if (Date.now() - _delLastSent < 60 * 1000) return;
+  const user = fbAuth.currentUser;
+  if (!user || !user.email) return;
+  const oerr = document.getElementById('del-otp-error');
+  if (oerr) oerr.style.display = 'none';
+  try {
+    const code = _genOtp();
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+    await setFirestoreDoc(firestoreDoc(db, 'users', user.uid, 'data', 'deleteOtp'), {
+      code,
+      expiresAt,
+      attempts: 0,
+      createdAt: Date.now(),
+    });
+    await _sendOtpEmail(user.email, code);
+    _delLastSent = Date.now();
+    _startResendCooldown();
+    if (oerr) {
+      oerr.textContent = 'Nouveau code envoyé.';
+      oerr.style.color = '#22d98a';
+      oerr.style.background = 'rgba(34,217,138,0.08)';
+      oerr.style.display = 'block';
+      setTimeout(() => { oerr.style.display = 'none'; oerr.style.color = '#ff4d6a'; oerr.style.background = 'rgba(255,77,106,0.08)'; }, 3000);
+    }
+  } catch(e) {
+    console.error('[delete] renvoi OTP échoué:', e);
+    if (oerr) {
+      oerr.textContent = 'Échec renvoi : ' + (e.message || e.text || 'inconnue');
+      oerr.style.display = 'block';
+    }
+  }
+};
+
+// Vérifie code + lance suppression complète + mail confirmation
+window.delVerifyOtp = async function() {
+  const oerr = document.getElementById('del-otp-error');
+  if (oerr) oerr.style.display = 'none';
+  const oi = document.getElementById('del-otp-input');
+  const input = (oi?.value || '').trim();
+  if (!/^\d{6}$/.test(input)) {
+    if (oerr) { oerr.textContent = 'Code invalide (6 chiffres attendus).'; oerr.style.display = 'block'; }
+    return;
+  }
+  const user = fbAuth.currentUser;
+  if (!user || !user.email) return;
+  setLoading('del-verify-btn', true);
+  try {
+    const ref = firestoreDoc(db, 'users', user.uid, 'data', 'deleteOtp');
+    const snap = await getFirestoreDoc(ref);
+    if (!snap.exists()) {
+      if (oerr) { oerr.textContent = 'Code expiré. Renvoyez-en un nouveau.'; oerr.style.display = 'block'; }
+      return;
+    }
+    const data = snap.data();
+    if (Date.now() > data.expiresAt) {
+      if (oerr) { oerr.textContent = 'Code expiré. Renvoyez-en un nouveau.'; oerr.style.display = 'block'; }
+      return;
+    }
+    if ((data.attempts || 0) >= 5) {
+      if (oerr) { oerr.textContent = 'Trop de tentatives. Renvoyez un nouveau code.'; oerr.style.display = 'block'; }
+      return;
+    }
+    if (data.code !== input) {
+      const left = 5 - ((data.attempts || 0) + 1);
+      await setFirestoreDoc(ref, { ...data, attempts: (data.attempts || 0) + 1 });
+      if (oerr) { oerr.textContent = `Code incorrect. ${left} tentative(s) restante(s).`; oerr.style.display = 'block'; }
+      return;
+    }
+    // Code OK → bascule étape progress
+    document.getElementById('del-step-4').style.display = 'none';
+    const s3 = document.getElementById('del-step-3');
+    if (s3) s3.style.display = 'block';
+
+    const email = user.email;
+    const uid = user.uid;
+    // Cleanup OTP doc avant suppression (sinon doc orphelin échoue)
+    try { await deleteFirestoreDoc(ref); } catch(_) {}
+    // Suppression complète données
+    await deleteAllUserData(uid);
+    // Suppression compte Auth
+    try {
+      await deleteUser(user);
+    } catch(e) {
+      if (e.code === 'auth/requires-recent-login') {
+        // Données déjà supprimées, demande relogin
+        if (s3) s3.style.display = 'none';
+        document.getElementById('del-step-4').style.display = 'block';
+        if (oerr) {
+          oerr.textContent = 'Session expirée. Reconnectez-vous puis relancez la suppression.';
+          oerr.style.display = 'block';
+        }
+        await signOut(fbAuth);
+        return;
+      }
+      throw e;
+    }
+    // Mail confirmation post-suppression
+    await _sendDeleteConfirmationEmail(email);
+    // Ferme modal + retour login
+    window.closeDeleteAccountModal();
+  } catch(e) {
+    console.error('[delete] verify OTP échoué:', e);
+    const s3 = document.getElementById('del-step-3'); if (s3) s3.style.display = 'none';
+    document.getElementById('del-step-4').style.display = 'block';
+    if (oerr) {
+      oerr.textContent = 'Erreur : ' + (e.message || e.code || 'inconnue');
+      oerr.style.display = 'block';
+    }
+  } finally {
+    setLoading('del-verify-btn', false);
   }
 };
 

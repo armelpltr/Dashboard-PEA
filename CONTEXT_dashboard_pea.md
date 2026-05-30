@@ -4,6 +4,29 @@
 ## Notes de collaboration
 - Ne pas hésiter à proposer l'utilisation de Claude Opus pour les tâches complexes (refactoring majeur, architecture, optimisation avancée).
 
+## Session 2026-05-30
+
+### Refonte suppression compte — OTP custom EmailJS
+- Magic link Firebase abandonné définitivement (quota Spark 5/jour). Remplacé par OTP 6 chiffres via EmailJS.
+- Nouveau template EmailJS `template_8qr2a3g` (variables `to_email`, `code`, `app_name`). Confirmation post-suppression conservée (`template_l1uno1h`).
+- EmailJS SDK chargé dans `app.html` (avant `js/app.js`). Constante `EMAILJS_CONFIG` en haut de `js/app.js`.
+- Flow modal :
+  - Étape 1 : warning (inchangé)
+  - Étape 2 : preview email + bouton "Envoyer le code"
+  - Étape 4 : input 6 chiffres + bouton "Confirmer suppression" + lien "Renvoyer" (throttle 60s)
+  - Étape 3 : spinner suppression
+- `delFinalize` → génère code, write Firestore `users/{uid}/data/deleteOtp` `{code, expiresAt: now+10min, attempts: 0}`, envoie via EmailJS, bascule étape 4.
+- `delVerifyOtp` → vérifs (existence, expiry, attempts<5, code match) → si OK : `deleteAllUserData` → `deleteUser` → mail confirmation. Catch `auth/requires-recent-login` → signOut + msg "reconnectez-vous".
+- `delResendOtp` → throttle 60s côté JS (var `_delLastSent` + countdown bouton).
+- `delete-confirm.html` supprimé (devenu inutile).
+- Rules Firestore : doc `deleteOtp` couvert par règle générique `users/{uid}/{document=**}` (write gated `_isVerified()`).
+- Cache busting `app.js?v=20260530a`.
+
+### À reprendre
+- Test end-to-end real env (vérif spam, vérif EmailJS quota 200/mois suffisant).
+- Tester `auth-action.html` après config Console Firebase (action URL custom).
+- Vérifier templates email FR appliqués Console Firebase.
+
 ## Session 2026-05-26
 
 ### Page custom auth-action.html (remplace UI Firebase défaut)

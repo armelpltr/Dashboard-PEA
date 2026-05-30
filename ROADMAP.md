@@ -10,7 +10,7 @@ Reprise des évolutions UX/UI du dashboard.
 
 - [x] **Chat support 1-to-1 user ↔ admin** — Firestore temps réel, badge non-lu, vue admin avec liste threads. Setup: voir `SUPPORT_CHAT_SETUP.md` (config ADMIN_UID + règles Firestore requises).
 - [x] **Page custom auth-action.html** (2026-05-26) — remplace UI Firebase défaut pour verifyEmail/resetPassword/recoverEmail/signIn, theme Capital Board. À configurer Console Firebase → "Customize action URL".
-- [ ] **Suppression compte via mail confirmation** — flow magic link Firebase **abandonné** (quota 5/jour Spark plan, non prod-viable). À reprendre : soit Blaze upgrade, soit OTP custom via EmailJS, soit retour flow mdp simple + email confirmation EmailJS post-suppression.
+- [x] **Suppression compte via mail confirmation** (2026-05-30) — OTP 6 chiffres custom via EmailJS (publicKey + service Gmail). Code stocké Firestore `users/{uid}/data/deleteOtp` (TTL 10min, max 5 tentatives), envoi via template `template_8qr2a3g`. Mail confirmation post-suppression conservé (template `template_l1uno1h`). Magic link Firebase abandonné (quota Spark 5/jour). `delete-confirm.html` supprimé.
 
 ---
 
