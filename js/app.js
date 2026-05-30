@@ -891,6 +891,55 @@ function _countryFlag(cc) {
   return String.fromCodePoint(...cc.toUpperCase().split('').map(c => A + (c.charCodeAt(0) - codeA)));
 }
 
+// Traductions EN → FR pour régions/pays renvoyés par ipapi.co
+const _REGION_FR = {
+  'Normandy': 'Normandie',
+  'Brittany': 'Bretagne',
+  'Corsica': 'Corse',
+  'Burgundy': 'Bourgogne',
+  'Alsace': 'Alsace',
+  'Lorraine': 'Lorraine',
+  'Picardy': 'Picardie',
+};
+const _COUNTRY_FR = {
+  'United States': 'États-Unis',
+  'United Kingdom': 'Royaume-Uni',
+  'Germany': 'Allemagne',
+  'Spain': 'Espagne',
+  'Italy': 'Italie',
+  'Belgium': 'Belgique',
+  'Netherlands': 'Pays-Bas',
+  'Switzerland': 'Suisse',
+  'Luxembourg': 'Luxembourg',
+  'Portugal': 'Portugal',
+  'Canada': 'Canada',
+  'Brazil': 'Brésil',
+  'China': 'Chine',
+  'Japan': 'Japon',
+  'Russia': 'Russie',
+  'Morocco': 'Maroc',
+  'Algeria': 'Algérie',
+  'Tunisia': 'Tunisie',
+  'Sweden': 'Suède',
+  'Norway': 'Norvège',
+  'Denmark': 'Danemark',
+  'Finland': 'Finlande',
+  'Poland': 'Pologne',
+  'Czech Republic': 'République Tchèque',
+  'Austria': 'Autriche',
+  'Ireland': 'Irlande',
+  'Greece': 'Grèce',
+  'Turkey': 'Turquie',
+  'India': 'Inde',
+  'Australia': 'Australie',
+  'Mexico': 'Mexique',
+  'Argentina': 'Argentine',
+  'South Korea': 'Corée du Sud',
+  'New Zealand': 'Nouvelle-Zélande',
+};
+function _trRegion(s)  { return _REGION_FR[s] || s || ''; }
+function _trCountry(s) { return _COUNTRY_FR[s] || s || ''; }
+
 window.refreshTrustedDevices = async function() {
   const container = document.getElementById('trusted-devices-list');
   if (!container) return;
@@ -914,7 +963,7 @@ window.refreshTrustedDevices = async function() {
     container.innerHTML = entries.map(([id, d]) => {
       const isCurrent = id === currentId;
       const expiresIn = Math.max(0, Math.ceil((d.expiresAt - Date.now()) / (24*60*60*1000)));
-      const loc = [d.city, d.region, d.country].filter(Boolean).join(', ');
+      const loc = [_trRegion(d.region), _trCountry(d.country)].filter(Boolean).join(', ');
       const flag = d.countryCode ? _countryFlag(d.countryCode) : '';
       const ipLine = (d.ip || loc)
         ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;display:flex;align-items:center;gap:6px"><span style="font-family:var(--mono)">${_escapeHtmlChat(d.ip || '')}</span>${loc ? `<span>·</span><span>${flag} ${_escapeHtmlChat(loc)}</span>` : ''}</div>`
@@ -1441,7 +1490,7 @@ async function _fetchIpInfo() {
 
 function _fmtLocation(info) {
   if (!info) return '';
-  const parts = [info.city, info.region, info.country].filter(Boolean);
+  const parts = [_trRegion(info.region), _trCountry(info.country)].filter(Boolean);
   return parts.join(', ');
 }
 
