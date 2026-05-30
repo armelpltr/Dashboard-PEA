@@ -435,18 +435,9 @@ async function deleteAllUserData(uid) {
     } catch(_) {}
   })();
 
-  // Storage — pièces jointes support (timeout 5s pour éviter blocage CORS)
-  const storageTask = (async () => {
-    if (!fbStorage || !fbStorageRef) return;
-    const work = (async () => {
-      const { listAll, deleteObject } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js");
-      const dirRef = fbStorageRef(fbStorage, `support-attachments/${uid}`);
-      const all = await listAll(dirRef);
-      await Promise.all(all.items.map(it => deleteObject(it).catch(() => {})));
-    })();
-    const timeout = new Promise(r => setTimeout(r, 5000));
-    try { await Promise.race([work, timeout]); } catch(_) {}
-  })();
+  // Storage support-attachments : skip (bucket CORS non configuré + en pratique 0 fichier).
+  // À réactiver si pièces jointes chat support ré-implémentées + bucket CORS configuré.
+  const storageTask = Promise.resolve();
 
   // Tout en parallèle
   await Promise.all([
@@ -1120,6 +1111,13 @@ window.delVerifyOtp = async function() {
     const uid = user.uid;
     // Cleanup OTP doc
     try { await deleteFirestoreDoc(ref); } catch(_) {}
+    // Unsubscribe tous les listeners Firestore avant suppression (évite snapshot permission-denied)
+    try { if (_supportUnsub) { _supportUnsub(); _supportUnsub = null; } } catch(_) {}
+    try { if (_supportThreadsUnsub) { _supportThreadsUnsub(); _supportThreadsUnsub = null; } } catch(_) {}
+    try { if (_supportPresenceUnsub) { _supportPresenceUnsub(); _supportPresenceUnsub = null; } } catch(_) {}
+    try { if (_supportThreadDocUnsub) { _supportThreadDocUnsub(); _supportThreadDocUnsub = null; } } catch(_) {}
+    try { if (_presenceHeartbeat) { clearInterval(_presenceHeartbeat); _presenceHeartbeat = null; } } catch(_) {}
+
     // 1) Suppression compte Auth EN PREMIER (test reauth récente)
     //    Si fail, données utilisateur restent intactes.
     try {
@@ -1137,8 +1135,6 @@ window.delVerifyOtp = async function() {
       throw e;
     }
     // 2) Suppression données Firestore + Storage (compte Auth déjà supprimé)
-    //    Stop presence heartbeat avant pour éviter writes orphelins.
-    try { if (_presenceHeartbeat) { clearInterval(_presenceHeartbeat); _presenceHeartbeat = null; } } catch(_) {}
     await deleteAllUserData(uid);
     // 3) Mail confirmation post-suppression
     await _sendDeleteConfirmationEmail(email);
