@@ -1006,12 +1006,18 @@ window.delFinalize = async function() {
     try { await user.reload(); await user.getIdToken(true); } catch(_) {}
     const code = _genOtp();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
-    await setFirestoreDoc(firestoreDoc(db, 'users', user.uid, 'data', 'deleteOtp'), {
-      code,
-      expiresAt,
-      attempts: 0,
-      createdAt: Date.now(),
-    });
+    const otpRef = firestoreDoc(db, 'users', user.uid, 'data', 'deleteOtp');
+    const payload = { code, expiresAt, attempts: 0, createdAt: Date.now() };
+    try {
+      await setFirestoreDoc(otpRef, payload);
+    } catch(e) {
+      // Retry une fois après nouveau refresh token (propagation SDK Firestore parfois lente)
+      if (e.code === 'permission-denied') {
+        await new Promise(r => setTimeout(r, 800));
+        try { await user.getIdToken(true); } catch(_) {}
+        await setFirestoreDoc(otpRef, payload);
+      } else { throw e; }
+    }
     await _sendOtpEmail(user.email, code);
     _delLastSent = Date.now();
     // Bascule étape 4 (saisie code)
@@ -1136,8 +1142,11 @@ window.delVerifyOtp = async function() {
     await deleteAllUserData(uid);
     // 3) Mail confirmation post-suppression
     await _sendDeleteConfirmationEmail(email);
-    // 4) Ferme modal
+    // 4) Ferme modal + force retour login (deleteUser devrait trigger onAuthStateChanged
+    //    mais on force pour fiabilité si écouteurs Firestore bloquent le cycle)
     window.closeDeleteAccountModal();
+    try { await signOut(fbAuth); } catch(_) {}
+    try { stopApp(); } catch(_) {}
   } catch(e) {
     console.error('[delete] verify OTP échoué:', e);
     const s3 = document.getElementById('del-step-3'); if (s3) s3.style.display = 'none';
