@@ -1109,30 +1109,31 @@ window.delVerifyOtp = async function() {
 
     const email = user.email;
     const uid = user.uid;
-    // Cleanup OTP doc avant suppression (sinon doc orphelin échoue)
+    // Cleanup OTP doc
     try { await deleteFirestoreDoc(ref); } catch(_) {}
-    // Suppression complète données
-    await deleteAllUserData(uid);
-    // Suppression compte Auth
+    // 1) Suppression compte Auth EN PREMIER (test reauth récente)
+    //    Si fail, données utilisateur restent intactes.
     try {
       await deleteUser(user);
     } catch(e) {
       if (e.code === 'auth/requires-recent-login') {
-        // Données déjà supprimées, demande relogin
         if (s3) s3.style.display = 'none';
         document.getElementById('del-step-4').style.display = 'block';
         if (oerr) {
-          oerr.textContent = 'Session expirée. Reconnectez-vous puis relancez la suppression.';
+          oerr.textContent = 'Session expirée. Déconnectez-vous, reconnectez-vous puis relancez la suppression.';
           oerr.style.display = 'block';
         }
-        await signOut(fbAuth);
         return;
       }
       throw e;
     }
-    // Mail confirmation post-suppression
+    // 2) Suppression données Firestore + Storage (compte Auth déjà supprimé)
+    //    Stop presence heartbeat avant pour éviter writes orphelins.
+    try { if (_presenceHeartbeat) { clearInterval(_presenceHeartbeat); _presenceHeartbeat = null; } } catch(_) {}
+    await deleteAllUserData(uid);
+    // 3) Mail confirmation post-suppression
     await _sendDeleteConfirmationEmail(email);
-    // Ferme modal + retour login
+    // 4) Ferme modal
     window.closeDeleteAccountModal();
   } catch(e) {
     console.error('[delete] verify OTP échoué:', e);
@@ -9535,12 +9536,14 @@ function _startPresenceHeartbeat() {
   if (window.IS_DEMO || !db || !currentUser) return;
   if (_presenceHeartbeat) clearInterval(_presenceHeartbeat);
   const ping = () => {
+    if (!currentUser) { if (_presenceHeartbeat) { clearInterval(_presenceHeartbeat); _presenceHeartbeat = null; } return; }
     setFirestoreDoc(firestoreDoc(db, "presence", currentUser),
       { online: true, lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
   };
   ping();
   _presenceHeartbeat = setInterval(ping, 30000);
   window.addEventListener("beforeunload", () => {
+    if (!currentUser) return;
     setFirestoreDoc(firestoreDoc(db, "presence", currentUser),
       { online: false, lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
   });
