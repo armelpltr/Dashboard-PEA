@@ -2460,17 +2460,6 @@ function renderPortfolio() {
     if (tx.type === 'dividend') totalDividendes += tx.qty * tx.price;
   });
   const cash = totalVersements - totalAchats + totalVentes + totalDividendes;
-  // DEBUG TEMP cash négatif — à retirer après diagnostic
-  console.warn('[CASH DEBUG]', JSON.stringify({
-    user: currentUser, isDemo: window.IS_DEMO,
-    nbVersements: versements.length, totalVersements: +totalVersements.toFixed(2),
-    nbTx: txs.length,
-    nbBuy: txs.filter(t=>t.type==='buy').length, totalAchats: +totalAchats.toFixed(2),
-    nbSell: txs.filter(t=>t.type==='sell').length, totalVentes: +totalVentes.toFixed(2),
-    nbDiv: txs.filter(t=>t.type==='dividend').length, totalDividendes: +totalDividendes.toFixed(2),
-    types: [...new Set(txs.map(t=>t.type))],
-    cash: +cash.toFixed(2)
-  }, null, 2));
   const cashEl = document.getElementById('stat-cash');
   cashEl.textContent = fmt(cash);
   cashEl.style.color = cash >= 0 ? 'var(--positive)' : 'var(--negative)';
