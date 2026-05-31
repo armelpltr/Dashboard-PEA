@@ -2460,28 +2460,6 @@ function renderPortfolio() {
     if (tx.type === 'dividend') totalDividendes += tx.qty * tx.price;
   });
   const cash = totalVersements - totalAchats + totalVentes + totalDividendes;
-  // DEBUG TEMP — breakdown par ticker pour localiser achats sans vente
-  (function(){
-    const held = {};
-    getPortfolio(currentUser).forEach(r => { held[r.ticker] = (held[r.ticker]||0) + r.qty; });
-    const byT = {};
-    txs.forEach(t => {
-      const k = t.ticker || '?';
-      byT[k] = byT[k] || { buyQty:0, buyEur:0, sellQty:0, sellEur:0, divEur:0 };
-      if (t.type==='buy')  { byT[k].buyQty  += t.qty; byT[k].buyEur  += t.qty*t.price; }
-      if (t.type==='sell') { byT[k].sellQty += t.qty; byT[k].sellEur += t.qty*t.price; }
-      if (t.type==='dividend') byT[k].divEur += t.qty*t.price;
-    });
-    const rows = Object.keys(byT).map(k => ({
-      ticker:k,
-      buyQty:+byT[k].buyQty.toFixed(2), buyEur:+byT[k].buyEur.toFixed(2),
-      sellQty:+byT[k].sellQty.toFixed(2), sellEur:+byT[k].sellEur.toFixed(2),
-      divEur:+byT[k].divEur.toFixed(2),
-      heldQty:+(held[k]||0).toFixed(2),
-      qtyDiff:+((byT[k].buyQty - byT[k].sellQty) - (held[k]||0)).toFixed(2)
-    }));
-    console.warn('[CASH DEBUG par ticker]\n' + JSON.stringify(rows, null, 2));
-  })();
   const cashEl = document.getElementById('stat-cash');
   cashEl.textContent = fmt(cash);
   cashEl.style.color = cash >= 0 ? 'var(--positive)' : 'var(--negative)';
