@@ -333,23 +333,6 @@ function getVersements(user)   { return _localCache[(user||currentUser) + '_vers
 function getWatchlist(user)    { return _localCache[(user||currentUser) + '_watchlist']    || []; }
 function getDailyValues(user)  { return _localCache[(user||currentUser) + '_dailyValues']  || []; }
 
-// OUTIL NETTOYAGE TEMP — supprime transactions fantomes par ticker.
-// Usage console: __ghostTx(['NVDA','MC.PA'])  -> dry-run (liste)
-//                __ghostTx(['NVDA','MC.PA'], true) -> supprime + sauvegarde
-// À retirer après usage.
-window.__ghostTx = function(tickers, apply) {
-  const set = new Set(tickers);
-  const all = getTransactions(currentUser);
-  const hit = all.filter(t => set.has(t.ticker));
-  console.table(hit.map(t => ({ ticker:t.ticker, type:t.type, qty:t.qty, price:t.price, total:+(t.qty*t.price).toFixed(2), date:t.date })));
-  console.warn('[__ghostTx]', hit.length, 'transactions ciblées. apply=', !!apply);
-  if (!apply) { console.warn('Dry-run. Relance avec __ghostTx(tickers, true) pour supprimer.'); return; }
-  const kept = all.filter(t => !set.has(t.ticker));
-  saveTransactions(currentUser, kept);
-  console.warn('[__ghostTx] supprimé', all.length - kept.length, '→ reste', kept.length, '. Rafraîchis ou rouvre Portefeuille.');
-  if (typeof renderPortfolio === 'function') renderPortfolio();
-};
-
 // Écriture synchrone dans le cache + Firestore en arrière-plan
 function savePortfolio(user, data)    { _perfCache = null; _fsWrite(user||currentUser, 'portfolio',    data); }
 function saveTransactions(user, data) { _perfCache = null; _fsWrite(user||currentUser, 'transactions', data); }
