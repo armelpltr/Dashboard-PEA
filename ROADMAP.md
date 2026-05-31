@@ -34,6 +34,7 @@ Permettre à un utilisateur en mode démo (`?demo=1`) de s'inscrire et de garder
 - Calculateur fiscal PEA
 - Heatmap secteurs portfolio
 - Export PDF rapport mensuel
+- **Migration envoi mail EmailJS → proxy serverless** (quand domaine custom dispo) — vire la limite EmailJS 200/mois. Archi : Cloudflare Worker (100k req/j gratuit) garde la clé API secrète + relaie vers Brevo (9000 mail/mois gratuit) ou Resend (3000/mois, exige domaine vérifié). Navigateur → `fetch(worker.dev/send)` → Worker → API mail → user. Remplacer les 3 appels `emailjs.send()` dans `js/app.js` (OTP 2FA `template_8qr2a3g`, OTP suppression, confirmation `template_l1uno1h`). Le code Firestore OTP (stockage/TTL/vérif) ne change pas. Full gratuit hors coût domaine (~10€/an, pris par ailleurs). Dépend du domaine pour le `from: noreply@domaine`.
 
 ---
 
