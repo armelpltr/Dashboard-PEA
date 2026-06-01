@@ -52,6 +52,9 @@ let fcmMessaging = null, getFCMToken, onFCMMessage;
 // VAPID key : Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Generate key pair
 const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vNXI1EL2xQKA1Nr6tmKaSX5hcGJY';
 
+// Version de l'app — à bumper à chaque déploiement (sync avec version.json)
+const APP_VERSION = '20260601a';
+
 // EmailJS — service mail client-side (200 mails/mois free, 2 templates max)
 const EMAILJS_CONFIG = {
   publicKey:    'FQN2IWcgPaxa56jT5',
@@ -1732,6 +1735,25 @@ function _withTimeout(promise, ms) {
 }
 
 // ─── DÉMARRAGE APP ────────────────────────────────────
+// ─── VERSION CHECK ───────────────────────────────────────────
+let _versionCheckInterval = null;
+async function _checkVersion() {
+  try {
+    const res = await fetch('version.json?t=' + Date.now());
+    if (!res.ok) return;
+    const { v } = await res.json();
+    if (v && v !== APP_VERSION) {
+      const banner = document.getElementById('update-banner');
+      if (banner) banner.style.display = 'flex';
+    }
+  } catch(e) { /* silencieux */ }
+}
+function _startVersionCheck() {
+  _checkVersion();
+  if (_versionCheckInterval) clearInterval(_versionCheckInterval);
+  _versionCheckInterval = setInterval(_checkVersion, 5 * 60 * 1000);
+}
+
 async function startApp(user) {
   try {
     currentUser = user.uid;
@@ -1740,6 +1762,7 @@ async function startApp(user) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     _restoreHideBalances();
+    _startVersionCheck();
     document.getElementById('user-avatar').textContent = (displayName[0] || '?').toUpperCase();
     document.getElementById('user-name-display').textContent = displayName;
     const d = new Date();

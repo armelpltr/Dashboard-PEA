@@ -20,6 +20,12 @@
 </head>
 <body>
 
+<!-- ═══ BANDEAU NOUVELLE VERSION ═══ -->
+<div id="update-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#7c6df5;color:#fff;padding:10px 16px;align-items:center;justify-content:center;gap:12px;font-size:13px;font-weight:500;font-family:var(--sans)">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+  Nouvelle version disponible
+  <button onclick="location.reload(true)" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans)">Mettre à jour</button>
+</div>
 
 <script>
   window.IS_DEMO = new URLSearchParams(location.search).get('demo') === '1';
@@ -1384,7 +1390,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script src="js/app.js?v=20260531g"></script>
+<script src="js/app.js?v=20260601a"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
