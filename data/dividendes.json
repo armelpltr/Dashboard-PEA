@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-25",
+  "generated_at": "2026-06-01",
   "dividends": {
     "AI.PA": {
       "ticker": "AI.PA",
@@ -11,7 +11,7 @@
       "name": "TotalEnergies",
       "next": {
         "date": "2026-06-30",
-        "amount_estimated": 0.85,
+        "amount_estimated": 0.84,
         "confirmed": true
       }
     },
