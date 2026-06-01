@@ -1162,12 +1162,7 @@ async function _isPinEnabled(uid) {
 }
 
 // ─── BIOMÉTRIE (WebAuthn platform — Face ID / Touch ID / empreinte) ──────────
-function _isMobileDevice() {
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
 async function _isBiometricAvailable() {
-  if (!_isMobileDevice()) return false;
   if (!window.PublicKeyCredential) return false;
   try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
   catch(e) { return false; }
