@@ -2379,7 +2379,7 @@ function renderPortfolio() {
           <div class="perf-total-sub ${isPos ? 'perf-pos' : 'perf-neg'}"
                data-pct="${isPos ? '+' : ''}${pct.toFixed(2)}%"
                data-eur="${isPos ? '+' : ''}${fmt(Math.abs(pnl))}"
-               onclick="this.textContent=this.textContent===this.dataset.pct?this.dataset.eur:this.dataset.pct"
+               onclick="togglePerfTotalMode()"
                style="cursor:pointer">${isPos ? '+' : ''}${pct.toFixed(2)}%</div>
         </td>
         <td class="hide-mobile">
@@ -2545,6 +2545,13 @@ function renderTxHistory() {
 }
 let editRowIndex = -1;
 let _perfJourMode = 'pct';
+let _perfTotalMode = 'pct';
+function togglePerfTotalMode() {
+  _perfTotalMode = _perfTotalMode === 'pct' ? 'eur' : 'pct';
+  document.querySelectorAll('.perf-total-sub').forEach(el => {
+    el.textContent = el.dataset[_perfTotalMode];
+  });
+}
 function togglePerfJourMode() {
   _perfJourMode = _perfJourMode === 'pct' ? 'eur' : 'pct';
   document.querySelectorAll('.perf-jour-cell').forEach(el => {
