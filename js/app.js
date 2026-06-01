@@ -823,6 +823,8 @@ window.dvLogout = async function() {
 // ─── PIN KEYPAD (custom, désactive clavier natif iPhone/Android) ─────
 const _PIN_BACKSPACE_SVG = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>';
 
+let _pinKeyboardHandler = null;
+
 function _renderPinKeypad(keypadId, inputId, onComplete) {
   const kp = document.getElementById(keypadId);
   if (!kp) return;
@@ -832,28 +834,49 @@ function _renderPinKeypad(keypadId, inputId, onComplete) {
     if (k === 'back') return `<button class="pin-key back" data-action="back" tabindex="-1">${_PIN_BACKSPACE_SVG}</button>`;
     return `<button class="pin-key" data-digit="${k}" tabindex="-1">${k}</button>`;
   }).join('');
+
+  function handlePinInput(digit, isBack) {
+    const inp = document.getElementById(inputId);
+    if (!inp) return;
+    let v = (inp.value || '').replace(/\D/g, '');
+    if (digit !== undefined) {
+      if (v.length >= 6) return;
+      v += digit;
+    } else if (isBack) {
+      v = v.slice(0, -1);
+    }
+    inp.value = v;
+    if (inputId === 'pin-lock-input') _updatePinDots(v.length);
+    if (v.length === 6 && typeof onComplete === 'function') onComplete();
+  }
+
   // Click handlers
   kp.querySelectorAll('.pin-key').forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
-      const inp = document.getElementById(inputId);
-      if (!inp) return;
       const d = btn.getAttribute('data-digit');
       const a = btn.getAttribute('data-action');
-      let v = (inp.value || '').replace(/\D/g, '');
-      if (d) {
-        if (v.length >= 6) return;
-        v += d;
-      } else if (a === 'back') {
-        v = v.slice(0, -1);
-      }
-      inp.value = v;
-      // Update dots si présent
-      if (inputId === 'pin-lock-input') _updatePinDots(v.length);
-      // Auto-submit à 6 chiffres
-      if (v.length === 6 && typeof onComplete === 'function') onComplete();
+      if (d) handlePinInput(d);
+      else if (a === 'back') handlePinInput(undefined, true);
     };
   });
+
+  // Clavier PC / pavé numérique
+  if (_pinKeyboardHandler) document.removeEventListener('keydown', _pinKeyboardHandler);
+  _pinKeyboardHandler = e => {
+    const inp = document.getElementById(inputId);
+    if (!inp) return;
+    const container = inp.closest('#pin-lock-view, #pin-setup-view, #pin-setup-modal');
+    if (!container || getComputedStyle(container).display === 'none') return;
+    if (/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+      handlePinInput(e.key);
+    } else if (e.key === 'Backspace') {
+      e.preventDefault();
+      handlePinInput(undefined, true);
+    }
+  };
+  document.addEventListener('keydown', _pinKeyboardHandler);
 }
 
 // ─── PIN — VUE FORCE SETUP (comptes sans PIN) ─────────
