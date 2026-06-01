@@ -81,7 +81,6 @@ async function fetchPrice(ticker) {
   }
 }
 
-// ─── MISTRAL — COMMENTAIRE IA ────────────────────────────────
 // ─── RECHERCHE WEB (Tavily) ──────────────────────────────────
 // Renvoie des résultats web récents (titres + extraits) pour une requête.
 async function searchWeb(query) {
@@ -111,6 +110,37 @@ async function searchWeb(query) {
   }
 }
 
+// ─── CACHE TAVILY PAR TICKER ─────────────────────────────────
+// Firestore : tavilyCache/{date}/tickers/{ticker}
+// Champs : daily (résultats query quotidienne), weekly (query hebdo), cachedAt.
+// Partagé entre tous les users → 1 appel Tavily par ticker unique par jour.
+async function getOrFetchTavily(ticker, name, type = 'daily') {
+  const field = type === 'weekly' ? 'weekly' : 'daily';
+  const query = type === 'weekly'
+    ? `${name} bourse actualité semaine`
+    : `${name} action bourse actualité cours`;
+  const cacheRef = db.doc(`tavilyCache/${todayIso}/tickers/${ticker}`);
+  try {
+    const snap = await cacheRef.get();
+    if (snap.exists) {
+      const cached = snap.data()[field];
+      if (cached && cached.length > 0) {
+        console.log(`    Cache Tavily [${type}] HIT : ${ticker}`);
+        return cached;
+      }
+    }
+  } catch(e) {
+    console.warn(`Cache Tavily read error (${ticker}):`, e.message);
+  }
+  const results = await searchWeb(query);
+  try {
+    await cacheRef.set({ [field]: results, cachedAt: new Date().toISOString() }, { merge: true });
+  } catch(e) {
+    console.warn(`Cache Tavily write error (${ticker}):`, e.message);
+  }
+  return results;
+}
+
 // ─── MISTRAL — RÉDACTION DU RAPPORT ──────────────────────────
 async function callMistral(prompt) {
   const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
@@ -136,9 +166,9 @@ async function callMistral(prompt) {
 // 1) Tavily cherche l'actualité réelle de chaque ligne.
 // 2) Mistral rédige le rapport en s'appuyant UNIQUEMENT sur ces résultats.
 async function generateReport(lines, totalPct) {
-  // 1. Recherche web par ligne
+  // 1. Recherche web par ligne (cache Tavily partagé entre users)
   const searchPairs = await Promise.all(lines.map(async l => {
-    const results = await searchWeb(`${l.name} action bourse actualité cours`);
+    const results = await getOrFetchTavily(l.ticker, l.name, 'daily');
     return [l.ticker, results];
   }));
   const webByTicker = Object.fromEntries(searchPairs);
@@ -266,7 +296,7 @@ async function upcomingDividends(portfolio) {
 // Rapport hebdo : 6 sections, ancré sur la recherche web Tavily.
 async function generateWeeklyReport(weekLines, weekPct, dividends) {
   const searchPairs = await Promise.all(weekLines.map(async l => {
-    const results = await searchWeb(`${l.name} bourse actualité semaine`);
+    const results = await getOrFetchTavily(l.ticker, l.name, 'weekly');
     return [l.ticker, results];
   }));
   const webByTicker = Object.fromEntries(searchPairs);
