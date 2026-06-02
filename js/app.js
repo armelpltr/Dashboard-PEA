@@ -53,15 +53,11 @@ let fcmMessaging = null, getFCMToken, onFCMMessage;
 const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vNXI1EL2xQKA1Nr6tmKaSX5hcGJY';
 
 // Version de l'app — à bumper à chaque déploiement (sync avec version.json)
-const APP_VERSION = '20260601a';
+const APP_VERSION = '20260602a';
 
-// EmailJS — service mail client-side (200 mails/mois free, 2 templates max)
-const EMAILJS_CONFIG = {
-  publicKey:    'FQN2IWcgPaxa56jT5',
-  serviceId:    'service_do5j0pl',
-  templateOtp:  'template_8qr2a3g',  // OTP suppression compte
-  template2fa:  'template_l1uno1h',  // OTP 2FA nouvel appareil (avec device_label + location)
-};
+// Cloudflare Worker — vérif PIN server-side + envoi mails OTP via Brevo
+// Remplacer par l'URL réelle après déploiement : wrangler deploy
+const WORKER_URL = 'https://capital-board-worker.ACCOUNT.workers.dev';
 
 // 2FA device-based — durée trust appareil
 const DEVICE_TRUST_DAYS = 90;
@@ -114,10 +110,6 @@ _splashWatchdog = setTimeout(() => {
   EmailAuthProvider              = auth.EmailAuthProvider;
   deleteUser                     = auth.deleteUser;
 
-  // EmailJS init (SDK chargé via <script> dans app.html)
-  try {
-    if (window.emailjs) emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey });
-  } catch(_) {}
 
   const firestore = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
   getFirestoreDoc     = firestore.getDoc;
@@ -1304,10 +1296,19 @@ async function _setupPin(uid, pin) {
 }
 
 async function _verifyPin(uid, pin) {
-  const sec = await _loadSecurity(uid);
-  if (!sec || !sec.pinHash || !sec.pinSalt) return false;
-  const h = await _sha256(sec.pinSalt + pin);
-  return h === sec.pinHash;
+  try {
+    const idToken = await fbAuth.currentUser.getIdToken();
+    const res = await fetch(`${WORKER_URL}/verify-pin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken, pin }),
+    });
+    const { valid } = await res.json();
+    return !!valid;
+  } catch (e) {
+    console.error('_verifyPin error:', e);
+    return false;
+  }
 }
 
 async function _disablePin(uid) {
@@ -2142,28 +2143,24 @@ async function _revokeTrustedDevice(uid, deviceId) {
   await setFirestoreDoc(ref, { devices });
 }
 
-// Envoi mail OTP via EmailJS
-async function _sendOtpEmail(toEmail, code) {
-  if (!window.emailjs) throw new Error('EmailJS SDK non chargé');
-  return emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateOtp, {
-    email: toEmail,
-    to_email: toEmail,
-    code,
-    app_name: 'Capital Board',
+async function _sendOtpEmail(_toEmail, code) {
+  const idToken = await fbAuth.currentUser.getIdToken();
+  const res = await fetch(`${WORKER_URL}/send-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken, type: 'delete', code }),
   });
+  if (!res.ok) throw new Error('Erreur envoi OTP suppression');
 }
 
-// Envoi mail OTP 2FA nouvel appareil (template dédié avec device_label + location)
-async function _send2faOtpEmail(toEmail, code, deviceLabel, location) {
-  if (!window.emailjs) throw new Error('EmailJS SDK non chargé');
-  return emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.template2fa, {
-    email: toEmail,
-    to_email: toEmail,
-    code,
-    device_label: deviceLabel || 'Appareil inconnu',
-    location: location || 'Lieu inconnu',
-    app_name: 'Capital Board',
+async function _send2faOtpEmail(_toEmail, code, deviceLabel, location) {
+  const idToken = await fbAuth.currentUser.getIdToken();
+  const res = await fetch(`${WORKER_URL}/send-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken, type: '2fa', code, deviceLabel, location }),
   });
+  if (!res.ok) throw new Error('Erreur envoi OTP 2FA');
 }
 
 let _delLastSent = 0;
