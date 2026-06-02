@@ -53,7 +53,7 @@ let fcmMessaging = null, getFCMToken, onFCMMessage;
 const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vNXI1EL2xQKA1Nr6tmKaSX5hcGJY';
 
 // Version de l'app — à bumper à chaque déploiement (sync avec version.json)
-const APP_VERSION = '20260602a';
+const APP_VERSION = '20260602b';
 
 // Cloudflare Worker — vérif PIN server-side + envoi mails OTP via Brevo
 // Remplacer par l'URL réelle après déploiement : wrangler deploy
@@ -1183,7 +1183,6 @@ async function _initBiometricLockBtn(user) {
   const credId = await _getBiometricCredentialId(uid);
   if (!credId) { btn.style.display = 'none'; return; }
   btn.style.display = 'flex';
-  setTimeout(() => window.biometricUnlock(), 600);
 }
 
 window.biometricUnlock = async function() {
