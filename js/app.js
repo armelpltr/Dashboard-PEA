@@ -57,7 +57,7 @@ const APP_VERSION = '20260602a';
 
 // Cloudflare Worker — vérif PIN server-side + envoi mails OTP via Brevo
 // Remplacer par l'URL réelle après déploiement : wrangler deploy
-const WORKER_URL = 'https://capital-board-worker.ACCOUNT.workers.dev';
+const WORKER_URL = 'https://capital-board-worker.armelpltr14.workers.dev';
 
 // 2FA device-based — durée trust appareil
 const DEVICE_TRUST_DAYS = 90;
