@@ -138,20 +138,20 @@ function email2fa(code, deviceLabel, location) {
 </div></body></html>`;
 }
 
-// ── Brevo sender ───────────────────────────────────────────────────────────
+// ── Resend sender ─────────────────────────────────────────────────────────
 
 async function sendEmail(to, subject, html, env) {
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+  const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      sender: { name: 'Capital Board', email: env.FROM_EMAIL },
-      to: [{ email: to }],
+      from: `Capital Board <noreply@capitalboard.fr>`,
+      to: [to],
       subject,
-      htmlContent: html,
+      html,
     }),
   });
-  if (!res.ok) throw new Error(`Brevo ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
 }
 
 // ── Main handler ───────────────────────────────────────────────────────────
