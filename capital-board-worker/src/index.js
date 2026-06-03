@@ -203,8 +203,11 @@ export default {
         if (!idToken || !code || !['delete', '2fa'].includes(type)) {
           return json({ ok: false, error: 'Paramètres invalides' }, 400);
         }
-        const humanVerified = await verifyTurnstile(turnstileToken, env);
-        if (!humanVerified) return json({ ok: false, error: 'Vérification humaine échouée' }, 403);
+        // Turnstile requis pour suppression (hors session), optionnel pour 2FA (user déjà authentifié au login)
+        if (type === 'delete') {
+          const humanVerified = await verifyTurnstile(turnstileToken, env);
+          if (!humanVerified) return json({ ok: false, error: 'Vérification humaine échouée' }, 403);
+        }
 
         const user = await verifyIdToken(idToken, env);
         if (!user.email) return json({ ok: false, error: 'Email introuvable' }, 400);

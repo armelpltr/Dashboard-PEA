@@ -2167,13 +2167,11 @@ async function _sendOtpEmail(_toEmail, code) {
 
 async function _send2faOtpEmail(_toEmail, code, deviceLabel, location) {
   const idToken = await fbAuth.currentUser.getIdToken();
-  const turnstileToken = _getTurnstileToken('turnstile-2fa');
   const res = await fetch(`${WORKER_URL}/send-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken, type: '2fa', code, deviceLabel, location, turnstileToken }),
+    body: JSON.stringify({ idToken, type: '2fa', code, deviceLabel, location }),
   });
-  _resetTurnstile('turnstile-2fa');
   if (!res.ok) throw new Error('Erreur envoi OTP 2FA');
 }
 
