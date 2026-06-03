@@ -131,10 +131,10 @@ Actuel : `?v=20260530i`
 #### Conversion démo → inscription avec migration dataset
 Permettre à un utilisateur en mode démo (`?demo=1`) de s'inscrire et de garder/migrer le dataset démo enrichi vers son nouveau compte Firestore.
 
-- [ ] CTA "Créer mon compte" visible en mode démo
-- [ ] Au signup réussi depuis démo : copier `_localCache` démo → Firestore `users/{uid}/data/*`
-- [ ] Bypass popup dividende auto pendant migration
-- [ ] Confirmer succès + redirect dashboard
+- CTA "Créer mon compte" visible en mode démo
+- Au signup réussi depuis démo : copier `_localCache` démo → Firestore `users/{uid}/data/*`
+- Bypass popup dividende auto pendant migration
+- Confirmer succès + redirect dashboard
 
 ### À suivre (priorisé)
 
@@ -204,77 +204,124 @@ Permettre à un utilisateur en mode démo (`?demo=1`) de s'inscrire et de garder
 
 ---
 
-## 7. Checklist avant lancement public
+## 7. Plan de lancement & professionnalisation
 
-> Dernière mise à jour : 2026-05-23
+> Mis à jour : 2026-06-03
 
-### 1. Domaine & email
-- [ ] Acheter le domaine — `capitalboard.fr` LIBRE (~7€/an) — **principal**
-- [ ] Créer `contact@capitalboard.fr` (Zoho Mail gratuit recommandé)
-- [ ] Configurer forward vers email personnel
-- [ ] Tester l'email
+### 1. Domaine & infrastructure email
 
-### 2. Statut juridique
-- [ ] Auto-entreprise (gratuit, 15 min, autoentrepreneur.urssaf.fr)
-  - Code APE : 6312Z (portail Internet) ou 6201Z (programmation)
-- [ ] Mettre le SIREN dans `mentions-legales.html`
+Domaine principal : **`capitalboard.fr`** (~7€/an sur OVH ou Gandi). Optionnels : `capital-board.com` (~12€/an), `capitalboard.app` (~15€/an).
 
-### 3. Déploiement domaine
-- [ ] GitHub → Settings → Pages → Custom domain → `capitalboard.fr` + Enforce HTTPS
-- [ ] DNS chez le registrar :
-  ```
-  A     @    185.199.108.153
-  A     @    185.199.109.153
-  A     @    185.199.110.153
-  A     @    185.199.111.153
-  CNAME www  armelpltr.github.io
-  ```
-- [ ] Firebase → Authentication → Authorized domains → ajouter `capitalboard.fr`
+Email professionnel : créer `contact@capitalboard.fr` via **Zoho Mail** (gratuit, 1 boîte, 5 Go). Configurer un forward vers l'adresse personnelle pour tout recevoir sur l'inbox habituelle. Configurer SPF + DKIM sur le domaine pour la délivrabilité des emails transactionnels.
 
-### 4. RGPD — contenu légal
-- [ ] `mentions-legales.html` : SIREN, adresse, hébergeur (GitHub Pages — GitHub Inc. SF), Firebase backend (Google LLC), directeur publication : Armel Plantier
-- [ ] `politique-confidentialite.html` : sous-traitants (Firebase/Google, Mistral AI, Tavily, GitHub Pages), mention CCT transferts hors UE, durée conservation, droits RGPD
-- [ ] `cgu.html` : vérifier email mis à jour
+### 2. Déploiement domaine sur GitHub Pages
 
-### 5. Sécurité avant open source
-- [ ] Vérifier aucun secret dans le repo (`.env`, `service-account.json`, clés Mistral/Tavily)
-- [ ] Vérifier Firestore Rules (user ne lit/écrit que ses propres docs)
-- [ ] Activer Firebase App Check (reCAPTCHA v3)
-- [ ] Activer Firebase Security Rules pour Storage
+Pointer `capitalboard.fr` sur GitHub Pages :
 
-### 6. Open source — préparation repo
-- [ ] Choisir licence (MIT recommandé, ou AGPL-3.0 pour protéger le SaaS)
-- [ ] Créer : `LICENSE`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.github/ISSUE_TEMPLATE/`
-- [ ] Renommer repo : `Dashboard-PEA` → `capital-board`
-- [ ] Description : "Capital Board — Suivi personnel de patrimoine financier (PEA, actions, ETF)"
-- [ ] Topics : `finance, pea, portfolio, firebase, dashboard, french, fintech`
-- [ ] Passer le repo en PUBLIC
+```
+GitHub → Settings → Pages → Custom domain → capitalboard.fr → Enforce HTTPS
+```
 
-### 7. Renommage
-- [x] "Capital View" → "Capital Board" dans tous les fichiers ✓
-- [x] "@capitalview.com" → "@capitalboard.fr" ✓
-- [ ] Mettre à jour logo/favicon si changement souhaité
+DNS à configurer chez le registrar :
+```
+A     @    185.199.108.153
+A     @    185.199.109.153
+A     @    185.199.110.153
+A     @    185.199.111.153
+CNAME www  armelpltr.github.io
+```
 
-### 8. Checklist pré-lancement finale
-- [ ] Tester sur Chrome Desktop, Safari iOS (PWA + browser), Chrome Android, Firefox
-- [ ] Vérifier push notifications
-- [ ] Vérifier import CSV
-- [ ] Vérifier récap quotidien (bouton "Générer maintenant")
-- [ ] Vérifier récap hebdo (`workflow_dispatch` + `force_weekly`)
-- [ ] Vérifier RGPD checkbox à l'inscription
-- [ ] Vérifier bandeau cookies
-- [ ] Vérifier les 3 liens légaux (CGU, confidentialité, mentions)
-- [ ] Vérifier bouton déconnexion mobile dans profil
-- [ ] Tester création compte de zéro
-- [ ] Tester suppression de compte (Danger zone)
-- [ ] Lighthouse : Performance > 80, Accessibility > 90, SEO > 90, PWA installable ✓
+Après propagation (15 min à 24h) :
+- Firebase → Authentication → Authorized domains → ajouter `capitalboard.fr`
+- Mettre à jour `ALLOWED_ORIGIN` dans le Cloudflare Worker (cf. section 8)
+- Mettre à jour `auth-action.html` URL dans Console Firebase → Authentication → Templates → "Customize action URL" → `https://capitalboard.fr/auth-action.html`
+
+### 3. Migration EmailJS → Cloudflare Worker
+
+Dépend du domaine (pour `from: noreply@capitalboard.fr`). Déployer le Worker (cf. section 8), puis dans `app.js` :
+- Remplacer les 3 appels `emailjs.send()` par `fetch(worker/send-email)`
+- Supprimer SDK EmailJS de `app.html` et constante `EMAILJS_CONFIG`
+- Durcir Firestore Rules : `users/{uid}/data/security` → `allow read: if false`
+
+Gain : passe de 200 mails/mois (EmailJS) à 9000/mois (Brevo via Worker), clé API jamais exposée côté client.
+
+### 4. Statut juridique
+
+Créer une **auto-entreprise** (gratuit, 15 min) sur autoentrepreneur.urssaf.fr.
+- Code APE : 6312Z (portail Internet) ou 6201Z (programmation)
+- Le SIREN obtenu est à renseigner dans `mentions-legales.html`
+- Obligatoire dès qu'une monétisation est envisagée ou pour limiter la responsabilité personnelle
+
+### 5. RGPD & contenu légal
+
+**`mentions-legales.html`** — compléter :
+- SIREN/SIRET (après création auto-entreprise)
+- Adresse postale (personnelle ou domiciliation)
+- Hébergeur : GitHub Pages — GitHub Inc., 88 Colin P Kelly Jr Street, San Francisco, CA 94107, USA
+- Backend : Google Cloud — Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA 94043, USA
+- Directeur de publication : Armel Plantier
+
+**`politique-confidentialite.html`** — enrichir :
+- Liste sous-traitants : Firebase/Google (auth + BDD, USA), Mistral AI (analyse récap, France), Tavily (recherche web, USA), GitHub Pages (hébergement statique, USA)
+- Mention transferts hors UE encadrés par les Clauses Contractuelles Types (CCT)
+- Durée de conservation des données (ex. 3 ans d'inactivité)
+- Droits RGPD : accès, rectification, suppression, portabilité, opposition, retrait du consentement
+
+**`cgu.html`** — mettre à jour l'email avec `contact@capitalboard.fr`
+
+### 6. Sécurité
+
+- Vérifier qu'aucun secret n'est commité dans le repo (`.env`, `service-account.json`, clés Mistral/Tavily → uniquement GitHub Actions secrets)
+- Vérifier les Firestore Rules : un user ne peut lire/écrire que ses propres docs
+- Activer **Firebase App Check** (reCAPTCHA v3) — Console Firebase → App Check → enregistrer l'app web → ajouter le provider reCAPTCHA v3 → intégrer `initializeAppCheck` dans `app.js`
+- Vérifier Firebase Security Rules pour Storage
+
+### 7. Branding & open source
+
+Renommage repo GitHub : `Dashboard-PEA` → `capital-board` (Settings → Repository name). À faire avant de passer public pour figer l'URL canonique.
+
+Fichiers à créer à la racine :
+- `LICENSE` — MIT (simple, permissif) ou AGPL-3.0 (force les forks hébergés à publier leur code, protège le SaaS)
+- `README.md` — présentation, stack, captures réelles du dashboard, instructions install
+- `CONTRIBUTING.md` — style de commits, process PR
+- `SECURITY.md` — comment signaler une vulnérabilité
+- `.github/ISSUE_TEMPLATE/` — templates bug report + feature request
+
+Métadonnées GitHub :
+- Description : "Capital Board — Suivi personnel de patrimoine financier (PEA, actions, ETF)"
+- Topics : `finance`, `pea`, `portfolio`, `firebase`, `dashboard`, `french`, `fintech`
+
+Logo/favicon : logo "C" violet actuel — peut être conservé tel quel ou remplacé au moment du passage public.
+
+Renommage déjà effectué dans le code : "Capital View" → "Capital Board" ✓, "@capitalview.com" → "@capitalboard.fr" ✓
+
+Passer le repo en **PUBLIC** une fois sécurité + légal validés.
+
+### 8. Tests pré-lancement
+
+Navigateurs : Chrome Desktop, Safari iOS (PWA installée + browser), Chrome Android, Firefox.
+
+Fonctionnalités à vérifier :
+- Push notifications (Web Push iOS + Android)
+- Import CSV broker
+- Récap quotidien (bouton "Générer maintenant")
+- Récap hebdo (`workflow_dispatch` + `force_weekly=true`)
+- RGPD checkbox bloquante à l'inscription
+- Bandeau cookies
+- 3 liens légaux (CGU, confidentialité, mentions)
+- Bouton déconnexion mobile dans profil
+- Création compte de zéro (email verif + 2FA device + PIN setup)
+- Suppression de compte (Danger zone → OTP email)
+
+Lighthouse (Chrome DevTools → Lighthouse) : Performance > 80, Accessibility > 90, SEO > 90, PWA installable.
 
 ### 9. Post-lancement
-- [ ] Annoncer (LinkedIn, Twitter, Reddit r/vosfinances)
-- [ ] Ouvrir canal de support (Discord ou email)
-- [ ] Mettre en place analytics RGPD-friendly (Plausible.io ~9€/mois ou Goatcounter gratuit)
-- [ ] Suivi bugs : GitHub Issues
-- [ ] Roadmap publique : GitHub Projects
+
+- Annoncer sur LinkedIn, Twitter/X, Reddit r/vosfinances, r/France
+- Ouvrir un canal de support : Discord ou email `contact@capitalboard.fr`
+- Analytics RGPD-friendly : **Plausible.io** (~9€/mois, sans cookie) ou **Goatcounter** (gratuit, open source)
+- Suivi bugs : GitHub Issues
+- Roadmap publique : GitHub Projects
 
 ---
 
