@@ -24,6 +24,9 @@ npm-debug.log
 .env
 .env.local
 
+# Cloudflare Wrangler
+.wrangler/
+
 # OS
 .DS_Store
 Thumbs.db
