@@ -17,8 +17,8 @@ messaging.onBackgroundMessage(payload => {
   const body  = payload.notification?.body  || '';
   self.registration.showNotification(title, {
     body,
-    icon:  './logo.png',
-    badge: './logo.png',
+    icon:  './assets/logo.png',
+    badge: './assets/logo.png',
     tag:   payload.data?.type || 'capitalboard',
     data:  payload.data || {}
   });

@@ -1739,7 +1739,7 @@ function _withTimeout(promise, ms) {
 let _versionCheckInterval = null;
 async function _checkVersion() {
   try {
-    const res = await fetch('version.json?t=' + Date.now());
+    const res = await fetch('data/version.json?t=' + Date.now());
     if (!res.ok) return;
     const { v } = await res.json();
     if (v && v !== APP_VERSION) {
@@ -2402,7 +2402,7 @@ function _avatarHue(uid) {
 
 // Avatar : logo Capital Board recoloré par rotation de teinte.
 function defaultAvatarHtml(uid) {
-  return '<img src="logo.png" alt="" style="width:100%;height:100%;border-radius:inherit;'
+  return '<img src="assets/logo.png" alt="" style="width:100%;height:100%;border-radius:inherit;'
     + 'object-fit:cover;filter:hue-rotate(' + _avatarHue(uid) + 'deg)">';
 }
 
@@ -2432,7 +2432,7 @@ function renderAvatarSwatches() {
     return '<div onclick="setAvatarHue(' + d + ')" title="Couleur" style="width:42px;height:42px;'
       + 'border-radius:11px;cursor:pointer;overflow:hidden;flex-shrink:0;transition:transform .12s;'
       + 'border:2px solid ' + (sel ? 'var(--accent)' : 'transparent') + '">'
-      + '<img src="logo.png" style="width:100%;height:100%;object-fit:cover;filter:hue-rotate(' + d + 'deg)">'
+      + '<img src="assets/logo.png" style="width:100%;height:100%;object-fit:cover;filter:hue-rotate(' + d + 'deg)">'
       + '</div>';
   }).join('');
 }
@@ -9876,7 +9876,7 @@ let _toastTimer = null;
 
 function _showBrowserNotif(title, body) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  try { new Notification(title, { body, icon: 'logo.png' }); } catch {}
+  try { new Notification(title, { body, icon: 'assets/logo.png' }); } catch {}
 }
 
 function _showChatToast({ icon = IC.bell, title, msg, duration = 5000 }) {
@@ -9949,10 +9949,10 @@ async function _showLocalNotif(title, body) {
   try {
     await navigator.serviceWorker.register('firebase-messaging-sw.js');
     const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification(title, { body, icon: 'logo.png', badge: 'logo.png', tag: 'recap' });
+    await reg.showNotification(title, { body, icon: 'assets/logo.png', badge: 'assets/logo.png', tag: 'recap' });
     return true;
   } catch(e) {
-    try { new Notification(title, { body, icon: 'logo.png' }); return true; }
+    try { new Notification(title, { body, icon: 'assets/logo.png' }); return true; }
     catch(e2) { console.warn('Notif locale:', e2.message); return false; }
   }
 }
@@ -9982,11 +9982,11 @@ async function sendTestNotification() {
     await navigator.serviceWorker.register('firebase-messaging-sw.js');
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification(title, {
-      body, icon: 'logo.png', badge: 'logo.png', tag: 'test',
+      body, icon: 'assets/logo.png', badge: 'assets/logo.png', tag: 'test',
     });
   } catch(e) {
     // Repli : notification directe sans service worker
-    try { new Notification(title, { body, icon: 'logo.png' }); }
+    try { new Notification(title, { body, icon: 'assets/logo.png' }); }
     catch(e2) { console.warn('Test notif:', e2.message); }
   }
   _logNotifHistory('test', title, body);
