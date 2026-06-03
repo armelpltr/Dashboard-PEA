@@ -55,9 +55,7 @@ const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vN
 // Version de l'app — à bumper à chaque déploiement (sync avec version.json)
 const APP_VERSION = '20260602b';
 
-// Cloudflare Worker — vérif PIN server-side + envoi mails OTP via Brevo
-// Remplacer par l'URL réelle après déploiement : wrangler deploy
-const WORKER_URL = 'https://capital-board-worker.armelpltr14.workers.dev';
+const WORKER_URL = 'https://api.capitalboard.fr';
 
 // 2FA device-based — durée trust appareil
 const DEVICE_TRUST_DAYS = 90;
