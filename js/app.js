@@ -804,12 +804,17 @@ window.dvVerifyOtp = async function() {
       if (ve) { ve.textContent = `Code incorrect. ${left} tentative(s) restante(s).`; ve.style.display = 'block'; }
       return;
     }
-    // OK → ajoute device trusté avec IP info stockée dans le doc OTP + cleanup + démarre app
+    // OK → ajoute device trusté avec IP info stockée dans le doc OTP + cleanup
     const deviceId = _getDeviceId();
     await _addTrustedDevice(user.uid, deviceId, _getDeviceLabel(), data.ipInfo || null);
     try { await deleteFirestoreDoc(ref); } catch(_) {}
-    // Cache vue
     document.getElementById('device-verify-view').style.display = 'none';
+    // Gate PIN — obligatoire même après validation 2FA
+    try {
+      const pinOn = await _isPinEnabled(user.uid);
+      if (!pinOn) { showPinSetupView(user); return; }
+      showPinLockView(user); return;
+    } catch(_) {}
     startApp(user);
   } catch(e) {
     console.error('[2fa] verify échoué:', e);
