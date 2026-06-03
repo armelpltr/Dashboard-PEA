@@ -139,6 +139,16 @@ _splashWatchdog = setTimeout(() => {
   firestoreDeleteField = firestore.deleteField;
 
   fbApp  = initializeApp(firebaseConfig);
+
+  // App Check — protège Firestore et Auth contre les appels hors navigateur
+  try {
+    const { initializeAppCheck, ReCaptchaV3Provider } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check.js");
+    initializeAppCheck(fbApp, {
+      provider: new ReCaptchaV3Provider('6LcrZwstAAAAAIOKXUFbgxO49SUoVmoQycZf3Ekq'),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch(e) { console.warn('[appcheck] init échoué:', e.message); }
+
   fbAuth = auth.getAuth(fbApp);
   db     = firestore.getFirestore(fbApp);
 
