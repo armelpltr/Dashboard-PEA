@@ -56,6 +56,17 @@ const VAPID_KEY = 'BONSSk6FlPyAEd9z8nSIk8DKDTvNfOWeE2jSRyoPhZj1x3uLV7yNNZFL_E_vN
 const APP_VERSION = '20260602b';
 
 const WORKER_URL = 'https://api.capitalboard.fr';
+const TURNSTILE_SITEKEY = '0x4AAAAAADeXU93SY82Uhp7y';
+
+function _getTurnstileToken(containerId) {
+  const el = document.getElementById(containerId);
+  return el?.querySelector('[name="cf-turnstile-response"]')?.value || null;
+}
+
+function _resetTurnstile(containerId) {
+  const el = document.getElementById(containerId);
+  if (el && window.turnstile) window.turnstile.reset(el);
+}
 
 // 2FA device-based — durée trust appareil
 const DEVICE_TRUST_DAYS = 90;
@@ -1640,6 +1651,7 @@ window.doLogin = async function() {
   const err   = document.getElementById('login-error');
   err.textContent = '';
   if (!email || !pass) { err.textContent = 'Veuillez remplir tous les champs.'; err.style.display = 'block'; return; }
+  if (!_getTurnstileToken('turnstile-login')) { err.textContent = 'Veuillez patienter (vérification en cours).'; err.style.display = 'block'; return; }
   setLoading('btn-login-submit', true);
   try {
     await signInWithEmailAndPassword(fbAuth, email, pass);
@@ -1665,6 +1677,7 @@ window.doRegister = async function() {
   if (pass.length < 6) { err.textContent = 'Mot de passe trop court (6 caractères min).'; err.style.display = 'block'; return; }
   const rgpdChecked = document.getElementById('reg-rgpd')?.checked;
   if (!rgpdChecked) { if (rgpdErr) { rgpdErr.style.display = 'block'; } return; }
+  if (!_getTurnstileToken('turnstile-register')) { err.textContent = 'Veuillez patienter (vérification en cours).'; err.style.display = 'block'; return; }
   setLoading('btn-register-submit', true);
   const wantsRecap = document.getElementById('reg-recap')?.checked !== false;
   try {
@@ -2142,21 +2155,25 @@ async function _revokeTrustedDevice(uid, deviceId) {
 
 async function _sendOtpEmail(_toEmail, code) {
   const idToken = await fbAuth.currentUser.getIdToken();
+  const turnstileToken = _getTurnstileToken('turnstile-delete');
   const res = await fetch(`${WORKER_URL}/send-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken, type: 'delete', code }),
+    body: JSON.stringify({ idToken, type: 'delete', code, turnstileToken }),
   });
+  _resetTurnstile('turnstile-delete');
   if (!res.ok) throw new Error('Erreur envoi OTP suppression');
 }
 
 async function _send2faOtpEmail(_toEmail, code, deviceLabel, location) {
   const idToken = await fbAuth.currentUser.getIdToken();
+  const turnstileToken = _getTurnstileToken('turnstile-2fa');
   const res = await fetch(`${WORKER_URL}/send-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken, type: '2fa', code, deviceLabel, location }),
+    body: JSON.stringify({ idToken, type: '2fa', code, deviceLabel, location, turnstileToken }),
   });
+  _resetTurnstile('turnstile-2fa');
   if (!res.ok) throw new Error('Erreur envoi OTP 2FA');
 }
 

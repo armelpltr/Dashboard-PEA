@@ -17,6 +17,7 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700,800,900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
 
@@ -85,6 +86,7 @@
       <label class="form-label">Mot de passe</label>
       <input type="password" class="form-input" id="input-pass" placeholder="••••••••" autocomplete="current-password">
     </div>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAADeXU93SY82Uhp7y" data-theme="dark" id="turnstile-login" style="margin-bottom:12px"></div>
     <button class="btn-login" id="btn-login-submit" onclick="doLogin()">Connexion</button>
     <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
       Pas encore de compte ?
@@ -127,6 +129,7 @@
       </div>
     </div>
     <div id="register-rgpd-error" style="display:none;color:#e55;font-size:12px;margin-bottom:10px;text-align:center">Vous devez accepter les CGU pour créer un compte.</div>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAADeXU93SY82Uhp7y" data-theme="dark" id="turnstile-register" style="margin-bottom:12px"></div>
     <button class="btn-login" id="btn-register-submit" onclick="doRegister()">Créer le compte</button>
     <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
       Déjà un compte ?
@@ -210,6 +213,7 @@
     <!-- Étape A : envoi du code -->
     <div id="dv-step-send">
       <div class="login-error" id="dv-send-error" style="display:none"></div>
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAADeXU93SY82Uhp7y" data-theme="dark" id="turnstile-2fa" style="margin-bottom:12px"></div>
       <button class="btn-login" id="dv-send-btn" onclick="dvSendOtp()">Envoyer le code</button>
     </div>
 
@@ -1469,6 +1473,7 @@
         Un code à 6 chiffres sera envoyé à<br><strong id="del-email-display" style="color:#edf0f7;font-family:var(--mono)">—</strong><br>pour confirmer la suppression.
       </div>
       <div id="del-error" style="display:none;font-size:12px;color:#ff4d6a;margin-bottom:12px;text-align:center;padding:8px 12px;background:rgba(255,77,106,0.08);border-radius:8px"></div>
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAADeXU93SY82Uhp7y" data-theme="dark" id="turnstile-delete" style="margin-bottom:12px"></div>
       <div style="display:flex;gap:10px">
         <button onclick="delBackToStep1()" style="flex:1;padding:11px;border-radius:10px;border:1px solid #2a2b3d;background:#13141c;color:#cbd1de;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans)">Retour</button>
         <button id="del-final-btn" onclick="delFinalize()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#ff4d6a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)">Envoyer le code</button>

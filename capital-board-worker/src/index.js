@@ -154,6 +154,19 @@ async function sendEmail(to, subject, html, env) {
   if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
 }
 
+// ── Turnstile verification ─────────────────────────────────────────────────
+
+async function verifyTurnstile(token, env) {
+  if (!token) return false;
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ secret: env.TURNSTILE_SECRET_KEY, response: token }),
+  });
+  const data = await res.json();
+  return data.success === true;
+}
+
 // ── Main handler ───────────────────────────────────────────────────────────
 
 export default {
@@ -186,10 +199,12 @@ export default {
 
       // ── POST /send-otp ──────────────────────────────────────────────────
       if (url.pathname === '/send-otp' && request.method === 'POST') {
-        const { idToken, type, code, deviceLabel, location } = await request.json();
+        const { idToken, type, code, deviceLabel, location, turnstileToken } = await request.json();
         if (!idToken || !code || !['delete', '2fa'].includes(type)) {
           return json({ ok: false, error: 'Paramètres invalides' }, 400);
         }
+        const humanVerified = await verifyTurnstile(turnstileToken, env);
+        if (!humanVerified) return json({ ok: false, error: 'Vérification humaine échouée' }, 403);
 
         const user = await verifyIdToken(idToken, env);
         if (!user.email) return json({ ok: false, error: 'Email introuvable' }, 400);
