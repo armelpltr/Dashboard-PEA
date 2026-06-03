@@ -242,7 +242,7 @@ async function loadAllUserData(uid) {
   if (!uid) return;
   if (window.IS_DEMO) {
     try {
-      const resp = await fetch('demo-portfolio.json', { cache: 'no-store' });
+      const resp = await fetch('data/demo-portfolio.json', { cache: 'no-store' });
       const data = await resp.json();
       _localCache[uid + '_portfolio']    = data.portfolio    || [];
       _localCache[uid + '_transactions'] = data.transactions || [];
