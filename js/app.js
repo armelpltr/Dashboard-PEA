@@ -2810,7 +2810,13 @@ function renderTxHistory() {
       : '<span style="color:var(--text3)">—</span>';
     return '<tr>' +
       '<td class="mono" style="font-size:10px;white-space:nowrap">' + dateStr + '</td>' +
-      '<td><span class="' + (isBuy ? 'badge-pos' : 'badge-neg') + '" style="font-size:11px;padding:3px 10px">' + (isBuy ? '▲ ACHAT' : '▼ VENTE') + '</span></td>' +
+      '<td>' + (
+        tx.type === 'buy'
+          ? '<span class="badge-pos" style="font-size:11px;padding:3px 10px">▲ ACHAT</span>'
+          : tx.type === 'dividend'
+          ? '<span style="font-size:11px;padding:3px 10px;border-radius:6px;background:rgba(245,183,49,0.12);color:#f5b731;border:1px solid rgba(245,183,49,0.25);font-weight:600;white-space:nowrap">◆ DIVIDENDE</span>'
+          : '<span class="badge-neg" style="font-size:11px;padding:3px 10px">▼ VENTE</span>'
+      ) + '</td>' +
       '<td style="font-size:12px">' + (tx.name || tx.ticker || '—') + '</td>' +
       '<td class="mono" style="font-size:12px">' + tx.qty + '</td>' +
       '<td class="mono hide-mobile" style="font-size:12px">' + tx.price.toFixed(2) + ' €</td>' +
@@ -8355,19 +8361,22 @@ function initDividendes() {
     const lastKnown     = history.find(d => !d.next) || null;
     return { r, history, buyDate: firstBuy, allReceived, totalRecu, duringHolding, nextEstim, lastKnown };
   })).then(rows => {
-    // Dividendes auto-détectés Yahoo, date de versement passée, pas encore
-    // enregistrés → demander confirmation à l'utilisateur via popup.
+    // Dividendes auto-détectés Yahoo, date de versement passée (d.date <= today),
+    // pas encore enregistrés → enregistrement AUTOMATIQUE (plus de confirmation manuelle).
     const existingDiv = (getTransactions(currentUser) || []).filter(t => t.type === 'dividend');
     if (!window.IS_DEMO) {
+      let added = 0;
       rows.forEach(x => x.allReceived.forEach(e => {
         if (!e.auto || !e.qty || !e.price) return;
-        const key = e.ticker + '|' + e.date;
         if (existingDiv.find(t => t.ticker === e.ticker && t.date === e.date)) return;
-        if (_divDeclined.has(key)) return;
-        if (_divPromptQueue.find(q => q.ticker === e.ticker && q.date === e.date)) return;
-        _divPromptQueue.push({ ticker: e.ticker, name: e.name || e.ticker, qty: e.qty, price: e.price, date: e.date });
+        logTransaction(currentUser, {
+          type: 'dividend', ticker: e.ticker, name: e.name || e.ticker,
+          qty: e.qty, price: e.price, date: e.date, source: 'yahoo-auto',
+        });
+        existingDiv.push({ ticker: e.ticker, date: e.date }); // évite double-ajout dans la même passe
+        added++;
       }));
-      _processDivPromptQueue();
+      if (added) { try { renderPortfolio(); } catch(_) {} }
     }
 
     // Mettre à jour KPIs dynamiques
