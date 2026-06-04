@@ -1169,9 +1169,9 @@ tr:hover td { background: rgba(255,255,255,0.018); }
 }
 /* Écrans larges : on grandit la hauteur pour que la pente reste lisible
    (sinon largeur >> hauteur écrase la courbe sur ultrawide). */
-@media (min-width: 1500px) { .portf-canvas-wrap { height: 180px; } }
-@media (min-width: 1920px) { .portf-canvas-wrap { height: 220px; } }
-@media (min-width: 2400px) { .portf-canvas-wrap { height: 260px; } }
+@media (min-width: 1500px) { .portf-canvas-wrap { height: 230px; } }
+@media (min-width: 1920px) { .portf-canvas-wrap { height: 300px; } }
+@media (min-width: 2400px) { .portf-canvas-wrap { height: 360px; } }
 
 .portf-chart-loader {
   position: absolute; inset: 0;
