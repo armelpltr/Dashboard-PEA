@@ -5274,7 +5274,9 @@ function _computePortfolioChartRange(data) {
 // sans attendre les fetch Yahoo (lents via proxies). La vraie courbe est
 // recalculée en arrière-plan puis re-dessinée + re-stockée.
 function _chartCacheKey(period) {
-  return 'pea_chart_' + (currentUser || '') + '_' + period;
+  // v2 : invalide les caches d'avant le fix « courbe partielle » (datasets
+  // potentiellement faux figés en localStorage).
+  return 'pea_chart_v2_' + (currentUser || '') + '_' + period;
 }
 function _loadChartDataset(period) {
   try {
