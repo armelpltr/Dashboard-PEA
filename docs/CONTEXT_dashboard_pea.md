@@ -1,7 +1,7 @@
 
 # Capital Board — Contexte & Documentation complète
 
-> Dernière mise à jour : 2026-06-03
+> Dernière mise à jour : 2026-06-05
 
 ---
 
@@ -118,9 +118,9 @@ git stash && git pull --rebase && git stash pop && git push
 
 **Règle** : committer et pusher après chaque modification de code, sans attendre.
 
-### Cache busting `app.js`
-`<script src="js/app.js?v=YYYYMMDDx">` dans `app.html` — à bumper à chaque release notable.
-Actuel : `?v=20260530i`
+### Cache busting `app.js` + `style.css`
+`<script src="js/app.js?v=YYYYMMDDx">` et `<link ... css/style.css?v=YYYYMMDDx>` dans `app.html` — à bumper à chaque release notable.
+Actuel : `app.js?v=20260605h`, `style.css?v=20260605e`
 
 ---
 
@@ -151,6 +151,13 @@ Permettre à un utilisateur en mode démo (`?demo=1`) de s'inscrire et de garder
 
 ### Livré récemment (par ordre antéchronologique)
 
+- **SEO complet landing** (2026-06-04) — meta canonical/og:url/og:image absolu/Twitter Card, JSON-LD WebApplication + FAQPage, `robots.txt`, `sitemap.xml`, og-image 1200×630 générée (`assets/og-image.png`). Title ciblé "Suivi et analyse de portefeuille PEA gratuit".
+- **4 guides SEO PEA** (2026-06-04) — `guides/analyser-son-pea`, `suivre-performance-pea`, `suivi-pea-gratuit`, `pea-vs-cto`. Contenu longue traîne + JSON-LD Article + CTA. Section "Guides" sur la landing (nav + footer). Ajoutés au sitemap.
+- **Google Sign-In réactivé** (2026-06-04) — `doLoginGoogle` popup (desktop/Android) + fallback `signInWithRedirect` (iOS/PWA), `getRedirectResult` au démarrage. Boutons "Continuer avec Google" sur login + register, garde RGPD. Nouveau compte Google → auto-trust 1er device. **Requiert activation du provider Google dans Firebase Console.** Caveat iOS PWA (cookies cross-domain `firebaseapp.com`) non résolu.
+- **Courbe instantanée (cache)** (2026-06-05) — cache localStorage de la courbe par uid, TTL 5min séance / 12h fermé, signature portefeuille+tx pour invalidation. Tip = valeur live du header (fix décalage courbe/chiffre). 1 seul rendu (pas de saut). Hauteur responsive (130→360px sur ultrawide), dégradé calé sur hauteur réelle, rouge si perf négative. NB : remplace l'approche revert 816dba4, validée par le user cette fois.
+- **Dividendes auto-enregistrés** (2026-06-05) — `_autoLogDividends()` appelé au démarrage (`startApp`), scanne tous les titres et enregistre les dividendes versés (date ≤ today) sans ouvrir la page Dividendes. Plus de popup "reçu ?". Badge "DIVIDENDE" doré dans l'historique transactions (au lieu de "VENTE").
+- **Modal "Gérer les versements"** (2026-06-05) — "Voir / modifier" du solde espèces ouvre un modal (liste + édition inline date/montant + suppression + total + bouton ajouter). Bouton solde espèces restylé (pill + icône œil).
+- **Dropdown courtier custom** (2026-06-05) — onglet Performance : dropdown custom avec logos (favicon Google), Boursorama dispo, Fortuneo + Trade Republic "Dispo bientôt" (désactivés).
 - **Code PIN 6 chiffres obligatoire** (2026-05-30) — app lock à chaque rechargement. SHA-256(salt+pin) dans `users/{uid}/data/security`. Vues : force setup, lock screen (6 dots + 5 tentatives max), modal change depuis Profil. Keypad 3x4 custom. Non désactivable.
 - **Masquer le solde** (2026-05-30) — toggle œil header mobile + sidebar desktop. MutationObserver + WeakMap, remplace `€`/`%`/`$` par `•`. Throttle requestAnimationFrame. localStorage persistant.
 - **2FA device-based améliorations** (2026-05-30) — IP IPv4 via ipify→ipapi.co, pays+drapeau FR, template EmailJS dédié, refonte CSS carte appareil, modal Capital Board pour révocation, révocation appareil courant autorisée.
@@ -556,6 +563,38 @@ service firebase.storage {
 ---
 
 ## 10. Historique des sessions
+
+### Session 2026-06-04 / 06-05
+
+#### SEO landing + guides
+- **Déploiement** : `.github/workflows/deploy.yml` copie `pages/{index,app,auth-action}.html` → racine, puis upload tout le repo (`path: '.'`). Donc `robots.txt`/`sitemap.xml`/`guides/` à la **racine repo** = servis sur `capitalboard.fr/`.
+- **Meta** (`pages/index.html`) : canonical, og:url/site_name/locale, og:image **absolu** `https://capitalboard.fr/assets/og-image.png`, Twitter Card `summary_large_image`, JSON-LD `WebApplication` (FinanceApplication, gratuit) + `FAQPage` (6 Q/R reprises de la section FAQ).
+- **og-image** : `assets/og-image.png` 1200×630, générée via Edge headless (`--headless --screenshot`) depuis un HTML temporaire (design "split + KPI", charte sombre). Pas d'ImageMagick (`convert` Windows = outil disque, pas IM).
+- **robots.txt** : allow all, disallow `/app.html` + `/auth-action.html`, lien sitemap.
+- **sitemap.xml** : landing (1.0) + 4 guides (0.8) + 3 pages légales (0.3).
+- **Guides** (`guides/*.html`) : 4 pages autonomes (CSS inline, charte), contenu SEO + JSON-LD Article + CTA `https://capitalboard.fr/`. Section `#guides` sur la landing (4 cartes), liens nav desktop/mobile + footer. Liens relatifs `guides/...` (OK en prod racine ; cassés en `file://` local comme les liens `legal/...`).
+- **À faire user** : Google Search Console (vérif domaine TXT DNS + soumettre sitemap + Inspection d'URL), backlinks (r/vosfinances, Product Hunt). "Impossible de lire le sitemap" GSC = faux positif transitoire (fichier 200 + XML valide vérifié).
+
+#### Google Sign-In (réactivé)
+- Était **codé puis désactivé** (PWA iOS cookies cross-domain). `doLoginGoogle` était un stub.
+- `js/app.js` : `doLoginGoogle` → `signInWithPopup` (desktop/Android) sinon `signInWithRedirect` (`_shouldUseRedirectAuth()` : iOS ou standalone). `getRedirectResult` au démarrage (remplace le commentaire ligne ~184). Nouveau compte (`_tokenResponse.isNewUser`) → `localStorage.signup_auto_trust=1` → 1er device auto-trust. Garde `reg-rgpd` obligatoire si vue inscription.
+- `pages/app.html` : boutons "Continuer avec Google" + séparateur OU sur `#login-view` et `#register-view` (SVG G 4 couleurs).
+- **Requiert** : Firebase Console → Authentication → Sign-in method → Google → Enable ; Authorized domains inclut `capitalboard.fr`. Sinon `auth/operation-not-allowed`.
+
+#### Courbe portefeuille — affichage instantané (cache)
+- Objectif user : PIN tapé → dashboard complet (lignes + chiffres + **courbe**) d'un coup. Goulot = `buildPortfolioHistory` (Yahoo via proxies, ~7s).
+- `renderPortfolioChart` : cache `localStorage['pfcurve_'+uid]` = `{ ts, sig, dataset }`. `sig` = tickers+qty + nb transactions + période → invalidé si modif. `_curveCacheTTL()` : 5min en séance (lun-ven 9-18h), 12h sinon. Cache frais → render instant sans Yahoo ; sinon fetch bloquant + spinner.
+- **Tip live** : dernier point du dataset = `Σ qty×currentPrice` (même valeur que le header) → fix décalage courbe/chiffre (Défaut B).
+- **1 seul rendu** (pas de re-dessin silencieux) → pas de saut visuel (Défaut A). Tolérance staleness "quelques minutes" acceptée par le user. Remplace l'approche revert 816dba4, **validée cette fois**.
+- **Hauteur responsive** (`css/style.css` `.portf-canvas-wrap`) : 130px base, 230px ≥1500px, 300px ≥1920px, 360px ≥2400px (ultrawide écrasait la pente). Dégradé `backgroundColor` calé sur `chartArea` (était hardcodé 130px → coupé), 3 stops (0.34→0.12→0). Couleur courbe+fondu = `isUp` (vert ≥0, rouge <0).
+
+#### Dividendes auto + badge
+- `_autoLogDividends()` (js/app.js, avant `initDividendes`) : appelé dans `startApp` (setTimeout 1200ms, hors démo). Scanne `pf.filter(non-ETF)`, `fetchDivHistory` par ticker, log auto des dividendes `date ≤ today` pendant détention non déjà enregistrés (`logTransaction type:'dividend' source:'yahoo-auto'`). Plus de popup `_processDivPromptQueue` (la détection dans `initDividendes` enregistre aussi en auto désormais).
+- `renderTxHistory` : badge 3-way — achat (vert ▲), **dividende (or ◆ DIVIDENDE)**, vente (rouge ▼).
+
+#### Modal versements + dropdown courtier
+- **Modal "Gérer les versements"** (`#versements-list-modal` app.html) : remplace la liste inline. `openVersementsListModal` / `renderVersementsModalList` (date FR, montant, modifier inline via `_versEditIdx` + `saveVersementEdit`, `deleteVersementFromModal`, total). Bouton "＋ Ajouter" → `openVersementModal`. Bouton "Voir / modifier" du solde espèces restylé `.btn-cash-edit` (pill + œil).
+- **Dropdown courtier** (`#broker-dd` app.html, onglet Performance) : custom (remplace le libellé fixe Boursorama). `toggleBrokerDD`/`selectBroker`/`_closeBrokerDD`. Boursorama sélectionnable (check), Fortuneo + Trade Republic `.disabled` + badge `.broker-soon` "Dispo bientôt". Logos via `google.com/s2/favicons?domain=...`.
 
 ### Session 2026-05-30
 
