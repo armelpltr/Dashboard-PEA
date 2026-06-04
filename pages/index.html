@@ -8,10 +8,50 @@
 <link rel="icon" type="image/png" href="assets/logo.png">
 <link rel="apple-touch-icon" href="assets/logo.png">
 <meta name="theme-color" content="#04060b">
+<link rel="canonical" href="https://capitalboard.fr/">
+<meta name="robots" content="index, follow">
+<meta property="og:site_name" content="Capital Board">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:url" content="https://capitalboard.fr/">
 <meta property="og:title" content="Capital Board — Suivi de portefeuille PEA">
-<meta property="og:description" content="Dividendes, alertes prix, récap IA. Gratuit, sans publicité.">
-<meta property="og:image" content="assets/logo.png">
+<meta property="og:description" content="Performance, analyse IA, suivi dividendes. 100% gratuit, sans publicité.">
+<meta property="og:image" content="https://capitalboard.fr/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Capital Board — Suivi de portefeuille PEA">
+<meta name="twitter:description" content="Performance, analyse IA, suivi dividendes. 100% gratuit, sans publicité.">
+<meta name="twitter:image" content="https://capitalboard.fr/assets/og-image.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "name": "Capital Board",
+      "url": "https://capitalboard.fr/",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web, Android, iOS",
+      "description": "Suivi de portefeuille PEA en temps réel : performance, analyse IA quotidienne, suivi des dividendes, alertes prix. Gratuit et sans publicité.",
+      "inLanguage": "fr-FR",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+      "author": { "@type": "Person", "name": "Armel Plantier" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "C'est vraiment 100% gratuit, sans piège ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui. Pas de freemium, pas de fonctionnalités payantes, pas d'abonnement caché. Le projet est open source et hébergé sur GitHub Pages. Les seuls coûts (Firebase, API IA) sont à ma charge tant qu'ils restent dans les quotas gratuits." } },
+        { "@type": "Question", "name": "Où sont stockées mes données exactement ?", "acceptedAnswer": { "@type": "Answer", "text": "Sur Firestore (Google Cloud), région europe-west1 en Belgique. Chiffrées au repos (AES-256) et en transit (TLS 1.3). Aucun transfert hors UE. Vous pouvez exporter ou supprimer toutes vos données depuis votre profil." } },
+        { "@type": "Question", "name": "Comment importer mes transactions depuis ma banque ?", "acceptedAnswer": { "@type": "Answer", "text": "Deux options : saisie manuelle ou import CSV (compatible Bourse Direct, Boursorama, Fortuneo et la plupart des courtiers PEA). Le parser détecte automatiquement le format." } },
+        { "@type": "Question", "name": "Quelle différence avec Finary ou Trade Republic ?", "acceptedAnswer": { "@type": "Answer", "text": "Finary agrège vos comptes bancaires (freemium, données revendues anonymisées). Trade Republic est un courtier avec son dashboard. Capital Board ne touche pas à vos comptes : vous gardez le contrôle complet, sans dépendance bancaire, et tout le code est public." } },
+        { "@type": "Question", "name": "L'analyse IA est-elle fiable pour prendre des décisions ?", "acceptedAnswer": { "@type": "Answer", "text": "L'IA fournit une synthèse de votre portefeuille et des actualités liées à vos titres, à titre informatif uniquement. Ce n'est pas un conseil en investissement. Les décisions restent les vôtres." } },
+        { "@type": "Question", "name": "Mobile : ça marche bien ?", "acceptedAnswer": { "@type": "Answer", "text": "Interface responsive. Les notifications push fonctionnent sur Android et iOS 16.4+ (installation en PWA requise sur iPhone : Partager → Sur l'écran d'accueil)." } }
+      ]
+    }
+  ]
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700,800,900&display=swap" rel="stylesheet">
