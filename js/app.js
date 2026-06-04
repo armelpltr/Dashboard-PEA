@@ -2565,6 +2565,7 @@ function showPage(id) {
   if (id === 'recap')       renderRecapPage();
   if (id === 'alertes')     renderAlertsList();
   if (id === 'support')     renderSupportPage();
+  if (id === 'fundamentals') renderFundamentalsPage();
 }
 
 function _renderDemoBlocked(pageId, sectionTitle) {
@@ -2597,6 +2598,7 @@ function showPageMobile(id) {
   if (id === 'recap')       renderRecapPage();
   if (id === 'alertes')     renderAlertsList();
   if (id === 'support')     renderSupportPage();
+  if (id === 'fundamentals') renderFundamentalsPage();
 }
 
 // ─── PORTFOLIO ────────────────────────────────────────
@@ -4969,6 +4971,282 @@ window.selectBroker = function(id, label, domain) {
   if (logo && domain) logo.src = 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=64';
   _closeBrokerDD();
 };
+
+// ═══ RÉSULTATS FINANCIERS (fondamentaux) ═══════════════════════════════
+let _fundChartMain = null, _fundChartMargin = null;
+let _fundCurrent = null;          // { ticker, name, meta }
+let _fundFreq = 'annual';         // 'annual' | 'quarterly'
+let _fundData = null;             // { series, currency }
+let _fundInited = false;
+
+const _FUND_TYPES = [
+  'TotalRevenue','GrossProfit','OperatingIncome','NetIncome','EBITDA',
+  'BasicEPS','DilutedEPS','TotalAssets','TotalLiabilitiesNetMinorityInterest',
+  'StockholdersEquity','FreeCashFlow','OperatingCashFlow','TotalDebt',
+];
+
+function _curSym(cur) {
+  return cur === 'USD' ? '$' : (cur === 'GBp' || cur === 'GBP') ? '£' : (cur === 'JPY' ? '¥' : '€');
+}
+function _fundFmtBig(v, cur) {
+  if (v == null || isNaN(v)) return '—';
+  const sym = _curSym(cur), a = Math.abs(v);
+  let s;
+  if (a >= 1e9) s = (v/1e9).toFixed(2) + ' Md';
+  else if (a >= 1e6) s = (v/1e6).toFixed(1) + ' M';
+  else if (a >= 1e3) s = (v/1e3).toFixed(1) + ' k';
+  else s = v.toFixed(2);
+  return s + ' ' + sym;
+}
+function _fundFmtPct(v) { return (v == null || isNaN(v)) ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1) + ' %'; }
+function _fundPeriodLabel(date, freq) {
+  if (!date) return '—';
+  const d = new Date(date + 'T12:00:00');
+  if (freq === 'quarterly') return 'T' + (Math.floor(d.getMonth()/3)+1) + ' ' + String(d.getFullYear()).slice(-2);
+  return String(d.getFullYear());
+}
+
+window.renderFundamentalsPage = function() {
+  if (_fundInited) { if (_fundCurrent) {} return; }
+  _fundInited = true;
+  // Puces d'accès rapide : titres détenus + watchlist
+  const quick = document.getElementById('fund-quick');
+  if (quick) {
+    const pf = getPortfolio(currentUser) || [];
+    const seen = new Set();
+    const chips = pf.filter(r => r.ticker && !seen.has(r.ticker) && seen.add(r.ticker)).slice(0, 12);
+    if (chips.length) {
+      quick.innerHTML = '<span class="fund-quick-label">Vos titres :</span>' + chips.map(r =>
+        '<button class="fund-chip" onclick="fundLoad(\'' + r.ticker + '\',' + JSON.stringify(r.name || r.ticker).replace(/"/g,'&quot;') + ')">' +
+        (r.name || r.ticker) + '</button>'
+      ).join('');
+    }
+  }
+};
+
+window.fundSearch = async function() {
+  const inp = document.getElementById('fund-search-input');
+  const q = (inp && inp.value || '').trim();
+  if (!q) return;
+  const resEl = document.getElementById('fund-result');
+  const emptyEl = document.getElementById('fund-empty');
+  if (emptyEl) emptyEl.style.display = 'none';
+  resEl.innerHTML = '<div class="fund-loading">Recherche…</div>';
+  try {
+    // Ticker direct (ex: MC.PA, AAPL) sinon recherche par nom
+    let ticker = q, name = q;
+    if (!/^[A-Z0-9.\-]{1,8}(\.[A-Z]{1,3})?$/i.test(q) || /\s/.test(q)) {
+      const sug = await fetchSuggestions(q);
+      if (!sug.length) { resEl.innerHTML = '<div class="fund-error">Aucune entreprise trouvée pour « ' + q + ' ».</div>'; return; }
+      ticker = sug[0].symbol; name = sug[0].name;
+    }
+    fundLoad(ticker, name);
+  } catch(e) {
+    resEl.innerHTML = '<div class="fund-error">Erreur de recherche. Réessayez.</div>';
+  }
+};
+
+window.fundLoad = async function(ticker, name) {
+  const resEl = document.getElementById('fund-result');
+  const emptyEl = document.getElementById('fund-empty');
+  if (emptyEl) emptyEl.style.display = 'none';
+  resEl.innerHTML = '<div class="fund-loading">Chargement des résultats de ' + (name || ticker) + '…</div>';
+  try {
+    let meta = {};
+    try {
+      const craw = await fetchWithFallback('https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(ticker) + '?interval=1d&range=5d');
+      const cj = JSON.parse(craw);
+      meta = (cj.chart && cj.chart.result && cj.chart.result[0] && cj.chart.result[0].meta) || {};
+    } catch(_) {}
+    const data = await fetchFundamentals(ticker, _fundFreq);
+    if (!data.series.TotalRevenue || !data.series.TotalRevenue.length) {
+      resEl.innerHTML = '<div class="fund-error">Pas de données financières disponibles pour ' + ticker + ' (souvent le cas des ETF/fonds).</div>';
+      return;
+    }
+    _fundCurrent = { ticker, name: name || meta.shortName || meta.longName || ticker, meta };
+    _fundData = data;
+    renderFundamentals();
+  } catch(e) {
+    resEl.innerHTML = '<div class="fund-error">Impossible de charger les résultats. Réessayez dans un instant.</div>';
+    console.warn('[fund]', e && e.message);
+  }
+};
+
+async function fetchFundamentals(ticker, freq) {
+  const prefix = freq === 'quarterly' ? 'quarterly' : 'annual';
+  const types = _FUND_TYPES.map(t => prefix + t).join(',');
+  const p1 = 1262304000, p2 = Math.floor(Date.now()/1000) + 86400;
+  const url = 'https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/'
+    + encodeURIComponent(ticker) + '?type=' + types + '&period1=' + p1 + '&period2=' + p2 + '&merge=false';
+  const raw = await fetchWithFallback(url);
+  const d = JSON.parse(raw);
+  const result = (d.timeseries && d.timeseries.result) || [];
+  const out = {}; let currency = '';
+  result.forEach(s => {
+    const key = s.meta && s.meta.type && s.meta.type[0];
+    if (!key || !s[key]) return;
+    const arr = s[key].filter(Boolean).map(p => {
+      if (p.currencyCode && !currency) currency = p.currencyCode;
+      return { date: p.asOfDate, val: p.reportedValue ? p.reportedValue.raw : null };
+    });
+    out[key.replace(prefix, '')] = arr;
+  });
+  return { series: out, currency };
+}
+
+window.setFundFreq = function(freq) {
+  if (_fundFreq === freq || !_fundCurrent) return;
+  _fundFreq = freq;
+  fundLoad(_fundCurrent.ticker, _fundCurrent.name);
+};
+
+function renderFundamentals() {
+  const resEl = document.getElementById('fund-result');
+  const s = _fundData.series, cur = _fundData.currency, meta = _fundCurrent.meta || {};
+  const freq = _fundFreq;
+
+  // Périodes de référence = celles du chiffre d'affaires, 8 dernières
+  const revAll = s.TotalRevenue || [];
+  const periods = revAll.map(p => p.date).slice(-8);
+  const mv = (metric) => { const m = {}; (s[metric] || []).forEach(p => m[p.date] = p.val); return m; };
+  const M = {};
+  ['TotalRevenue','GrossProfit','OperatingIncome','NetIncome','EBITDA','BasicEPS','DilutedEPS',
+   'TotalAssets','TotalLiabilitiesNetMinorityInterest','StockholdersEquity','FreeCashFlow',
+   'OperatingCashFlow','TotalDebt'].forEach(k => M[k] = mv(k));
+
+  const labels = periods.map(d => _fundPeriodLabel(d, freq));
+  const arr = (metric) => periods.map(d => M[metric][d] != null ? M[metric][d] : null);
+  const revenue = arr('TotalRevenue'), netinc = arr('NetIncome'), gross = arr('GrossProfit'), op = arr('OperatingIncome');
+
+  // KPIs (dernière période + variation vs précédente)
+  const last = periods.length - 1, prev = last - 1;
+  const lastRev = revenue[last], prevRev = prev >= 0 ? revenue[prev] : null;
+  const revGrowth = (lastRev != null && prevRev) ? (lastRev - prevRev) / Math.abs(prevRev) * 100 : null;
+  const lastNet = netinc[last], prevNet = prev >= 0 ? netinc[prev] : null;
+  const netGrowth = (lastNet != null && prevNet) ? (lastNet - prevNet) / Math.abs(prevNet) * 100 : null;
+  const netMargin = (lastRev && lastNet != null) ? lastNet / lastRev * 100 : null;
+  const grossMargin = (lastRev && gross[last] != null) ? gross[last] / lastRev * 100 : null;
+  const eps = arr('DilutedEPS').some(v => v != null) ? arr('DilutedEPS') : arr('BasicEPS');
+  const lastEps = eps[last];
+  const fcf = arr('FreeCashFlow'); const lastFcf = fcf[last];
+
+  // Prix + variation jour
+  const price = meta.regularMarketPrice, prevClose = meta.chartPreviousClose || meta.previousClose;
+  const dayChg = (price != null && prevClose) ? (price - prevClose) / prevClose * 100 : null;
+
+  const kpi = (label, value, sub, subColor) =>
+    '<div class="fund-kpi"><div class="fund-kpi-label">' + label + '</div>' +
+    '<div class="fund-kpi-value">' + value + '</div>' +
+    '<div class="fund-kpi-sub" ' + (subColor ? 'style="color:' + subColor + '"' : '') + '>' + (sub || '') + '</div></div>';
+
+  const growthColor = (v) => v == null ? 'var(--text3)' : v >= 0 ? 'var(--positive)' : 'var(--negative)';
+
+  // Table : métriques en lignes, périodes en colonnes
+  const rows = [
+    ['Chiffre d\'affaires', 'TotalRevenue', 'big'],
+    ['Marge brute', 'GrossProfit', 'big'],
+    ['Résultat d\'exploitation', 'OperatingIncome', 'big'],
+    ['EBITDA', 'EBITDA', 'big'],
+    ['Résultat net', 'NetIncome', 'big'],
+    ['BPA (dilué)', 'DilutedEPS', 'eps'],
+    ['Free cash-flow', 'FreeCashFlow', 'big'],
+    ['Capitaux propres', 'StockholdersEquity', 'big'],
+    ['Total actifs', 'TotalAssets', 'big'],
+    ['Dette totale', 'TotalDebt', 'big'],
+  ];
+  const tableHead = '<th>Métrique</th>' + labels.map(l => '<th>' + l + '</th>').join('');
+  const tableBody = rows.map(([label, key, kind]) => {
+    const vals = arr(key);
+    if (!vals.some(v => v != null)) return '';
+    const cells = vals.map(v =>
+      '<td class="mono">' + (v == null ? '—' : kind === 'eps' ? (v.toFixed(2) + ' ' + _curSym(cur)) : _fundFmtBig(v, cur)) + '</td>'
+    ).join('');
+    return '<tr><td class="fund-row-label">' + label + '</td>' + cells + '</tr>';
+  }).join('');
+
+  resEl.innerHTML =
+    '<div class="fund-head">' +
+      '<div class="fund-head-id">' +
+        '<img class="fund-logo" src="https://www.google.com/s2/favicons?domain=' + _fundDomainFromMeta(meta) + '&sz=128" onerror="this.style.display=\'none\'" alt="">' +
+        '<div><div class="fund-name">' + _fundCurrent.name + '</div>' +
+        '<div class="fund-ticker">' + _fundCurrent.ticker + (meta.fullExchangeName ? ' · ' + meta.fullExchangeName : '') + '</div></div>' +
+      '</div>' +
+      (price != null ? '<div class="fund-price"><div class="fund-price-val">' + price.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + _curSym(cur) + '</div>' +
+        '<div class="fund-price-chg" style="color:' + growthColor(dayChg) + '">' + _fundFmtPct(dayChg) + ' aujourd\'hui</div></div>' : '') +
+    '</div>' +
+
+    '<div class="fund-freq-toggle">' +
+      '<button class="' + (freq === 'annual' ? 'active' : '') + '" onclick="setFundFreq(\'annual\')">Annuel</button>' +
+      '<button class="' + (freq === 'quarterly' ? 'active' : '') + '" onclick="setFundFreq(\'quarterly\')">Trimestriel</button>' +
+    '</div>' +
+
+    '<div class="fund-kpis">' +
+      kpi('Chiffre d\'affaires', _fundFmtBig(lastRev, cur), _fundFmtPct(revGrowth) + ' vs N-1', growthColor(revGrowth)) +
+      kpi('Résultat net', _fundFmtBig(lastNet, cur), _fundFmtPct(netGrowth) + ' vs N-1', growthColor(netGrowth)) +
+      kpi('Marge nette', netMargin != null ? netMargin.toFixed(1) + ' %' : '—', 'Marge brute ' + (grossMargin != null ? grossMargin.toFixed(0) + ' %' : '—'), 'var(--text3)') +
+      kpi('BPA', lastEps != null ? lastEps.toFixed(2) + ' ' + _curSym(cur) : '—', 'Free cash-flow ' + _fundFmtBig(lastFcf, cur), 'var(--text3)') +
+    '</div>' +
+
+    '<div class="fund-charts">' +
+      '<div class="fund-chart-card"><div class="fund-chart-title">Chiffre d\'affaires & résultat net</div><div class="fund-canvas-wrap"><canvas id="fund-chart-main"></canvas></div></div>' +
+      '<div class="fund-chart-card"><div class="fund-chart-title">Marges (%)</div><div class="fund-canvas-wrap"><canvas id="fund-chart-margin"></canvas></div></div>' +
+    '</div>' +
+
+    '<div class="fund-table-card">' +
+      '<div class="fund-chart-title">Données détaillées · ' + (freq === 'annual' ? 'annuel' : 'trimestriel') + '</div>' +
+      '<div class="fund-table-scroll"><table class="fund-table"><thead><tr>' + tableHead + '</tr></thead><tbody>' + tableBody + '</tbody></table></div>' +
+      '<div class="fund-source">Source : Yahoo Finance · devise ' + (cur || '—') + '. Données informatives, pas un conseil en investissement.</div>' +
+    '</div>';
+
+  // ── Charts ──
+  if (_fundChartMain) { _fundChartMain.destroy(); _fundChartMain = null; }
+  if (_fundChartMargin) { _fundChartMargin.destroy(); _fundChartMargin = null; }
+
+  const mainCtx = document.getElementById('fund-chart-main');
+  if (mainCtx) {
+    _fundChartMain = new Chart(mainCtx.getContext('2d'), {
+      type: 'bar',
+      data: { labels, datasets: [
+        { label: 'Chiffre d\'affaires', data: revenue, backgroundColor: 'rgba(124,109,245,0.85)', borderRadius: 4, maxBarThickness: 34 },
+        { label: 'Résultat net', data: netinc, backgroundColor: 'rgba(0,224,158,0.85)', borderRadius: 4, maxBarThickness: 34 },
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: '#aab2c3', boxWidth: 12, font: { size: 11 } } },
+          tooltip: { callbacks: { label: (c) => c.dataset.label + ' : ' + _fundFmtBig(c.parsed.y, cur) } } },
+        scales: { x: { ticks: { color: '#6b7385', font: { size: 11 } }, grid: { display: false } },
+          y: { ticks: { color: '#6b7385', font: { size: 10 }, callback: (v) => _fundFmtBig(v, cur) }, grid: { color: 'rgba(255,255,255,0.04)' } } }
+      }
+    });
+  }
+  const marginCtx = document.getElementById('fund-chart-margin');
+  if (marginCtx) {
+    const grossM = periods.map(d => (M.TotalRevenue[d] && M.GrossProfit[d] != null) ? M.GrossProfit[d]/M.TotalRevenue[d]*100 : null);
+    const opM = periods.map(d => (M.TotalRevenue[d] && M.OperatingIncome[d] != null) ? M.OperatingIncome[d]/M.TotalRevenue[d]*100 : null);
+    const netM = periods.map(d => (M.TotalRevenue[d] && M.NetIncome[d] != null) ? M.NetIncome[d]/M.TotalRevenue[d]*100 : null);
+    _fundChartMargin = new Chart(marginCtx.getContext('2d'), {
+      type: 'line',
+      data: { labels, datasets: [
+        { label: 'Marge brute', data: grossM, borderColor: '#5b8dee', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+        { label: 'Marge op.', data: opM, borderColor: '#f5b731', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+        { label: 'Marge nette', data: netM, borderColor: '#00e09e', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: '#aab2c3', boxWidth: 12, font: { size: 11 } } },
+          tooltip: { callbacks: { label: (c) => c.dataset.label + ' : ' + (c.parsed.y != null ? c.parsed.y.toFixed(1) + ' %' : '—') } } },
+        scales: { x: { ticks: { color: '#6b7385', font: { size: 11 } }, grid: { display: false } },
+          y: { ticks: { color: '#6b7385', font: { size: 10 }, callback: (v) => v + ' %' }, grid: { color: 'rgba(255,255,255,0.04)' } } }
+      }
+    });
+  }
+}
+
+function _fundDomainFromMeta(meta) {
+  // Devine un domaine pour le logo à partir du nom court (best effort)
+  const n = (meta.shortName || meta.longName || '').toLowerCase().replace(/[^a-z0-9]/g,'');
+  return n ? n.slice(0, 18) + '.com' : 'finance.yahoo.com';
+}
 
 // ─── CSV IMPORT ─────────────────────────────────────
 let pendingImportRows = [];

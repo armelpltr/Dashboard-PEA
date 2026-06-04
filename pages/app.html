@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700,800,900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260605e">
+<link rel="stylesheet" href="css/style.css?v=20260605f">
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
@@ -329,6 +329,9 @@
       <div class="mobile-drawer-item" onclick="showPageMobile('benchmark');closeMobileDrawer()" data-mob="benchmark">
         <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff9f43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>Benchmark
       </div>
+      <div class="mobile-drawer-item" onclick="showPageMobile('fundamentals');closeMobileDrawer()" data-mob="fundamentals">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span> Résultats financiers
+      </div>
       <div class="mobile-drawer-item" onclick="showPageMobile('projections');closeMobileDrawer()" data-mob="projections">
         <span class="mobile-drawer-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00e09e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span>Projections
       </div>
@@ -397,6 +400,9 @@
       </div>
       <div class="nav-item" onclick="showPage('projections')">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00e09e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span> Projections
+      </div>
+      <div class="nav-item" onclick="showPage('fundamentals')">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5b731" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span> Résultats financiers
       </div>
       <div class="nav-section-label" style="margin-top:14px">Outils</div>
       <div class="nav-item" onclick="showPage('recap')">
@@ -993,6 +999,27 @@
       </div>
     </div>
 
+    <!-- ═══ RÉSULTATS FINANCIERS ═══════════════════════ -->
+    <div class="page" id="page-fundamentals">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Résultats financiers</div>
+          <div class="page-subtitle">Comptes annuels et trimestriels de n'importe quelle entreprise cotée</div>
+        </div>
+      </div>
+      <div class="fund-searchbar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="fund-search-input" autocomplete="off" placeholder="Rechercher une entreprise ou un ticker (ex : Air Liquide, MC.PA, AAPL)" onkeydown="if(event.key==='Enter')fundSearch()">
+        <button class="btn-primary" onclick="fundSearch()" style="padding:8px 18px;font-size:13px">Analyser</button>
+      </div>
+      <div id="fund-quick" class="fund-quick"></div>
+      <div id="fund-result"></div>
+      <div id="fund-empty" class="fund-empty">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3);opacity:.5"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <div>Recherchez une entreprise pour afficher son chiffre d'affaires, ses bénéfices, ses marges et son bilan.</div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1442,7 +1469,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=20260605h"></script>
+<script src="js/app.js?v=20260605i"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
