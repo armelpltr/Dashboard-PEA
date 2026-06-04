@@ -5424,9 +5424,16 @@ async function renderPortfolioChart() {
             fill: true,
             spanGaps: true,
             backgroundColor: (ctx2) => {
-              const g = ctx2.chart.ctx.createLinearGradient(0, 0, 0, 130);
-              g.addColorStop(0, isUp ? 'rgba(0,224,158,0.18)' : 'rgba(255,77,106,0.18)');
-              g.addColorStop(1, 'rgba(0,0,0,0)');
+              const chart = ctx2.chart;
+              const { ctx: c, chartArea } = chart;
+              // chartArea indéfini au tout premier paint → couleur plate de repli
+              if (!chartArea) return isUp ? 'rgba(0,224,158,0.12)' : 'rgba(255,77,106,0.12)';
+              // Dégradé sur toute la hauteur réelle (corrige le fondu coupé sur grands écrans)
+              const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+              const rgb = isUp ? '0,224,158' : '255,77,106';
+              g.addColorStop(0,    'rgba(' + rgb + ',0.34)');
+              g.addColorStop(0.45, 'rgba(' + rgb + ',0.12)');
+              g.addColorStop(1,    'rgba(' + rgb + ',0)');
               return g;
             },
           },
