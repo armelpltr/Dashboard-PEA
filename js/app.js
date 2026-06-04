@@ -5067,10 +5067,32 @@ window.fundLoad = async function(ticker, name) {
     _fundData = data;
     renderFundamentals();
   } catch(e) {
-    resEl.innerHTML = '<div class="fund-error">Impossible de charger les résultats. Réessayez dans un instant.</div>';
-    console.warn('[fund]', e && e.message);
+    const msg = (e && (e.message || e.name)) || 'erreur inconnue';
+    resEl.innerHTML = '<div class="fund-error">Impossible de charger les résultats.<br><span style="font-size:11px;color:var(--text3)">(' + msg + ')</span><br><button class="btn-primary" style="margin-top:12px;padding:8px 18px;font-size:13px" onclick="fundLoad(\'' + ticker + '\',' + JSON.stringify(name || ticker) + ')">Réessayer</button></div>';
+    console.warn('[fund]', e);
   }
 };
+
+// Fetch dédié aux fondamentaux : gros payload + URL à virgules, donc proxies
+// avec timeouts généreux et allorigins en premier (passe bien les URLs complexes).
+async function _fundFetch(url) {
+  const attempts = [
+    () => fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(10000) }).then(r => { if (!r.ok) throw new Error('allorigins ' + r.status); return r.text(); }),
+    () => fetch('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url), { signal: AbortSignal.timeout(10000) }).then(r => { if (!r.ok) throw new Error('codetabs ' + r.status); return r.text(); }),
+    () => fetch('https://corsproxy.io/?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(9000) }).then(r => { if (!r.ok) throw new Error('corsproxy ' + r.status); return r.text(); }),
+    () => fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url.replace('query1.', 'query2.')), { signal: AbortSignal.timeout(10000) }).then(r => r.json()).then(j => { if (!j.contents) throw new Error('allorigins-get empty'); return j.contents; }),
+  ];
+  let lastErr;
+  for (const a of attempts) {
+    try {
+      const t = await a();
+      const p = JSON.parse(t);
+      if (p && p.timeseries) return t;       // réponse valide
+      lastErr = new Error('forme inattendue');
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error('proxies indisponibles');
+}
 
 async function fetchFundamentals(ticker, freq) {
   const prefix = freq === 'quarterly' ? 'quarterly' : 'annual';
@@ -5078,7 +5100,7 @@ async function fetchFundamentals(ticker, freq) {
   const p1 = 1262304000, p2 = Math.floor(Date.now()/1000) + 86400;
   const url = 'https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/'
     + encodeURIComponent(ticker) + '?type=' + types + '&period1=' + p1 + '&period2=' + p2 + '&merge=false';
-  const raw = await fetchWithFallback(url);
+  const raw = await _fundFetch(url);
   const d = JSON.parse(raw);
   const result = (d.timeseries && d.timeseries.result) || [];
   const out = {}; let currency = '';
