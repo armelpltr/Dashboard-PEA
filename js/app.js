@@ -58,12 +58,26 @@ const APP_VERSION = '20260602b';
 const WORKER_URL = 'https://api.capitalboard.fr';
 const TURNSTILE_SITEKEY = '0x4AAAAAADeXU93SY82Uhp7y';
 
+const _turnstileState = {}; // 'pending' | 'ready' | 'error'
+
+window.onTurnstileLoginSuccess   = () => { _turnstileState['turnstile-login']    = 'ready'; };
+window.onTurnstileLoginError     = () => { _turnstileState['turnstile-login']    = 'error'; };
+window.onTurnstileRegisterSuccess = () => { _turnstileState['turnstile-register'] = 'ready'; };
+window.onTurnstileRegisterError   = () => { _turnstileState['turnstile-register'] = 'error'; };
+
+function _checkTurnstile(containerId) {
+  const state = _turnstileState[containerId];
+  if (!state || state === 'pending') return 'pending';
+  return state; // 'ready' ou 'error'
+}
+
 function _getTurnstileToken(containerId) {
   const el = document.getElementById(containerId);
   return el?.querySelector('[name="cf-turnstile-response"]')?.value || null;
 }
 
 function _resetTurnstile(containerId) {
+  _turnstileState[containerId] = 'pending';
   const el = document.getElementById(containerId);
   if (el && window.turnstile) window.turnstile.reset(el);
 }
@@ -1666,6 +1680,11 @@ window.doLogin = async function() {
   const err   = document.getElementById('login-error');
   err.textContent = '';
   if (!email || !pass) { err.textContent = 'Veuillez remplir tous les champs.'; err.style.display = 'block'; return; }
+  if (_checkTurnstile('turnstile-login') === 'pending') {
+    err.textContent = 'Vérification en cours, réessayez dans un instant.';
+    err.style.display = 'block';
+    return;
+  }
   setLoading('btn-login-submit', true);
   try {
     await signInWithEmailAndPassword(fbAuth, email, pass);
@@ -1691,6 +1710,11 @@ window.doRegister = async function() {
   if (pass.length < 6) { err.textContent = 'Mot de passe trop court (6 caractères min).'; err.style.display = 'block'; return; }
   const rgpdChecked = document.getElementById('reg-rgpd')?.checked;
   if (!rgpdChecked) { if (rgpdErr) { rgpdErr.style.display = 'block'; } return; }
+  if (_checkTurnstile('turnstile-register') === 'pending') {
+    err.textContent = 'Vérification en cours, réessayez dans un instant.';
+    err.style.display = 'block';
+    return;
+  }
   setLoading('btn-register-submit', true);
   const wantsRecap = document.getElementById('reg-recap')?.checked !== false;
   try {

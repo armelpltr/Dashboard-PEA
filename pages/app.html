@@ -86,7 +86,7 @@
       <label class="form-label">Mot de passe</label>
       <input type="password" class="form-input" id="input-pass" placeholder="••••••••" autocomplete="current-password">
     </div>
-    <div class="cf-turnstile" data-sitekey="0x4AAAAAADeXU93SY82Uhp7y" data-theme="dark" id="turnstile-login" style="margin-bottom:12px"></div>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAADeXU93SY82Uhp7y" data-theme="dark" id="turnstile-login" data-callback="onTurnstileLoginSuccess" data-error-callback="onTurnstileLoginError" style="margin-bottom:12px"></div>
     <button class="btn-login" id="btn-login-submit" onclick="doLogin()">Connexion</button>
     <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
       Pas encore de compte ?
@@ -129,7 +129,7 @@
       </div>
     </div>
     <div id="register-rgpd-error" style="display:none;color:#e55;font-size:12px;margin-bottom:10px;text-align:center">Vous devez accepter les CGU pour créer un compte.</div>
-    <div class="cf-turnstile" data-sitekey="0x4AAAAAADeXU93SY82Uhp7y" data-theme="dark" id="turnstile-register" style="margin-bottom:12px"></div>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAADeXU93SY82Uhp7y" data-theme="dark" id="turnstile-register" data-callback="onTurnstileRegisterSuccess" data-error-callback="onTurnstileRegisterError" style="margin-bottom:12px"></div>
     <button class="btn-login" id="btn-register-submit" onclick="doRegister()">Créer le compte</button>
     <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text3)">
       Déjà un compte ?
