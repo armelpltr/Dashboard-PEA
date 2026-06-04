@@ -59,16 +59,48 @@ async function getAccessToken(env) {
   return _accessToken;
 }
 
-// ── Firebase ID token verification ────────────────────────────────────────
+// ── Firebase ID token verification (JWT direct, sans accounts:lookup) ────────
+
+let _jwksCache = null, _jwksCacheAt = 0;
+
+async function getGoogleJwks() {
+  if (_jwksCache && Date.now() - _jwksCacheAt < 3600 * 1000) return _jwksCache;
+  const res = await fetch('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com');
+  _jwksCache = await res.json();
+  _jwksCacheAt = Date.now();
+  return _jwksCache;
+}
+
+function b64urlDecode(str) {
+  const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(b64.padEnd(b64.length + (4 - b64.length % 4) % 4, '='));
+  return Uint8Array.from(bin, c => c.charCodeAt(0));
+}
 
 async function verifyIdToken(idToken, env) {
-  const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${env.FIREBASE_WEB_API_KEY}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) }
-  );
-  const data = await res.json();
-  if (!res.ok || !data.users?.[0]) throw new Error('Token invalide');
-  return data.users[0]; // { localId, email, ... }
+  const parts = idToken.split('.');
+  if (parts.length !== 3) throw new Error('Token malformé');
+
+  const header  = JSON.parse(new TextDecoder().decode(b64urlDecode(parts[0])));
+  const payload = JSON.parse(new TextDecoder().decode(b64urlDecode(parts[1])));
+  const now = Math.floor(Date.now() / 1000);
+
+  if (payload.exp < now)           throw new Error('Token expiré');
+  if (payload.iat > now + 300)     throw new Error('Token émis dans le futur');
+  if (payload.aud !== env.FIREBASE_PROJECT_ID) throw new Error('Token audience invalide');
+  if (!payload.sub)                throw new Error('Token sub manquant');
+
+  const jwks = await getGoogleJwks();
+  const jwk  = jwks.keys?.find(k => k.kid === header.kid);
+  if (!jwk) throw new Error('Clé publique introuvable');
+
+  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+  const sigInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
+  const sig      = b64urlDecode(parts[2]);
+  const valid    = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, sig, sigInput);
+  if (!valid) throw new Error('Signature invalide');
+
+  return { localId: payload.sub, email: payload.email };
 }
 
 // ── Firestore REST ─────────────────────────────────────────────────────────
