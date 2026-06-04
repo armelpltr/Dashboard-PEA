@@ -264,32 +264,6 @@ const firebaseConfig = {
 
 let currentUser = null;
 
-// ─── PRÉCHARGEMENT PENDANT LA SAISIE DU PIN ──────────────────────────────
-// L'utilisateur est déjà authentifié Firebase quand l'écran PIN s'affiche
-// (le PIN est un verrou LOCAL, pas la frontière d'auth Firestore).
-// On lance donc le chargement des données + taux de change dès l'affichage
-// du clavier PIN : pendant qu'il tape ses 6 chiffres, tout charge en fond.
-// PIN validé → startApp réutilise ce préchargement, l'app est déjà prête.
-let _pinPreload = null;        // Promise du préchargement en cours (ou null)
-let _pinPreloadUid = null;     // uid pour lequel le préchargement a été lancé
-
-function _startPinPreload(uid) {
-  if (!uid) return;
-  if (_pinPreload && _pinPreloadUid === uid) return; // déjà en cours
-  _pinPreloadUid = uid;
-  // L'utilisateur est déjà authentifié Firebase : on fixe currentUser dès
-  // maintenant pour que getPortfolio/getTransactions lisent ses données.
-  // startApp fixera la même valeur ; la déconnexion (PIN échoué) la remet à null.
-  currentUser = uid;
-  window.currentUser = uid;
-  // SEULES les données Firestore sont sur le chemin critique (lectures rapides).
-  // startApp n'attend QUE ça → chiffres affichés vite. Les prix live (Yahoo) et
-  // les taux de change passent en arrière-plan (proxies lents, non bloquants).
-  // La courbe s'affiche depuis le cache localStorage, puis se rafraîchit seule.
-  _pinPreload = loadAllUserData(uid).catch(e => console.warn('[preload] data:', e));
-  loadFxRates().catch(() => {});
-}
-
 // ─── COUCHE DONNÉES FIRESTORE (cache synchrone + sync arrière-plan) ──────
 // Les lectures/écritures sont SYNCHRONES via un cache mémoire.
 // Firestore est chargé au démarrage et écrit en arrière-plan.
@@ -324,26 +298,14 @@ async function loadAllUserData(uid) {
   const _u = fbAuth.currentUser;
   if (_u) setFirestoreDoc(firestoreDoc(db, 'users', uid), { email: _u.email }, { merge: true }).catch(() => {});
   const cols = ['portfolio', 'transactions', 'versements', 'watchlist', 'dailyValues', 'alerts', 'notifHistory', 'trCohort'];
-  await Promise.all([
-    ...cols.map(async col => {
-      try {
-        const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', col));
-        _localCache[uid + '_' + col] = snap.exists() ? (snap.data().items || []) : [];
-      } catch(e) {
-        _localCache[uid + '_' + col] = [];
-      }
-    }),
-    // Cache de la courbe (objet { période: { dataset, at } }) : permet un
-    // affichage instantané de la courbe au chargement, même sur un nouvel appareil.
-    (async () => {
-      try {
-        const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'chartCache'));
-        _localCache[uid + '_chartCache'] = snap.exists() ? snap.data() : {};
-      } catch(e) {
-        _localCache[uid + '_chartCache'] = {};
-      }
-    })(),
-  ]);
+  await Promise.all(cols.map(async col => {
+    try {
+      const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', col));
+      _localCache[uid + '_' + col] = snap.exists() ? (snap.data().items || []) : [];
+    } catch(e) {
+      _localCache[uid + '_' + col] = [];
+    }
+  }));
   // Charger les settings
   try {
     const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'settings'));
@@ -356,17 +318,19 @@ async function loadAllUserData(uid) {
     await saveUserSettings(uid, { pushRecap: window._pendingRecapPref });
     window._pendingRecapPref = undefined;
   }
-  // Récap quotidien + rapport hebdo : utilisés UNIQUEMENT par la page Récap,
-  // pas par le dashboard. On les charge en arrière-plan pour ne pas retarder
-  // l'affichage des chiffres. Valeur par défaut immédiate, mise à jour ensuite.
-  _localCache[uid + '_recap']       = _localCache[uid + '_recap']       || null;
-  _localCache[uid + '_weeklyRecap'] = _localCache[uid + '_weeklyRecap'] || null;
-  getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'recap'))
-    .then(snap => { _localCache[uid + '_recap'] = snap.exists() ? snap.data() : null; })
-    .catch(() => {});
-  getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'weeklyRecap'))
-    .then(snap => { _localCache[uid + '_weeklyRecap'] = snap.exists() ? snap.data() : null; })
-    .catch(() => {});
+  // Charger le dernier récap quotidien + rapport hebdo (générés serveur)
+  try {
+    const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'recap'));
+    _localCache[uid + '_recap'] = snap.exists() ? snap.data() : null;
+  } catch(e) {
+    _localCache[uid + '_recap'] = null;
+  }
+  try {
+    const snap = await getFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'weeklyRecap'));
+    _localCache[uid + '_weeklyRecap'] = snap.exists() ? snap.data() : null;
+  } catch(e) {
+    _localCache[uid + '_weeklyRecap'] = null;
+  }
 }
 
 function getUserSettings(uid) {
@@ -399,10 +363,7 @@ function getDailyValues(user)  { return _localCache[(user||currentUser) + '_dail
 
 // Écriture synchrone dans le cache + Firestore en arrière-plan
 function savePortfolio(user, data)    { _perfCache = null; _fsWrite(user||currentUser, 'portfolio',    data); }
-// Les transactions (achat/vente) changent la forme de la courbe → on invalide
-// son cache. PAS savePortfolio : il est appelé à chaque refresh de prix (60s),
-// or le prix courant n'affecte que le point du jour (déjà ré-injecté en live).
-function saveTransactions(user, data) { _perfCache = null; _invalidateChartCache(); _fsWrite(user||currentUser, 'transactions', data); }
+function saveTransactions(user, data) { _perfCache = null; _fsWrite(user||currentUser, 'transactions', data); }
 function saveVersements(user, data)   { _perfCache = null; _fsWrite(user||currentUser, 'versements',   data); }
 function saveWatchlist(user, data)    { _fsWrite(user||currentUser, 'watchlist',    data); }
 function saveDailyValues(user, data)  { _perfCache = null; _fsWrite(user||currentUser, 'dailyValues', data); }
@@ -1039,8 +1000,6 @@ function _shakePinDots() {
 function showPinLockView(user) {
   _pinLockUser = user;
   _pinLockAttempts = 0;
-  // Précharge données + FX en fond pendant que l'utilisateur tape son PIN.
-  _startPinPreload(user && user.uid);
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-view').style.display = 'none';
@@ -1858,20 +1817,10 @@ async function startApp(user) {
     document.getElementById('portfolio-date').textContent =
       'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    // Chemin critique = données Firestore uniquement (lectures rapides).
-    // Si un préchargement a été lancé pendant la saisie du PIN, on le réutilise.
-    // Les prix live (Yahoo) et taux de change se chargent en arrière-plan : ils
-    // ne bloquent pas l'affichage des chiffres (rendus depuis les prix stockés)
-    // ni la courbe (rendue depuis le cache localStorage puis rafraîchie).
-    // Timeout de 12 s : si Firestore ne répond pas, on rend quand même.
-    if (_pinPreload && _pinPreloadUid === user.uid) {
-      await _withTimeout(_pinPreload, 12000);
-    } else {
-      await _withTimeout(loadAllUserData(user.uid), 12000);
-      loadFxRates().catch(() => {});
-    }
-    _pinPreload = null;
-    _pinPreloadUid = null;
+    // Charger FX rates + données Firestore avant de rendre.
+    // Timeout de 12 s : si le réseau ne répond pas, on rend quand même
+    // l'app avec ce qu'on a plutôt que de laisser un écran noir.
+    await _withTimeout(Promise.all([loadAllUserData(user.uid), loadFxRates()]), 12000);
 
     // Avatar + sync roles APRÈS chargement des settings (avatarHue dispo)
     updateMobileAvatar(user);
@@ -5053,12 +5002,6 @@ function inventoryAtDateFallback(data, dayTs, graphStart) {
   return inv;
 }
 
-// Cache mémoire des historiques de prix Yahoo (clé : ticker|interval|range).
-// TTL court : les cours intraday bougent, mais 5 min suffit pour couvrir
-// l'ouverture de l'app + les changements de période rapprochés.
-const _histPriceCache = {};
-const _HIST_PRICE_TTL = 5 * 60 * 1000; // 5 minutes
-
 async function buildPortfolioHistory(data, graphStart, graphEnd) {
   // Collect all tickers: from current portfolio + from transaction history
   const txs = getTransactions(currentUser);
@@ -5080,15 +5023,6 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
 
   const priceMap = {};
   await Promise.all(tickers.map(async ticker => {
-    // Cache mémoire par ticker+interval+range : évite de re-télécharger
-    // l'historique via les proxies lents à chaque render / changement de
-    // période. Réchauffé pendant la saisie du PIN → courbe instantanée.
-    const cacheKey = ticker + '|' + interval + '|' + range;
-    const cached = _histPriceCache[cacheKey];
-    if (cached && (Date.now() - cached.at) < _HIST_PRICE_TTL) {
-      priceMap[ticker] = cached.points;
-      return;
-    }
     try {
       const yahooTicker = resolveToYahooTicker(ticker);
       const raw = await fetchWithFallback(
@@ -5101,29 +5035,10 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
       if (!res) return;
       const ts     = res.timestamp;
       const closes = res.indicators.quote[0].close;
-      const points = ts.map((t, i) => ({ ts: t, close: closes[i] }))
-                       .filter(p => p.close != null);
-      priceMap[ticker] = points;
-      _histPriceCache[cacheKey] = { points, at: Date.now() };
-    } catch(e) {
-      // En cas d'échec réseau, retombe sur le cache périmé s'il existe.
-      priceMap[ticker] = cached ? cached.points : [];
-    }
+      priceMap[ticker] = ts.map((t, i) => ({ ts: t, close: closes[i] }))
+                           .filter(p => p.close != null);
+    } catch(e) { priceMap[ticker] = []; }
   }));
-
-  // Prix courant par ticker (depuis le portefeuille) : sert de repli quand
-  // l'historique d'un titre n'a pas pu être récupéré (proxy en échec), pour
-  // éviter qu'un titre disparaisse du total et écrase la courbe vers le bas.
-  const currentPriceMap = {};
-  data.forEach(r => { if (r.ticker && r.currentPrice) currentPriceMap[r.ticker] = r.currentPrice; });
-
-  // Dataset « partiel » = au moins un titre actuellement détenu n'a aucun
-  // historique (fetch échoué). On l'affiche quand même (avec repli prix
-  // courant) mais on ne le PERSISTE pas : éviter de figer une courbe fausse.
-  let partial = false;
-  for (const r of data) {
-    if (r.ticker && (!priceMap[r.ticker] || !priceMap[r.ticker].length)) partial = true;
-  }
 
   // For short periods (intraday), use Yahoo timestamps directly instead of generating daily timeline
   const isIntraday = daysDuration <= 6;
@@ -5153,16 +5068,11 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
 
   function getHistoricalClose(ticker, ts) {
     const prices = priceMap[ticker] || [];
-    // Aucun historique : repli sur le prix courant du portefeuille.
-    if (!prices.length) return currentPriceMap[ticker] != null ? currentPriceMap[ticker] : null;
     let last = null;
     for (const p of prices) {
       if (p.ts <= ts + 86400) last = p.close;
       else break;
     }
-    // Jour antérieur au 1er point connu : on prend le 1er close (backfill)
-    // au lieu de null, pour ne pas créer de trous au début de la courbe.
-    if (last == null) last = prices[0].close;
     return last;
   }
 
@@ -5183,13 +5093,7 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
     let valeurTotale = 0;
     for (const [ticker, qty] of Object.entries(inventory)) {
       if (qty <= 0) continue;
-      let close = getHistoricalClose(ticker, dayTs);
-      // Dernier repli : prix courant puis prix d'achat, pour qu'un titre
-      // détenu compte toujours dans le total (jamais ignoré → 0).
-      if (close == null) {
-        const row = data.find(r => r.ticker === ticker);
-        close = row ? (row.currentPrice || row.buyPrice) : null;
-      }
+      const close = getHistoricalClose(ticker, dayTs);
       if (close != null) {
         valeurTotale += qty * close;
       }
@@ -5203,9 +5107,6 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
     });
   }
 
-  // Marque le dataset comme partiel si un titre détenu manquait d'historique :
-  // l'orchestrateur l'affiche mais ne le met pas en cache localStorage.
-  dataset.partial = partial;
   return dataset;
 }
 
@@ -5252,111 +5153,6 @@ function portfolioChartTooltip(context) {
   el.style.transform = 'translate(-50%, calc(-100% - 10px))';
 }
 
-// Calcule la fenêtre temporelle de la courbe portefeuille pour la période
-// active (portfolioPeriod). Extrait pour être réutilisé par le préchargement
-// PIN (réchauffe le cache historique avant que l'app s'affiche).
-function _computePortfolioChartRange(data) {
-  const now = Math.floor(Date.now() / 1000);
-  const periodOffsets = {
-    '1d': 1*86400, '5d': 5*86400,
-    '1mo': 30*86400, '3mo': 90*86400, '6mo': 180*86400,
-    '1y': 365*86400, '3y': 3*365*86400, '5y': 5*365*86400, 'max': null
-  };
-  const offset = periodOffsets[portfolioPeriod];
-
-  const txs = getTransactions(currentUser);
-  let oldestTs = Infinity;
-  txs.forEach(tx => {
-    if (tx.date) {
-      const ts = Math.floor(new Date(tx.date + 'T12:00:00').getTime() / 1000);
-      if (ts < oldestTs) oldestTs = ts;
-    }
-  });
-  (data || []).forEach(row => {
-    if (row.buyDate) {
-      const ts = Math.floor(new Date(row.buyDate + 'T12:00:00').getTime() / 1000);
-      if (ts < oldestTs) oldestTs = ts;
-    }
-  });
-  if (oldestTs === Infinity) oldestTs = now - 30 * 86400; // défaut 1 mois
-
-  const graphStart = offset ? now - offset : oldestTs;
-  return { now, graphStart, oldestTs };
-}
-
-// ── Cache persistant de la courbe (localStorage + Firestore) ────────────────
-// L'historique des cours passés ne change quasiment jamais : on stocke donc la
-// courbe calculée et on l'affiche INSTANTANÉMENT au chargement, sans attendre
-// Yahoo. Stockage double :
-//   • localStorage  → instantané, même appareil
-//   • Firestore     → cross-appareil, chargé en mémoire par loadAllUserData
-// Le point du jour est ré-injecté en live depuis les prix courants (toujours à
-// jour). On ne refait un fetch Yahoo complet que si le cache est périmé.
-const _CHART_FRESH_TTL = 30 * 60 * 1000; // 30 min : au-delà, on recalcule l'historique
-
-function _chartCacheKey(period) {
-  // v2 : invalide les caches d'avant le fix « courbe partielle ».
-  return 'pea_chart_v2_' + (currentUser || '') + '_' + period;
-}
-// Retourne { dataset, at } ou null. Cherche localStorage puis Firestore (mémoire).
-function _loadChartDataset(period) {
-  try {
-    const raw = localStorage.getItem(_chartCacheKey(period));
-    if (raw) {
-      const o = JSON.parse(raw);
-      if (o && Array.isArray(o.dataset) && o.dataset.length) return o;
-    }
-  } catch(e) {}
-  const fs = _localCache[(currentUser || '') + '_chartCache'];
-  if (fs && fs[period] && Array.isArray(fs[period].dataset) && fs[period].dataset.length) return fs[period];
-  return null;
-}
-function _saveChartDataset(period, dataset) {
-  const payload = { dataset, at: Date.now() };
-  try { localStorage.setItem(_chartCacheKey(period), JSON.stringify(payload)); } catch(e) { /* quota */ }
-  // Miroir Firestore (cross-appareil), non bloquant.
-  try {
-    const uid = currentUser;
-    if (!uid || window.IS_DEMO || !db) return;
-    const cache = _localCache[uid + '_chartCache'] || {};
-    cache[period] = payload;
-    _localCache[uid + '_chartCache'] = cache;
-    setFirestoreDoc(firestoreDoc(db, 'users', uid, 'data', 'chartCache'), cache).catch(() => {});
-  } catch(e) {}
-}
-// Vide le cache courbe (appelé quand le portefeuille change : la courbe doit
-// être recalculée). localStorage + mémoire ; Firestore réécrit au prochain calcul.
-function _invalidateChartCache() {
-  const uid = currentUser;
-  if (!uid) return;
-  try {
-    const prefix = 'pea_chart_v2_' + uid + '_';
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const k = localStorage.key(i);
-      if (k && k.indexOf(prefix) === 0) localStorage.removeItem(k);
-    }
-  } catch(e) {}
-  _localCache[uid + '_chartCache'] = {};
-}
-// Renvoie une COPIE du dataset dont le dernier point reflète la valeur LIVE du
-// portefeuille (somme qté × prix courant). Garde la courbe à jour même depuis
-// un cache un peu ancien, sans refetch.
-function _withLiveTodayPoint(dataset, data, now) {
-  if (!dataset || !dataset.length) return dataset;
-  let liveVal = 0;
-  data.forEach(r => { liveVal += (r.qty || 0) * (r.currentPrice || 0); });
-  if (liveVal <= 0) return dataset;
-  const todayStr = new Date(now * 1000).toISOString().slice(0, 10);
-  const copy = dataset.map(p => ({ ...p }));
-  const last = copy[copy.length - 1];
-  if (last.date === todayStr) {
-    last.valeurTotale = +liveVal.toFixed(2);
-  } else if (todayStr > last.date) {
-    copy.push({ date: todayStr, valeurTotale: +liveVal.toFixed(2), ts: now });
-  }
-  return copy;
-}
-
 async function renderPortfolioChart() {
   const data = getPortfolio(currentUser);
   const card = document.getElementById('portfolio-chart-card');
@@ -5364,32 +5160,41 @@ async function renderPortfolioChart() {
   card.style.display = 'block';
 
   const sub = document.getElementById('portfolio-chart-sub');
-  const { now, graphStart, oldestTs } = _computePortfolioChartRange(data);
-  const period = portfolioPeriod;
+  sub.textContent = 'Chargement…';
 
-  // 1) Dessin instantané depuis le cache (localStorage/Firestore) + point live.
-  const cachedObj = _loadChartDataset(period);
-  const cached = cachedObj && cachedObj.dataset;
-  if (cached && cached.length) {
-    try { _drawPortfolioChart(_withLiveTodayPoint(cached, data, now), data, graphStart, now, oldestTs); }
-    catch(e) { console.error('draw cache:', e); }
-  } else {
-    sub.textContent = 'Chargement…';
-  }
-
-  // 2) Cache frais + complet → on s'arrête là (pas de refetch Yahoo : 0 attente).
-  //    Le point du jour est déjà live ; l'historique passé ne bouge pas.
-  const isFresh = cachedObj && (Date.now() - (cachedObj.at || 0)) < _CHART_FRESH_TTL;
-  if (cached && cached.length && isFresh) return;
-
-  // 3) Sinon : recalcul depuis Yahoo en arrière-plan, re-dessin + persistance.
   try {
+    const now = Math.floor(Date.now() / 1000);
+
+    const periodOffsets = {
+      '1d': 1*86400, '5d': 5*86400,
+      '1mo': 30*86400, '3mo': 90*86400, '6mo': 180*86400,
+      '1y': 365*86400, '3y': 3*365*86400, '5y': 5*365*86400, 'max': null
+    };
+    const offset = periodOffsets[portfolioPeriod];
+
+    // Find oldest date from transactions or portfolio
+    const txs = getTransactions(currentUser);
+    let oldestTs = Infinity;
+    txs.forEach(tx => {
+      if (tx.date) {
+        const ts = Math.floor(new Date(tx.date + 'T12:00:00').getTime() / 1000);
+        if (ts < oldestTs) oldestTs = ts;
+      }
+    });
+    data.forEach(row => {
+      if (row.buyDate) {
+        const ts = Math.floor(new Date(row.buyDate + 'T12:00:00').getTime() / 1000);
+        if (ts < oldestTs) oldestTs = ts;
+      }
+    });
+    if (oldestTs === Infinity) oldestTs = now - 30 * 86400; // default 1 month ago
+
+    const periodStart = offset ? now - offset : oldestTs;
+    const graphStart  = periodStart;
+
     const dataset = await buildPortfolioHistory(data, graphStart, now);
-    if (period !== portfolioPeriod) return; // l'utilisateur a changé de période entre-temps
 
     if (!dataset.length) {
-      // Pas de données fraîches : si on avait déjà dessiné le cache, on le garde.
-      if (cached && cached.length) return;
       sub.textContent = 'Aucune donnée sur cette période.';
       if (chartPortfolio) { chartPortfolio.destroy(); chartPortfolio = null; }
       // Show a flat zero line
@@ -5402,25 +5207,6 @@ async function renderPortfolioChart() {
       return;
     }
 
-    // Ne persiste QUE les datasets complets (tous les titres détenus avaient
-    // un historique). Un dataset partiel s'affiche mais n'écrase pas le cache.
-    if (!dataset.partial) _saveChartDataset(period, dataset);
-    _drawPortfolioChart(_withLiveTodayPoint(dataset, data, now), data, graphStart, now, oldestTs);
-  } catch(e) {
-    if (!cached || !cached.length) {
-      document.getElementById('portfolio-chart-sub').textContent = 'Données indisponibles pour cette période.';
-    }
-    console.error('Portfolio chart error:', e);
-  }
-}
-
-// Dessine la courbe portefeuille à partir d'un dataset déjà calculé.
-// Séparé de renderPortfolioChart pour pouvoir dessiner d'abord le cache,
-// puis re-dessiner avec les données fraîches.
-function _drawPortfolioChart(dataset, data, graphStart, now, oldestTs) {
-  const sub = document.getElementById('portfolio-chart-sub');
-  if (sub) sub.textContent = '';
-  try {
     // Plus-value latente = valeur actuelle - coût de revient
     let totalVal = 0, totalInvested = 0;
     data.forEach(r => { totalVal += r.qty * r.currentPrice; totalInvested += r.qty * r.buyPrice; });
