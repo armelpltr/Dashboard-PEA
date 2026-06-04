@@ -1886,6 +1886,8 @@ async function startApp(user) {
     // en arrière-plan, pour que les pages s'affichent instantanément quand
     // l'utilisateur clique dessus.
     setTimeout(() => { preloadAll().catch(e => console.warn('Preload:', e)); }, 200);
+    // Enregistrement auto des dividendes versés, sans avoir à ouvrir la page Dividendes.
+    if (!window.IS_DEMO) setTimeout(() => { _autoLogDividends(); }, 1200);
     _updateNotifBadge();
     if (!window.IS_DEMO && Notification.permission === 'granted') initPush(user.uid).catch(() => {});
     try { _initSupportBadge(); } catch(e) { console.warn('support badge:', e); }
@@ -8280,6 +8282,42 @@ function getQtyAtDate(txs, ticker, date) {
     }
   }
   return Math.max(0, qty);
+}
+
+// Détection + enregistrement automatique des dividendes versés (date passée),
+// indépendant de l'ouverture de la page Dividendes. Appelé au démarrage de l'app.
+async function _autoLogDividends() {
+  if (window.IS_DEMO || !currentUser) return;
+  try {
+    const pf  = getPortfolio(currentUser);
+    const txs = getTransactions(currentUser) || [];
+    const ETF_TICKERS = ['WPEA.PA','ESEE.PA','ESE.PA','PUST.PA','PANX.PA','PAEEM.PA','ETZ.PA','EWLD.PA','CW8.PA','MWRD.PA','RS2K.PA','PCEU.PA','IUSQ.AS','IWDA.AS','VWCE.AS','VWRL.AS','CSPX.AS','EMIM.AS','XDWD.AS','SPPW.AS','SPY','QQQ','VTI','VT','VOO','ARKK','GLD','TLT','SOXX'];
+    const actions = pf.filter(r => r.quoteType !== 'ETF' && r.quoteType !== 'MUTUALFUND' && !ETF_TICKERS.includes(r.ticker));
+    if (!actions.length) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const existingDiv = txs.filter(t => t.type === 'dividend');
+    let added = 0;
+    await Promise.all(actions.map(async r => {
+      const buyTxs   = txs.filter(t => t.type === 'buy' && t.ticker === r.ticker);
+      const firstBuy = r.buyDate || (buyTxs.length ? buyTxs.map(t => t.date).sort()[0] : null);
+      if (!firstBuy) return;
+      let history;
+      try { history = await fetchDivHistory(r.ticker); } catch(_) { return; }
+      (history || []).forEach(d => {
+        if (d.next || d.date < firstBuy || d.date > today) return;
+        if (existingDiv.find(t => t.ticker === r.ticker && t.date === d.date)) return;
+        const qty = getQtyAtDate(txs, r.ticker, d.date);
+        if (!qty || !d.amount) return;
+        logTransaction(currentUser, {
+          type: 'dividend', ticker: r.ticker, name: r.name || r.ticker,
+          qty, price: d.amount, date: d.date, source: 'yahoo-auto',
+        });
+        existingDiv.push({ ticker: r.ticker, date: d.date });
+        added++;
+      });
+    }));
+    if (added) { try { window.renderPortfolio(); } catch(_) {} }
+  } catch(e) { console.warn('[dividendes] auto-log:', e && e.message); }
 }
 
 function initDividendes() {

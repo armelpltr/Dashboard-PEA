@@ -1167,6 +1167,19 @@ tr:hover td { background: rgba(255,255,255,0.018); }
   height: 130px;
   width: 100%;
 }
+/* Bouton "Voir / modifier" du solde espèces — pill cohérent avec ＋ Versement */
+.btn-cash-edit {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 600; line-height: 1;
+  padding: 5px 10px; border-radius: 6px;
+  color: var(--accent);
+  background: rgba(124,109,245,0.10);
+  border: 1px solid rgba(124,109,245,0.28);
+  cursor: pointer; font-family: var(--sans);
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.btn-cash-edit:hover { background: rgba(124,109,245,0.18); border-color: rgba(124,109,245,0.5); }
+.btn-cash-edit:active { transform: scale(0.96); }
 /* Écrans larges : on grandit la hauteur pour que la pente reste lisible
    (sinon largeur >> hauteur écrase la courbe sur ultrawide). */
 @media (min-width: 1500px) { .portf-canvas-wrap { height: 230px; } }

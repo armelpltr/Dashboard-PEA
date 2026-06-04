@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700,800,900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260605b">
+<link rel="stylesheet" href="css/style.css?v=20260605c">
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
@@ -483,7 +483,7 @@
           <div class="stat-change" id="stat-cash-sub">Disponible</div>
           <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
             <button class="btn-add" onclick="openVersementModal()" style="font-size:10px;padding:5px 10px">＋ Versement</button>
-            <button onclick="toggleVersementsList()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;font-family:var(--sans);text-decoration:underline">Voir / modifier</button>
+            <button onclick="toggleVersementsList()" class="btn-cash-edit"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>Voir / modifier</button>
           </div>
           <div id="versements-list" style="display:none;margin-top:8px;max-height:200px;overflow-y:auto"></div>
         </div>
@@ -1409,7 +1409,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=20260605c"></script>
+<script src="js/app.js?v=20260605d"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
