@@ -4947,14 +4947,27 @@ window.deleteVersementFromModal = function(i) {
   renderPortfolio();
 };
 
-// Courtier : seul Boursorama est dispo. Les autres options sont désactivées
-// ("dispo bientôt") donc non sélectionnables ; ce handler reste défensif.
-window.onBrokerChange = function(sel) {
-  if (sel.value !== 'boursorama') {
-    sel.value = 'boursorama';
-    const logo = document.getElementById('broker-logo');
-    if (logo) logo.src = 'https://www.boursorama.com/favicon.ico';
+// Courtier : dropdown custom. Seul Boursorama est dispo (les autres "dispo bientôt").
+window.toggleBrokerDD = function(e) {
+  if (e) e.stopPropagation();
+  const dd = document.getElementById('broker-dd');
+  if (!dd) return;
+  const open = dd.classList.toggle('open');
+  if (open) {
+    setTimeout(() => document.addEventListener('click', _closeBrokerDD), 0);
   }
+};
+function _closeBrokerDD() {
+  const dd = document.getElementById('broker-dd');
+  if (dd) dd.classList.remove('open');
+  document.removeEventListener('click', _closeBrokerDD);
+}
+window.selectBroker = function(id, label, domain) {
+  const cur = document.getElementById('broker-current');
+  const logo = document.getElementById('broker-logo');
+  if (cur) cur.textContent = label;
+  if (logo && domain) logo.src = 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=64';
+  _closeBrokerDD();
 };
 
 // ─── CSV IMPORT ─────────────────────────────────────
