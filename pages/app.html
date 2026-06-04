@@ -805,10 +805,14 @@
 
         <!-- Broker + import -->
         <div style="display:flex;align-items:center;gap:0;border:1px solid var(--s3);border-radius:10px;background:var(--s2);position:relative">
-          <!-- Broker : Boursorama uniquement -->
-          <div style="display:flex;align-items:center;gap:7px;padding:7px 10px;min-width:130px;font-size:11px;color:var(--text1);user-select:none">
-            <img src="https://www.boursorama.com/favicon.ico" width="16" height="16" style="border-radius:3px;object-fit:contain;flex-shrink:0">
-            <span>Boursorama</span>
+          <!-- Broker : liste déroulante (Boursorama dispo, autres bientôt) -->
+          <div style="display:flex;align-items:center;gap:7px;padding:7px 8px 7px 10px;min-width:150px">
+            <img id="broker-logo" src="https://www.boursorama.com/favicon.ico" width="16" height="16" style="border-radius:3px;object-fit:contain;flex-shrink:0">
+            <select id="broker-select" onchange="onBrokerChange(this)" style="background:transparent;border:none;color:var(--text1);font-size:11px;font-family:var(--sans);cursor:pointer;outline:none;flex:1">
+              <option value="boursorama" selected>Boursorama</option>
+              <option value="fortuneo" disabled>Fortuneo — dispo bientôt</option>
+              <option value="traderepublic" disabled>Trade Republic — dispo bientôt</option>
+            </select>
           </div>
           <div style="width:1px;height:18px;background:var(--s3)"></div>
           <button onclick="onImportCSVClick()" id="btn-import-csv"
@@ -1422,7 +1426,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=20260605f"></script>
+<script src="js/app.js?v=20260605g"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">

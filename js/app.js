@@ -4947,6 +4947,16 @@ window.deleteVersementFromModal = function(i) {
   renderPortfolio();
 };
 
+// Courtier : seul Boursorama est dispo. Les autres options sont désactivées
+// ("dispo bientôt") donc non sélectionnables ; ce handler reste défensif.
+window.onBrokerChange = function(sel) {
+  if (sel.value !== 'boursorama') {
+    sel.value = 'boursorama';
+    const logo = document.getElementById('broker-logo');
+    if (logo) logo.src = 'https://www.boursorama.com/favicon.ico';
+  }
+};
+
 // ─── CSV IMPORT ─────────────────────────────────────
 let pendingImportRows = [];
 
