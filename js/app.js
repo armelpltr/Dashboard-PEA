@@ -1666,7 +1666,6 @@ window.doLogin = async function() {
   const err   = document.getElementById('login-error');
   err.textContent = '';
   if (!email || !pass) { err.textContent = 'Veuillez remplir tous les champs.'; err.style.display = 'block'; return; }
-  if (!_getTurnstileToken('turnstile-login')) { err.textContent = 'Veuillez patienter (vérification en cours).'; err.style.display = 'block'; return; }
   setLoading('btn-login-submit', true);
   try {
     await signInWithEmailAndPassword(fbAuth, email, pass);
@@ -1692,7 +1691,6 @@ window.doRegister = async function() {
   if (pass.length < 6) { err.textContent = 'Mot de passe trop court (6 caractères min).'; err.style.display = 'block'; return; }
   const rgpdChecked = document.getElementById('reg-rgpd')?.checked;
   if (!rgpdChecked) { if (rgpdErr) { rgpdErr.style.display = 'block'; } return; }
-  if (!_getTurnstileToken('turnstile-register')) { err.textContent = 'Veuillez patienter (vérification en cours).'; err.style.display = 'block'; return; }
   setLoading('btn-register-submit', true);
   const wantsRecap = document.getElementById('reg-recap')?.checked !== false;
   try {
