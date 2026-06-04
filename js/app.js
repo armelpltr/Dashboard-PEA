@@ -1680,8 +1680,8 @@ window.doLogin = async function() {
   const err   = document.getElementById('login-error');
   err.textContent = '';
   if (!email || !pass) { err.textContent = 'Veuillez remplir tous les champs.'; err.style.display = 'block'; return; }
-  if (_checkTurnstile('turnstile-login') === 'pending') {
-    err.textContent = 'Vérification en cours, réessayez dans un instant.';
+  if (_checkTurnstile('turnstile-login') !== 'ready') {
+    err.textContent = 'Veuillez compléter la vérification de sécurité.';
     err.style.display = 'block';
     return;
   }
@@ -1710,8 +1710,8 @@ window.doRegister = async function() {
   if (pass.length < 6) { err.textContent = 'Mot de passe trop court (6 caractères min).'; err.style.display = 'block'; return; }
   const rgpdChecked = document.getElementById('reg-rgpd')?.checked;
   if (!rgpdChecked) { if (rgpdErr) { rgpdErr.style.display = 'block'; } return; }
-  if (_checkTurnstile('turnstile-register') === 'pending') {
-    err.textContent = 'Vérification en cours, réessayez dans un instant.';
+  if (_checkTurnstile('turnstile-register') !== 'ready') {
+    err.textContent = 'Veuillez compléter la vérification de sécurité.';
     err.style.display = 'block';
     return;
   }
