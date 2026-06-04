@@ -42,8 +42,8 @@ Capital Board est une application web gratuite et open source pour suivre son po
 Ce projet est une application statique sans build step.
 
 ```bash
-git clone https://github.com/armelpltr/Dashboard-PEA.git
-cd Dashboard-PEA
+git clone https://github.com/armelpltr/Capital-Board.git
+cd Capital-Board
 ```
 
 Ouvre `pages/index.html` dans un navigateur ou sers le dossier avec n'importe quel serveur HTTP.
@@ -87,4 +87,4 @@ Si tu héberges une version modifiée de Capital Board comme service public, tu 
 
 ## Contribuer
 
-Les issues et PR sont les bienvenues sur [GitHub](https://github.com/armelpltr/Dashboard-PEA/issues).
+Les issues et PR sont les bienvenues sur [GitHub](https://github.com/armelpltr/Capital-Board/issues).

@@ -24,9 +24,9 @@
 
 **Capital Board** est une application web de suivi personnel de patrimoine financier (PEA, actions, ETF). Interface de type dashboard, hébergée sur GitHub Pages, avec Firebase pour l'auth et la base de données, et des GitHub Actions pour les crons.
 
-- **URL prod** : https://armelpltr.github.io/Dashboard-PEA
-- **Repo** : https://github.com/armelpltr/Dashboard-PEA
-- **Issues** : https://github.com/armelpltr/Dashboard-PEA/issues
+- **URL prod** : https://capitalboard.fr
+- **Repo** : https://github.com/armelpltr/Capital-Board
+- **Issues** : https://github.com/armelpltr/Capital-Board/issues
 - **Admin UID Firebase** : `A6nZQ8PcxdURytSesA17xK81I9T2`
 
 ---
@@ -278,7 +278,7 @@ Créer une **auto-entreprise** (gratuit, 15 min) sur autoentrepreneur.urssaf.fr.
 
 ### 7. Branding & open source
 
-Renommage repo GitHub : `Dashboard-PEA` → `capital-board` (Settings → Repository name). À faire avant de passer public pour figer l'URL canonique.
+Renommage repo GitHub : `Dashboard-PEA` → `Capital-Board` ✓ (Settings → Repository name). À faire avant de passer public pour figer l'URL canonique.
 
 Fichiers à créer à la racine :
 - `LICENSE` — MIT (simple, permissif) ou AGPL-3.0 (force les forks hébergés à publier leur code, protège le SaaS)
@@ -620,7 +620,7 @@ service firebase.storage {
 #### Page custom auth-action.html
 - Gère 4 modes Firebase Auth : `verifyEmail`, `resetPassword`, `recoverEmail`, `verifyAndChangeEmail`. Theme Capital Board (dark, accent violet, Switzer/JetBrains Mono).
 - Form mot de passe inline pour reset password (validation 6 char min + confirm). Mapping erreurs FR.
-- **À faire Console Firebase** : Authentication → Templates → "Customize action URL" → `https://armelpltr.github.io/Dashboard-PEA/auth-action.html`.
+- **À faire Console Firebase** : Authentication → Templates → "Customize action URL" → `https://capitalboard.fr/auth-action.html`.
 
 ---
 
