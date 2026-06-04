@@ -4868,6 +4868,85 @@ function deleteVersement(index) {
   renderPortfolio();
 }
 
+// ─── MODAL "Gérer les versements" ─────────────────────
+let _versEditIdx = -1;
+
+window.openVersementsListModal = function() {
+  _versEditIdx = -1;
+  renderVersementsModalList();
+  document.getElementById('versements-list-modal').classList.add('open');
+};
+window.closeVersementsListModal = function() {
+  document.getElementById('versements-list-modal').classList.remove('open');
+};
+window.addVersementFromModal = function() {
+  closeVersementsListModal();
+  openVersementModal();
+};
+
+function _versDateFr(d) {
+  if (!d) return '—';
+  const dt = new Date(d + 'T12:00:00');
+  return String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear();
+}
+
+function renderVersementsModalList() {
+  const v = getVersements(currentUser);
+  const el = document.getElementById('versements-modal-body');
+  if (!el) return;
+  if (!v.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:24px">Aucun versement enregistré.</div>';
+    return;
+  }
+  const sorted = v.map((x, i) => ({ ...x, _i: i })).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const trash = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+  el.innerHTML = sorted.map(x => {
+    if (x._i === _versEditIdx) {
+      return '<div class="vers-row vers-row-edit">' +
+        '<input type="date" id="vers-edit-date" class="form-input" value="' + (x.date || '') + '" style="color-scheme:dark;flex:1;font-size:12px;padding:6px 8px">' +
+        '<input type="number" id="vers-edit-amount" class="form-input" value="' + x.amount + '" step="any" min="0" style="width:100px;font-size:12px;padding:6px 8px">' +
+        '<button class="btn-vers-act ok" onclick="saveVersementEdit(' + x._i + ')" title="Enregistrer">✓</button>' +
+        '<button class="btn-vers-act" onclick="cancelVersementEdit()" title="Annuler">✕</button>' +
+      '</div>';
+    }
+    return '<div class="vers-row">' +
+      '<span class="vers-date">' + _versDateFr(x.date) + '</span>' +
+      '<span class="vers-amount">' + x.amount.toFixed(2) + ' €</span>' +
+      '<button class="btn-vers-act" onclick="startVersementEdit(' + x._i + ')" title="Modifier">' + IC.edit + '</button>' +
+      '<button class="btn-vers-act del" onclick="deleteVersementFromModal(' + x._i + ')" title="Supprimer">' + trash + '</button>' +
+    '</div>';
+  }).join('');
+  const total = v.reduce((s, x) => s + (x.amount || 0), 0);
+  el.innerHTML += '<div class="vers-total">Total versé<strong>' + total.toFixed(2) + ' €</strong></div>';
+}
+
+window.startVersementEdit = function(i) { _versEditIdx = i; renderVersementsModalList(); };
+window.cancelVersementEdit = function() { _versEditIdx = -1; renderVersementsModalList(); };
+
+window.saveVersementEdit = function(i) {
+  const amount = parseFloat(document.getElementById('vers-edit-amount').value);
+  const date = document.getElementById('vers-edit-date').value;
+  if (!amount || amount <= 0) { alert('Montant invalide.'); return; }
+  if (!date) { alert('Date requise.'); return; }
+  const v = getVersements(currentUser);
+  if (!v[i]) return;
+  v[i] = { ...v[i], amount, date };
+  saveVersements(currentUser, v);
+  _versEditIdx = -1;
+  renderVersementsModalList();
+  renderPortfolio();
+};
+
+window.deleteVersementFromModal = function(i) {
+  if (!confirm('Supprimer ce versement ?')) return;
+  const v = getVersements(currentUser);
+  v.splice(i, 1);
+  saveVersements(currentUser, v);
+  if (_versEditIdx === i) _versEditIdx = -1;
+  renderVersementsModalList();
+  renderPortfolio();
+};
+
 // ─── CSV IMPORT ─────────────────────────────────────
 let pendingImportRows = [];
 

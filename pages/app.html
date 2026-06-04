@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700,800,900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260605c">
+<link rel="stylesheet" href="css/style.css?v=20260605d">
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
@@ -483,7 +483,7 @@
           <div class="stat-change" id="stat-cash-sub">Disponible</div>
           <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
             <button class="btn-add" onclick="openVersementModal()" style="font-size:10px;padding:5px 10px">＋ Versement</button>
-            <button onclick="toggleVersementsList()" class="btn-cash-edit"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>Voir / modifier</button>
+            <button onclick="openVersementsListModal()" class="btn-cash-edit"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>Voir / modifier</button>
           </div>
           <div id="versements-list" style="display:none;margin-top:8px;max-height:200px;overflow-y:auto"></div>
         </div>
@@ -1333,6 +1333,19 @@
   </div>
 </div>
 
+<!-- ═══ MODAL GÉRER LES VERSEMENTS ═══════════════════ -->
+<div class="modal-overlay" id="versements-list-modal" onclick="if(event.target===this)closeVersementsListModal()">
+  <div class="modal" style="width:460px">
+    <div class="modal-title" style="display:flex;align-items:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Gérer les versements</div>
+    <div class="modal-sub">Consultez, modifiez ou supprimez vos apports en capital.</div>
+    <div id="versements-modal-body" style="max-height:340px;overflow-y:auto;margin:14px 0"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeVersementsListModal()">Fermer</button>
+      <button class="btn-primary" onclick="addVersementFromModal()">＋ Ajouter un versement</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL IMPORT CSV ═══════════════════════════ -->
 <div class="modal-overlay" id="csv-import-modal" onclick="if(event.target===this)closeImportModal()">
   <div class="modal" style="width:560px">
@@ -1409,7 +1422,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=20260605e"></script>
+<script src="js/app.js?v=20260605f"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">

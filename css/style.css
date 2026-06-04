@@ -1180,6 +1180,34 @@ tr:hover td { background: rgba(255,255,255,0.018); }
 }
 .btn-cash-edit:hover { background: rgba(124,109,245,0.18); border-color: rgba(124,109,245,0.5); }
 .btn-cash-edit:active { transform: scale(0.96); }
+
+/* Modal "Gérer les versements" */
+.vers-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 9px;
+  background: var(--s2); border: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.vers-row .vers-date { color: var(--text2); font-size: 13px; flex: 1; }
+.vers-row .vers-amount { font-family: var(--mono); color: var(--text); font-size: 13px; font-weight: 600; }
+.btn-vers-act {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 7px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text2); cursor: pointer; font-size: 13px;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.btn-vers-act:hover { background: var(--s3); color: var(--text); }
+.btn-vers-act.del:hover { color: var(--negative); border-color: rgba(255,77,106,0.4); background: rgba(255,77,106,0.08); }
+.btn-vers-act.ok { color: var(--positive); border-color: rgba(0,224,158,0.4); }
+.btn-vers-act.ok:hover { background: rgba(0,224,158,0.1); }
+.vers-row-edit { background: var(--s3); border-color: var(--accent); }
+.vers-total {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+  font-size: 13px; color: var(--text2);
+}
+.vers-total strong { font-family: var(--mono); color: var(--accent); font-size: 15px; }
 /* Écrans larges : on grandit la hauteur pour que la pente reste lisible
    (sinon largeur >> hauteur écrase la courbe sur ultrawide). */
 @media (min-width: 1500px) { .portf-canvas-wrap { height: 230px; } }
