@@ -571,6 +571,7 @@
       <a href="#features">Fonctionnalités</a>
       <a href="#compare">Comparatif</a>
       <a href="#security">Sécurité</a>
+      <a href="#guides">Guides</a>
       <a href="#faq">FAQ</a>
       <a href="#about">À propos</a>
     </div>
@@ -588,6 +589,7 @@
     <a href="#features">Fonctionnalités</a>
     <a href="#compare">Comparatif</a>
     <a href="#security">Sécurité</a>
+    <a href="#guides">Guides</a>
     <a href="#faq">FAQ</a>
     <a href="#about">À propos</a>
     <div class="nav-mobile-cta">
@@ -867,10 +869,56 @@
   </div>
 </section>
 
+<style>
+  #guides .guides-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:8px}
+  #guides .guide-card{display:block;background:var(--surface,#0c0f17);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:16px;padding:24px;text-decoration:none;transition:border-color .2s,transform .2s}
+  #guides .guide-card:hover{border-color:rgba(124,109,245,.35);transform:translateY(-2px)}
+  #guides .guide-eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--purple,#7c6df5);font-weight:600}
+  #guides .guide-title{font-size:18px;font-weight:700;letter-spacing:-.01em;margin:10px 0 6px;color:var(--text1,#f0f2f8)}
+  #guides .guide-desc{font-size:14px;color:var(--text2,#aab2c3);line-height:1.5}
+  #guides .guide-arrow{display:inline-block;margin-top:12px;font-size:14px;font-weight:600;color:var(--purple,#7c6df5)}
+  @media(max-width:680px){#guides .guides-grid{grid-template-columns:1fr}}
+</style>
+<section id="guides">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">Guides</div>
+      <h2>Apprendre à piloter son PEA</h2>
+    </div>
+    <div class="guides-grid">
+      <a class="guide-card" href="guides/analyser-son-pea.html">
+        <div class="guide-eyebrow">Méthode</div>
+        <div class="guide-title">Comment analyser son PEA</div>
+        <div class="guide-desc">Performance réelle, plus-values, dividendes, diversification et frais : la méthode pas à pas.</div>
+        <span class="guide-arrow">Lire le guide →</span>
+      </a>
+      <a class="guide-card" href="guides/suivre-performance-pea.html">
+        <div class="guide-eyebrow">Performance</div>
+        <div class="guide-title">Suivre la performance de son PEA</div>
+        <div class="guide-desc">TWR, rendement annualisé et comparaison au CAC 40, MSCI World et S&amp;P 500.</div>
+        <span class="guide-arrow">Lire le guide →</span>
+      </a>
+      <a class="guide-card" href="guides/suivi-pea-gratuit.html">
+        <div class="guide-eyebrow">Outils</div>
+        <div class="guide-title">Suivi de PEA gratuit</div>
+        <div class="guide-desc">Tableur, dashboard courtier ou app dédiée : comparatif des méthodes gratuites.</div>
+        <span class="guide-arrow">Lire le guide →</span>
+      </a>
+      <a class="guide-card" href="guides/pea-vs-cto.html">
+        <div class="guide-eyebrow">Fiscalité</div>
+        <div class="guide-title">PEA ou CTO : que choisir ?</div>
+        <div class="guide-desc">Fiscalité, plafonds, titres éligibles et retraits : le comparatif des deux enveloppes.</div>
+        <span class="guide-arrow">Lire le guide →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="foot-inner">
     <div class="foot-copy">© 2026 Capital Board</div>
     <div class="foot-links">
+      <a href="guides/analyser-son-pea.html">Guides</a>
       <a href="https://github.com/arrmel-capitalboard/Capital-Board" target="_blank" rel="noopener">GitHub</a>
       <a href="legal/cgu.html">CGU</a>
       <a href="legal/politique-confidentialite.html">Confidentialité</a>
