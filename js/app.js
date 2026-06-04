@@ -5162,6 +5162,10 @@ async function renderPortfolioChart() {
   const sub = document.getElementById('portfolio-chart-sub');
   sub.textContent = 'Chargement…';
 
+  // Overlay spinner tant que la courbe n'est pas calculée/dessinée.
+  const loader = document.getElementById('portfolio-chart-loader');
+  if (loader) loader.classList.add('show');
+
   try {
     const now = Math.floor(Date.now() / 1000);
 
@@ -5375,6 +5379,8 @@ async function renderPortfolioChart() {
   } catch(e) {
     document.getElementById('portfolio-chart-sub').textContent = 'Données indisponibles pour cette période.';
     console.error('Portfolio chart error:', e);
+  } finally {
+    if (loader) loader.classList.remove('show');
   }
 }
 

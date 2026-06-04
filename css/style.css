@@ -1168,6 +1168,14 @@ tr:hover td { background: rgba(255,255,255,0.018); }
   width: 100%;
 }
 
+.portf-chart-loader {
+  position: absolute; inset: 0;
+  display: none; align-items: center; justify-content: center; gap: 10px;
+  color: var(--text2); font-size: 12px; font-family: var(--mono);
+}
+.portf-chart-loader.show { display: flex; }
+.portf-chart-loader .loading-spinner { width: 18px; height: 18px; border-width: 2.5px; }
+
 .chart-select {
   background: var(--s2); border: 1px solid var(--border2); color: var(--text);
   padding: 7px 12px; border-radius: 8px; font-size: 12px; font-family: var(--mono);
