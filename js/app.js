@@ -181,7 +181,18 @@ _splashWatchdog = setTimeout(() => {
     fbStorageGetDownloadURL = storage.getDownloadURL;
   } catch(e) { console.warn('Storage unavailable:', e.message); }
 
-  // Google Sign-In désactivé : plus besoin de gérer getRedirectResult.
+  // Google Sign-In : récupère le résultat du signInWithRedirect (iOS/PWA standalone).
+  try {
+    const redirectResult = await getRedirectResult(fbAuth);
+    if (redirectResult && redirectResult.user) {
+      const isNew = redirectResult._tokenResponse && redirectResult._tokenResponse.isNewUser;
+      if (isNew) { try { localStorage.setItem('signup_auto_trust', '1'); } catch(_) {} }
+    }
+  } catch(e) {
+    console.warn('[google] getRedirectResult:', e && e.message);
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.textContent = 'Connexion Google impossible : ' + (e && (e.message || e.code) || 'erreur');
+  }
 
   if (window.IS_DEMO) {
     startApp({
@@ -1762,10 +1773,49 @@ function _shouldUseRedirectAuth() {
 }
 
 window.doLoginGoogle = async function() {
-  // Google Sign-In désactivé : posait problème en PWA iOS (cookies cross-domain).
-  // Connexion uniquement via email + mot de passe.
-  const err = document.getElementById('login-error');
-  if (err) err.textContent = 'Connexion Google désactivée. Utilisez email + mot de passe.';
+  // Affiche l'erreur dans la vue active (login ou inscription)
+  const regVisible = document.getElementById('register-view')
+    && document.getElementById('register-view').style.display !== 'none';
+  const errEl = document.getElementById(regVisible ? 'register-error' : 'login-error');
+  const showErr = (m) => { if (errEl) { errEl.textContent = m; errEl.style.display = 'block'; } };
+  if (errEl) errEl.textContent = '';
+
+  // Sur la vue inscription : acceptation CGU/RGPD obligatoire avant tout signup.
+  if (regVisible) {
+    const rgpd = document.getElementById('reg-rgpd');
+    if (rgpd && !rgpd.checked) {
+      const rgpdErr = document.getElementById('register-rgpd-error');
+      if (rgpdErr) rgpdErr.style.display = 'block';
+      return;
+    }
+  }
+
+  try {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    // iOS / PWA standalone : les popups échouent → navigation par redirect.
+    if (_shouldUseRedirectAuth()) {
+      await signInWithRedirect(fbAuth, provider);
+      return; // la page navigue, le résultat est récupéré au retour (getRedirectResult)
+    }
+
+    const result = await signInWithPopup(fbAuth, provider);
+    // Nouveau compte Google → auto-trust du 1er appareil (skip 2FA), comme au signup email.
+    try {
+      const isNew = result && result._tokenResponse && result._tokenResponse.isNewUser;
+      if (isNew) localStorage.setItem('signup_auto_trust', '1');
+    } catch(_) {}
+    // onAuthStateChanged prend le relais (gate email/2FA/PIN).
+  } catch(e) {
+    const code = e && e.code;
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
+    if (code === 'auth/account-exists-with-different-credential') {
+      showErr('Un compte existe déjà avec cet email. Connectez-vous avec votre mot de passe.');
+      return;
+    }
+    showErr('Connexion Google impossible : ' + (e && (e.message || e.code) || 'erreur inconnue'));
+  }
 };
 
 // ─── LOGOUT ───────────────────────────────────────────
