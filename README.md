@@ -42,7 +42,7 @@ Capital Board est une application web gratuite et open source pour suivre son po
 Ce projet est une application statique sans build step.
 
 ```bash
-git clone https://github.com/armelpltr/Capital-Board.git
+git clone https://github.com/arrmel-capitalboard/Capital-Board.git
 cd Capital-Board
 ```
 
@@ -87,4 +87,4 @@ Si tu héberges une version modifiée de Capital Board comme service public, tu 
 
 ## Contribuer
 
-Les issues et PR sont les bienvenues sur [GitHub](https://github.com/armelpltr/Capital-Board/issues).
+Les issues et PR sont les bienvenues sur [GitHub](https://github.com/arrmel-capitalboard/Capital-Board/issues).

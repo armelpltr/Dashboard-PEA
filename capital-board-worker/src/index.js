@@ -204,7 +204,7 @@ async function verifyTurnstile(token, env) {
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
-    const allowed = env.ALLOWED_ORIGIN || 'https://armelpltr.github.io';
+    const allowed = env.ALLOWED_ORIGIN || 'https://capitalboard.fr';
     const corsHeaders = { ...CORS, 'Access-Control-Allow-Origin': origin === allowed ? origin : allowed };
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });

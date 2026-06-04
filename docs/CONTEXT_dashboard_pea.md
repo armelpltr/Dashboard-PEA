@@ -25,8 +25,8 @@
 **Capital Board** est une application web de suivi personnel de patrimoine financier (PEA, actions, ETF). Interface de type dashboard, hébergée sur GitHub Pages, avec Firebase pour l'auth et la base de données, et des GitHub Actions pour les crons.
 
 - **URL prod** : https://capitalboard.fr
-- **Repo** : https://github.com/armelpltr/Capital-Board
-- **Issues** : https://github.com/armelpltr/Capital-Board/issues
+- **Repo** : https://github.com/arrmel-capitalboard/Capital-Board
+- **Issues** : https://github.com/arrmel-capitalboard/Capital-Board/issues
 - **Admin UID Firebase** : `A6nZQ8PcxdURytSesA17xK81I9T2`
 
 ---
@@ -228,7 +228,7 @@ A     @    185.199.108.153
 A     @    185.199.109.153
 A     @    185.199.110.153
 A     @    185.199.111.153
-CNAME www  armelpltr.github.io
+CNAME www  arrmel-capitalboard.github.io
 ```
 
 Après propagation (15 min à 24h) :
@@ -357,7 +357,7 @@ main = "src/index.js"
 compatibility_date = "2024-01-01"
 
 [vars]
-ALLOWED_ORIGIN = "https://armelpltr.github.io"
+ALLOWED_ORIGIN = "https://capitalboard.fr"
 ```
 
 **`src/index.js`**
