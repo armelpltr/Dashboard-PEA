@@ -120,7 +120,7 @@ git stash && git pull --rebase && git stash pop && git push
 
 ### Cache busting `app.js` + `style.css`
 `<script src="js/app.js?v=YYYYMMDDx">` et `<link ... css/style.css?v=YYYYMMDDx>` dans `app.html` — à bumper à chaque release notable.
-Actuel : `app.js?v=20260605h`, `style.css?v=20260605e`
+Actuel : `app.js?v=20260605j`, `style.css?v=20260605f`
 
 ---
 
@@ -151,6 +151,7 @@ Permettre à un utilisateur en mode démo (`?demo=1`) de s'inscrire et de garder
 
 ### Livré récemment (par ordre antéchronologique)
 
+- **Page "Résultats financiers"** (2026-06-05) — ⚠️ **WIP, bug à corriger** : nouvelle page Analyse (fondamentaux entreprises) via Yahoo `fundamentals-timeseries`. Recherche entreprise/ticker, KPI (CA/résultat net/marges/BPA/FCF), 2 charts (barres CA+net, lignes marges), table détaillée, toggle annuel/trimestriel. **Erreur en prod "Impossible de charger les résultats"** → problème couche proxy CORS (l'endpoint Yahoo répond 200 en direct ; `_fundFetch` ajouté avec timeouts 9-10s + allorigins/raw en 1er, mais pas encore validé navigateur). À débugger : récupérer le message d'erreur exact affiché (entre parenthèses) / log console `[fund]`.
 - **SEO complet landing** (2026-06-04) — meta canonical/og:url/og:image absolu/Twitter Card, JSON-LD WebApplication + FAQPage, `robots.txt`, `sitemap.xml`, og-image 1200×630 générée (`assets/og-image.png`). Title ciblé "Suivi et analyse de portefeuille PEA gratuit".
 - **4 guides SEO PEA** (2026-06-04) — `guides/analyser-son-pea`, `suivre-performance-pea`, `suivi-pea-gratuit`, `pea-vs-cto`. Contenu longue traîne + JSON-LD Article + CTA. Section "Guides" sur la landing (nav + footer). Ajoutés au sitemap.
 - **Google Sign-In réactivé** (2026-06-04) — `doLoginGoogle` popup (desktop/Android) + fallback `signInWithRedirect` (iOS/PWA), `getRedirectResult` au démarrage. Boutons "Continuer avec Google" sur login + register, garde RGPD. Nouveau compte Google → auto-trust 1er device. **Requiert activation du provider Google dans Firebase Console.** Caveat iOS PWA (cookies cross-domain `firebaseapp.com`) non résolu.
@@ -564,6 +565,9 @@ service firebase.storage {
 
 ## 10. Historique des sessions
 
+### À reprendre (2026-06-06)
+- **Page Résultats financiers — fix proxy CORS.** L'endpoint `https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{TICKER}?type=annualTotalRevenue,...&period1=1262304000&period2=...&merge=false` répond **200 en direct** (testé curl, FR `MC.PA` + US `AAPL`, devise EUR/USD dans `reportedValue.fmt`/`currencyCode`). Mais en navigateur → "Impossible de charger les résultats". `_fundFetch` (js/app.js, avant `fetchFundamentals`) tente allorigins/raw → codetabs → corsproxy → allorigins/get(query2), timeouts 9-10s, valide `p.timeseries`. **Étape 1 demain** : lire le détail d'erreur affiché dans l'UI (entre parenthèses) + log console `[fund]` pour savoir quel proxy/erreur. Hypothèses : 429 allorigins, CORS bloqué sur `/raw`, ou virgules `type=` mal passées. Fallback envisageable : 1 type par requête puis merge, ou `&merge=true`.
+
 ### Session 2026-06-04 / 06-05
 
 #### SEO landing + guides
@@ -595,6 +599,12 @@ service firebase.storage {
 #### Modal versements + dropdown courtier
 - **Modal "Gérer les versements"** (`#versements-list-modal` app.html) : remplace la liste inline. `openVersementsListModal` / `renderVersementsModalList` (date FR, montant, modifier inline via `_versEditIdx` + `saveVersementEdit`, `deleteVersementFromModal`, total). Bouton "＋ Ajouter" → `openVersementModal`. Bouton "Voir / modifier" du solde espèces restylé `.btn-cash-edit` (pill + œil).
 - **Dropdown courtier** (`#broker-dd` app.html, onglet Performance) : custom (remplace le libellé fixe Boursorama). `toggleBrokerDD`/`selectBroker`/`_closeBrokerDD`. Boursorama sélectionnable (check), Fortuneo + Trade Republic `.disabled` + badge `.broker-soon` "Dispo bientôt". Logos via `google.com/s2/favicons?domain=...`.
+
+#### Page Résultats financiers (WIP — voir "À reprendre")
+- Nouvelle page `page-fundamentals` (nav Analyse + drawer mobile, hook `showPage`/`showPageMobile` → `renderFundamentalsPage`). Source : Yahoo `fundamentals-timeseries` (seul endpoint fondamentaux **sans crumb** ; `quoteSummary` v10 et `v7/quote` = 401).
+- Fonctions js/app.js : `renderFundamentalsPage` (puces titres détenus), `fundSearch` (ticker direct ou `fetchSuggestions` par nom), `fundLoad`, `fetchFundamentals(ticker,freq)`, `_fundFetch` (proxies dédiés), `renderFundamentals` (KPI + 2 Chart.js + table), `setFundFreq`, helpers `_fundFmtBig`/`_fundFmtPct`/`_curSym`/`_fundPeriodLabel`/`_fundDomainFromMeta`. Vars : `_fundChartMain`/`_fundChartMargin`/`_fundCurrent`/`_fundFreq`/`_fundData`.
+- Types récupérés (`_FUND_TYPES`, préfixe `annual`/`quarterly`) : TotalRevenue, GrossProfit, OperatingIncome, NetIncome, EBITDA, BasicEPS, DilutedEPS, TotalAssets, TotalLiabilitiesNetMinorityInterest, StockholdersEquity, FreeCashFlow, OperatingCashFlow, TotalDebt.
+- CSS : préfixe `.fund-*` dans style.css. **Statut : erreur proxy à débugger.**
 
 ### Session 2026-05-30
 
