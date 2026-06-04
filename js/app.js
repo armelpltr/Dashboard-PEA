@@ -264,6 +264,42 @@ const firebaseConfig = {
 
 let currentUser = null;
 
+// ─── PRÉCHARGEMENT PENDANT LA SAISIE DU PIN ──────────────────────────────
+// L'utilisateur est déjà authentifié Firebase quand l'écran PIN s'affiche
+// (le PIN est un verrou LOCAL, pas la frontière d'auth Firestore).
+// On lance donc le chargement des données + taux de change dès l'affichage
+// du clavier PIN : pendant qu'il tape ses 6 chiffres, tout charge en fond.
+// PIN validé → startApp réutilise ce préchargement, l'app est déjà prête.
+let _pinPreload = null;        // Promise du préchargement en cours (ou null)
+let _pinPreloadUid = null;     // uid pour lequel le préchargement a été lancé
+
+function _startPinPreload(uid) {
+  if (!uid) return;
+  if (_pinPreload && _pinPreloadUid === uid) return; // déjà en cours
+  _pinPreloadUid = uid;
+  // L'utilisateur est déjà authentifié Firebase : on fixe currentUser dès
+  // maintenant pour que getPortfolio/getTransactions lisent ses données.
+  // startApp fixera la même valeur ; la déconnexion (PIN échoué) la remet à null.
+  currentUser = uid;
+  window.currentUser = uid;
+  _pinPreload = (async () => {
+    try {
+      await Promise.all([loadAllUserData(uid), loadFxRates()]);
+      // Réchauffe le cache historique de la courbe (période par défaut) :
+      // au déverrouillage, renderPortfolioChart tape le cache → courbe instantanée.
+      try {
+        const data = getPortfolio(uid);
+        if (data.length) {
+          const { now, graphStart } = _computePortfolioChartRange(data);
+          await buildPortfolioHistory(data, graphStart, now);
+        }
+      } catch(e) { /* réchauffage best-effort, non bloquant */ }
+    } catch(e) {
+      console.warn('[preload] échec préchargement PIN:', e);
+    }
+  })();
+}
+
 // ─── COUCHE DONNÉES FIRESTORE (cache synchrone + sync arrière-plan) ──────
 // Les lectures/écritures sont SYNCHRONES via un cache mémoire.
 // Firestore est chargé au démarrage et écrit en arrière-plan.
@@ -1000,6 +1036,8 @@ function _shakePinDots() {
 function showPinLockView(user) {
   _pinLockUser = user;
   _pinLockAttempts = 0;
+  // Précharge données + FX en fond pendant que l'utilisateur tape son PIN.
+  _startPinPreload(user && user.uid);
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-view').style.display = 'none';
@@ -1818,9 +1856,17 @@ async function startApp(user) {
       'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
     // Charger FX rates + données Firestore avant de rendre.
+    // Si un préchargement a été lancé pendant la saisie du PIN, on le
+    // réutilise : les données sont déjà là (ou presque), render instantané.
     // Timeout de 12 s : si le réseau ne répond pas, on rend quand même
     // l'app avec ce qu'on a plutôt que de laisser un écran noir.
-    await _withTimeout(Promise.all([loadAllUserData(user.uid), loadFxRates()]), 12000);
+    if (_pinPreload && _pinPreloadUid === user.uid) {
+      await _withTimeout(_pinPreload, 12000);
+    } else {
+      await _withTimeout(Promise.all([loadAllUserData(user.uid), loadFxRates()]), 12000);
+    }
+    _pinPreload = null;
+    _pinPreloadUid = null;
 
     // Avatar + sync roles APRÈS chargement des settings (avatarHue dispo)
     updateMobileAvatar(user);
@@ -5002,6 +5048,12 @@ function inventoryAtDateFallback(data, dayTs, graphStart) {
   return inv;
 }
 
+// Cache mémoire des historiques de prix Yahoo (clé : ticker|interval|range).
+// TTL court : les cours intraday bougent, mais 5 min suffit pour couvrir
+// l'ouverture de l'app + les changements de période rapprochés.
+const _histPriceCache = {};
+const _HIST_PRICE_TTL = 5 * 60 * 1000; // 5 minutes
+
 async function buildPortfolioHistory(data, graphStart, graphEnd) {
   // Collect all tickers: from current portfolio + from transaction history
   const txs = getTransactions(currentUser);
@@ -5023,6 +5075,15 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
 
   const priceMap = {};
   await Promise.all(tickers.map(async ticker => {
+    // Cache mémoire par ticker+interval+range : évite de re-télécharger
+    // l'historique via les proxies lents à chaque render / changement de
+    // période. Réchauffé pendant la saisie du PIN → courbe instantanée.
+    const cacheKey = ticker + '|' + interval + '|' + range;
+    const cached = _histPriceCache[cacheKey];
+    if (cached && (Date.now() - cached.at) < _HIST_PRICE_TTL) {
+      priceMap[ticker] = cached.points;
+      return;
+    }
     try {
       const yahooTicker = resolveToYahooTicker(ticker);
       const raw = await fetchWithFallback(
@@ -5035,9 +5096,14 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
       if (!res) return;
       const ts     = res.timestamp;
       const closes = res.indicators.quote[0].close;
-      priceMap[ticker] = ts.map((t, i) => ({ ts: t, close: closes[i] }))
-                           .filter(p => p.close != null);
-    } catch(e) { priceMap[ticker] = []; }
+      const points = ts.map((t, i) => ({ ts: t, close: closes[i] }))
+                       .filter(p => p.close != null);
+      priceMap[ticker] = points;
+      _histPriceCache[cacheKey] = { points, at: Date.now() };
+    } catch(e) {
+      // En cas d'échec réseau, retombe sur le cache périmé s'il existe.
+      priceMap[ticker] = cached ? cached.points : [];
+    }
   }));
 
   // For short periods (intraday), use Yahoo timestamps directly instead of generating daily timeline
@@ -5153,6 +5219,38 @@ function portfolioChartTooltip(context) {
   el.style.transform = 'translate(-50%, calc(-100% - 10px))';
 }
 
+// Calcule la fenêtre temporelle de la courbe portefeuille pour la période
+// active (portfolioPeriod). Extrait pour être réutilisé par le préchargement
+// PIN (réchauffe le cache historique avant que l'app s'affiche).
+function _computePortfolioChartRange(data) {
+  const now = Math.floor(Date.now() / 1000);
+  const periodOffsets = {
+    '1d': 1*86400, '5d': 5*86400,
+    '1mo': 30*86400, '3mo': 90*86400, '6mo': 180*86400,
+    '1y': 365*86400, '3y': 3*365*86400, '5y': 5*365*86400, 'max': null
+  };
+  const offset = periodOffsets[portfolioPeriod];
+
+  const txs = getTransactions(currentUser);
+  let oldestTs = Infinity;
+  txs.forEach(tx => {
+    if (tx.date) {
+      const ts = Math.floor(new Date(tx.date + 'T12:00:00').getTime() / 1000);
+      if (ts < oldestTs) oldestTs = ts;
+    }
+  });
+  (data || []).forEach(row => {
+    if (row.buyDate) {
+      const ts = Math.floor(new Date(row.buyDate + 'T12:00:00').getTime() / 1000);
+      if (ts < oldestTs) oldestTs = ts;
+    }
+  });
+  if (oldestTs === Infinity) oldestTs = now - 30 * 86400; // défaut 1 mois
+
+  const graphStart = offset ? now - offset : oldestTs;
+  return { now, graphStart, oldestTs };
+}
+
 async function renderPortfolioChart() {
   const data = getPortfolio(currentUser);
   const card = document.getElementById('portfolio-chart-card');
@@ -5163,34 +5261,7 @@ async function renderPortfolioChart() {
   sub.textContent = 'Chargement…';
 
   try {
-    const now = Math.floor(Date.now() / 1000);
-
-    const periodOffsets = {
-      '1d': 1*86400, '5d': 5*86400,
-      '1mo': 30*86400, '3mo': 90*86400, '6mo': 180*86400,
-      '1y': 365*86400, '3y': 3*365*86400, '5y': 5*365*86400, 'max': null
-    };
-    const offset = periodOffsets[portfolioPeriod];
-
-    // Find oldest date from transactions or portfolio
-    const txs = getTransactions(currentUser);
-    let oldestTs = Infinity;
-    txs.forEach(tx => {
-      if (tx.date) {
-        const ts = Math.floor(new Date(tx.date + 'T12:00:00').getTime() / 1000);
-        if (ts < oldestTs) oldestTs = ts;
-      }
-    });
-    data.forEach(row => {
-      if (row.buyDate) {
-        const ts = Math.floor(new Date(row.buyDate + 'T12:00:00').getTime() / 1000);
-        if (ts < oldestTs) oldestTs = ts;
-      }
-    });
-    if (oldestTs === Infinity) oldestTs = now - 30 * 86400; // default 1 month ago
-
-    const periodStart = offset ? now - offset : oldestTs;
-    const graphStart  = periodStart;
+    const { now, graphStart, oldestTs } = _computePortfolioChartRange(data);
 
     const dataset = await buildPortfolioHistory(data, graphStart, now);
 
