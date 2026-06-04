@@ -5203,6 +5203,16 @@ function portfolioChartTooltip(context) {
   el.style.transform = 'translate(-50%, calc(-100% - 10px))';
 }
 
+// TTL du cache de la courbe : court en séance (les cours bougent),
+// long quand le marché est fermé (l'historique ne change plus).
+function _curveCacheTTL() {
+  const d = new Date();
+  const day = d.getDay();   // 0 dim … 6 sam
+  const h = d.getHours();   // heure locale (Europe/Paris attendu)
+  const marketOpen = day >= 1 && day <= 5 && h >= 9 && h < 18;
+  return marketOpen ? 5 * 60 * 1000 : 12 * 60 * 60 * 1000;
+}
+
 async function renderPortfolioChart() {
   const data = getPortfolio(currentUser);
   const card = document.getElementById('portfolio-chart-card');
@@ -5210,11 +5220,8 @@ async function renderPortfolioChart() {
   card.style.display = 'block';
 
   const sub = document.getElementById('portfolio-chart-sub');
-  sub.textContent = 'Chargement…';
-
-  // Overlay spinner tant que la courbe n'est pas calculée/dessinée.
+  // Spinner affiché seulement si on doit vraiment calculer (cache absent/périmé).
   const loader = document.getElementById('portfolio-chart-loader');
-  if (loader) loader.classList.add('show');
 
   try {
     const now = Math.floor(Date.now() / 1000);
@@ -5246,7 +5253,43 @@ async function renderPortfolioChart() {
     const periodStart = offset ? now - offset : oldestTs;
     const graphStart  = periodStart;
 
-    const dataset = await buildPortfolioHistory(data, graphStart, now);
+    // ── Cache courbe : affichage instantané au refresh / déverrouillage PIN ──
+    // Signature : invalide le cache si le portefeuille ou les transactions changent.
+    const _sig = JSON.stringify({
+      p: data.map(r => r.ticker + ':' + r.qty).sort(),
+      t: getTransactions(currentUser).length,
+      per: portfolioPeriod,
+    });
+    const _cacheKey = 'pfcurve_' + (currentUser || 'anon');
+    let dataset = null;
+    try {
+      const c = JSON.parse(localStorage.getItem(_cacheKey) || 'null');
+      if (c && c.sig === _sig && Array.isArray(c.dataset) && c.dataset.length
+          && (Date.now() - c.ts) < _curveCacheTTL()) {
+        dataset = c.dataset;   // cache frais → instant, aucun appel Yahoo
+      }
+    } catch(_) {}
+
+    if (!dataset) {
+      // Pas de cache exploitable → calcul Yahoo (avec spinner).
+      sub.textContent = 'Chargement…';
+      if (loader) loader.classList.add('show');
+      dataset = await buildPortfolioHistory(data, graphStart, now);
+      try {
+        localStorage.setItem(_cacheKey, JSON.stringify({ ts: Date.now(), sig: _sig, dataset }));
+      } catch(_) {}
+    }
+
+    // Cohérence courbe/chiffre : le dernier point colle à la valeur live du header.
+    if (dataset.length) {
+      let _liveVal = 0;
+      data.forEach(r => { _liveVal += r.qty * r.currentPrice; });
+      if (_liveVal > 0) {
+        dataset = dataset.slice();
+        dataset[dataset.length - 1] = Object.assign({}, dataset[dataset.length - 1],
+          { valeurTotale: +_liveVal.toFixed(2) });
+      }
+    }
 
     if (!dataset.length) {
       sub.textContent = 'Aucune donnée sur cette période.';
