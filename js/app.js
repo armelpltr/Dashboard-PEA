@@ -5096,6 +5096,20 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
     }
   }));
 
+  // Prix courant par ticker (depuis le portefeuille) : sert de repli quand
+  // l'historique d'un titre n'a pas pu être récupéré (proxy en échec), pour
+  // éviter qu'un titre disparaisse du total et écrase la courbe vers le bas.
+  const currentPriceMap = {};
+  data.forEach(r => { if (r.ticker && r.currentPrice) currentPriceMap[r.ticker] = r.currentPrice; });
+
+  // Dataset « partiel » = au moins un titre actuellement détenu n'a aucun
+  // historique (fetch échoué). On l'affiche quand même (avec repli prix
+  // courant) mais on ne le PERSISTE pas : éviter de figer une courbe fausse.
+  let partial = false;
+  for (const r of data) {
+    if (r.ticker && (!priceMap[r.ticker] || !priceMap[r.ticker].length)) partial = true;
+  }
+
   // For short periods (intraday), use Yahoo timestamps directly instead of generating daily timeline
   const isIntraday = daysDuration <= 6;
 
@@ -5124,11 +5138,16 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
 
   function getHistoricalClose(ticker, ts) {
     const prices = priceMap[ticker] || [];
+    // Aucun historique : repli sur le prix courant du portefeuille.
+    if (!prices.length) return currentPriceMap[ticker] != null ? currentPriceMap[ticker] : null;
     let last = null;
     for (const p of prices) {
       if (p.ts <= ts + 86400) last = p.close;
       else break;
     }
+    // Jour antérieur au 1er point connu : on prend le 1er close (backfill)
+    // au lieu de null, pour ne pas créer de trous au début de la courbe.
+    if (last == null) last = prices[0].close;
     return last;
   }
 
@@ -5149,7 +5168,13 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
     let valeurTotale = 0;
     for (const [ticker, qty] of Object.entries(inventory)) {
       if (qty <= 0) continue;
-      const close = getHistoricalClose(ticker, dayTs);
+      let close = getHistoricalClose(ticker, dayTs);
+      // Dernier repli : prix courant puis prix d'achat, pour qu'un titre
+      // détenu compte toujours dans le total (jamais ignoré → 0).
+      if (close == null) {
+        const row = data.find(r => r.ticker === ticker);
+        close = row ? (row.currentPrice || row.buyPrice) : null;
+      }
       if (close != null) {
         valeurTotale += qty * close;
       }
@@ -5163,6 +5188,9 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
     });
   }
 
+  // Marque le dataset comme partiel si un titre détenu manquait d'historique :
+  // l'orchestrateur l'affiche mais ne le met pas en cache localStorage.
+  dataset.partial = partial;
   return dataset;
 }
 
@@ -5300,7 +5328,9 @@ async function renderPortfolioChart() {
       return;
     }
 
-    _saveChartDataset(period, dataset);
+    // Ne persiste QUE les datasets complets (tous les titres détenus avaient
+    // un historique). Un dataset partiel s'affiche mais n'écrase pas le cache.
+    if (!dataset.partial) _saveChartDataset(period, dataset);
     _drawPortfolioChart(dataset, data, graphStart, now, oldestTs);
   } catch(e) {
     if (!cached || !cached.length) {
