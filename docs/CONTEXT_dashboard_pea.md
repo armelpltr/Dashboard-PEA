@@ -1,7 +1,7 @@
 
 # Capital Board — Contexte & Documentation complète
 
-> Dernière mise à jour : 2026-06-05
+> Dernière mise à jour : 2026-06-06
 
 ---
 
@@ -120,7 +120,7 @@ git stash && git pull --rebase && git stash pop && git push
 
 ### Cache busting `app.js` + `style.css`
 `<script src="js/app.js?v=YYYYMMDDx">` et `<link ... css/style.css?v=YYYYMMDDx>` dans `app.html` — à bumper à chaque release notable.
-Actuel : `app.js?v=20260605j`, `style.css?v=20260605f`
+Actuel : `app.js?v=20260606b`, `style.css?v=20260605f`
 
 ---
 
@@ -565,8 +565,18 @@ service firebase.storage {
 
 ## 10. Historique des sessions
 
-### À reprendre (2026-06-06)
-- **Page Résultats financiers — fix proxy CORS.** L'endpoint `https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{TICKER}?type=annualTotalRevenue,...&period1=1262304000&period2=...&merge=false` répond **200 en direct** (testé curl, FR `MC.PA` + US `AAPL`, devise EUR/USD dans `reportedValue.fmt`/`currencyCode`). Mais en navigateur → "Impossible de charger les résultats". `_fundFetch` (js/app.js, avant `fetchFundamentals`) tente allorigins/raw → codetabs → corsproxy → allorigins/get(query2), timeouts 9-10s, valide `p.timeseries`. **Étape 1 demain** : lire le détail d'erreur affiché dans l'UI (entre parenthèses) + log console `[fund]` pour savoir quel proxy/erreur. Hypothèses : 429 allorigins, CORS bloqué sur `/raw`, ou virgules `type=` mal passées. Fallback envisageable : 1 type par requête puis merge, ou `&merge=true`.
+### À reprendre (2026-06-07)
+- **Proxy Yahoo durable via Worker existant.** Les proxies CORS gratuits sont **morts/instables** : `corsproxy.io` → 403 systématique, `cors.eu.org` → "CORS Missing Allow Origin" (403). Casse cours live, dividendes auto (`fetchDivHistory` jette "Service temporairement indisponible"), benchmark, page fondamentaux. **Le Worker Cloudflare existe déjà et tourne** (`capital-board-worker/` = `src` + `wrangler.toml`, déployé sur `https://api.capitalboard.fr`, sert déjà `/verify-pin` + `/send-otp`). **Plan** : ajouter un endpoint `GET /yahoo?url=...` au Worker (fetch direct Yahoo côté serveur = pas de CORS + pas de crumb), puis dans `js/app.js` router `fetchWithFallback` / `_fundFetch` / `loadFxRates` vers `WORKER_URL + '/yahoo?url=' + encodeURIComponent(yahooUrl)` en **proxy primaire**, garder allorigins/codetabs en fallback. Déploiement = `wrangler deploy` (côté user, login interactif). Règle CORS Worker : autoriser `ALLOWED_ORIGIN = https://capitalboard.fr`.
+- **Page Résultats financiers — fix proxy CORS.** (sera réglé par le proxy Worker ci-dessus.) L'endpoint `https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{TICKER}?type=annualTotalRevenue,...&period1=1262304000&period2=...&merge=false` répond **200 en direct** (testé curl, FR `MC.PA` + US `AAPL`, devise EUR/USD dans `reportedValue.fmt`/`currencyCode`). Mais en navigateur → "Impossible de charger les résultats". `_fundFetch` (js/app.js, avant `fetchFundamentals`) tente allorigins/raw → codetabs → corsproxy → allorigins/get(query2), timeouts 9-10s, valide `p.timeseries`. **Étape 1 demain** : lire le détail d'erreur affiché dans l'UI (entre parenthèses) + log console `[fund]` pour savoir quel proxy/erreur. Hypothèses : 429 allorigins, CORS bloqué sur `/raw`, ou virgules `type=` mal passées. Fallback envisageable : 1 type par requête puis merge, ou `&merge=true`.
+
+### Session 2026-06-06
+
+#### Perf dashboard — 1er rendu 9,2 s → 0,3 s (36×)
+- **Instrumentation F12** : chrono `window._perfT0` posé en haut de `startApp`, helper `_perfMark(key, extra)` (logue 1× par cycle, violet `#7c6df5`). Marqueurs : `données chargées (Firestore)`, `chiffres affichés` (avant `renderPortfolioChart` dans `renderPortfolio`), `buildPortfolioHistory (Yahoo)` (orange, si pas de cache), `courbe affichée (cache|Yahoo)` (après `new Chart`), `FX chargé (arrière-plan)`.
+- **Diagnostic** : le gate `_withTimeout(Promise.all([loadAllUserData, loadFxRates]), 12000)` attendait `loadFxRates` (2 fetchs EURUSD/EURGBP via proxies CORS morts) → ~9 s avant tout affichage. Or PEA ≈ 100 % EUR → FX inutile pour afficher.
+- **Fix 1 (le gros)** : `startApp` ne bloque plus que sur `loadAllUserData` (Firestore, rapide). `loadFxRates()` lancé en arrière-plan `.then(() => renderPortfolio())` pour re-render les éventuelles lignes non-EUR. Mesuré : Firestore **256 ms**, chiffres 258 ms, courbe (cache) 280 ms, FX bg 2060 ms.
+- **Fix 2** : `fetchWithFallback` réordonné — Round 1 = `Promise.any([tryCodetabs, tryAllorigins])` (course parallèle, 1er valide gagne) ; Round 2 = `corsproxy.io` + `cors.eu.org` en dernier recours (étaient en primaire alors qu'ils renvoient 403). `tryAllorigins` utilise `query2.` au lieu de `query1.`.
+- **Limite restante** : cours live / dividendes / benchmark toujours cassés tant que les proxies gratuits sont down → vrai fix = endpoint `/yahoo` sur le Worker (cf. « À reprendre 2026-06-07 »). Le dashboard s'affiche vite car données **en cache** (peuvent être légèrement périmées).
 
 ### Session 2026-06-04 / 06-05
 
