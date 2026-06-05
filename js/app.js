@@ -1852,8 +1852,23 @@ function _startVersionCheck() {
   _versionCheckInterval = setInterval(_checkVersion, 5 * 60 * 1000);
 }
 
+// ─── Chrono perf dashboard (F12) ──────────────────────────────────────────
+// Mesure le temps d'apparition chiffres + courbe depuis le déverrouillage.
+// Chaque clé n'est loguée qu'une fois par cycle startApp.
+function _perfMark(key, extra) {
+  if (!window._perfT0) return;
+  window._perfMarks = window._perfMarks || {};
+  if (window._perfMarks[key]) return;
+  window._perfMarks[key] = true;
+  const ms = Math.round(performance.now() - window._perfT0);
+  console.log('%c[perf] ' + key + (extra ? ' ' + extra : '') + ' : ' + ms + ' ms',
+    'color:#7c6df5;font-weight:bold');
+}
+
 async function startApp(user) {
   try {
+    window._perfT0 = performance.now();
+    window._perfMarks = {};
     currentUser = user.uid;
     window.currentUser = user.uid;
     const displayName = user.displayName || user.email.split('@')[0];
@@ -1871,6 +1886,7 @@ async function startApp(user) {
     // Timeout de 12 s : si le réseau ne répond pas, on rend quand même
     // l'app avec ce qu'on a plutôt que de laisser un écran noir.
     await _withTimeout(Promise.all([loadAllUserData(user.uid), loadFxRates()]), 12000);
+    _perfMark('données chargées (Firestore+FX)');
 
     // Avatar + sync roles APRÈS chargement des settings (avatarHue dispo)
     updateMobileAvatar(user);
@@ -2747,6 +2763,7 @@ function renderPortfolio() {
   // Render transaction history
   renderTxHistory();
 
+  _perfMark('chiffres affichés');
   renderPortfolioChart();
 }
 
@@ -5672,11 +5689,13 @@ async function renderPortfolioChart() {
     });
     const _cacheKey = 'pfcurve_' + (currentUser || 'anon');
     let dataset = null;
+    let _fromCache = false;
     try {
       const c = JSON.parse(localStorage.getItem(_cacheKey) || 'null');
       if (c && c.sig === _sig && Array.isArray(c.dataset) && c.dataset.length
           && (Date.now() - c.ts) < _curveCacheTTL()) {
         dataset = c.dataset;   // cache frais → instant, aucun appel Yahoo
+        _fromCache = true;
       }
     } catch(_) {}
 
@@ -5684,7 +5703,10 @@ async function renderPortfolioChart() {
       // Pas de cache exploitable → calcul Yahoo (avec spinner).
       sub.textContent = 'Chargement…';
       if (loader) loader.classList.add('show');
+      const _bt = performance.now();
       dataset = await buildPortfolioHistory(data, graphStart, now);
+      console.log('%c[perf] buildPortfolioHistory (Yahoo) : '
+        + Math.round(performance.now() - _bt) + ' ms', 'color:#f5b731');
       try {
         localStorage.setItem(_cacheKey, JSON.stringify({ ts: Date.now(), sig: _sig, dataset }));
       } catch(_) {}
@@ -5885,6 +5907,8 @@ async function renderPortfolioChart() {
         }
       }
     });
+
+    _perfMark('courbe affichée', _fromCache ? '(cache)' : '(Yahoo)');
 
   } catch(e) {
     document.getElementById('portfolio-chart-sub').textContent = 'Données indisponibles pour cette période.';
