@@ -1882,11 +1882,16 @@ async function startApp(user) {
     document.getElementById('portfolio-date').textContent =
       'Mis à jour le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    // Charger FX rates + données Firestore avant de rendre.
-    // Timeout de 12 s : si le réseau ne répond pas, on rend quand même
-    // l'app avec ce qu'on a plutôt que de laisser un écran noir.
-    await _withTimeout(Promise.all([loadAllUserData(user.uid), loadFxRates()]), 12000);
-    _perfMark('données chargées (Firestore+FX)');
+    // On bloque le 1er rendu UNIQUEMENT sur les données Firestore (rapide).
+    // Les taux FX passent par les proxies CORS Yahoo (souvent lents/morts) et
+    // ne servent qu'aux lignes non-EUR : on les charge en arrière-plan puis on
+    // re-render. Évite que le dashboard attende 9 s pour 2 fetchs EURUSD/EURGBP.
+    await _withTimeout(loadAllUserData(user.uid), 12000);
+    _perfMark('données chargées (Firestore)');
+    loadFxRates().then(() => {
+      _perfMark('FX chargé (arrière-plan)');
+      try { window.renderPortfolio(); } catch(_) {}
+    });
 
     // Avatar + sync roles APRÈS chargement des settings (avatarHue dispo)
     updateMobileAvatar(user);
@@ -3322,17 +3327,20 @@ async function fetchWithFallback(url) {
     } catch { return false; }
   }
 
-  // Round 1 : corsproxy en premier (allorigins trop souvent 429)
+  // Round 1 : course des 2 proxies fiables en parallèle (le 1er valide gagne).
+  // corsproxy.io et cors.eu.org renvoient 403 systématique → relégués en Round 2.
+  const race = [
+    tryCodetabs(url).then(r => { if (!isValidRaw(r)) throw new Error('invalide'); return r; }),
+    tryAllorigins(url.replace('query1.', 'query2.')).then(r => { if (!isValidRaw(r)) throw new Error('invalide'); return r; }),
+  ];
   try {
-    const raw = await tryCorsproxy(url);
-    if (isValidRaw(raw)) return raw;
+    return await Promise.any(race);
   } catch {}
 
-  // Round 2 : cors.eu.org + codetabs + allorigins en dernier recours
+  // Round 2 : longshots (souvent morts, mais on tente avant d'abandonner).
   const fallbacks = [
+    () => tryCorsproxy(url),
     () => tryCorsEu(url),
-    () => tryCodetabs(url),
-    () => tryAllorigins(url.replace('query1.', 'query2.')),
   ];
   for (const fn of fallbacks) {
     try {
