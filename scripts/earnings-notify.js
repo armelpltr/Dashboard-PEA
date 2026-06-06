@@ -34,10 +34,18 @@ function isReleased(item, now) {
   return now >= releaseTs;
 }
 
-async function fetchTodayEarnings() {
+// Liste tous les symboles ayant au moins un abonné (docs parents de earningsSubscribers/{SYM}/users).
+async function getAllSubscribedSymbols() {
+  const refs = await db.collection('earningsSubscribers').listDocuments();
+  return refs.map(r => r.id.toUpperCase());
+}
+
+// Earnings du jour pour les symboles abonnés (Worker fetch par-symbole, cache KV).
+async function fetchTodayEarnings(syms) {
+  if (!syms.length) return [];
   const day = todayUtc();
-  const url = `${WORKER_URL}/earnings?from=${day}&to=${day}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  const url = `${WORKER_URL}/earnings?symbols=${encodeURIComponent(syms.join(','))}&from=${day}&to=${day}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
   if (!res.ok) throw new Error(`Worker /earnings ${res.status}`);
   const j = await res.json();
   return Array.isArray(j.items) ? j.items : [];
@@ -85,7 +93,9 @@ async function main() {
   console.log(`\nNotifications résultats — ${new Date().toISOString()}\n`);
   const now = Date.now();
 
-  const items = await fetchTodayEarnings();
+  const symbols = await getAllSubscribedSymbols();
+  console.log(`${symbols.length} symbole(s) suivi(s) par au moins un user`);
+  const items = await fetchTodayEarnings(symbols);
   console.log(`${items.length} résultat(s) prévu(s) aujourd'hui`);
 
   const released = items.filter(it => isReleased(it, now));

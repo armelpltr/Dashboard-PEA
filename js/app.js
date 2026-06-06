@@ -4924,7 +4924,7 @@ async function _ecFetchEarnings() {
   if (!syms.length) { _ecItems = []; return; }
   const today = new Date();
   const from = _ecDateStr(today);
-  const to   = _ecDateStr(new Date(today.getTime() + 70 * 86400 * 1000));
+  const to   = _ecDateStr(new Date(today.getTime() + 120 * 86400 * 1000));
   try {
     const url = WORKER_URL + '/earnings?symbols=' + encodeURIComponent(syms.join(',')) + '&from=' + from + '&to=' + to;
     const r = await fetch(url, { signal: AbortSignal.timeout(10000) });

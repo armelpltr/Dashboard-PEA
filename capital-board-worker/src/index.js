@@ -205,22 +205,29 @@ async function verifyTurnstile(token, env) {
   return data.success === true;
 }
 
-// ── Earnings calendar (Finnhub → KV snapshot) ───────────────────────────────
+// ── Earnings calendar (Finnhub, fetch PAR SYMBOLE + cache KV 24h) ────────────
+//
+// Le calendrier global Finnhub free est plafonné (renvoie ~1500 micro-caps,
+// coupe les gros titres + l'EU). Le endpoint par-symbole (&symbol=) est fiable.
+// On fetch donc uniquement les titres pertinents (portefeuille/watchlist/abos)
+// et on cache chacun 24h en KV → 1 appel Finnhub par titre suivi et par jour.
 
-const EARNINGS_KEY = 'snapshot';
+const EARN_TTL = 24 * 3600;   // secondes
 
-// Récupère le calendrier earnings Finnhub sur [from, to] (dates YYYY-MM-DD).
-async function fetchFinnhubEarnings(from, to, env) {
-  const url = `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&token=${env.FINNHUB_API_KEY}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw new Error(`Finnhub ${res.status}: ${await res.text()}`);
+// Earnings d'un seul symbole sur ~120j (couvre le prochain résultat).
+async function fetchSymbolEarnings(sym, env) {
+  const today = new Date();
+  const from = today.toISOString().slice(0, 10);
+  const to   = new Date(today.getTime() + 120 * 86400 * 1000).toISOString().slice(0, 10);
+  const url = `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&symbol=${encodeURIComponent(sym)}&token=${env.FINNHUB_API_KEY}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
+  if (!res.ok) throw new Error(`Finnhub ${res.status}`);
   const data = await res.json();
   const cal = Array.isArray(data.earningsCalendar) ? data.earningsCalendar : [];
-  // Normalisation : on ne garde que l'utile (snapshot léger).
   return cal.map(e => ({
     symbol: e.symbol,
-    date:   e.date,                              // YYYY-MM-DD
-    hour:   e.hour || '',                        // bmo | amc | dmh | ''
+    date:   e.date,
+    hour:   e.hour || '',
     epsEst: e.epsEstimate ?? null,
     epsAct: e.epsActual ?? null,
     revEst: e.revenueEstimate ?? null,
@@ -228,30 +235,34 @@ async function fetchFinnhubEarnings(from, to, env) {
   })).filter(e => e.symbol && e.date);
 }
 
-// Rafraîchit le snapshot KV (auj → +70j). Appelé par le Cron Trigger 1×/jour.
-async function refreshEarningsSnapshot(env) {
-  const today = new Date();
-  const from = today.toISOString().slice(0, 10);
-  const to   = new Date(today.getTime() + 70 * 86400 * 1000).toISOString().slice(0, 10);
-  const items = await fetchFinnhubEarnings(from, to, env);
-  const snapshot = { updatedAt: Date.now(), from, to, items };
-  await env.EARNINGS.put(EARNINGS_KEY, JSON.stringify(snapshot));
-  return snapshot;
+// Earnings d'un symbole avec cache KV 24h (clé earn:SYM).
+async function getSymbolEarningsCached(sym, env) {
+  const key = 'earn:' + sym.toUpperCase();
+  const cached = await env.EARNINGS.get(key);
+  if (cached !== null) return JSON.parse(cached);
+  let items = [];
+  try { items = await fetchSymbolEarnings(sym, env); }
+  catch (e) { console.error('finnhub', sym, e.message); }
+  // Cache même un tableau vide (évite de re-frapper Finnhub pour un titre sans résultat annoncé).
+  await env.EARNINGS.put(key, JSON.stringify(items), { expirationTtl: EARN_TTL });
+  return items;
 }
 
-async function readEarningsSnapshot(env) {
-  const raw = await env.EARNINGS.get(EARNINGS_KEY);
-  return raw ? JSON.parse(raw) : null;
+// Earnings pour une liste de symboles (concurrence limitée).
+async function getEarningsForSymbols(syms, env) {
+  const out = [];
+  const CHUNK = 6;
+  for (let i = 0; i < syms.length; i += CHUNK) {
+    const batch = syms.slice(i, i + CHUNK);
+    const res = await Promise.all(batch.map(s => getSymbolEarningsCached(s, env)));
+    res.forEach(arr => out.push(...arr));
+  }
+  return out;
 }
 
 // ── Main handler ───────────────────────────────────────────────────────────
 
 export default {
-  // Cron Trigger quotidien : 1 appel Finnhub, snapshot stocké en KV.
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(refreshEarningsSnapshot(env).catch(e => console.error('earnings refresh:', e.message)));
-  },
-
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
     const allowed = env.ALLOWED_ORIGIN || 'https://capitalboard.fr';
@@ -302,40 +313,19 @@ export default {
         return json({ ok: true });
       }
 
-      // ── POST /earnings/refresh ──────────────────────────────────────────
-      // Force le rafraîchissement du snapshot (admin only). Utile au 1er déploiement
-      // avant que le Cron Trigger n'ait tourné.
-      if (url.pathname === '/earnings/refresh' && request.method === 'POST') {
-        const { idToken } = await request.json().catch(() => ({}));
-        if (!idToken) return json({ ok: false, error: 'idToken requis' }, 401);
-        const user = await verifyIdToken(idToken, env);
-        if (user.localId !== env.ADMIN_UID) return json({ ok: false, error: 'Réservé admin' }, 403);
-        const snap = await refreshEarningsSnapshot(env);
-        return json({ ok: true, count: snap.items.length, from: snap.from, to: snap.to });
-      }
-
       // ── GET /earnings?symbols=A,B&from=&to= ─────────────────────────────
-      // Lit le snapshot KV (rafraîchi 1×/jour par le cron). Filtre par symboles
-      // (portefeuille/watchlist/abos/recherche) + plage de dates. Sans symbols
-      // → snapshot complet (usage serveur : cron push). Cache CDN 1h.
+      // Earnings des symboles demandés (par-symbole Finnhub, cache KV 24h).
+      // `symbols` obligatoire (max 80). Filtre optionnel from/to. Cache CDN 1h.
       if (url.pathname === '/earnings' && request.method === 'GET') {
-        const snap = await readEarningsSnapshot(env);
-        if (!snap) {
-          return new Response(JSON.stringify({ updatedAt: 0, items: [] }), {
-            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', ...corsHeaders },
-          });
-        }
         const symbolsParam = url.searchParams.get('symbols');
+        if (!symbolsParam) return json({ items: [] });
+        const syms = [...new Set(symbolsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean))].slice(0, 80);
         const from = url.searchParams.get('from');
         const to   = url.searchParams.get('to');
-        let items = snap.items;
-        if (symbolsParam) {
-          const set = new Set(symbolsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean));
-          items = items.filter(e => set.has(e.symbol.toUpperCase()));
-        }
+        let items = await getEarningsForSymbols(syms, env);
         if (from) items = items.filter(e => e.date >= from);
         if (to)   items = items.filter(e => e.date <= to);
-        return new Response(JSON.stringify({ updatedAt: snap.updatedAt, items }), {
+        return new Response(JSON.stringify({ updatedAt: Date.now(), items }), {
           headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600', ...corsHeaders },
         });
       }

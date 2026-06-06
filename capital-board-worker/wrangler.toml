@@ -8,16 +8,11 @@ FIREBASE_PROJECT_ID = "dashboard-pea"
 FIREBASE_WEB_API_KEY = "AIzaSyDvZ_0loJ9Lf_jhz-ZDGsydG9AE21CU5Uc"
 ADMIN_UID = "A6nZQ8PcxdURytSesA17xK81I9T2"
 
-# Cache du calendrier earnings (snapshot Finnhub rafraîchi 1×/jour).
-# Créer le namespace puis coller l'id ci-dessous :
-#   wrangler kv namespace create EARNINGS
+# Cache earnings : 1 clé par symbole (earn:SYM), TTL 24h. Fetch par-symbole
+# Finnhub (le calendrier global free est plafonné/inexploitable).
 [[kv_namespaces]]
 binding = "EARNINGS"
 id = "8d4037e71b1244b29d70174b71527026"
-
-# Cron Trigger : rafraîchit le snapshot earnings chaque jour à 06:00 UTC.
-[triggers]
-crons = ["0 6 * * *"]
 
 # Secrets à injecter via : wrangler secret put <NOM>
 #   FIREBASE_SERVICE_ACCOUNT   → JSON complet du service account Firebase
