@@ -351,7 +351,7 @@ export default {
       if (url.pathname === '/earnings' && request.method === 'GET') {
         const symbolsParam = url.searchParams.get('symbols');
         if (!symbolsParam) return json({ items: [] });
-        const syms = [...new Set(symbolsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean))].slice(0, 80);
+        const syms = [...new Set(symbolsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean))].slice(0, 130);
         const from = url.searchParams.get('from');
         const to   = url.searchParams.get('to');
         let items = await getEarningsForSymbols(syms, env);

@@ -4892,12 +4892,33 @@ function _ecDateStr(d)    { // YYYY-MM-DD en heure locale (pas de décalage UTC)
 }
 const _EC_MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
-// Symboles pertinents = portefeuille + watchlist + abonnements (bornés par user).
+// Valeurs notables mondiales affichées par défaut dans le calendrier (tickers Yahoo).
+// US méga-caps + EU + Asie. Couvre les titres les plus connus pour remplir l'agenda
+// même quand l'utilisateur possède peu de lignes.
+const _EC_POPULAR = [
+  // US tech / méga-caps
+  'AAPL','MSFT','NVDA','GOOGL','AMZN','META','TSLA','NFLX','AMD','INTC','AVGO','ORCL','ADBE','CRM','CSCO','QCOM','PYPL','UBER',
+  // US autres secteurs
+  'JPM','BAC','V','MA','KO','PEP','MCD','DIS','NKE','WMT','COST','XOM','CVX','PFE','JNJ','BA','GE','CAT',
+  // EU
+  'ASML.AS','SAP.DE','SIE.DE','AIR.PA','MC.PA','OR.PA','TTE.PA','SAN.PA','BNP.PA','SU.PA','DG.PA','NESN.SW','NOVN.SW','ROG.SW','SHEL.L','AZN.L','HSBA.L',
+  // Asie
+  '005930.KS','TSM','BABA','9988.HK','TM','SONY','7203.T','BABA',
+];
+
+// Symboles pertinents = portefeuille + watchlist + abonnements (mis en avant).
 function _ecRelevantSymbols() {
   const set = new Set();
   (getPortfolio(currentUser) || []).forEach(r => r.ticker && set.add(_ecNorm(r.ticker)));
   (getWatchlist(currentUser) || []).forEach(w => w.ticker && set.add(_ecNorm(w.ticker)));
   Object.keys(_ecSubs).forEach(s => set.add(_ecNorm(s)));
+  return [...set];
+}
+
+// Tous les symboles à afficher = pertinents (mes titres) + liste notable par défaut.
+function _ecDisplaySymbols() {
+  const set = new Set(_ecRelevantSymbols());
+  _EC_POPULAR.forEach(s => set.add(_ecNorm(s)));
   return [...set];
 }
 
@@ -4920,7 +4941,7 @@ async function _ecLoadSubs() {
 }
 
 async function _ecFetchEarnings() {
-  const syms = _ecRelevantSymbols();
+  const syms = _ecDisplaySymbols();
   if (!syms.length) { _ecItems = []; return; }
   const today = new Date();
   const from = _ecDateStr(today);
