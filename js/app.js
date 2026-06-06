@@ -1027,7 +1027,6 @@ function showPinLockView(user) {
   _renderPinKeypad('pin-lock-keypad', 'pin-lock-input', () => window.pinLockSubmit());
   const err = document.getElementById('pin-lock-error'); if (err) err.style.display = 'none';
   _hideSplash();
-  _initBiometricLockBtn(user);
 }
 
 window.pinLockSubmit = async function() {
@@ -1201,137 +1200,6 @@ async function _isPinEnabled(uid) {
   const sec = await _loadSecurity(uid);
   return !!(sec && sec.enabled && sec.pinHash && sec.pinSalt);
 }
-
-// ─── BIOMÉTRIE (WebAuthn platform — Face ID / Touch ID / empreinte) ──────────
-async function _isBiometricAvailable() {
-  if (!window.PublicKeyCredential) return false;
-  try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
-  catch(e) { return false; }
-}
-
-function _uint8ToB64url(arr) {
-  return btoa(String.fromCharCode(...new Uint8Array(arr)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
-
-function _b64urlToUint8(b64) {
-  return Uint8Array.from(atob(b64.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-}
-
-async function _getBiometricCredentialId(uid) {
-  const sec = await _loadSecurity(uid);
-  return (sec && sec.biometricEnabled && sec.biometricCredentialId) ? sec.biometricCredentialId : null;
-}
-
-async function _initBiometricLockBtn(user) {
-  const btn = document.getElementById('biometric-btn');
-  if (!btn) return;
-  const available = await _isBiometricAvailable();
-  const uid = (user || fbAuth.currentUser)?.uid;
-  if (!available || !uid) { btn.style.display = 'none'; return; }
-  const credId = await _getBiometricCredentialId(uid);
-  if (!credId) { btn.style.display = 'none'; return; }
-  btn.style.display = 'flex';
-}
-
-window.biometricUnlock = async function() {
-  const user = _pinLockUser || fbAuth.currentUser;
-  if (!user) return;
-  const credId = await _getBiometricCredentialId(user.uid);
-  if (!credId) return;
-  const btn = document.getElementById('biometric-btn');
-  if (btn) btn.disabled = true;
-  try {
-    await navigator.credentials.get({
-      publicKey: {
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
-        allowCredentials: [{ id: _b64urlToUint8(credId), type: 'public-key' }],
-        userVerification: 'required',
-        timeout: 60000,
-      }
-    });
-    document.getElementById('pin-lock-view').style.display = 'none';
-    _pinLockAttempts = 0;
-    startApp(user);
-  } catch(e) {
-    if (btn) btn.disabled = false;
-    if (e.name !== 'NotAllowedError') {
-      const err = document.getElementById('pin-lock-error');
-      if (err) { err.textContent = 'Biométrie indisponible. Utilisez votre code PIN.'; err.style.display = 'block'; }
-    }
-  }
-};
-
-window.enableBiometric = async function() {
-  const user = fbAuth.currentUser;
-  if (!user) return;
-  const box = document.getElementById('biometric-status-box');
-  if (box) box.textContent = 'Activation en cours…';
-  try {
-    const cred = await navigator.credentials.create({
-      publicKey: {
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
-        rp: { name: 'Capital Board', id: location.hostname },
-        user: {
-          id: Uint8Array.from(user.uid, c => c.charCodeAt(0)),
-          name: user.email || user.uid,
-          displayName: user.displayName || user.email || 'Utilisateur',
-        },
-        pubKeyCredParams: [
-          { alg: -7, type: 'public-key' },
-          { alg: -257, type: 'public-key' },
-        ],
-        authenticatorSelection: {
-          authenticatorAttachment: 'platform',
-          userVerification: 'required',
-          residentKey: 'preferred',
-        },
-        timeout: 60000,
-      }
-    });
-    const ref = firestoreDoc(db, 'users', user.uid, 'data', 'security');
-    await setFirestoreDoc(ref, {
-      biometricEnabled: true,
-      biometricCredentialId: _uint8ToB64url(cred.rawId),
-    }, { merge: true });
-    await window.refreshBiometricStatus();
-  } catch(e) {
-    if (e.name !== 'NotAllowedError') {
-      const err = 'Impossible d\'activer la biométrie : ' + e.message;
-      if (box) box.textContent = err; else alert(err);
-    } else {
-      await window.refreshBiometricStatus();
-    }
-  }
-};
-
-window.disableBiometric = async function() {
-  const user = fbAuth.currentUser;
-  if (!user) return;
-  const ref = firestoreDoc(db, 'users', user.uid, 'data', 'security');
-  await setFirestoreDoc(ref, { biometricEnabled: false, biometricCredentialId: null }, { merge: true });
-  await window.refreshBiometricStatus();
-};
-
-window.refreshBiometricStatus = async function() {
-  const section = document.getElementById('biometric-section');
-  if (!section) return;
-  const available = await _isBiometricAvailable();
-  if (!available) { section.style.display = 'none'; return; }
-  section.style.display = 'block';
-  const box = document.getElementById('biometric-status-box');
-  const actions = document.getElementById('biometric-actions');
-  const user = fbAuth.currentUser;
-  if (!user) return;
-  const credId = await _getBiometricCredentialId(user.uid);
-  if (credId) {
-    box.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;color:#22d98a;font-weight:600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Face ID / Empreinte activé</span><div style="font-size:11px;color:var(--text3);margin-top:4px">Utilisé à la place du code PIN au déverrouillage. Le PIN reste disponible en fallback.</div>';
-    actions.innerHTML = `<button onclick="disableBiometric()" style="flex:1;padding:9px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);color:#ff4d6a;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)">Désactiver</button>`;
-  } else {
-    box.innerHTML = '<span style="color:var(--text3)">Non activé — le code PIN est utilisé pour déverrouiller.</span>';
-    actions.innerHTML = `<button onclick="enableBiometric()" style="flex:1;padding:9px;background:#7c6df5;border:none;color:#fff;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans)">Activer Face ID / Empreinte</button>`;
-  }
-};
 
 async function _setupPin(uid, pin) {
   if (!/^\d{6}$/.test(pin)) throw new Error('PIN doit faire 6 chiffres');
@@ -1949,7 +1817,6 @@ window.openProfilModal = function() {
   // Charge liste appareils confiance à l'ouverture
   try { window.refreshTrustedDevices && window.refreshTrustedDevices(); } catch(_) {}
   try { window.refreshPinStatus && window.refreshPinStatus(); } catch(_) {}
-  try { window.refreshBiometricStatus && window.refreshBiometricStatus(); } catch(_) {}
   document.getElementById('profil-modal-overlay').classList.add('open');
   loadProfilePage(fbAuth.currentUser);
 };
@@ -5538,6 +5405,10 @@ async function buildPortfolioHistory(data, graphStart, graphEnd) {
     } catch(e) { priceMap[ticker] = []; }
   }));
 
+  // Complétude : un ticker sans aucun prix (fetch échoué) fausse la courbe.
+  // Le caller s'en sert pour ne PAS mettre en cache une courbe incomplète.
+  buildPortfolioHistory._complete = tickers.every(t => (priceMap[t] || []).length > 0);
+
   // For short periods (intraday), use Yahoo timestamps directly instead of generating daily timeline
   const isIntraday = daysDuration <= 6;
 
@@ -5703,7 +5574,10 @@ async function renderPortfolioChart() {
 
     // ── Cache courbe : affichage instantané au refresh / déverrouillage PIN ──
     // Signature : invalide le cache si le portefeuille ou les transactions changent.
+    // `v` = version : bump pour invalider tous les vieux caches (ex. courbes
+    // fausses buildées pendant l'ère proxies CORS morts → priceMap vides).
     const _sig = JSON.stringify({
+      v: 2,
       p: data.map(r => r.ticker + ':' + r.qty).sort(),
       t: getTransactions(currentUser).length,
       per: portfolioPeriod,
@@ -5728,9 +5602,13 @@ async function renderPortfolioChart() {
       dataset = await buildPortfolioHistory(data, graphStart, now);
       console.log('%c[perf] buildPortfolioHistory (Yahoo) : '
         + Math.round(performance.now() - _bt) + ' ms', 'color:#f5b731');
-      try {
-        localStorage.setItem(_cacheKey, JSON.stringify({ ts: Date.now(), sig: _sig, dataset }));
-      } catch(_) {}
+      // On ne cache que si tous les tickers ont été récupérés : évite de figer
+      // une courbe fausse (valeurs trop basses) quand un proxy/le Worker hoquette.
+      if (buildPortfolioHistory._complete !== false) {
+        try {
+          localStorage.setItem(_cacheKey, JSON.stringify({ ts: Date.now(), sig: _sig, dataset }));
+        } catch(_) {}
+      }
     }
 
     // Cohérence courbe/chiffre : le dernier point colle à la valeur live du header.
