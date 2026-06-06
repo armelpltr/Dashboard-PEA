@@ -4876,37 +4876,27 @@ window.selectBroker = function(id, label, domain) {
   _closeBrokerDD();
 };
 
-// ═══ CALENDRIER DES RÉSULTATS (earnings) ═══════════════
-// Source : snapshot Finnhub rafraîchi 1×/jour côté Worker (KV), lu via /earnings.
-// Abonnement → push notif le jour de la publication (cron earnings-notify).
-let _ecMonth   = null;   // Date = 1er du mois affiché
-let _ecItems   = [];      // earnings du snapshot pour les symboles pertinents
+// ═══ CALENDRIER DES RÉSULTATS (earnings — vue agenda) ═══
+// Source : Yahoo calendarEvents via Worker /earnings (prochaine date par titre).
+// Vue : liste par jour (jours sans publication masqués). Abonnement → push notif.
+let _ecItems   = [];      // earnings (prochaines dates) des symboles affichés
 let _ecSubs    = {};      // { SYM: { name } } abonnements du user
 let _ecLoaded  = false;
 let _ecLoading = false;
 
-function _ecNorm(s)       { return (s || '').trim().toUpperCase(); }
-function _ecFirstOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
-function _ecDateStr(d)    { // YYYY-MM-DD en heure locale (pas de décalage UTC)
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-}
+function _ecNorm(s)    { return (s || '').trim().toUpperCase(); }
+function _ecDateStr(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 const _EC_MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const _EC_DOWS   = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
 
-// Valeurs notables mondiales affichées par défaut dans le calendrier (tickers Yahoo).
-// US méga-caps + EU + Asie. Couvre les titres les plus connus pour remplir l'agenda
-// même quand l'utilisateur possède peu de lignes.
+// Valeurs notables mondiales affichées par défaut (tickers Yahoo).
 const _EC_POPULAR = [
-  // US tech / méga-caps
   'AAPL','MSFT','NVDA','GOOGL','AMZN','META','TSLA','NFLX','AMD','INTC','AVGO','ORCL','ADBE','CRM','CSCO','QCOM','PYPL','UBER',
-  // US autres secteurs
   'JPM','BAC','V','MA','KO','PEP','MCD','DIS','NKE','WMT','COST','XOM','CVX','PFE','JNJ','BA','GE','CAT',
-  // EU
   'ASML.AS','SAP.DE','SIE.DE','AIR.PA','MC.PA','OR.PA','TTE.PA','SAN.PA','BNP.PA','SU.PA','DG.PA','NESN.SW','NOVN.SW','ROG.SW','SHEL.L','AZN.L','HSBA.L',
-  // Asie
-  '005930.KS','TSM','BABA','9988.HK','TM','SONY','7203.T','BABA',
+  '005930.KS','TSM','BABA','9988.HK','TM','SONY','7203.T',
 ];
 
-// Symboles pertinents = portefeuille + watchlist + abonnements (mis en avant).
 function _ecRelevantSymbols() {
   const set = new Set();
   (getPortfolio(currentUser) || []).forEach(r => r.ticker && set.add(_ecNorm(r.ticker)));
@@ -4914,15 +4904,13 @@ function _ecRelevantSymbols() {
   Object.keys(_ecSubs).forEach(s => set.add(_ecNorm(s)));
   return [...set];
 }
-
-// Tous les symboles à afficher = pertinents (mes titres) + liste notable par défaut.
 function _ecDisplaySymbols() {
   const set = new Set(_ecRelevantSymbols());
   _EC_POPULAR.forEach(s => set.add(_ecNorm(s)));
   return [...set];
 }
 
-// Catégorie d'un symbole (pour la couleur de la puce) : detenu > suivi > watchlist.
+// Catégorie pour la couleur : détenu > suivi > watchlist > autre.
 function _ecCategory(sym) {
   const s = _ecNorm(sym);
   if ((getPortfolio(currentUser) || []).some(r => _ecNorm(r.ticker) === s)) return 'owned';
@@ -4948,122 +4936,105 @@ async function _ecFetchEarnings() {
   const to   = _ecDateStr(new Date(today.getTime() + 120 * 86400 * 1000));
   try {
     const url = WORKER_URL + '/earnings?symbols=' + encodeURIComponent(syms.join(',')) + '&from=' + from + '&to=' + to;
-    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const r = await fetch(url, { signal: AbortSignal.timeout(20000) });
     const j = await r.json();
     _ecItems = Array.isArray(j.items) ? j.items : [];
   } catch(e) { console.warn('[earnings] fetch:', e.message); _ecItems = []; }
 }
 
 window.renderEarningsCalendar = async function() {
-  if (!_ecMonth) _ecMonth = _ecFirstOfMonth(new Date());
   if (!_ecLoaded && !_ecLoading) {
     _ecLoading = true;
-    _ecRenderGrid(true);            // skeleton
+    _ecRenderSkeleton();
     await _ecLoadSubs();
     await _ecFetchEarnings();
     _ecLoaded = true;
     _ecLoading = false;
   }
-  _ecRenderGrid();
-  _ecRenderSubs();
+  _ecRenderAgenda();
+  _ecUpdateSubsCount();
 };
 
-window.ecShiftMonth = function(delta) {
-  if (!_ecMonth) _ecMonth = _ecFirstOfMonth(new Date());
-  _ecMonth = new Date(_ecMonth.getFullYear(), _ecMonth.getMonth() + delta, 1);
-  _ecRenderGrid();
-};
-window.ecGoToday = function() { _ecMonth = _ecFirstOfMonth(new Date()); _ecRenderGrid(); };
-
-function _ecItemsByDay(dateStr) {
-  return _ecItems.filter(e => e.date === dateStr)
-    .sort((a, b) => _ecNorm(a.symbol).localeCompare(_ecNorm(b.symbol)));
-}
-
-function _ecRenderGrid(skeleton) {
-  const label = document.getElementById('ec-month-label');
-  const grid  = document.getElementById('ec-grid');
-  if (!label || !grid) return;
-  label.textContent = _EC_MONTHS[_ecMonth.getMonth()] + ' ' + _ecMonth.getFullYear();
-
-  if (skeleton) {
-    grid.innerHTML = Array.from({ length: 35 }, () => '<div class="ec-cell ec-skeleton"></div>').join('');
-    return;
-  }
-
-  const year = _ecMonth.getFullYear(), month = _ecMonth.getMonth();
-  const first = new Date(year, month, 1);
-  const lead  = (first.getDay() + 6) % 7;      // lundi = 0
-  const dim   = new Date(year, month + 1, 0).getDate();
-  const total = Math.ceil((lead + dim) / 7) * 7;
-  const todayStr = _ecDateStr(new Date());
-
-  let html = '';
-  for (let i = 0; i < total; i++) {
-    const dayNum = i - lead + 1;
-    if (dayNum < 1 || dayNum > dim) { html += '<div class="ec-cell ec-cell-empty" role="gridcell"></div>'; continue; }
-    const d = new Date(year, month, dayNum);
-    const ds = _ecDateStr(d);
-    const isToday = ds === todayStr;
-    const items = _ecItemsByDay(ds);
-    const max = 3;
-    let chips = items.slice(0, max).map(it => {
-      const cat = _ecCategory(it.symbol);
-      return '<button class="ec-chip ec-chip-' + cat + '" onclick="event.stopPropagation();ecOpenSymbol(\'' + it.symbol.replace(/'/g,'') + '\',\'' + ds + '\')" title="' + it.symbol + '">' + it.symbol + '</button>';
-    }).join('');
-    if (items.length > max) {
-      chips += '<button class="ec-more" onclick="event.stopPropagation();ecOpenDay(\'' + ds + '\')">+' + (items.length - max) + '</button>';
-    }
-    const cellClick = items.length ? ' onclick="ecOpenDay(\'' + ds + '\')"' : '';
-    html += '<div class="ec-cell' + (isToday ? ' ec-cell-today' : '') + (items.length ? ' ec-cell-has' : '') + '" role="gridcell" aria-label="' + dayNum + ' ' + _EC_MONTHS[month] + (items.length ? ', ' + items.length + ' résultat(s)' : '') + '"' + cellClick + '>'
-      + '<span class="ec-daynum">' + dayNum + '</span>'
-      + '<div class="ec-chips">' + chips + '</div>'
-      + '</div>';
-  }
-  grid.innerHTML = html;
+function _ecRenderSkeleton() {
+  const el = document.getElementById('ec-agenda');
+  if (el) el.innerHTML = Array.from({ length: 5 }, () => '<div class="ec-agenda-skel"></div>').join('');
 }
 
 function _ecHourLabel(hour) {
   if (hour === 'bmo') return 'Avant ouverture';
   if (hour === 'amc') return 'Après clôture';
   if (hour === 'dmh') return 'En séance';
-  return 'Heure non communiquée';
+  return '';
+}
+function _ecFmtDayHeader(ds) {
+  const [y, m, d] = ds.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  return _EC_DOWS[dt.getDay()] + ' ' + d + ' ' + _EC_MONTHS[m - 1];
 }
 function _ecFmtDateFr(ds) {
   const [y, m, d] = ds.split('-').map(Number);
   return d + ' ' + _EC_MONTHS[m - 1] + ' ' + y;
 }
 
-window.ecOpenDay = function(ds) {
-  const items = _ecItemsByDay(ds);
-  if (!items.length) return;
-  const body = document.getElementById('ec-detail-body');
-  body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-date">' + _ecFmtDateFr(ds) + '</div>'
-    + '<div class="ec-modal-sub">' + items.length + ' publication' + (items.length > 1 ? 's' : '') + '</div></div>'
-    + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
-    + '<div class="ec-daylist">' + items.map(it => {
-        const subbed = !!_ecSubs[_ecNorm(it.symbol)];
-        return '<div class="ec-dayrow">'
-          + '<button class="ec-dayrow-main" onclick="ecOpenSymbol(\'' + it.symbol.replace(/'/g,'') + '\',\'' + ds + '\')">'
-          + '<span class="ec-dayrow-sym">' + it.symbol + '</span>'
-          + '<span class="ec-dayrow-hour">' + _ecHourLabel(it.hour) + '</span></button>'
-          + _ecBellBtn(it.symbol, it.symbol, subbed)
-          + '</div>';
-      }).join('') + '</div>';
-  _ecShowDetail();
-};
+function _ecRenderAgenda() {
+  const el = document.getElementById('ec-agenda');
+  if (!el) return;
+  const todayStr = _ecDateStr(new Date());
+  // Regroupe par date (uniquement à venir), trie, ignore les jours vides.
+  const byDay = {};
+  _ecItems.forEach(it => {
+    if (it.date < todayStr) return;
+    (byDay[it.date] = byDay[it.date] || []).push(it);
+  });
+  const days = Object.keys(byDay).sort();
+  if (!days.length) {
+    el.innerHTML = '<div class="ec-agenda-empty">Aucune publication de résultats à venir pour les titres suivis. Recherchez un titre pour l\'ajouter.</div>';
+    return;
+  }
+  el.innerHTML = days.map(ds => {
+    const rows = byDay[ds]
+      .sort((a, b) => _ecNorm(a.symbol).localeCompare(_ecNorm(b.symbol)))
+      .map(it => _ecRowHtml(it)).join('');
+    const isToday = ds === todayStr;
+    return '<div class="ec-day">'
+      + '<div class="ec-day-head">' + _ecFmtDayHeader(ds)
+      + (isToday ? '<span class="ec-day-today">Aujourd\'hui</span>' : '')
+      + '<span class="ec-day-count">' + byDay[ds].length + '</span></div>'
+      + '<div class="ec-day-rows">' + rows + '</div></div>';
+  }).join('');
+}
+
+function _ecRowHtml(it) {
+  const sym = it.symbol;
+  const cat = _ecCategory(sym);
+  const subbed = !!_ecSubs[_ecNorm(sym)];
+  const hour = _ecHourLabel(it.hour);
+  const eps = it.epsEst != null ? 'BPA est. ' + Number(it.epsEst).toFixed(2) : '';
+  const meta = [hour, eps].filter(Boolean).join(' · ') || (it.estimated ? 'Date estimée' : '');
+  return '<div class="ec-row">'
+    + '<button class="ec-row-main" onclick="ecOpenSymbol(\'' + sym.replace(/'/g,'') + '\',\'' + it.date + '\')">'
+    + '<span class="ec-dot ec-dot-' + cat + '"></span>'
+    + '<span class="ec-row-sym">' + sym + '</span>'
+    + (meta ? '<span class="ec-row-meta">' + meta + '</span>' : '')
+    + '</button>'
+    + _ecBellBtn(sym, sym, subbed)
+    + '</div>';
+}
 
 window.ecOpenSymbol = function(sym, ds) {
   const it = _ecItems.find(e => _ecNorm(e.symbol) === _ecNorm(sym) && e.date === ds) || { symbol: sym, date: ds, hour: '' };
   const subbed = !!_ecSubs[_ecNorm(sym)];
-  const fmtEps = (v) => v == null ? '—' : (v >= 0 ? '' : '') + v.toFixed(2);
+  const fmtEps = (v) => v == null ? '—' : Number(v).toFixed(2);
+  const fmtRev = (v) => v == null ? '—' : (v >= 1e9 ? (v/1e9).toFixed(1) + ' Md' : (v/1e6).toFixed(0) + ' M');
+  const hour = _ecHourLabel(it.hour);
+  const sub = _ecFmtDateFr(it.date) + (hour ? ' · ' + hour : '') + (it.estimated ? ' · date estimée' : '');
   const body = document.getElementById('ec-detail-body');
   body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-name" id="ec-detail-name">' + it.symbol + '</div>'
-    + '<div class="ec-modal-sub">' + _ecFmtDateFr(it.date) + ' · ' + _ecHourLabel(it.hour) + '</div></div>'
+    + '<div class="ec-modal-sub">' + sub + '</div></div>'
     + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
     + '<div class="ec-kpis">'
     + '<div class="ec-kpi"><div class="ec-kpi-label">BPA estimé</div><div class="ec-kpi-val mono">' + fmtEps(it.epsEst) + '</div></div>'
-    + '<div class="ec-kpi"><div class="ec-kpi-label">BPA publié</div><div class="ec-kpi-val mono">' + fmtEps(it.epsAct) + '</div></div>'
+    + '<div class="ec-kpi"><div class="ec-kpi-label">CA estimé</div><div class="ec-kpi-val mono">' + fmtRev(it.revEst) + '</div></div>'
     + '</div>'
     + '<div class="ec-detail-actions">' + _ecBellBtn(it.symbol, it.symbol, subbed, true) + '</div>';
   _ecShowDetail();
@@ -5074,19 +5045,13 @@ function _ecBellBtn(sym, name, subbed, big) {
   const s = sym.replace(/'/g, '');
   const n = (name || sym).replace(/'/g, '');
   const cls = 'ec-bell' + (subbed ? ' ec-bell-on' : '') + (big ? ' ec-bell-big' : '');
-  const bell = subbed
-    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'
-    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+  const fill = subbed ? 'currentColor' : 'none';
+  const bell = '<svg width="16" height="16" viewBox="0 0 24 24" fill="' + fill + '" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
   return '<button class="' + cls + '" onclick="ecToggleSub(\'' + s + '\',\'' + n + '\')" aria-pressed="' + (subbed ? 'true' : 'false') + '" aria-label="' + (subbed ? 'Se désabonner de ' : 'S\'abonner à ') + s + '">' + bell + (big ? '<span>' + (subbed ? 'Abonné · ne plus suivre' : 'M\'alerter à la publication') + '</span>' : '') + '</button>';
 }
 
-function _ecShowDetail() {
-  const ov = document.getElementById('ec-detail-overlay');
-  ov.classList.add('open');
-}
-window.ecCloseDetail = function() {
-  document.getElementById('ec-detail-overlay').classList.remove('open');
-};
+function _ecShowDetail() { document.getElementById('ec-detail-overlay').classList.add('open'); }
+window.ecCloseDetail = function() { document.getElementById('ec-detail-overlay').classList.remove('open'); };
 
 window.ecToggleSub = async function(sym, name) {
   const s = _ecNorm(sym);
@@ -5100,44 +5065,56 @@ window.ecToggleSub = async function(sym, name) {
       delete _ecSubs[s];
       await setFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'earningsSubs'), { subs: _ecSubs });
       await deleteFirestoreDoc(firestoreDoc(db, 'earningsSubscribers', s, 'users', currentUser)).catch(() => {});
-      _showChatToast({ icon: IC.bellOff || IC.bell, title: 'Désabonné', msg: s + ' retiré de vos alertes résultats.' });
+      _showChatToast({ icon: IC.bellOff || IC.bell, title: 'Désabonné', msg: s + ' retiré de vos alertes.' });
     } else {
       _ecSubs[s] = { name: name || s };
       await setFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'earningsSubs'), { subs: _ecSubs });
       await setFirestoreDoc(firestoreDoc(db, 'earningsSubscribers', s, 'users', currentUser), { name: name || s, at: Date.now() });
-      // S'assure que le push est activé (token FCM enregistré) pour recevoir l'alerte.
       if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
         try { await requestPushPermission(); } catch(_) {}
       } else { initPush(currentUser).catch(() => {}); }
       _showChatToast({ icon: IC.bell, title: 'Abonné', msg: 'Notification le jour des résultats de ' + s + '.' });
     }
-    // Le nouveau symbole peut avoir des dates hors de _ecItems → recharge.
-    await _ecFetchEarnings();
-    _ecRenderGrid();
-    _ecRenderSubs();
-    ecCloseDetail();
+    await _ecFetchEarnings();      // le nouveau titre peut avoir une date hors liste actuelle
+    _ecRenderAgenda();
+    _ecUpdateSubsCount();
+    // Rafraîchit la liste des suivis si la modale est ouverte dessus.
+    if (document.getElementById('ec-detail-overlay').classList.contains('open') && document.getElementById('ec-subs-modal-list')) ecOpenSubs();
   } catch(e) {
     console.warn('[earnings] toggle sub:', e.message);
     _showChatToast({ icon: IC.bell, title: 'Erreur', msg: 'Action impossible. Réessayez.' });
   }
 };
 
-function _ecRenderSubs() {
-  const el = document.getElementById('ec-subs-list');
+function _ecUpdateSubsCount() {
+  const el = document.getElementById('ec-subs-count');
   if (!el) return;
-  const syms = Object.keys(_ecSubs);
-  if (!syms.length) {
-    el.innerHTML = '<div class="ec-subs-empty">Aucun abonnement. Recherchez un titre ou touchez une puce du calendrier pour être alerté à la publication de ses résultats.</div>';
-    return;
-  }
-  el.innerHTML = syms.sort().map(s => {
-    const next = _ecItems.filter(e => _ecNorm(e.symbol) === s).sort((a, b) => a.date.localeCompare(b.date))[0];
-    const when = next ? _ecFmtDateFr(next.date) : 'Aucune date à venir';
-    return '<div class="ec-subrow"><div class="ec-subrow-info"><span class="ec-subrow-sym">' + s + '</span>'
-      + '<span class="ec-subrow-when">' + when + '</span></div>'
-      + _ecBellBtn(s, _ecSubs[s].name, true) + '</div>';
-  }).join('');
+  const n = Object.keys(_ecSubs).length;
+  el.textContent = n ? ' (' + n + ')' : '';
 }
+
+// Modale "Voir les entreprises suivies".
+window.ecOpenSubs = function() {
+  const syms = Object.keys(_ecSubs).sort();
+  const body = document.getElementById('ec-detail-body');
+  let list;
+  if (!syms.length) {
+    list = '<div class="ec-subs-empty">Aucune entreprise suivie. Touchez la cloche d\'un titre pour être alerté le jour de ses résultats.</div>';
+  } else {
+    list = '<div id="ec-subs-modal-list" class="ec-subs-list">' + syms.map(s => {
+      const next = _ecItems.filter(e => _ecNorm(e.symbol) === s).sort((a, b) => a.date.localeCompare(b.date))[0];
+      const when = next ? _ecFmtDateFr(next.date) : 'Aucune date à venir';
+      return '<div class="ec-subrow"><div class="ec-subrow-info"><span class="ec-subrow-sym">' + s + '</span>'
+        + '<span class="ec-subrow-when">' + when + '</span></div>'
+        + _ecBellBtn(s, _ecSubs[s].name, true) + '</div>';
+    }).join('') + '</div>';
+  }
+  body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-name">Entreprises suivies</div>'
+    + '<div class="ec-modal-sub">' + (syms.length || 'Aucune') + (syms.length > 1 ? ' titres' : ' titre') + '</div></div>'
+    + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
+    + list;
+  _ecShowDetail();
+};
 
 window.ecSearch = async function() {
   const inp = document.getElementById('ec-search-input');
