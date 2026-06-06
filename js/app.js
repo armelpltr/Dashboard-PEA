@@ -3317,6 +3317,12 @@ async function fetchWithFallback(url) {
     return fetch('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u), {signal: AbortSignal.timeout(5000)})
       .then(r => { if (!r.ok) throw new Error('not ok'); return r.text(); });
   }
+  // Proxy primaire : Worker Cloudflare (fetch Yahoo direct serveur, pas de CORS).
+  // Fiable + rapide partout, y compris iOS où le cache localStorage est évincé.
+  function tryWorker(u) {
+    return fetch(WORKER_URL + '/yahoo?url=' + encodeURIComponent(u), {signal: AbortSignal.timeout(8000)})
+      .then(r => { if (!r.ok) throw new Error('not ok'); return r.text(); });
+  }
 
   function isValidRaw(raw) {
     try {
@@ -3327,8 +3333,14 @@ async function fetchWithFallback(url) {
     } catch { return false; }
   }
 
-  // Round 1 : course des 2 proxies fiables en parallèle (le 1er valide gagne).
-  // corsproxy.io et cors.eu.org renvoient 403 systématique → relégués en Round 2.
+  // Round 0 : Worker Cloudflare en primaire (rapide + fiable, pas de CORS).
+  try {
+    const raw = await tryWorker(url);
+    if (isValidRaw(raw)) return raw;
+  } catch {}
+
+  // Round 1 : course des 2 proxies CORS gratuits en parallèle (le 1er valide gagne).
+  // Filet de sécurité si le Worker est down. corsproxy.io / cors.eu.org → Round 2.
   const race = [
     tryCodetabs(url).then(r => { if (!isValidRaw(r)) throw new Error('invalide'); return r; }),
     tryAllorigins(url.replace('query1.', 'query2.')).then(r => { if (!isValidRaw(r)) throw new Error('invalide'); return r; }),
@@ -5102,6 +5114,7 @@ window.fundLoad = async function(ticker, name) {
 // avec timeouts généreux et allorigins en premier (passe bien les URLs complexes).
 async function _fundFetch(url) {
   const attempts = [
+    () => fetch(WORKER_URL + '/yahoo?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(10000) }).then(r => { if (!r.ok) throw new Error('worker ' + r.status); return r.text(); }),
     () => fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(10000) }).then(r => { if (!r.ok) throw new Error('allorigins ' + r.status); return r.text(); }),
     () => fetch('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url), { signal: AbortSignal.timeout(10000) }).then(r => { if (!r.ok) throw new Error('codetabs ' + r.status); return r.text(); }),
     () => fetch('https://corsproxy.io/?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(9000) }).then(r => { if (!r.ok) throw new Error('corsproxy ' + r.status); return r.text(); }),

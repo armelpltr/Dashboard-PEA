@@ -1,10 +1,16 @@
 // Capital Board — Cloudflare Worker
-// Endpoints : POST /verify-pin | POST /send-otp
+// Endpoints : POST /verify-pin | POST /send-otp | GET /yahoo
 
 const CORS = {
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
+
+// Hôtes Yahoo Finance autorisés pour /yahoo (évite l'open proxy).
+const YAHOO_HOSTS = new Set([
+  'query1.finance.yahoo.com',
+  'query2.finance.yahoo.com',
+]);
 
 // ── Service account → access token ────────────────────────────────────────
 
@@ -250,6 +256,36 @@ export default {
 
         await sendEmail(user.email, subject, html, env);
         return json({ ok: true });
+      }
+
+      // ── GET /yahoo?url=... ──────────────────────────────────────────────
+      // Proxy Yahoo Finance côté serveur (pas de CORS, pas de crumb).
+      // Remplace les proxies CORS gratuits morts (corsproxy.io / cors.eu.org).
+      if (url.pathname === '/yahoo' && request.method === 'GET') {
+        const target = url.searchParams.get('url');
+        if (!target) return json({ error: 'url manquant' }, 400);
+        let t;
+        try { t = new URL(target); } catch { return json({ error: 'url invalide' }, 400); }
+        if (t.protocol !== 'https:' || !YAHOO_HOSTS.has(t.hostname)) {
+          return json({ error: 'hôte non autorisé' }, 403);
+        }
+        const yres = await fetch(t.toString(), {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+            'Accept': 'application/json',
+          },
+          signal: AbortSignal.timeout(8000),
+        });
+        const body = await yres.text();
+        // Cache CDN Cloudflare 30s pour les requêtes identiques (cours/courbe).
+        return new Response(body, {
+          status: yres.status,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'public, max-age=30',
+            ...corsHeaders,
+          },
+        });
       }
 
       return json({ error: 'Not found' }, 404);
