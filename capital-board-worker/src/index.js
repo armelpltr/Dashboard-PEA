@@ -267,14 +267,16 @@ async function fetchSymbolEarnings(sym, env) {
 
 // Earnings d'un symbole avec cache KV 24h (clé earn:SYM).
 async function getSymbolEarningsCached(sym, env) {
-  const key = 'earn2:' + sym.toUpperCase();   // bump préfixe = invalide l'ancien cache Finnhub
+  const key = 'earn3:' + sym.toUpperCase();
   const cached = await env.EARNINGS.get(key);
   if (cached !== null) return JSON.parse(cached);
-  let items = [];
+  let items = null;
   try { items = await fetchSymbolEarnings(sym, env); }
   catch (e) { console.error('earnings', sym, e.message); }
-  // Cache même un tableau vide (évite de re-frapper Yahoo pour un titre sans résultat annoncé).
-  await env.EARNINGS.put(key, JSON.stringify(items), { expirationTtl: EARN_TTL });
+  // TTL adaptatif : succès avec date = 24h ; vide = 1h (re-check) ; erreur = 10min.
+  if (items === null) { await env.EARNINGS.put(key, '[]', { expirationTtl: 600 }); return []; }
+  const ttl = items.length ? EARN_TTL : 3600;
+  await env.EARNINGS.put(key, JSON.stringify(items), { expirationTtl: ttl });
   return items;
 }
 
