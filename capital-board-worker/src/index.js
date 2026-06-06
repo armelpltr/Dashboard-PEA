@@ -258,16 +258,16 @@ async function fetchSymbolEarnings(sym, env) {
     date:   ds,
     hour:   '',                                  // Yahoo ne fournit pas bmo/amc
     estimated: !!ev.isEarningsDateEstimate,
-    epsEst: ev.epsEstimate?.raw ?? null,
-    epsAct: ev.epsActual?.raw ?? null,
-    revEst: ev.revenueEstimate?.raw ?? null,
-    revAct: ev.revenueActual?.raw ?? null,
+    epsEst: ev.earningsAverage?.raw ?? null,     // estimation consensus BPA
+    epsAct: null,                                // pas d'actuel dans calendarEvents
+    revEst: ev.revenueAverage?.raw ?? null,      // estimation consensus CA
+    revAct: null,
   }];
 }
 
 // Earnings d'un symbole avec cache KV 24h (clé earn:SYM).
 async function getSymbolEarningsCached(sym, env) {
-  const key = 'earn3:' + sym.toUpperCase();
+  const key = 'earn4:' + sym.toUpperCase();
   const cached = await env.EARNINGS.get(key);
   if (cached !== null) return JSON.parse(cached);
   let items = null;
