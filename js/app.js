@@ -4948,7 +4948,7 @@ async function _ecFetchEarnings() {
 // Permet de conserver le mois précédent : une date qui passe reste en cache
 // même quand Yahoo renvoie ensuite la date du trimestre suivant.
 function _ecMergeSeen(fetched) {
-  const key = 'ec_seen_' + (currentUser || 'anon');
+  const key = 'ec_seen2_' + (currentUser || 'anon');   // bump = purge ancien cache sans name/domain
   const seen = {};
   try {
     (JSON.parse(localStorage.getItem(key) || '[]') || []).forEach(it => { seen[_ecNorm(it.symbol) + '|' + it.date] = it; });
@@ -4995,11 +4995,21 @@ function _ecFmtDateFr(ds) {
   return d + ' ' + _EC_MONTHS[m - 1] + ' ' + y;
 }
 
-// Logo via favicon Google (domaine fourni par le Worker) ou pastille-lettre.
+// Logo société — même pipeline que le portefeuille : domaine Worker → nom→domaine
+// → fallback ticker → favicon Google sz=128. Repli pastille-lettre si échec.
 function _ecLogoHtml(it) {
-  if (it.domain) return '<img class="ec-logo" loading="lazy" src="https://www.google.com/s2/favicons?domain=' + it.domain + '&sz=64" alt="">';
-  const nm = (it.name || it.symbol || '?').trim();
-  return '<span class="ec-logo ec-logo-ph">' + (nm ? nm[0].toUpperCase() : '?') + '</span>';
+  const sym = (it.symbol || '').toUpperCase();
+  const nm  = (it.name || sym).trim();
+  const letter = (nm ? nm[0] : '?').toUpperCase().replace(/[^A-Z0-9]/, '?');
+  let domain = it.domain || FALLBACK_DOMAINS[sym] || companyNameToDomain(it.name) || '';
+  if (!domain) {
+    const clean = sym.replace(/\.[A-Z]+$/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    domain = clean ? clean + '.com' : '';
+  }
+  if (!domain) return '<span class="ec-logo ec-logo-ph">' + letter + '</span>';
+  const url = 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=128';
+  const onerr = 'this.outerHTML=\'<span class=&quot;ec-logo ec-logo-ph&quot;>' + letter + '</span>\'';
+  return '<img class="ec-logo" loading="lazy" src="' + url + '" alt="" onerror="' + onerr + '">';
 }
 
 // Regroupe des earnings par jour. descending=true pour le volet « mois précédent ».
@@ -5145,30 +5155,36 @@ window.ecToggleSub = async function(sym, name) {
 function _ecUpdateSubsCount() {
   const el = document.getElementById('ec-subs-count');
   if (!el) return;
-  const n = Object.keys(_ecSubs).length;
+  const n = _ecDisplaySymbols().length;
   el.textContent = n ? ' (' + n + ')' : '';
 }
 
-// Modale "Voir les entreprises suivies".
+// Modale "Entreprises ciblées" : tout l'univers que l'app interroge
+// (valeurs notables + vos titres + abonnements). Cloche dorée = abonné (push).
 window.ecOpenSubs = function() {
-  const syms = Object.keys(_ecSubs).sort();
+  // Map symbole → meilleur item connu (pour nom/logo/prochaine date).
+  const bySym = {};
+  _ecItems.forEach(it => {
+    const k = _ecNorm(it.symbol);
+    if (!bySym[k] || it.date < bySym[k].date) bySym[k] = it;
+  });
+  const syms = _ecDisplaySymbols().sort((a, b) => {
+    const na = (bySym[a] && bySym[a].name) || a, nb = (bySym[b] && bySym[b].name) || b;
+    return na.localeCompare(nb);
+  });
   const body = document.getElementById('ec-detail-body');
-  let list;
-  if (!syms.length) {
-    list = '<div class="ec-subs-empty">Aucune entreprise suivie. Touchez la cloche d\'un titre pour être alerté le jour de ses résultats.</div>';
-  } else {
-    list = '<div id="ec-subs-modal-list" class="ec-subs-list">' + syms.map(s => {
-      const next = _ecItems.filter(e => _ecNorm(e.symbol) === s).sort((a, b) => a.date.localeCompare(b.date))[0];
-      const name = (next && next.name) || _ecSubs[s].name || s;
-      const when = next ? _ecFmtDateFr(next.date) : 'Aucune date à venir';
-      return '<div class="ec-subrow">' + _ecLogoHtml(next || { symbol: s, name })
-        + '<div class="ec-subrow-info"><span class="ec-subrow-sym">' + name + '</span>'
-        + '<span class="ec-subrow-when">' + s + ' · ' + when + '</span></div>'
-        + _ecBellBtn(s, name, true) + '</div>';
-    }).join('') + '</div>';
-  }
-  body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-name">Entreprises suivies</div>'
-    + '<div class="ec-modal-sub">' + (syms.length || 'Aucune') + (syms.length > 1 ? ' titres' : ' titre') + '</div></div>'
+  const list = '<div id="ec-subs-modal-list" class="ec-subs-list">' + syms.map(s => {
+    const it = bySym[s];
+    const name = (it && it.name) || s;
+    const when = it ? _ecFmtDateFr(it.date) : 'Aucune date annoncée';
+    const subbed = !!_ecSubs[s];
+    return '<div class="ec-subrow">' + _ecLogoHtml(it || { symbol: s, name })
+      + '<div class="ec-subrow-info"><span class="ec-subrow-sym">' + name + '</span>'
+      + '<span class="ec-subrow-when">' + s + ' · ' + when + '</span></div>'
+      + _ecBellBtn(s, name, subbed) + '</div>';
+  }).join('') + '</div>';
+  body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-name">Entreprises ciblées</div>'
+    + '<div class="ec-modal-sub">' + syms.length + ' titres suivis par l\'app (US, EU, Asie). Cloche = alerte résultats.</div></div>'
     + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
     + list;
   _ecShowDetail();
