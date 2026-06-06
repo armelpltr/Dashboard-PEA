@@ -362,8 +362,10 @@ export default {
         let items = await getEarningsForSymbols(syms, env);
         if (from) items = items.filter(e => e.date >= from);
         if (to)   items = items.filter(e => e.date <= to);
+        // Pas de cache CDN/navigateur ici : le cache réel est en KV (24h/symbole).
+        // Évite de servir une réponse agrégée périmée (noms/logos manquants).
         return new Response(JSON.stringify({ updatedAt: Date.now(), items }), {
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600', ...corsHeaders },
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...corsHeaders },
         });
       }
 

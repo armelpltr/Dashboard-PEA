@@ -5169,21 +5169,36 @@ function _ecUpdateSubsCount() {
   el.textContent = n ? ' (' + n + ')' : '';
 }
 
-// Modale "Entreprises ciblées" : tout l'univers que l'app interroge
-// (valeurs notables + vos titres + abonnements). Cloche dorée = abonné (push).
-window.ecOpenSubs = function() {
-  // Map symbole → meilleur item connu (pour nom/logo/prochaine date).
+// Continent d'un symbole (d'après le suffixe d'échange Yahoo + ADR connus).
+function _ecRegion(sym) {
+  const s = (sym || '').toUpperCase();
+  if (/\.(PA|AS|DE|F|SW|L|MI|MC|BR|VI|LS|HE|ST|OL|CO|IR)$/.test(s)) return 'eu';
+  if (/\.(KS|KQ|HK|T|TW|SS|SZ|SI|BO|NS|JK)$/.test(s)) return 'asia';
+  if (['TSM','BABA','SONY','TM','JD','PDD','NIO','BIDU','HMC','SE','SHG','LFC'].includes(s)) return 'asia';
+  return 'us';
+}
+
+let _ecUniverseFilter = 'all';
+
+// Map symbole → meilleur item connu (nom/logo/prochaine date).
+function _ecUniverseBySym() {
   const bySym = {};
   _ecItems.forEach(it => {
     const k = _ecNorm(it.symbol);
     if (!bySym[k] || it.date < bySym[k].date) bySym[k] = it;
   });
-  const syms = _ecDisplaySymbols().sort((a, b) => {
-    const na = (bySym[a] && bySym[a].name) || a, nb = (bySym[b] && bySym[b].name) || b;
-    return na.localeCompare(nb);
-  });
-  const body = document.getElementById('ec-detail-body');
-  const list = '<div id="ec-subs-modal-list" class="ec-subs-list">' + syms.map(s => {
+  return bySym;
+}
+
+function _ecRenderUniverseList() {
+  const el = document.getElementById('ec-universe-list');
+  if (!el) return;
+  const bySym = _ecUniverseBySym();
+  const syms = _ecDisplaySymbols()
+    .filter(s => _ecUniverseFilter === 'all' || _ecRegion(s) === _ecUniverseFilter)
+    .sort((a, b) => ((bySym[a] && bySym[a].name) || a).localeCompare((bySym[b] && bySym[b].name) || b));
+  if (!syms.length) { el.innerHTML = '<div class="ec-subs-empty">Aucun titre dans cette zone.</div>'; return; }
+  el.innerHTML = syms.map(s => {
     const it = bySym[s];
     const name = (it && it.name) || s;
     const when = it ? _ecFmtDateFr(it.date) : 'Aucune date annoncée';
@@ -5192,11 +5207,28 @@ window.ecOpenSubs = function() {
       + '<div class="ec-subrow-info"><span class="ec-subrow-sym">' + name + '</span>'
       + '<span class="ec-subrow-when">' + s + ' · ' + when + '</span></div>'
       + _ecBellBtn(s, name, subbed) + '</div>';
-  }).join('') + '</div>';
+  }).join('');
+}
+
+window.ecSetRegion = function(r) {
+  _ecUniverseFilter = r;
+  document.querySelectorAll('.ec-region-btn').forEach(b => b.classList.toggle('active', b.dataset.r === r));
+  _ecRenderUniverseList();
+};
+
+// Modale "Entreprises ciblées" : tout l'univers interrogé, filtrable par continent.
+window.ecOpenSubs = function() {
+  const total = _ecDisplaySymbols().length;
+  const REGIONS = [['all','Tous'], ['us','US'], ['eu','Europe'], ['asia','Asie']];
+  const bar = '<div class="ec-region-bar">' + REGIONS.map(([r, lbl]) =>
+    '<button class="ec-region-btn' + (r === _ecUniverseFilter ? ' active' : '') + '" data-r="' + r + '" onclick="ecSetRegion(\'' + r + '\')">' + lbl + '</button>'
+  ).join('') + '</div>';
+  const body = document.getElementById('ec-detail-body');
   body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-name">Entreprises ciblées</div>'
-    + '<div class="ec-modal-sub">' + syms.length + ' titres suivis par l\'app (US, EU, Asie). Cloche = alerte résultats.</div></div>'
+    + '<div class="ec-modal-sub">' + total + ' titres interrogés par l\'app. Cloche = alerte résultats.</div></div>'
     + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
-    + list;
+    + bar + '<div id="ec-universe-list" class="ec-subs-list"></div>';
+  _ecRenderUniverseList();
   _ecShowDetail();
 };
 
