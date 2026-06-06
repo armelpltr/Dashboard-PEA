@@ -1248,79 +1248,131 @@ tr:hover td { background: rgba(255,255,255,0.018); }
   border: 1px solid rgba(245,183,49,0.28); flex-shrink: 0;
 }
 
-/* ═══ Page Résultats financiers ═══ */
-.fund-searchbar {
+/* ═══ Page Calendrier des résultats (earnings) ═══ */
+.ec-searchbar {
   display: flex; align-items: center; gap: 10px;
   background: var(--s2); border: 1px solid var(--border2);
   border-radius: 12px; padding: 8px 10px 8px 14px; margin-bottom: 12px;
 }
-.fund-searchbar input {
+.ec-searchbar input {
   flex: 1; background: transparent; border: none; outline: none;
-  color: var(--text); font-size: 14px; font-family: var(--sans);
+  color: var(--text); font-size: 14px; font-family: var(--sans); min-width: 0;
 }
-.fund-searchbar input::placeholder { color: var(--text3); }
-.fund-quick { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin-bottom: 20px; }
-.fund-quick-label { font-size: 11px; color: var(--text3); margin-right: 2px; }
-.fund-chip {
-  font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
-  background: var(--s2); color: var(--text2); border: 1px solid var(--border);
-  cursor: pointer; font-family: var(--sans); transition: background .14s, color .14s, border-color .14s;
-}
-.fund-chip:hover { background: var(--s3); color: var(--text); border-color: var(--accent); }
-.fund-empty {
-  display: flex; flex-direction: column; align-items: center; gap: 14px;
-  text-align: center; color: var(--text3); font-size: 14px;
-  padding: 70px 24px; max-width: 440px; margin: 0 auto;
-}
-.fund-loading, .fund-error {
-  text-align: center; padding: 48px 24px; color: var(--text3); font-size: 14px;
-}
-.fund-error { color: var(--negative); }
+.ec-searchbar input::placeholder { color: var(--text3); }
+.ec-search-result { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.ec-search-loading, .ec-search-empty { color: var(--text3); font-size: 13px; padding: 6px 2px; }
 
-.fund-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  flex-wrap: wrap; margin-bottom: 16px;
+/* Navigation mois */
+.ec-cal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.ec-nav-btn {
+  width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--s2); border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text2); cursor: pointer; transition: background .16s, border-color .16s, color .16s;
 }
-.fund-head-id { display: flex; align-items: center; gap: 14px; }
-.fund-logo { width: 44px; height: 44px; border-radius: 10px; object-fit: contain; background: var(--s3); flex-shrink: 0; }
-.fund-name { font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--text); }
-.fund-ticker { font-size: 12px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
-.fund-price { text-align: right; }
-.fund-price-val { font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--text); font-family: var(--mono); }
-.fund-price-chg { font-size: 12px; font-weight: 600; margin-top: 2px; }
-
-.fund-freq-toggle { display: inline-flex; gap: 0; background: var(--s2); border: 1px solid var(--border); border-radius: 9px; padding: 3px; margin-bottom: 18px; }
-.fund-freq-toggle button {
-  background: transparent; border: none; color: var(--text2);
-  font-size: 12px; font-weight: 600; padding: 6px 16px; border-radius: 7px;
-  cursor: pointer; font-family: var(--sans); transition: background .14s, color .14s;
+.ec-nav-btn:hover { background: var(--s3); color: var(--text); border-color: var(--accent); }
+.ec-nav-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ec-month-label { font-size: 18px; font-weight: 700; letter-spacing: -.01em; color: var(--text); text-transform: capitalize; min-width: 160px; }
+.ec-today-btn {
+  margin-left: auto; font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: 9px;
+  background: var(--s2); border: 1px solid var(--border); color: var(--text2);
+  cursor: pointer; font-family: var(--sans); transition: background .16s, color .16s, border-color .16s;
 }
-.fund-freq-toggle button.active { background: var(--accent); color: #fff; }
+.ec-today-btn:hover { background: var(--s3); color: var(--text); border-color: var(--accent); }
+.ec-today-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.fund-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
-.fund-kpi { background: var(--s2); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; }
-.fund-kpi-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; }
-.fund-kpi-value { font-size: 24px; font-weight: 800; letter-spacing: -.02em; color: var(--text); margin: 6px 0 4px; font-family: var(--mono); }
-.fund-kpi-sub { font-size: 12px; font-weight: 600; }
+/* Légende */
+.ec-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; }
+.ec-leg { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); }
+.ec-dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
 
-.fund-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
-.fund-chart-card { background: var(--s2); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; }
-.fund-chart-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
-.fund-canvas-wrap { position: relative; height: 240px; width: 100%; }
+/* Grille */
+.ec-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px; }
+.ec-weekdays span { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; text-align: center; }
+.ec-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.ec-cell {
+  min-height: 92px; background: var(--s2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 6px 6px 4px; display: flex; flex-direction: column; gap: 4px;
+  transition: border-color .16s, background .16s;
+}
+.ec-cell-empty { background: transparent; border-color: transparent; min-height: 0; }
+.ec-cell-has { cursor: pointer; }
+.ec-cell-has:hover { border-color: var(--accent); background: var(--s3); }
+.ec-cell-today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.ec-daynum { font-size: 12px; font-weight: 600; color: var(--text3); font-family: var(--mono); }
+.ec-cell-today .ec-daynum { color: var(--accent); }
+.ec-chips { display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+.ec-chip {
+  font-size: 11px; font-weight: 700; padding: 3px 6px; border-radius: 6px; border: none;
+  text-align: left; cursor: pointer; font-family: var(--mono); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; transition: filter .14s, transform .12s;
+}
+.ec-chip:hover { filter: brightness(1.15); }
+.ec-chip:active { transform: scale(.97); }
+.ec-chip:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.ec-chip-owned { background: rgba(124,109,245,0.18); color: #b9aefb; }
+.ec-chip-sub   { background: rgba(245,183,49,0.18); color: var(--gold); }
+.ec-chip-watch { background: rgba(136,146,168,0.16); color: var(--text2); }
+.ec-chip-other { background: rgba(136,146,168,0.12); color: var(--text3); }
+.ec-more { font-size: 10px; font-weight: 600; color: var(--text3); background: none; border: none; cursor: pointer; text-align: left; padding: 1px 4px; }
+.ec-more:hover { color: var(--text); }
+.ec-skeleton { min-height: 92px; background: var(--s2); border: 1px solid var(--border); border-radius: 10px; opacity: .5; animation: ec-pulse 1.2s ease-in-out infinite; }
+@keyframes ec-pulse { 0%,100% { opacity: .35; } 50% { opacity: .6; } }
 
-.fund-table-card { background: var(--s2); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; }
-.fund-table-scroll { overflow-x: auto; }
-.fund-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
-.fund-table th { text-align: right; padding: 8px 12px; color: var(--text3); font-weight: 600; font-size: 11px; border-bottom: 1px solid var(--border2); }
-.fund-table th:first-child { text-align: left; }
-.fund-table td { text-align: right; padding: 8px 12px; color: var(--text2); border-bottom: 1px solid var(--border); }
-.fund-table .fund-row-label { text-align: left; color: var(--text); font-weight: 600; font-family: var(--sans); }
-.fund-table tr:last-child td { border-bottom: none; }
-.fund-source { font-size: 10px; color: var(--text3); margin-top: 12px; }
+/* Abonnements + lignes de recherche */
+.ec-subs-section { margin-top: 26px; }
+.ec-subs-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 12px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+.ec-subs-list { display: flex; flex-direction: column; gap: 8px; }
+.ec-subs-empty { color: var(--text3); font-size: 13px; line-height: 1.6; }
+.ec-subrow {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+  background: var(--s2); border: 1px solid var(--border); border-radius: 12px;
+}
+.ec-subrow-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ec-subrow-sym { font-size: 14px; font-weight: 700; color: var(--text); font-family: var(--mono); }
+.ec-subrow-when { font-size: 12px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Cloche */
+.ec-bell {
+  width: 40px; height: 40px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--s3); border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text3); cursor: pointer; transition: background .16s, color .16s, border-color .16s;
+}
+.ec-bell:hover { color: var(--text); border-color: var(--accent); }
+.ec-bell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ec-bell-on { background: rgba(245,183,49,0.14); color: var(--gold); border-color: rgba(245,183,49,0.4); }
+.ec-bell-big { width: auto; height: 44px; gap: 8px; padding: 0 18px; font-size: 13px; font-weight: 600; font-family: var(--sans); }
+
+/* Modal détail */
+.ec-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.ec-modal-name, .ec-modal-date { font-size: 20px; font-weight: 800; letter-spacing: -.02em; color: var(--text); font-family: var(--mono); }
+.ec-modal-sub { font-size: 12px; color: var(--text3); margin-top: 3px; }
+.ec-modal-close { background: none; border: none; color: var(--text3); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.ec-modal-close:hover { color: var(--text); }
+.ec-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.ec-kpi { background: var(--s2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.ec-kpi-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; }
+.ec-kpi-val { font-size: 22px; font-weight: 800; color: var(--text); margin-top: 5px; }
+.ec-detail-actions { display: flex; }
+.ec-detail-actions .ec-bell-big { width: 100%; }
+.ec-daylist { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.ec-dayrow { display: flex; align-items: center; gap: 10px; }
+.ec-dayrow-main { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--s2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; cursor: pointer; }
+.ec-dayrow-main:hover { border-color: var(--accent); }
+.ec-dayrow-sym { font-size: 14px; font-weight: 700; color: var(--text); font-family: var(--mono); }
+.ec-dayrow-hour { font-size: 11px; color: var(--text3); }
 
 @media (max-width: 820px) {
-  .fund-kpis { grid-template-columns: repeat(2, 1fr); }
-  .fund-charts { grid-template-columns: 1fr; }
+  .ec-cell { min-height: 74px; padding: 4px 4px 3px; }
+  .ec-skeleton { min-height: 74px; }
+  .ec-grid, .ec-weekdays { gap: 4px; }
+  .ec-chip { font-size: 10px; padding: 2px 4px; }
+  .ec-month-label { font-size: 16px; min-width: 0; }
+  .ec-kpis { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-skeleton { animation: none; }
+  .ec-cell, .ec-chip, .ec-bell, .ec-nav-btn, .ec-today-btn { transition: none; }
 }
 /* Écrans larges : on grandit la hauteur pour que la pente reste lisible
    (sinon largeur >> hauteur écrase la courbe sur ultrawide). */

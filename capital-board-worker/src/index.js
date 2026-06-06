@@ -205,9 +205,53 @@ async function verifyTurnstile(token, env) {
   return data.success === true;
 }
 
+// ── Earnings calendar (Finnhub → KV snapshot) ───────────────────────────────
+
+const EARNINGS_KEY = 'snapshot';
+
+// Récupère le calendrier earnings Finnhub sur [from, to] (dates YYYY-MM-DD).
+async function fetchFinnhubEarnings(from, to, env) {
+  const url = `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&token=${env.FINNHUB_API_KEY}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`Finnhub ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  const cal = Array.isArray(data.earningsCalendar) ? data.earningsCalendar : [];
+  // Normalisation : on ne garde que l'utile (snapshot léger).
+  return cal.map(e => ({
+    symbol: e.symbol,
+    date:   e.date,                              // YYYY-MM-DD
+    hour:   e.hour || '',                        // bmo | amc | dmh | ''
+    epsEst: e.epsEstimate ?? null,
+    epsAct: e.epsActual ?? null,
+    revEst: e.revenueEstimate ?? null,
+    revAct: e.revenueActual ?? null,
+  })).filter(e => e.symbol && e.date);
+}
+
+// Rafraîchit le snapshot KV (auj → +70j). Appelé par le Cron Trigger 1×/jour.
+async function refreshEarningsSnapshot(env) {
+  const today = new Date();
+  const from = today.toISOString().slice(0, 10);
+  const to   = new Date(today.getTime() + 70 * 86400 * 1000).toISOString().slice(0, 10);
+  const items = await fetchFinnhubEarnings(from, to, env);
+  const snapshot = { updatedAt: Date.now(), from, to, items };
+  await env.EARNINGS.put(EARNINGS_KEY, JSON.stringify(snapshot));
+  return snapshot;
+}
+
+async function readEarningsSnapshot(env) {
+  const raw = await env.EARNINGS.get(EARNINGS_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+
 // ── Main handler ───────────────────────────────────────────────────────────
 
 export default {
+  // Cron Trigger quotidien : 1 appel Finnhub, snapshot stocké en KV.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(refreshEarningsSnapshot(env).catch(e => console.error('earnings refresh:', e.message)));
+  },
+
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
     const allowed = env.ALLOWED_ORIGIN || 'https://capitalboard.fr';
@@ -256,6 +300,44 @@ export default {
 
         await sendEmail(user.email, subject, html, env);
         return json({ ok: true });
+      }
+
+      // ── POST /earnings/refresh ──────────────────────────────────────────
+      // Force le rafraîchissement du snapshot (admin only). Utile au 1er déploiement
+      // avant que le Cron Trigger n'ait tourné.
+      if (url.pathname === '/earnings/refresh' && request.method === 'POST') {
+        const { idToken } = await request.json().catch(() => ({}));
+        if (!idToken) return json({ ok: false, error: 'idToken requis' }, 401);
+        const user = await verifyIdToken(idToken, env);
+        if (user.localId !== env.ADMIN_UID) return json({ ok: false, error: 'Réservé admin' }, 403);
+        const snap = await refreshEarningsSnapshot(env);
+        return json({ ok: true, count: snap.items.length, from: snap.from, to: snap.to });
+      }
+
+      // ── GET /earnings?symbols=A,B&from=&to= ─────────────────────────────
+      // Lit le snapshot KV (rafraîchi 1×/jour par le cron). Filtre par symboles
+      // (portefeuille/watchlist/abos/recherche) + plage de dates. Sans symbols
+      // → snapshot complet (usage serveur : cron push). Cache CDN 1h.
+      if (url.pathname === '/earnings' && request.method === 'GET') {
+        const snap = await readEarningsSnapshot(env);
+        if (!snap) {
+          return new Response(JSON.stringify({ updatedAt: 0, items: [] }), {
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', ...corsHeaders },
+          });
+        }
+        const symbolsParam = url.searchParams.get('symbols');
+        const from = url.searchParams.get('from');
+        const to   = url.searchParams.get('to');
+        let items = snap.items;
+        if (symbolsParam) {
+          const set = new Set(symbolsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean));
+          items = items.filter(e => set.has(e.symbol.toUpperCase()));
+        }
+        if (from) items = items.filter(e => e.date >= from);
+        if (to)   items = items.filter(e => e.date <= to);
+        return new Response(JSON.stringify({ updatedAt: snap.updatedAt, items }), {
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600', ...corsHeaders },
+        });
       }
 
       // ── GET /yahoo?url=... ──────────────────────────────────────────────

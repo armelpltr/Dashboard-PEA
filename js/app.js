@@ -2453,7 +2453,7 @@ function showPage(id) {
   if (id === 'recap')       renderRecapPage();
   if (id === 'alertes')     renderAlertsList();
   if (id === 'support')     renderSupportPage();
-  if (id === 'fundamentals') renderFundamentalsPage();
+  if (id === 'earnings')    renderEarningsCalendar();
 }
 
 function _renderDemoBlocked(pageId, sectionTitle) {
@@ -2486,7 +2486,7 @@ function showPageMobile(id) {
   if (id === 'recap')       renderRecapPage();
   if (id === 'alertes')     renderAlertsList();
   if (id === 'support')     renderSupportPage();
-  if (id === 'fundamentals') renderFundamentalsPage();
+  if (id === 'earnings')    renderEarningsCalendar();
 }
 
 // ─── PORTFOLIO ────────────────────────────────────────
@@ -4876,304 +4876,268 @@ window.selectBroker = function(id, label, domain) {
   _closeBrokerDD();
 };
 
-// ═══ RÉSULTATS FINANCIERS (fondamentaux) ═══════════════════════════════
-let _fundChartMain = null, _fundChartMargin = null;
-let _fundCurrent = null;          // { ticker, name, meta }
-let _fundFreq = 'annual';         // 'annual' | 'quarterly'
-let _fundData = null;             // { series, currency }
-let _fundInited = false;
+// ═══ CALENDRIER DES RÉSULTATS (earnings) ═══════════════
+// Source : snapshot Finnhub rafraîchi 1×/jour côté Worker (KV), lu via /earnings.
+// Abonnement → push notif le jour de la publication (cron earnings-notify).
+let _ecMonth   = null;   // Date = 1er du mois affiché
+let _ecItems   = [];      // earnings du snapshot pour les symboles pertinents
+let _ecSubs    = {};      // { SYM: { name } } abonnements du user
+let _ecLoaded  = false;
+let _ecLoading = false;
 
-const _FUND_TYPES = [
-  'TotalRevenue','GrossProfit','OperatingIncome','NetIncome','EBITDA',
-  'BasicEPS','DilutedEPS','TotalAssets','TotalLiabilitiesNetMinorityInterest',
-  'StockholdersEquity','FreeCashFlow','OperatingCashFlow','TotalDebt',
-];
+function _ecNorm(s)       { return (s || '').trim().toUpperCase(); }
+function _ecFirstOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+function _ecDateStr(d)    { // YYYY-MM-DD en heure locale (pas de décalage UTC)
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+const _EC_MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
-function _curSym(cur) {
-  return cur === 'USD' ? '$' : (cur === 'GBp' || cur === 'GBP') ? '£' : (cur === 'JPY' ? '¥' : '€');
-}
-function _fundFmtBig(v, cur) {
-  if (v == null || isNaN(v)) return '—';
-  const sym = _curSym(cur), a = Math.abs(v);
-  let s;
-  if (a >= 1e9) s = (v/1e9).toFixed(2) + ' Md';
-  else if (a >= 1e6) s = (v/1e6).toFixed(1) + ' M';
-  else if (a >= 1e3) s = (v/1e3).toFixed(1) + ' k';
-  else s = v.toFixed(2);
-  return s + ' ' + sym;
-}
-function _fundFmtPct(v) { return (v == null || isNaN(v)) ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1) + ' %'; }
-function _fundPeriodLabel(date, freq) {
-  if (!date) return '—';
-  const d = new Date(date + 'T12:00:00');
-  if (freq === 'quarterly') return 'T' + (Math.floor(d.getMonth()/3)+1) + ' ' + String(d.getFullYear()).slice(-2);
-  return String(d.getFullYear());
+// Symboles pertinents = portefeuille + watchlist + abonnements (bornés par user).
+function _ecRelevantSymbols() {
+  const set = new Set();
+  (getPortfolio(currentUser) || []).forEach(r => r.ticker && set.add(_ecNorm(r.ticker)));
+  (getWatchlist(currentUser) || []).forEach(w => w.ticker && set.add(_ecNorm(w.ticker)));
+  Object.keys(_ecSubs).forEach(s => set.add(_ecNorm(s)));
+  return [...set];
 }
 
-window.renderFundamentalsPage = function() {
-  if (_fundInited) { if (_fundCurrent) {} return; }
-  _fundInited = true;
-  // Puces d'accès rapide : titres détenus + watchlist
-  const quick = document.getElementById('fund-quick');
-  if (quick) {
-    const pf = getPortfolio(currentUser) || [];
-    const seen = new Set();
-    const chips = pf.filter(r => r.ticker && !seen.has(r.ticker) && seen.add(r.ticker)).slice(0, 12);
-    if (chips.length) {
-      quick.innerHTML = '<span class="fund-quick-label">Vos titres :</span>' + chips.map(r =>
-        '<button class="fund-chip" onclick="fundLoad(\'' + r.ticker + '\',' + JSON.stringify(r.name || r.ticker).replace(/"/g,'&quot;') + ')">' +
-        (r.name || r.ticker) + '</button>'
-      ).join('');
-    }
-  }
-};
+// Catégorie d'un symbole (pour la couleur de la puce) : detenu > suivi > watchlist.
+function _ecCategory(sym) {
+  const s = _ecNorm(sym);
+  if ((getPortfolio(currentUser) || []).some(r => _ecNorm(r.ticker) === s)) return 'owned';
+  if (_ecSubs[s]) return 'sub';
+  if ((getWatchlist(currentUser) || []).some(w => _ecNorm(w.ticker) === s)) return 'watch';
+  return 'other';
+}
 
-window.fundSearch = async function() {
-  const inp = document.getElementById('fund-search-input');
-  const q = (inp && inp.value || '').trim();
-  if (!q) return;
-  const resEl = document.getElementById('fund-result');
-  const emptyEl = document.getElementById('fund-empty');
-  if (emptyEl) emptyEl.style.display = 'none';
-  resEl.innerHTML = '<div class="fund-loading">Recherche…</div>';
+async function _ecLoadSubs() {
+  _ecSubs = {};
+  if (window.IS_DEMO || !currentUser) return;
   try {
-    // Ticker direct (ex: MC.PA, AAPL) sinon recherche par nom
-    let ticker = q, name = q;
-    if (!/^[A-Z0-9.\-]{1,8}(\.[A-Z]{1,3})?$/i.test(q) || /\s/.test(q)) {
-      const sug = await fetchSuggestions(q);
-      if (!sug.length) { resEl.innerHTML = '<div class="fund-error">Aucune entreprise trouvée pour « ' + q + ' ».</div>'; return; }
-      ticker = sug[0].symbol; name = sug[0].name;
-    }
-    fundLoad(ticker, name);
-  } catch(e) {
-    resEl.innerHTML = '<div class="fund-error">Erreur de recherche. Réessayez.</div>';
-  }
-};
+    const snap = await getFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'earningsSubs'));
+    if (snap.exists()) _ecSubs = snap.data().subs || {};
+  } catch(e) { console.warn('[earnings] load subs:', e.message); }
+}
 
-window.fundLoad = async function(ticker, name) {
-  const resEl = document.getElementById('fund-result');
-  const emptyEl = document.getElementById('fund-empty');
-  if (emptyEl) emptyEl.style.display = 'none';
-  resEl.innerHTML = '<div class="fund-loading">Chargement des résultats de ' + (name || ticker) + '…</div>';
+async function _ecFetchEarnings() {
+  const syms = _ecRelevantSymbols();
+  if (!syms.length) { _ecItems = []; return; }
+  const today = new Date();
+  const from = _ecDateStr(today);
+  const to   = _ecDateStr(new Date(today.getTime() + 70 * 86400 * 1000));
   try {
-    let meta = {};
-    try {
-      const craw = await fetchWithFallback('https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(ticker) + '?interval=1d&range=5d');
-      const cj = JSON.parse(craw);
-      meta = (cj.chart && cj.chart.result && cj.chart.result[0] && cj.chart.result[0].meta) || {};
-    } catch(_) {}
-    const data = await fetchFundamentals(ticker, _fundFreq);
-    if (!data.series.TotalRevenue || !data.series.TotalRevenue.length) {
-      resEl.innerHTML = '<div class="fund-error">Pas de données financières disponibles pour ' + ticker + ' (souvent le cas des ETF/fonds).</div>';
-      return;
+    const url = WORKER_URL + '/earnings?symbols=' + encodeURIComponent(syms.join(',')) + '&from=' + from + '&to=' + to;
+    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const j = await r.json();
+    _ecItems = Array.isArray(j.items) ? j.items : [];
+  } catch(e) { console.warn('[earnings] fetch:', e.message); _ecItems = []; }
+}
+
+window.renderEarningsCalendar = async function() {
+  if (!_ecMonth) _ecMonth = _ecFirstOfMonth(new Date());
+  if (!_ecLoaded && !_ecLoading) {
+    _ecLoading = true;
+    _ecRenderGrid(true);            // skeleton
+    await _ecLoadSubs();
+    await _ecFetchEarnings();
+    _ecLoaded = true;
+    _ecLoading = false;
+  }
+  _ecRenderGrid();
+  _ecRenderSubs();
+};
+
+window.ecShiftMonth = function(delta) {
+  if (!_ecMonth) _ecMonth = _ecFirstOfMonth(new Date());
+  _ecMonth = new Date(_ecMonth.getFullYear(), _ecMonth.getMonth() + delta, 1);
+  _ecRenderGrid();
+};
+window.ecGoToday = function() { _ecMonth = _ecFirstOfMonth(new Date()); _ecRenderGrid(); };
+
+function _ecItemsByDay(dateStr) {
+  return _ecItems.filter(e => e.date === dateStr)
+    .sort((a, b) => _ecNorm(a.symbol).localeCompare(_ecNorm(b.symbol)));
+}
+
+function _ecRenderGrid(skeleton) {
+  const label = document.getElementById('ec-month-label');
+  const grid  = document.getElementById('ec-grid');
+  if (!label || !grid) return;
+  label.textContent = _EC_MONTHS[_ecMonth.getMonth()] + ' ' + _ecMonth.getFullYear();
+
+  if (skeleton) {
+    grid.innerHTML = Array.from({ length: 35 }, () => '<div class="ec-cell ec-skeleton"></div>').join('');
+    return;
+  }
+
+  const year = _ecMonth.getFullYear(), month = _ecMonth.getMonth();
+  const first = new Date(year, month, 1);
+  const lead  = (first.getDay() + 6) % 7;      // lundi = 0
+  const dim   = new Date(year, month + 1, 0).getDate();
+  const total = Math.ceil((lead + dim) / 7) * 7;
+  const todayStr = _ecDateStr(new Date());
+
+  let html = '';
+  for (let i = 0; i < total; i++) {
+    const dayNum = i - lead + 1;
+    if (dayNum < 1 || dayNum > dim) { html += '<div class="ec-cell ec-cell-empty" role="gridcell"></div>'; continue; }
+    const d = new Date(year, month, dayNum);
+    const ds = _ecDateStr(d);
+    const isToday = ds === todayStr;
+    const items = _ecItemsByDay(ds);
+    const max = 3;
+    let chips = items.slice(0, max).map(it => {
+      const cat = _ecCategory(it.symbol);
+      return '<button class="ec-chip ec-chip-' + cat + '" onclick="event.stopPropagation();ecOpenSymbol(\'' + it.symbol.replace(/'/g,'') + '\',\'' + ds + '\')" title="' + it.symbol + '">' + it.symbol + '</button>';
+    }).join('');
+    if (items.length > max) {
+      chips += '<button class="ec-more" onclick="event.stopPropagation();ecOpenDay(\'' + ds + '\')">+' + (items.length - max) + '</button>';
     }
-    _fundCurrent = { ticker, name: name || meta.shortName || meta.longName || ticker, meta };
-    _fundData = data;
-    renderFundamentals();
+    const cellClick = items.length ? ' onclick="ecOpenDay(\'' + ds + '\')"' : '';
+    html += '<div class="ec-cell' + (isToday ? ' ec-cell-today' : '') + (items.length ? ' ec-cell-has' : '') + '" role="gridcell" aria-label="' + dayNum + ' ' + _EC_MONTHS[month] + (items.length ? ', ' + items.length + ' résultat(s)' : '') + '"' + cellClick + '>'
+      + '<span class="ec-daynum">' + dayNum + '</span>'
+      + '<div class="ec-chips">' + chips + '</div>'
+      + '</div>';
+  }
+  grid.innerHTML = html;
+}
+
+function _ecHourLabel(hour) {
+  if (hour === 'bmo') return 'Avant ouverture';
+  if (hour === 'amc') return 'Après clôture';
+  if (hour === 'dmh') return 'En séance';
+  return 'Heure non communiquée';
+}
+function _ecFmtDateFr(ds) {
+  const [y, m, d] = ds.split('-').map(Number);
+  return d + ' ' + _EC_MONTHS[m - 1] + ' ' + y;
+}
+
+window.ecOpenDay = function(ds) {
+  const items = _ecItemsByDay(ds);
+  if (!items.length) return;
+  const body = document.getElementById('ec-detail-body');
+  body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-date">' + _ecFmtDateFr(ds) + '</div>'
+    + '<div class="ec-modal-sub">' + items.length + ' publication' + (items.length > 1 ? 's' : '') + '</div></div>'
+    + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
+    + '<div class="ec-daylist">' + items.map(it => {
+        const subbed = !!_ecSubs[_ecNorm(it.symbol)];
+        return '<div class="ec-dayrow">'
+          + '<button class="ec-dayrow-main" onclick="ecOpenSymbol(\'' + it.symbol.replace(/'/g,'') + '\',\'' + ds + '\')">'
+          + '<span class="ec-dayrow-sym">' + it.symbol + '</span>'
+          + '<span class="ec-dayrow-hour">' + _ecHourLabel(it.hour) + '</span></button>'
+          + _ecBellBtn(it.symbol, it.symbol, subbed)
+          + '</div>';
+      }).join('') + '</div>';
+  _ecShowDetail();
+};
+
+window.ecOpenSymbol = function(sym, ds) {
+  const it = _ecItems.find(e => _ecNorm(e.symbol) === _ecNorm(sym) && e.date === ds) || { symbol: sym, date: ds, hour: '' };
+  const subbed = !!_ecSubs[_ecNorm(sym)];
+  const fmtEps = (v) => v == null ? '—' : (v >= 0 ? '' : '') + v.toFixed(2);
+  const body = document.getElementById('ec-detail-body');
+  body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-name" id="ec-detail-name">' + it.symbol + '</div>'
+    + '<div class="ec-modal-sub">' + _ecFmtDateFr(it.date) + ' · ' + _ecHourLabel(it.hour) + '</div></div>'
+    + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
+    + '<div class="ec-kpis">'
+    + '<div class="ec-kpi"><div class="ec-kpi-label">BPA estimé</div><div class="ec-kpi-val mono">' + fmtEps(it.epsEst) + '</div></div>'
+    + '<div class="ec-kpi"><div class="ec-kpi-label">BPA publié</div><div class="ec-kpi-val mono">' + fmtEps(it.epsAct) + '</div></div>'
+    + '</div>'
+    + '<div class="ec-detail-actions">' + _ecBellBtn(it.symbol, it.symbol, subbed, true) + '</div>';
+  _ecShowDetail();
+};
+
+// Bouton cloche abonner/désabonner. big=true → version pleine largeur (détail).
+function _ecBellBtn(sym, name, subbed, big) {
+  const s = sym.replace(/'/g, '');
+  const n = (name || sym).replace(/'/g, '');
+  const cls = 'ec-bell' + (subbed ? ' ec-bell-on' : '') + (big ? ' ec-bell-big' : '');
+  const bell = subbed
+    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'
+    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+  return '<button class="' + cls + '" onclick="ecToggleSub(\'' + s + '\',\'' + n + '\')" aria-pressed="' + (subbed ? 'true' : 'false') + '" aria-label="' + (subbed ? 'Se désabonner de ' : 'S\'abonner à ') + s + '">' + bell + (big ? '<span>' + (subbed ? 'Abonné · ne plus suivre' : 'M\'alerter à la publication') + '</span>' : '') + '</button>';
+}
+
+function _ecShowDetail() {
+  const ov = document.getElementById('ec-detail-overlay');
+  ov.classList.add('open');
+}
+window.ecCloseDetail = function() {
+  document.getElementById('ec-detail-overlay').classList.remove('open');
+};
+
+window.ecToggleSub = async function(sym, name) {
+  const s = _ecNorm(sym);
+  if (window.IS_DEMO) {
+    _showChatToast({ icon: IC.bell, title: 'Mode démo', msg: 'Créez un compte pour suivre les résultats.' });
+    return;
+  }
+  const subbed = !!_ecSubs[s];
+  try {
+    if (subbed) {
+      delete _ecSubs[s];
+      await setFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'earningsSubs'), { subs: _ecSubs });
+      await deleteFirestoreDoc(firestoreDoc(db, 'earningsSubscribers', s, 'users', currentUser)).catch(() => {});
+      _showChatToast({ icon: IC.bellOff || IC.bell, title: 'Désabonné', msg: s + ' retiré de vos alertes résultats.' });
+    } else {
+      _ecSubs[s] = { name: name || s };
+      await setFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'earningsSubs'), { subs: _ecSubs });
+      await setFirestoreDoc(firestoreDoc(db, 'earningsSubscribers', s, 'users', currentUser), { name: name || s, at: Date.now() });
+      // S'assure que le push est activé (token FCM enregistré) pour recevoir l'alerte.
+      if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+        try { await requestPushPermission(); } catch(_) {}
+      } else { initPush(currentUser).catch(() => {}); }
+      _showChatToast({ icon: IC.bell, title: 'Abonné', msg: 'Notification le jour des résultats de ' + s + '.' });
+    }
+    // Le nouveau symbole peut avoir des dates hors de _ecItems → recharge.
+    await _ecFetchEarnings();
+    _ecRenderGrid();
+    _ecRenderSubs();
+    ecCloseDetail();
   } catch(e) {
-    const msg = (e && (e.message || e.name)) || 'erreur inconnue';
-    resEl.innerHTML = '<div class="fund-error">Impossible de charger les résultats.<br><span style="font-size:11px;color:var(--text3)">(' + msg + ')</span><br><button class="btn-primary" style="margin-top:12px;padding:8px 18px;font-size:13px" onclick="fundLoad(\'' + ticker + '\',' + JSON.stringify(name || ticker) + ')">Réessayer</button></div>';
-    console.warn('[fund]', e);
+    console.warn('[earnings] toggle sub:', e.message);
+    _showChatToast({ icon: IC.bell, title: 'Erreur', msg: 'Action impossible. Réessayez.' });
   }
 };
 
-// Fetch dédié aux fondamentaux : gros payload + URL à virgules, donc proxies
-// avec timeouts généreux et allorigins en premier (passe bien les URLs complexes).
-async function _fundFetch(url) {
-  const attempts = [
-    () => fetch(WORKER_URL + '/yahoo?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(10000) }).then(r => { if (!r.ok) throw new Error('worker ' + r.status); return r.text(); }),
-    () => fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(10000) }).then(r => { if (!r.ok) throw new Error('allorigins ' + r.status); return r.text(); }),
-    () => fetch('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url), { signal: AbortSignal.timeout(10000) }).then(r => { if (!r.ok) throw new Error('codetabs ' + r.status); return r.text(); }),
-    () => fetch('https://corsproxy.io/?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(9000) }).then(r => { if (!r.ok) throw new Error('corsproxy ' + r.status); return r.text(); }),
-    () => fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url.replace('query1.', 'query2.')), { signal: AbortSignal.timeout(10000) }).then(r => r.json()).then(j => { if (!j.contents) throw new Error('allorigins-get empty'); return j.contents; }),
-  ];
-  let lastErr;
-  for (const a of attempts) {
-    try {
-      const t = await a();
-      const p = JSON.parse(t);
-      if (p && p.timeseries) return t;       // réponse valide
-      lastErr = new Error('forme inattendue');
-    } catch (e) { lastErr = e; }
+function _ecRenderSubs() {
+  const el = document.getElementById('ec-subs-list');
+  if (!el) return;
+  const syms = Object.keys(_ecSubs);
+  if (!syms.length) {
+    el.innerHTML = '<div class="ec-subs-empty">Aucun abonnement. Recherchez un titre ou touchez une puce du calendrier pour être alerté à la publication de ses résultats.</div>';
+    return;
   }
-  throw lastErr || new Error('proxies indisponibles');
-}
-
-async function fetchFundamentals(ticker, freq) {
-  const prefix = freq === 'quarterly' ? 'quarterly' : 'annual';
-  const types = _FUND_TYPES.map(t => prefix + t).join(',');
-  const p1 = 1262304000, p2 = Math.floor(Date.now()/1000) + 86400;
-  const url = 'https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/'
-    + encodeURIComponent(ticker) + '?type=' + types + '&period1=' + p1 + '&period2=' + p2 + '&merge=false';
-  const raw = await _fundFetch(url);
-  const d = JSON.parse(raw);
-  const result = (d.timeseries && d.timeseries.result) || [];
-  const out = {}; let currency = '';
-  result.forEach(s => {
-    const key = s.meta && s.meta.type && s.meta.type[0];
-    if (!key || !s[key]) return;
-    const arr = s[key].filter(Boolean).map(p => {
-      if (p.currencyCode && !currency) currency = p.currencyCode;
-      return { date: p.asOfDate, val: p.reportedValue ? p.reportedValue.raw : null };
-    });
-    out[key.replace(prefix, '')] = arr;
-  });
-  return { series: out, currency };
-}
-
-window.setFundFreq = function(freq) {
-  if (_fundFreq === freq || !_fundCurrent) return;
-  _fundFreq = freq;
-  fundLoad(_fundCurrent.ticker, _fundCurrent.name);
-};
-
-function renderFundamentals() {
-  const resEl = document.getElementById('fund-result');
-  const s = _fundData.series, cur = _fundData.currency, meta = _fundCurrent.meta || {};
-  const freq = _fundFreq;
-
-  // Périodes de référence = celles du chiffre d'affaires, 8 dernières
-  const revAll = s.TotalRevenue || [];
-  const periods = revAll.map(p => p.date).slice(-8);
-  const mv = (metric) => { const m = {}; (s[metric] || []).forEach(p => m[p.date] = p.val); return m; };
-  const M = {};
-  ['TotalRevenue','GrossProfit','OperatingIncome','NetIncome','EBITDA','BasicEPS','DilutedEPS',
-   'TotalAssets','TotalLiabilitiesNetMinorityInterest','StockholdersEquity','FreeCashFlow',
-   'OperatingCashFlow','TotalDebt'].forEach(k => M[k] = mv(k));
-
-  const labels = periods.map(d => _fundPeriodLabel(d, freq));
-  const arr = (metric) => periods.map(d => M[metric][d] != null ? M[metric][d] : null);
-  const revenue = arr('TotalRevenue'), netinc = arr('NetIncome'), gross = arr('GrossProfit'), op = arr('OperatingIncome');
-
-  // KPIs (dernière période + variation vs précédente)
-  const last = periods.length - 1, prev = last - 1;
-  const lastRev = revenue[last], prevRev = prev >= 0 ? revenue[prev] : null;
-  const revGrowth = (lastRev != null && prevRev) ? (lastRev - prevRev) / Math.abs(prevRev) * 100 : null;
-  const lastNet = netinc[last], prevNet = prev >= 0 ? netinc[prev] : null;
-  const netGrowth = (lastNet != null && prevNet) ? (lastNet - prevNet) / Math.abs(prevNet) * 100 : null;
-  const netMargin = (lastRev && lastNet != null) ? lastNet / lastRev * 100 : null;
-  const grossMargin = (lastRev && gross[last] != null) ? gross[last] / lastRev * 100 : null;
-  const eps = arr('DilutedEPS').some(v => v != null) ? arr('DilutedEPS') : arr('BasicEPS');
-  const lastEps = eps[last];
-  const fcf = arr('FreeCashFlow'); const lastFcf = fcf[last];
-
-  // Prix + variation jour
-  const price = meta.regularMarketPrice, prevClose = meta.chartPreviousClose || meta.previousClose;
-  const dayChg = (price != null && prevClose) ? (price - prevClose) / prevClose * 100 : null;
-
-  const kpi = (label, value, sub, subColor) =>
-    '<div class="fund-kpi"><div class="fund-kpi-label">' + label + '</div>' +
-    '<div class="fund-kpi-value">' + value + '</div>' +
-    '<div class="fund-kpi-sub" ' + (subColor ? 'style="color:' + subColor + '"' : '') + '>' + (sub || '') + '</div></div>';
-
-  const growthColor = (v) => v == null ? 'var(--text3)' : v >= 0 ? 'var(--positive)' : 'var(--negative)';
-
-  // Table : métriques en lignes, périodes en colonnes
-  const rows = [
-    ['Chiffre d\'affaires', 'TotalRevenue', 'big'],
-    ['Marge brute', 'GrossProfit', 'big'],
-    ['Résultat d\'exploitation', 'OperatingIncome', 'big'],
-    ['EBITDA', 'EBITDA', 'big'],
-    ['Résultat net', 'NetIncome', 'big'],
-    ['BPA (dilué)', 'DilutedEPS', 'eps'],
-    ['Free cash-flow', 'FreeCashFlow', 'big'],
-    ['Capitaux propres', 'StockholdersEquity', 'big'],
-    ['Total actifs', 'TotalAssets', 'big'],
-    ['Dette totale', 'TotalDebt', 'big'],
-  ];
-  const tableHead = '<th>Métrique</th>' + labels.map(l => '<th>' + l + '</th>').join('');
-  const tableBody = rows.map(([label, key, kind]) => {
-    const vals = arr(key);
-    if (!vals.some(v => v != null)) return '';
-    const cells = vals.map(v =>
-      '<td class="mono">' + (v == null ? '—' : kind === 'eps' ? (v.toFixed(2) + ' ' + _curSym(cur)) : _fundFmtBig(v, cur)) + '</td>'
-    ).join('');
-    return '<tr><td class="fund-row-label">' + label + '</td>' + cells + '</tr>';
+  el.innerHTML = syms.sort().map(s => {
+    const next = _ecItems.filter(e => _ecNorm(e.symbol) === s).sort((a, b) => a.date.localeCompare(b.date))[0];
+    const when = next ? _ecFmtDateFr(next.date) : 'Aucune date à venir';
+    return '<div class="ec-subrow"><div class="ec-subrow-info"><span class="ec-subrow-sym">' + s + '</span>'
+      + '<span class="ec-subrow-when">' + when + '</span></div>'
+      + _ecBellBtn(s, _ecSubs[s].name, true) + '</div>';
   }).join('');
-
-  resEl.innerHTML =
-    '<div class="fund-head">' +
-      '<div class="fund-head-id">' +
-        '<img class="fund-logo" src="https://www.google.com/s2/favicons?domain=' + _fundDomainFromMeta(meta) + '&sz=128" onerror="this.style.display=\'none\'" alt="">' +
-        '<div><div class="fund-name">' + _fundCurrent.name + '</div>' +
-        '<div class="fund-ticker">' + _fundCurrent.ticker + (meta.fullExchangeName ? ' · ' + meta.fullExchangeName : '') + '</div></div>' +
-      '</div>' +
-      (price != null ? '<div class="fund-price"><div class="fund-price-val">' + price.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + _curSym(cur) + '</div>' +
-        '<div class="fund-price-chg" style="color:' + growthColor(dayChg) + '">' + _fundFmtPct(dayChg) + ' aujourd\'hui</div></div>' : '') +
-    '</div>' +
-
-    '<div class="fund-freq-toggle">' +
-      '<button class="' + (freq === 'annual' ? 'active' : '') + '" onclick="setFundFreq(\'annual\')">Annuel</button>' +
-      '<button class="' + (freq === 'quarterly' ? 'active' : '') + '" onclick="setFundFreq(\'quarterly\')">Trimestriel</button>' +
-    '</div>' +
-
-    '<div class="fund-kpis">' +
-      kpi('Chiffre d\'affaires', _fundFmtBig(lastRev, cur), _fundFmtPct(revGrowth) + ' vs N-1', growthColor(revGrowth)) +
-      kpi('Résultat net', _fundFmtBig(lastNet, cur), _fundFmtPct(netGrowth) + ' vs N-1', growthColor(netGrowth)) +
-      kpi('Marge nette', netMargin != null ? netMargin.toFixed(1) + ' %' : '—', 'Marge brute ' + (grossMargin != null ? grossMargin.toFixed(0) + ' %' : '—'), 'var(--text3)') +
-      kpi('BPA', lastEps != null ? lastEps.toFixed(2) + ' ' + _curSym(cur) : '—', 'Free cash-flow ' + _fundFmtBig(lastFcf, cur), 'var(--text3)') +
-    '</div>' +
-
-    '<div class="fund-charts">' +
-      '<div class="fund-chart-card"><div class="fund-chart-title">Chiffre d\'affaires & résultat net</div><div class="fund-canvas-wrap"><canvas id="fund-chart-main"></canvas></div></div>' +
-      '<div class="fund-chart-card"><div class="fund-chart-title">Marges (%)</div><div class="fund-canvas-wrap"><canvas id="fund-chart-margin"></canvas></div></div>' +
-    '</div>' +
-
-    '<div class="fund-table-card">' +
-      '<div class="fund-chart-title">Données détaillées · ' + (freq === 'annual' ? 'annuel' : 'trimestriel') + '</div>' +
-      '<div class="fund-table-scroll"><table class="fund-table"><thead><tr>' + tableHead + '</tr></thead><tbody>' + tableBody + '</tbody></table></div>' +
-      '<div class="fund-source">Source : Yahoo Finance · devise ' + (cur || '—') + '. Données informatives, pas un conseil en investissement.</div>' +
-    '</div>';
-
-  // ── Charts ──
-  if (_fundChartMain) { _fundChartMain.destroy(); _fundChartMain = null; }
-  if (_fundChartMargin) { _fundChartMargin.destroy(); _fundChartMargin = null; }
-
-  const mainCtx = document.getElementById('fund-chart-main');
-  if (mainCtx) {
-    _fundChartMain = new Chart(mainCtx.getContext('2d'), {
-      type: 'bar',
-      data: { labels, datasets: [
-        { label: 'Chiffre d\'affaires', data: revenue, backgroundColor: 'rgba(124,109,245,0.85)', borderRadius: 4, maxBarThickness: 34 },
-        { label: 'Résultat net', data: netinc, backgroundColor: 'rgba(0,224,158,0.85)', borderRadius: 4, maxBarThickness: 34 },
-      ]},
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: true, labels: { color: '#aab2c3', boxWidth: 12, font: { size: 11 } } },
-          tooltip: { callbacks: { label: (c) => c.dataset.label + ' : ' + _fundFmtBig(c.parsed.y, cur) } } },
-        scales: { x: { ticks: { color: '#6b7385', font: { size: 11 } }, grid: { display: false } },
-          y: { ticks: { color: '#6b7385', font: { size: 10 }, callback: (v) => _fundFmtBig(v, cur) }, grid: { color: 'rgba(255,255,255,0.04)' } } }
-      }
-    });
-  }
-  const marginCtx = document.getElementById('fund-chart-margin');
-  if (marginCtx) {
-    const grossM = periods.map(d => (M.TotalRevenue[d] && M.GrossProfit[d] != null) ? M.GrossProfit[d]/M.TotalRevenue[d]*100 : null);
-    const opM = periods.map(d => (M.TotalRevenue[d] && M.OperatingIncome[d] != null) ? M.OperatingIncome[d]/M.TotalRevenue[d]*100 : null);
-    const netM = periods.map(d => (M.TotalRevenue[d] && M.NetIncome[d] != null) ? M.NetIncome[d]/M.TotalRevenue[d]*100 : null);
-    _fundChartMargin = new Chart(marginCtx.getContext('2d'), {
-      type: 'line',
-      data: { labels, datasets: [
-        { label: 'Marge brute', data: grossM, borderColor: '#5b8dee', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2, pointRadius: 2 },
-        { label: 'Marge op.', data: opM, borderColor: '#f5b731', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2, pointRadius: 2 },
-        { label: 'Marge nette', data: netM, borderColor: '#00e09e', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2, pointRadius: 2 },
-      ]},
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: true, labels: { color: '#aab2c3', boxWidth: 12, font: { size: 11 } } },
-          tooltip: { callbacks: { label: (c) => c.dataset.label + ' : ' + (c.parsed.y != null ? c.parsed.y.toFixed(1) + ' %' : '—') } } },
-        scales: { x: { ticks: { color: '#6b7385', font: { size: 11 } }, grid: { display: false } },
-          y: { ticks: { color: '#6b7385', font: { size: 10 }, callback: (v) => v + ' %' }, grid: { color: 'rgba(255,255,255,0.04)' } } }
-      }
-    });
-  }
 }
 
-function _fundDomainFromMeta(meta) {
-  // Devine un domaine pour le logo à partir du nom court (best effort)
-  const n = (meta.shortName || meta.longName || '').toLowerCase().replace(/[^a-z0-9]/g,'');
-  return n ? n.slice(0, 18) + '.com' : 'finance.yahoo.com';
-}
+window.ecSearch = async function() {
+  const inp = document.getElementById('ec-search-input');
+  const out = document.getElementById('ec-search-result');
+  const q = (inp.value || '').trim();
+  if (!q) return;
+  out.innerHTML = '<div class="ec-search-loading">Recherche…</div>';
+  try {
+    const sugg = await fetchSuggestions(q);
+    if (!sugg.length) { out.innerHTML = '<div class="ec-search-empty">Aucun titre trouvé pour « ' + q +' ».</div>'; return; }
+    out.innerHTML = sugg.slice(0, 5).map(s => {
+      const sym = _ecNorm(s.symbol);
+      const subbed = !!_ecSubs[sym];
+      return '<div class="ec-subrow"><div class="ec-subrow-info"><span class="ec-subrow-sym">' + s.symbol + '</span>'
+        + '<span class="ec-subrow-when">' + (s.name || '') + (s.exchange ? ' · ' + s.exchange : '') + '</span></div>'
+        + _ecBellBtn(s.symbol, s.name, subbed) + '</div>';
+    }).join('');
+  } catch(e) {
+    out.innerHTML = '<div class="ec-search-empty">Erreur de recherche. Réessayez.</div>';
+  }
+};
 
 // ─── CSV IMPORT ─────────────────────────────────────
 let pendingImportRows = [];
