@@ -267,7 +267,7 @@ async function fetchSymbolEarnings(sym, env) {
 
 // Earnings d'un symbole avec cache KV 24h (clé earn:SYM).
 async function getSymbolEarningsCached(sym, env) {
-  const key = 'earn:' + sym.toUpperCase();
+  const key = 'earn2:' + sym.toUpperCase();   // bump préfixe = invalide l'ancien cache Finnhub
   const cached = await env.EARNINGS.get(key);
   if (cached !== null) return JSON.parse(cached);
   let items = [];
