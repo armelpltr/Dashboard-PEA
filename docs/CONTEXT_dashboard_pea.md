@@ -565,9 +565,21 @@ service firebase.storage {
 
 ## 10. Historique des sessions
 
-### À reprendre (2026-06-07)
-- **Proxy Yahoo durable via Worker existant.** Les proxies CORS gratuits sont **morts/instables** : `corsproxy.io` → 403 systématique, `cors.eu.org` → "CORS Missing Allow Origin" (403). Casse cours live, dividendes auto (`fetchDivHistory` jette "Service temporairement indisponible"), benchmark, page fondamentaux. **Le Worker Cloudflare existe déjà et tourne** (`capital-board-worker/` = `src` + `wrangler.toml`, déployé sur `https://api.capitalboard.fr`, sert déjà `/verify-pin` + `/send-otp`). **Plan** : ajouter un endpoint `GET /yahoo?url=...` au Worker (fetch direct Yahoo côté serveur = pas de CORS + pas de crumb), puis dans `js/app.js` router `fetchWithFallback` / `_fundFetch` / `loadFxRates` vers `WORKER_URL + '/yahoo?url=' + encodeURIComponent(yahooUrl)` en **proxy primaire**, garder allorigins/codetabs en fallback. Déploiement = `wrangler deploy` (côté user, login interactif). Règle CORS Worker : autoriser `ALLOWED_ORIGIN = https://capitalboard.fr`.
-- **Page Résultats financiers — fix proxy CORS.** (sera réglé par le proxy Worker ci-dessus.) L'endpoint `https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{TICKER}?type=annualTotalRevenue,...&period1=1262304000&period2=...&merge=false` répond **200 en direct** (testé curl, FR `MC.PA` + US `AAPL`, devise EUR/USD dans `reportedValue.fmt`/`currencyCode`). Mais en navigateur → "Impossible de charger les résultats". `_fundFetch` (js/app.js, avant `fetchFundamentals`) tente allorigins/raw → codetabs → corsproxy → allorigins/get(query2), timeouts 9-10s, valide `p.timeseries`. **Étape 1 demain** : lire le détail d'erreur affiché dans l'UI (entre parenthèses) + log console `[fund]` pour savoir quel proxy/erreur. Hypothèses : 429 allorigins, CORS bloqué sur `/raw`, ou virgules `type=` mal passées. Fallback envisageable : 1 type par requête puis merge, ou `&merge=true`.
+### Session 2026-06-06 (suite) — Proxy Yahoo via Worker (fix lenteur iOS)
+
+**Problème** : iPhone lent à l'ouverture alors que le web est rapide. Cause = sur iOS Safari/PWA le cache localStorage de la courbe (`pfcurve_`+uid) est évincé (ITP, storage script-writable capé ~7j, PWA standalone vidée plus vite) → cache miss fréquent → chemin froid bloque sur les proxies CORS gratuits **morts** (`corsproxy.io`/`cors.eu.org` → 403), timeouts cumulés ~14s/appel. Le web restait rapide car cache chaud.
+
+**Fix (commit `4acc81c`)** :
+- **Worker** : nouvel endpoint `GET /yahoo?url=...` (`capital-board-worker/src/index.js`) — fetch Yahoo direct côté serveur (pas de CORS, pas de crumb). Allowlist `YAHOO_HOSTS` = `query1`/`query2.finance.yahoo.com` (anti open-proxy → 403 sinon). `Cache-Control: public, max-age=30` (cache CDN Cloudflare). CORS Methods passé à `GET, POST, OPTIONS`.
+- **app.js** : `fetchWithFallback` ajoute `tryWorker` en **Round 0 primaire** (`WORKER_URL + '/yahoo?url='`), proxies gratuits gardés en fallback Round 1/2. `_fundFetch` (page fondamentaux) ajoute le Worker en 1ère tentative.
+- bump cache-bust `app.js?v=20260606c`.
+
+**Déployé + validé curl 2026-06-06** : `/yahoo` chart EURUSD → 200 JSON ; fundamentals AAPL → 200 en 0.22s ; host non-Yahoo → 403. Déploiement = `npx wrangler deploy` (côté user ; ExecutionPolicy PowerShell à passer `RemoteSigned` CurrentUser, et `npx.cmd` si `.ps1` bloqué).
+
+**→ Règle aussi** la page Résultats financiers (le bug "Impossible de charger les résultats" venait de la couche proxy CORS morte ; l'endpoint `fundamentals-timeseries` répondait déjà 200 en direct). **À valider navigateur/iPhone après ce déploiement.**
+
+### À reprendre
+- **Test iPhone post-déploiement** : vider cache PWA (réinstaller app écran d'accueil), ouvrir dashboard cache vide → courbe + cours doivent charger vite via le Worker.
 
 ### Session 2026-06-06
 
