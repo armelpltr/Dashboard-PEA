@@ -8,8 +8,8 @@ FIREBASE_PROJECT_ID = "dashboard-pea"
 FIREBASE_WEB_API_KEY = "AIzaSyDvZ_0loJ9Lf_jhz-ZDGsydG9AE21CU5Uc"
 ADMIN_UID = "A6nZQ8PcxdURytSesA17xK81I9T2"
 
-# Cache earnings : 1 clé par symbole (earn:SYM), TTL 24h. Fetch par-symbole
-# Finnhub (le calendrier global free est plafonné/inexploitable).
+# Cache earnings : 1 clé par symbole (earn:SYM, TTL 24h) + creds Yahoo (crumb).
+# Source = Yahoo calendarEvents (global, pas de clé API). Finnhub abandonné (US-only).
 [[kv_namespaces]]
 binding = "EARNINGS"
 id = "8d4037e71b1244b29d70174b71527026"
@@ -17,4 +17,3 @@ id = "8d4037e71b1244b29d70174b71527026"
 # Secrets à injecter via : wrangler secret put <NOM>
 #   FIREBASE_SERVICE_ACCOUNT   → JSON complet du service account Firebase
 #   RESEND_API_KEY             → clé API Resend
-#   FINNHUB_API_KEY            → clé API Finnhub (calendrier earnings)

@@ -205,34 +205,64 @@ async function verifyTurnstile(token, env) {
   return data.success === true;
 }
 
-// ── Earnings calendar (Finnhub, fetch PAR SYMBOLE + cache KV 24h) ────────────
+// ── Earnings calendar (Yahoo quoteSummary, fetch PAR SYMBOLE + cache KV 24h) ──
 //
-// Le calendrier global Finnhub free est plafonné (renvoie ~1500 micro-caps,
-// coupe les gros titres + l'EU). Le endpoint par-symbole (&symbol=) est fiable.
-// On fetch donc uniquement les titres pertinents (portefeuille/watchlist/abos)
-// et on cache chacun 24h en KV → 1 appel Finnhub par titre suivi et par jour.
+// Source = Yahoo Finance calendarEvents : couvre TOUS les marchés (US, EU, Asie…),
+// gratuit, cohérent avec le reste de l'app (tickers Yahoo). Nécessite un crumb +
+// cookie côté serveur (mis en cache KV 1h). Finnhub free était US-only → abandonné.
 
-const EARN_TTL = 24 * 3600;   // secondes
+const EARN_TTL = 24 * 3600;   // cache earnings par symbole (s)
+const YA_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
 
-// Earnings d'un seul symbole sur ~120j (couvre le prochain résultat).
+// Récupère (et cache) un couple cookie+crumb Yahoo. force=true pour régénérer.
+async function getYahooCreds(env, force) {
+  if (!force) {
+    const c = await env.EARNINGS.get('yahoo:creds');
+    if (c) return JSON.parse(c);
+  }
+  const r1 = await fetch('https://fc.yahoo.com', { headers: { 'User-Agent': YA_UA } });
+  const setCookies = r1.headers.getSetCookie ? r1.headers.getSetCookie() : [r1.headers.get('set-cookie')].filter(Boolean);
+  const cookie = setCookies.map(c => c.split(';')[0]).join('; ');
+  const r2 = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', { headers: { 'User-Agent': YA_UA, 'Cookie': cookie } });
+  const crumb = (await r2.text()).trim();
+  if (!crumb || crumb.includes('<') || crumb.length > 40) throw new Error('crumb invalide');
+  const creds = { cookie, crumb };
+  await env.EARNINGS.put('yahoo:creds', JSON.stringify(creds), { expirationTtl: 3600 });
+  return creds;
+}
+
+// Appel quoteSummary calendarEvents. Renvoie le JSON, ou 401 (sentinelle) si crumb périmé.
+async function _qsFetch(sym, creds) {
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=calendarEvents&crumb=${encodeURIComponent(creds.crumb)}`;
+  const res = await fetch(url, { headers: { 'User-Agent': YA_UA, 'Cookie': creds.cookie }, signal: AbortSignal.timeout(12000) });
+  if (res.status === 401 || res.status === 403) return 401;
+  if (!res.ok) throw new Error('Yahoo ' + res.status);
+  return res.json();
+}
+
+// Earnings d'un seul symbole via Yahoo (1 ou 2 dates → on garde la prochaine).
 async function fetchSymbolEarnings(sym, env) {
-  const today = new Date();
-  const from = today.toISOString().slice(0, 10);
-  const to   = new Date(today.getTime() + 120 * 86400 * 1000).toISOString().slice(0, 10);
-  const url = `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&symbol=${encodeURIComponent(sym)}&token=${env.FINNHUB_API_KEY}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
-  if (!res.ok) throw new Error(`Finnhub ${res.status}`);
-  const data = await res.json();
-  const cal = Array.isArray(data.earningsCalendar) ? data.earningsCalendar : [];
-  return cal.map(e => ({
-    symbol: e.symbol,
-    date:   e.date,
-    hour:   e.hour || '',
-    epsEst: e.epsEstimate ?? null,
-    epsAct: e.epsActual ?? null,
-    revEst: e.revenueEstimate ?? null,
-    revAct: e.revenueActual ?? null,
-  })).filter(e => e.symbol && e.date);
+  let creds = await getYahooCreds(env, false);
+  let data = await _qsFetch(sym, creds);
+  if (data === 401) { creds = await getYahooCreds(env, true); data = await _qsFetch(sym, creds); }
+  if (data === 401) throw new Error('Yahoo 401 (crumb)');
+  const ev = data?.quoteSummary?.result?.[0]?.calendarEvents?.earnings;
+  if (!ev) return [];
+  const dates = Array.isArray(ev.earningsDate) ? ev.earningsDate : [];
+  // earningsDate peut contenir une fourchette (2 timestamps) → on prend la 1re date.
+  const first = dates[0];
+  const ds = first?.fmt || (first?.raw ? new Date(first.raw * 1000).toISOString().slice(0, 10) : null);
+  if (!ds) return [];
+  return [{
+    symbol: sym.toUpperCase(),
+    date:   ds,
+    hour:   '',                                  // Yahoo ne fournit pas bmo/amc
+    estimated: !!ev.isEarningsDateEstimate,
+    epsEst: ev.epsEstimate?.raw ?? null,
+    epsAct: ev.epsActual?.raw ?? null,
+    revEst: ev.revenueEstimate?.raw ?? null,
+    revAct: ev.revenueActual?.raw ?? null,
+  }];
 }
 
 // Earnings d'un symbole avec cache KV 24h (clé earn:SYM).
@@ -242,8 +272,8 @@ async function getSymbolEarningsCached(sym, env) {
   if (cached !== null) return JSON.parse(cached);
   let items = [];
   try { items = await fetchSymbolEarnings(sym, env); }
-  catch (e) { console.error('finnhub', sym, e.message); }
-  // Cache même un tableau vide (évite de re-frapper Finnhub pour un titre sans résultat annoncé).
+  catch (e) { console.error('earnings', sym, e.message); }
+  // Cache même un tableau vide (évite de re-frapper Yahoo pour un titre sans résultat annoncé).
   await env.EARNINGS.put(key, JSON.stringify(items), { expirationTtl: EARN_TTL });
   return items;
 }
