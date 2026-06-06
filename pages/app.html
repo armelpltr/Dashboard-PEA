@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700,800,900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260606h">
+<link rel="stylesheet" href="css/style.css?v=20260606i">
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
@@ -1004,14 +1004,6 @@
         </div>
       </div>
 
-      <!-- Recherche : suivre n'importe quel titre -->
-      <div class="ec-searchbar">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3);flex-shrink:0" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="ec-search-input" autocomplete="off" aria-label="Rechercher un titre à suivre" placeholder="Suivre un titre (ex : Nvidia, NVDA, MC.PA)" onkeydown="if(event.key==='Enter')ecSearch()">
-        <button class="btn-primary" onclick="ecSearch()" style="padding:8px 18px;font-size:13px">Suivre</button>
-      </div>
-      <div id="ec-search-result" class="ec-search-result" aria-live="polite"></div>
-
       <!-- Barre d'outils -->
       <div class="ec-toolbar">
         <div class="ec-legend">
@@ -1023,6 +1015,13 @@
           Voir les entreprises suivies<span id="ec-subs-count" class="ec-subs-count"></span>
         </button>
       </div>
+
+      <!-- Volet mois précédent (résultats déjà publiés, depuis le cache) -->
+      <button id="ec-prev-toggle" class="ec-prev-toggle" onclick="ecTogglePrev()" aria-expanded="false">
+        <svg class="ec-prev-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        Voir le mois précédent
+      </button>
+      <div id="ec-prev-panel" class="ec-prev-panel" hidden></div>
 
       <!-- Agenda (liste par jour, jours vides masqués) -->
       <div id="ec-agenda" class="ec-agenda" aria-live="polite"></div>
@@ -1469,7 +1468,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=20260606h"></script>
+<script src="js/app.js?v=20260606i"></script>
 
 <!-- Modal confirmation générique (broker reset etc.) -->
 <div id="confirm-modal2" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">

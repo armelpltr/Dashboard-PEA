@@ -231,30 +231,35 @@ async function getYahooCreds(env, force) {
   return creds;
 }
 
-// Appel quoteSummary calendarEvents. Renvoie le JSON, ou 401 (sentinelle) si crumb périmé.
+// Appel quoteSummary (calendarEvents + price + assetProfile). 401 = crumb périmé.
 async function _qsFetch(sym, creds) {
-  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=calendarEvents&crumb=${encodeURIComponent(creds.crumb)}`;
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=calendarEvents,price,assetProfile&crumb=${encodeURIComponent(creds.crumb)}`;
   const res = await fetch(url, { headers: { 'User-Agent': YA_UA, 'Cookie': creds.cookie }, signal: AbortSignal.timeout(12000) });
   if (res.status === 401 || res.status === 403) return 401;
   if (!res.ok) throw new Error('Yahoo ' + res.status);
   return res.json();
 }
 
-// Earnings d'un seul symbole via Yahoo (1 ou 2 dates → on garde la prochaine).
+// Earnings d'un seul symbole via Yahoo (prochaine date) + nom + domaine (logo).
 async function fetchSymbolEarnings(sym, env) {
   let creds = await getYahooCreds(env, false);
   let data = await _qsFetch(sym, creds);
   if (data === 401) { creds = await getYahooCreds(env, true); data = await _qsFetch(sym, creds); }
   if (data === 401) throw new Error('Yahoo 401 (crumb)');
-  const ev = data?.quoteSummary?.result?.[0]?.calendarEvents?.earnings;
+  const r = data?.quoteSummary?.result?.[0];
+  const ev = r?.calendarEvents?.earnings;
   if (!ev) return [];
   const dates = Array.isArray(ev.earningsDate) ? ev.earningsDate : [];
   // earningsDate peut contenir une fourchette (2 timestamps) → on prend la 1re date.
   const first = dates[0];
   const ds = first?.fmt || (first?.raw ? new Date(first.raw * 1000).toISOString().slice(0, 10) : null);
   if (!ds) return [];
+  const name = r?.price?.longName || r?.price?.shortName || sym.toUpperCase();
+  const domain = (r?.assetProfile?.website || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
   return [{
     symbol: sym.toUpperCase(),
+    name,
+    domain,
     date:   ds,
     hour:   '',                                  // Yahoo ne fournit pas bmo/amc
     estimated: !!ev.isEarningsDateEstimate,
@@ -267,7 +272,7 @@ async function fetchSymbolEarnings(sym, env) {
 
 // Earnings d'un symbole avec cache KV 24h (clé earn:SYM).
 async function getSymbolEarningsCached(sym, env) {
-  const key = 'earn4:' + sym.toUpperCase();
+  const key = 'earn5:' + sym.toUpperCase();
   const cached = await env.EARNINGS.get(key);
   if (cached !== null) return JSON.parse(cached);
   let items = null;

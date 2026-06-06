@@ -4930,16 +4930,35 @@ async function _ecLoadSubs() {
 
 async function _ecFetchEarnings() {
   const syms = _ecDisplaySymbols();
-  if (!syms.length) { _ecItems = []; return; }
+  if (!syms.length) { _ecItems = _ecMergeSeen([]); return; }
   const today = new Date();
   const from = _ecDateStr(today);
   const to   = _ecDateStr(new Date(today.getTime() + 120 * 86400 * 1000));
+  let fetched = [];
   try {
     const url = WORKER_URL + '/earnings?symbols=' + encodeURIComponent(syms.join(',')) + '&from=' + from + '&to=' + to;
     const r = await fetch(url, { signal: AbortSignal.timeout(20000) });
     const j = await r.json();
-    _ecItems = Array.isArray(j.items) ? j.items : [];
-  } catch(e) { console.warn('[earnings] fetch:', e.message); _ecItems = []; }
+    fetched = Array.isArray(j.items) ? j.items : [];
+  } catch(e) { console.warn('[earnings] fetch:', e.message); }
+  _ecItems = _ecMergeSeen(fetched);
+}
+
+// Fusionne les earnings fraîchement récupérés avec un cache local (par uid).
+// Permet de conserver le mois précédent : une date qui passe reste en cache
+// même quand Yahoo renvoie ensuite la date du trimestre suivant.
+function _ecMergeSeen(fetched) {
+  const key = 'ec_seen_' + (currentUser || 'anon');
+  const seen = {};
+  try {
+    (JSON.parse(localStorage.getItem(key) || '[]') || []).forEach(it => { seen[_ecNorm(it.symbol) + '|' + it.date] = it; });
+  } catch(_) {}
+  fetched.forEach(it => { seen[_ecNorm(it.symbol) + '|' + it.date] = it; });
+  const lo = _ecDateStr(new Date(Date.now() - 40 * 86400 * 1000));
+  const hi = _ecDateStr(new Date(Date.now() + 130 * 86400 * 1000));
+  const list = Object.values(seen).filter(it => it.date >= lo && it.date <= hi);
+  try { localStorage.setItem(key, JSON.stringify(list)); } catch(_) {}
+  return list;
 }
 
 window.renderEarningsCalendar = async function() {
@@ -4976,24 +4995,23 @@ function _ecFmtDateFr(ds) {
   return d + ' ' + _EC_MONTHS[m - 1] + ' ' + y;
 }
 
-function _ecRenderAgenda() {
-  const el = document.getElementById('ec-agenda');
-  if (!el) return;
+// Logo via favicon Google (domaine fourni par le Worker) ou pastille-lettre.
+function _ecLogoHtml(it) {
+  if (it.domain) return '<img class="ec-logo" loading="lazy" src="https://www.google.com/s2/favicons?domain=' + it.domain + '&sz=64" alt="">';
+  const nm = (it.name || it.symbol || '?').trim();
+  return '<span class="ec-logo ec-logo-ph">' + (nm ? nm[0].toUpperCase() : '?') + '</span>';
+}
+
+// Regroupe des earnings par jour. descending=true pour le volet « mois précédent ».
+function _ecGroupHtml(items, descending) {
   const todayStr = _ecDateStr(new Date());
-  // Regroupe par date (uniquement à venir), trie, ignore les jours vides.
   const byDay = {};
-  _ecItems.forEach(it => {
-    if (it.date < todayStr) return;
-    (byDay[it.date] = byDay[it.date] || []).push(it);
-  });
-  const days = Object.keys(byDay).sort();
-  if (!days.length) {
-    el.innerHTML = '<div class="ec-agenda-empty">Aucune publication de résultats à venir pour les titres suivis. Recherchez un titre pour l\'ajouter.</div>';
-    return;
-  }
-  el.innerHTML = days.map(ds => {
+  items.forEach(it => (byDay[it.date] = byDay[it.date] || []).push(it));
+  let days = Object.keys(byDay).sort();
+  if (descending) days.reverse();
+  return days.map(ds => {
     const rows = byDay[ds]
-      .sort((a, b) => _ecNorm(a.symbol).localeCompare(_ecNorm(b.symbol)))
+      .sort((a, b) => (a.name || a.symbol).localeCompare(b.name || b.symbol))
       .map(it => _ecRowHtml(it)).join('');
     const isToday = ds === todayStr;
     return '<div class="ec-day">'
@@ -5004,6 +5022,41 @@ function _ecRenderAgenda() {
   }).join('');
 }
 
+function _ecRenderAgenda() {
+  const el = document.getElementById('ec-agenda');
+  if (!el) return;
+  const todayStr = _ecDateStr(new Date());
+  const up = _ecItems.filter(it => it.date >= todayStr);
+  el.innerHTML = up.length ? _ecGroupHtml(up, false)
+    : '<div class="ec-agenda-empty">Aucune publication de résultats à venir pour les titres affichés.</div>';
+}
+
+// Volet « mois précédent » : résultats déjà publiés conservés en cache local.
+function _ecRenderPrev() {
+  const panel = document.getElementById('ec-prev-panel');
+  if (!panel) return;
+  const todayStr = _ecDateStr(new Date());
+  const lo = _ecDateStr(new Date(Date.now() - 31 * 86400 * 1000));
+  const past = _ecItems.filter(it => it.date >= lo && it.date < todayStr);
+  panel.innerHTML = past.length ? _ecGroupHtml(past, true)
+    : '<div class="ec-agenda-empty">Aucun résultat sur le mois précédent. Cette section se remplit au fil du temps (cache local).</div>';
+}
+
+window.ecTogglePrev = function() {
+  const panel = document.getElementById('ec-prev-panel');
+  const btn = document.getElementById('ec-prev-toggle');
+  if (panel.hasAttribute('hidden')) {
+    _ecRenderPrev();
+    panel.removeAttribute('hidden');
+    btn.setAttribute('aria-expanded', 'true');
+    btn.classList.add('open');
+  } else {
+    panel.setAttribute('hidden', '');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.classList.remove('open');
+  }
+};
+
 function _ecRowHtml(it) {
   const sym = it.symbol;
   const cat = _ecCategory(sym);
@@ -5011,13 +5064,15 @@ function _ecRowHtml(it) {
   const hour = _ecHourLabel(it.hour);
   const eps = it.epsEst != null ? 'BPA est. ' + Number(it.epsEst).toFixed(2) : '';
   const meta = [hour, eps].filter(Boolean).join(' · ') || (it.estimated ? 'Date estimée' : '');
+  const name = it.name || sym;
   return '<div class="ec-row">'
     + '<button class="ec-row-main" onclick="ecOpenSymbol(\'' + sym.replace(/'/g,'') + '\',\'' + it.date + '\')">'
     + '<span class="ec-dot ec-dot-' + cat + '"></span>'
-    + '<span class="ec-row-sym">' + sym + '</span>'
+    + _ecLogoHtml(it)
+    + '<span class="ec-row-id"><span class="ec-row-name">' + name + '</span><span class="ec-row-tk">' + sym + '</span></span>'
     + (meta ? '<span class="ec-row-meta">' + meta + '</span>' : '')
     + '</button>'
-    + _ecBellBtn(sym, sym, subbed)
+    + _ecBellBtn(sym, name, subbed)
     + '</div>';
 }
 
@@ -5029,8 +5084,9 @@ window.ecOpenSymbol = function(sym, ds) {
   const hour = _ecHourLabel(it.hour);
   const sub = _ecFmtDateFr(it.date) + (hour ? ' · ' + hour : '') + (it.estimated ? ' · date estimée' : '');
   const body = document.getElementById('ec-detail-body');
-  body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-name" id="ec-detail-name">' + it.symbol + '</div>'
-    + '<div class="ec-modal-sub">' + sub + '</div></div>'
+  body.innerHTML = '<div class="ec-modal-head"><div class="ec-modal-id">' + _ecLogoHtml(it)
+    + '<div><div class="ec-modal-name" id="ec-detail-name">' + (it.name || it.symbol) + '</div>'
+    + '<div class="ec-modal-sub">' + it.symbol + ' · ' + sub + '</div></div></div>'
     + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
     + '<div class="ec-kpis">'
     + '<div class="ec-kpi"><div class="ec-kpi-label">BPA estimé</div><div class="ec-kpi-val mono">' + fmtEps(it.epsEst) + '</div></div>'
@@ -5103,10 +5159,12 @@ window.ecOpenSubs = function() {
   } else {
     list = '<div id="ec-subs-modal-list" class="ec-subs-list">' + syms.map(s => {
       const next = _ecItems.filter(e => _ecNorm(e.symbol) === s).sort((a, b) => a.date.localeCompare(b.date))[0];
+      const name = (next && next.name) || _ecSubs[s].name || s;
       const when = next ? _ecFmtDateFr(next.date) : 'Aucune date à venir';
-      return '<div class="ec-subrow"><div class="ec-subrow-info"><span class="ec-subrow-sym">' + s + '</span>'
-        + '<span class="ec-subrow-when">' + when + '</span></div>'
-        + _ecBellBtn(s, _ecSubs[s].name, true) + '</div>';
+      return '<div class="ec-subrow">' + _ecLogoHtml(next || { symbol: s, name })
+        + '<div class="ec-subrow-info"><span class="ec-subrow-sym">' + name + '</span>'
+        + '<span class="ec-subrow-when">' + s + ' · ' + when + '</span></div>'
+        + _ecBellBtn(s, name, true) + '</div>';
     }).join('') + '</div>';
   }
   body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-name">Entreprises suivies</div>'
