@@ -5165,25 +5165,70 @@ function _ecRowHtml(it) {
     + '</div>';
 }
 
+let _ecDetailSym = null;
+
+function _ecFmtEps(v) { return v == null ? '—' : Number(v).toFixed(2); }
+function _ecFmtRev(v) { return v == null ? '—' : (v >= 1e9 ? (v/1e9).toFixed(1) + ' Md' : (v/1e6).toFixed(0) + ' M'); }
+function _ecQLabel(l) { const m = /^([1-4])Q(\d{4})$/.exec(l || ''); return m ? ('T' + m[1] + ' ' + m[2]) : (l || ''); }
+
 window.ecOpenSymbol = function(sym, ds) {
   const it = _ecItems.find(e => _ecNorm(e.symbol) === _ecNorm(sym) && e.date === ds) || { symbol: sym, date: ds, hour: '' };
   const subbed = !!_ecSubs[_ecNorm(sym)];
-  const fmtEps = (v) => v == null ? '—' : Number(v).toFixed(2);
-  const fmtRev = (v) => v == null ? '—' : (v >= 1e9 ? (v/1e9).toFixed(1) + ' Md' : (v/1e6).toFixed(0) + ' M');
   const hour = _ecHourLabel(it.hour);
   const sub = _ecFmtDateFr(it.date) + (hour ? ' · ' + hour : '') + (it.estimated ? ' · date estimée' : '');
+  _ecDetailSym = _ecNorm(sym);
   const body = document.getElementById('ec-detail-body');
   body.innerHTML = '<div class="ec-modal-head"><div class="ec-modal-id">' + _ecLogoHtml(it)
     + '<div><div class="ec-modal-name" id="ec-detail-name">' + (it.name || it.symbol) + '</div>'
-    + '<div class="ec-modal-sub">' + it.symbol + ' · ' + sub + '</div></div></div>'
+    + '<div class="ec-modal-sub">Prochains résultats · ' + sub + '</div></div></div>'
     + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
     + '<div class="ec-kpis">'
-    + '<div class="ec-kpi"><div class="ec-kpi-label">BPA estimé</div><div class="ec-kpi-val mono">' + fmtEps(it.epsEst) + '</div></div>'
-    + '<div class="ec-kpi"><div class="ec-kpi-label">CA estimé</div><div class="ec-kpi-val mono">' + fmtRev(it.revEst) + '</div></div>'
+    + '<div class="ec-kpi"><div class="ec-kpi-label">BPA estimé</div><div class="ec-kpi-val mono">' + _ecFmtEps(it.epsEst) + '</div></div>'
+    + '<div class="ec-kpi"><div class="ec-kpi-label">CA estimé</div><div class="ec-kpi-val mono">' + _ecFmtRev(it.revEst) + '</div></div>'
     + '</div>'
+    + '<div id="ec-history" class="ec-history"><div class="ec-history-load">Chargement de l\'historique…</div></div>'
     + '<div class="ec-detail-actions">' + _ecBellBtn(it.symbol, it.symbol, subbed, true) + '</div>';
   _ecShowDetail();
+  _ecLoadHistory(it.symbol);
 };
+
+// Historique 4 trimestres via le Worker (BPA réel vs estimé, surprise, CA).
+async function _ecLoadHistory(symbol) {
+  const el = document.getElementById('ec-history');
+  if (!el) return;
+  try {
+    const r = await fetch(WORKER_URL + '/earnings-detail?symbol=' + encodeURIComponent(symbol), { signal: AbortSignal.timeout(12000) });
+    const d = await r.json();
+    if (_ecDetailSym !== _ecNorm(symbol)) return;       // modale changée entre-temps
+    if (!d || !Array.isArray(d.history) || !d.history.length) {
+      el.innerHTML = '<div class="ec-history-empty">Historique des résultats indisponible.</div>';
+      return;
+    }
+    el.innerHTML = _ecHistoryHtml(d.history);
+  } catch(e) {
+    if (_ecDetailSym === _ecNorm(symbol)) el.innerHTML = '<div class="ec-history-empty">Historique des résultats indisponible.</div>';
+  }
+}
+
+function _ecHistoryHtml(history) {
+  const last4 = history.slice(-4);
+  const rows = last4.map(q => {
+    const has = q.epsAct != null && q.epsEst != null;
+    const beat = has ? q.epsAct >= q.epsEst : null;
+    const cls = beat == null ? '' : (beat ? 'ec-h-beat' : 'ec-h-miss');
+    const surp = (has && q.epsEst !== 0) ? ((q.epsAct - q.epsEst) / Math.abs(q.epsEst) * 100) : null;
+    const surpStr = surp == null ? '—' : (surp >= 0 ? '+' : '') + surp.toFixed(0) + '%';
+    return '<tr><td class="ec-h-q">' + _ecQLabel(q.label) + '</td>'
+      + '<td class="ec-h-num">' + _ecFmtEps(q.epsAct) + '</td>'
+      + '<td class="ec-h-num ec-h-muted">' + _ecFmtEps(q.epsEst) + '</td>'
+      + '<td class="ec-h-num ' + cls + '">' + surpStr + '</td>'
+      + '<td class="ec-h-num ec-h-muted">' + _ecFmtRev(q.revAct) + '</td></tr>';
+  }).join('');
+  return '<div class="ec-history-title">Résultats des 4 derniers trimestres</div>'
+    + '<table class="ec-history-tbl"><thead><tr>'
+    + '<th>Trim.</th><th>BPA</th><th>Est.</th><th>Surprise</th><th>CA</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table>';
+}
 
 // Bouton cloche abonner/désabonner. big=true → version pleine largeur (détail).
 function _ecBellBtn(sym, name, subbed, big) {

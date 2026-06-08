@@ -1420,6 +1420,20 @@ button.ec-choice:hover { border-color: var(--accent); background: var(--s3); }
 .ec-kpi-val { font-size: 22px; font-weight: 800; color: var(--text); margin-top: 5px; }
 .ec-detail-actions { display: flex; }
 .ec-detail-actions .ec-bell-big { width: 100%; }
+
+/* Historique 4 trimestres */
+.ec-history { margin-bottom: 16px; }
+.ec-history-load, .ec-history-empty { font-size: 13px; color: var(--text3); padding: 8px 2px; }
+.ec-history-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text3); margin-bottom: 10px; }
+.ec-history-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ec-history-tbl th { text-align: right; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .03em; padding: 0 0 8px; }
+.ec-history-tbl th:first-child { text-align: left; }
+.ec-history-tbl td { padding: 9px 0; border-top: 1px solid var(--border); }
+.ec-h-q { font-weight: 700; color: var(--text); font-family: var(--mono); }
+.ec-h-num { text-align: right; font-family: var(--mono); color: var(--text); white-space: nowrap; }
+.ec-h-muted { color: var(--text3); }
+.ec-h-beat { color: var(--positive); font-weight: 700; }
+.ec-h-miss { color: var(--negative); font-weight: 700; }
 .ec-daylist { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
 .ec-dayrow { display: flex; align-items: center; gap: 10px; }
 .ec-dayrow-main { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px;

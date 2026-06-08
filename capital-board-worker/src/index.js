@@ -270,6 +270,55 @@ async function fetchSymbolEarnings(sym, env) {
   }];
 }
 
+// ── Détail d'un symbole : historique 4 trimestres + prochaine date ──────────
+async function _qsFetchDetail(sym, creds) {
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=earnings,calendarEvents,price,assetProfile&crumb=${encodeURIComponent(creds.crumb)}`;
+  const res = await fetch(url, { headers: { 'User-Agent': YA_UA, 'Cookie': creds.cookie }, signal: AbortSignal.timeout(12000) });
+  if (res.status === 401 || res.status === 403) return 401;
+  if (!res.ok) throw new Error('Yahoo ' + res.status);
+  return res.json();
+}
+
+async function fetchSymbolEarningsDetail(sym, env) {
+  let creds = await getYahooCreds(env, false);
+  let data = await _qsFetchDetail(sym, creds);
+  if (data === 401) { creds = await getYahooCreds(env, true); data = await _qsFetchDetail(sym, creds); }
+  if (data === 401) throw new Error('Yahoo 401 (crumb)');
+  const r = data?.quoteSummary?.result?.[0];
+  if (!r) return null;
+  const name = r?.price?.longName || r?.price?.shortName || sym.toUpperCase();
+  const domain = (r?.assetProfile?.website || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+
+  // Prochaine date (calendarEvents).
+  const ev = r?.calendarEvents?.earnings;
+  let next = null;
+  if (ev) {
+    const dates = Array.isArray(ev.earningsDate) ? ev.earningsDate : [];
+    const first = dates[0];
+    const ds = first?.fmt || (first?.raw ? new Date(first.raw * 1000).toISOString().slice(0, 10) : null);
+    next = {
+      date: ds,
+      estimated: !!ev.isEarningsDateEstimate,
+      epsEst: ev.earningsAverage?.raw ?? null,
+      revEst: ev.revenueAverage?.raw ?? null,
+    };
+  }
+
+  // Historique : BPA réel vs estimé (earningsChart) + CA réel (financialsChart).
+  const epsQ = Array.isArray(r?.earnings?.earningsChart?.quarterly) ? r.earnings.earningsChart.quarterly : [];
+  const finQ = Array.isArray(r?.earnings?.financialsChart?.quarterly) ? r.earnings.financialsChart.quarterly : [];
+  const revByLabel = {};
+  finQ.forEach(q => { revByLabel[q.date] = q.revenue?.raw ?? null; });
+  const history = epsQ.map(q => ({
+    label:  q.date,                      // ex "1Q2025"
+    epsAct: q.actual?.raw ?? null,
+    epsEst: q.estimate?.raw ?? null,
+    revAct: revByLabel[q.date] ?? null,
+  }));
+
+  return { symbol: sym.toUpperCase(), name, domain, next, history };
+}
+
 // Earnings d'un symbole avec cache KV 24h (clé earn:SYM).
 async function getSymbolEarningsCached(sym, env) {
   const key = 'earn5:' + sym.toUpperCase();
@@ -397,6 +446,24 @@ export default {
             ...corsHeaders,
           },
         });
+      }
+
+      // ── GET /earnings-detail?symbol=... ─────────────────────────────────
+      // Historique (4 trimestres) + prochaine date pour un titre. Cache KV 24h.
+      if (url.pathname === '/earnings-detail' && request.method === 'GET') {
+        const symbol = (url.searchParams.get('symbol') || '').trim().toUpperCase();
+        if (!symbol) return json({ error: 'symbol manquant' }, 400);
+        const key = 'earndet1:' + symbol;
+        const cached = await env.EARNINGS.get(key);
+        if (cached !== null) {
+          return new Response(cached, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...corsHeaders } });
+        }
+        let detail = null;
+        try { detail = await fetchSymbolEarningsDetail(symbol, env); }
+        catch (e) { console.error('earnings-detail', symbol, e.message); }
+        const payload = JSON.stringify(detail || { error: 'indisponible' });
+        await env.EARNINGS.put(key, payload, { expirationTtl: detail ? EARN_TTL : 600 });
+        return new Response(payload, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...corsHeaders } });
       }
 
       // ── GET /logo?domain=... ────────────────────────────────────────────
