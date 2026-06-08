@@ -4880,7 +4880,9 @@ window.selectBroker = function(id, label, domain) {
 // Source : Yahoo calendarEvents via Worker /earnings (prochaine date par titre).
 // Vue : liste par jour (jours sans publication masqués). Abonnement → push notif.
 let _ecItems   = [];      // earnings (prochaines dates) des symboles affichés
-let _ecSubs    = {};      // { SYM: { name } } abonnements du user
+let _ecSubs    = {};      // { SYM: { name } } abonnements du user (cloche)
+let _ecCustom  = {};      // { SYM: { name } } liste personnalisée du user
+let _ecListMode = 'popular'; // 'popular' (sélection Capital Board) | 'custom' (ma liste)
 let _ecLoaded  = false;
 let _ecLoading = false;
 
@@ -4905,6 +4907,13 @@ function _ecRelevantSymbols() {
   return [...set];
 }
 function _ecDisplaySymbols() {
+  // Mode « ma liste » : uniquement la liste perso + titres avec alerte cloche.
+  if (_ecListMode === 'custom') {
+    const set = new Set(Object.keys(_ecCustom).map(_ecNorm));
+    Object.keys(_ecSubs).forEach(s => set.add(_ecNorm(s)));
+    return [...set];
+  }
+  // Mode « sélection Capital Board » : grandes valeurs + détenus/suivis.
   const set = new Set(_ecRelevantSymbols());
   _EC_POPULAR.forEach(s => set.add(_ecNorm(s)));
   return [...set];
@@ -4926,6 +4935,35 @@ async function _ecLoadSubs() {
     const snap = await getFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'earningsSubs'));
     if (snap.exists()) _ecSubs = snap.data().subs || {};
   } catch(e) { console.warn('[earnings] load subs:', e.message); }
+}
+
+// Liste personnalisée : Firestore (connecté) ou localStorage (démo/anon).
+async function _ecLoadCustom() {
+  _ecCustom = {};
+  if (window.IS_DEMO || !currentUser) {
+    try { _ecCustom = JSON.parse(localStorage.getItem('ec_custom_' + (currentUser || 'anon')) || '{}') || {}; } catch(_) {}
+    return;
+  }
+  try {
+    const snap = await getFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'earningsList'));
+    if (snap.exists()) _ecCustom = snap.data().list || {};
+  } catch(e) { console.warn('[earnings] load custom:', e.message); }
+}
+async function _ecSaveCustom() {
+  if (window.IS_DEMO || !currentUser) {
+    try { localStorage.setItem('ec_custom_' + (currentUser || 'anon'), JSON.stringify(_ecCustom)); } catch(_) {}
+    return;
+  }
+  try { await setFirestoreDoc(firestoreDoc(db, 'users', currentUser, 'data', 'earningsList'), { list: _ecCustom }); }
+  catch(e) { console.warn('[earnings] save custom:', e.message); }
+}
+
+// Mode d'affichage choisi : mémorisé par user en localStorage.
+function _ecLoadMode() {
+  try { return localStorage.getItem('ec_mode_' + (currentUser || 'anon')) || 'popular'; } catch(_) { return 'popular'; }
+}
+function _ecSaveMode(m) {
+  try { localStorage.setItem('ec_mode_' + (currentUser || 'anon'), m); } catch(_) {}
 }
 
 async function _ecFetchEarnings() {
@@ -4961,17 +4999,21 @@ function _ecMergeSeen(fetched) {
   return list;
 }
 
-window.renderEarningsCalendar = async function() {
+window.renderEarningsCalendar = async function(skipChooser) {
   if (!_ecLoaded && !_ecLoading) {
     _ecLoading = true;
     _ecRenderSkeleton();
+    _ecListMode = _ecLoadMode();
     await _ecLoadSubs();
+    await _ecLoadCustom();
     await _ecFetchEarnings();
     _ecLoaded = true;
     _ecLoading = false;
   }
   _ecRenderAgenda();
   _ecUpdateSubsCount();
+  // À chaque entrée dans la section : proposer le choix de liste.
+  if (!skipChooser) ecOpenChooser();
 };
 
 function _ecRenderSkeleton() {
@@ -5256,6 +5298,141 @@ window.ecUniverseOnline = async function() {
       return _ecUniRow(s.symbol, { symbol: s.symbol, name: s.name }, !!_ecSubs[sym]);
     }).join('');
   } catch(e) { el.innerHTML = '<div class="ec-subs-empty">Erreur de recherche.</div>'; }
+};
+
+// ── Sélecteur de liste (affiché à chaque entrée dans la section) ────────────
+window.ecOpenChooser = function() {
+  const body = document.getElementById('ec-detail-body');
+  if (!body) return;
+  const popN = _EC_POPULAR.length;
+  const customN = Object.keys(_ecCustom).length;
+  const customCard = customN > 0
+    ? '<div class="ec-choice-actions">'
+        + '<button class="ec-choice-go" onclick="ecApplyMode(\'custom\')">Afficher ma liste (' + customN + ')</button>'
+        + '<button class="ec-choice-edit" onclick="ecOpenCustomBuilder()">Modifier</button></div>'
+    : '<button class="ec-choice-go" onclick="ecOpenCustomBuilder()">Composer ma liste</button>';
+  body.innerHTML =
+    '<div class="ec-modal-head"><div><div class="ec-modal-name">Calendrier des résultats</div>'
+    + '<div class="ec-modal-sub">Choisissez les entreprises à afficher.</div></div>'
+    + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
+    + '<div class="ec-choices">'
+    + '<button class="ec-choice' + (_ecListMode === 'popular' ? ' ec-choice-active' : '') + '" onclick="ecApplyMode(\'popular\')">'
+    +   '<div class="ec-choice-ic">🌐</div>'
+    +   '<div class="ec-choice-txt"><div class="ec-choice-title">Sélection Capital Board</div>'
+    +   '<div class="ec-choice-desc">' + popN + ' grandes valeurs mondiales + vos titres détenus et suivis.</div></div></button>'
+    + '<div class="ec-choice ec-choice-static' + (_ecListMode === 'custom' ? ' ec-choice-active' : '') + '">'
+    +   '<div class="ec-choice-ic">⭐</div>'
+    +   '<div class="ec-choice-txt"><div class="ec-choice-title">Ma liste</div>'
+    +   '<div class="ec-choice-desc">' + (customN ? customN + ' entreprise' + (customN > 1 ? 's' : '') + ' dans votre liste.' : 'Composez votre propre liste d\'entreprises.') + '</div>'
+    +   customCard + '</div></div>'
+    + '</div>';
+  _ecShowDetail();
+};
+
+window.ecApplyMode = async function(mode) {
+  _ecListMode = mode;
+  _ecSaveMode(mode);
+  ecCloseDetail();
+  _ecRenderSkeleton();
+  await _ecFetchEarnings();   // l'univers interrogé dépend du mode
+  _ecRenderAgenda();
+  _ecUpdateSubsCount();
+};
+
+// ── Constructeur de liste personnalisée ─────────────────────────────────────
+let _ecBuilderQuery = '';
+let _ecBuilderResults = [];
+
+window.ecOpenCustomBuilder = function() {
+  _ecBuilderQuery = '';
+  _ecBuilderResults = [];
+  const body = document.getElementById('ec-detail-body');
+  if (!body) return;
+  body.innerHTML =
+    '<div class="ec-modal-head"><div><div class="ec-modal-name">Ma liste</div>'
+    + '<div class="ec-modal-sub">Ajoutez les entreprises à suivre dans le calendrier.</div></div>'
+    + '<button class="ec-modal-close" onclick="ecOpenChooser()" aria-label="Retour">&times;</button></div>'
+    + '<div class="ec-searchbar" style="margin-bottom:14px">'
+    +   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3);flex-shrink:0" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+    +   '<input id="ec-builder-input" type="text" autocomplete="off" placeholder="Rechercher une entreprise ou un ticker" oninput="ecBuilderSearch(this.value)" aria-label="Rechercher une entreprise"></div>'
+    + '<div id="ec-builder-results"></div>'
+    + '<div class="ec-builder-mine-h">Ma liste <span id="ec-builder-count"></span></div>'
+    + '<div id="ec-builder-mine" class="ec-subs-list"></div>'
+    + '<button class="ec-choice-go ec-builder-done" onclick="ecApplyMode(\'custom\')">Afficher le calendrier</button>';
+  _ecRenderBuilderMine();
+  _ecShowDetail();
+};
+
+function _ecRenderBuilderMine() {
+  const el  = document.getElementById('ec-builder-mine');
+  const cnt = document.getElementById('ec-builder-count');
+  if (!el) return;
+  const syms = Object.keys(_ecCustom).sort((a, b) => (_ecCustom[a].name || a).localeCompare(_ecCustom[b].name || b));
+  if (cnt) cnt.textContent = syms.length ? '(' + syms.length + ')' : '';
+  if (!syms.length) { el.innerHTML = '<div class="ec-subs-empty">Aucune entreprise. Recherchez-en une ci-dessus.</div>'; return; }
+  const bySym = _ecUniverseBySym();
+  el.innerHTML = syms.map(s => _ecCustomRow(s, bySym[s] || { symbol: s, name: _ecCustom[s].name }, true)).join('');
+}
+
+function _ecRenderBuilderResults() {
+  const el = document.getElementById('ec-builder-results');
+  if (!el) return;
+  if (!_ecBuilderQuery) { el.innerHTML = ''; return; }
+  if (!_ecBuilderResults.length) { el.innerHTML = '<div class="ec-subs-empty">Aucun résultat. Tapez un nom ou un ticker.</div>'; return; }
+  el.innerHTML = _ecBuilderResults.map(it => _ecCustomRow(it.symbol, it, !!_ecCustom[_ecNorm(it.symbol)])).join('');
+}
+
+// Ligne avec bouton ajouter/retirer (liste perso).
+function _ecCustomRow(sym, it, inList) {
+  const name = (it && it.name) || sym;
+  const when = (it && it.date) ? _ecFmtDateFr(it.date) : '';
+  const s = sym.replace(/'/g, '');
+  const n = (name || sym).replace(/'/g, '');
+  const btn = '<button class="ec-add-btn' + (inList ? ' ec-add-on' : '') + '" onclick="ecToggleCustom(\'' + s + '\',\'' + n + '\')" aria-pressed="' + (inList ? 'true' : 'false') + '" aria-label="' + (inList ? 'Retirer ' : 'Ajouter ') + s + '">'
+    + (inList ? '✓' : '+') + '</button>';
+  return '<div class="ec-subrow">' + _ecLogoHtml(it || { symbol: sym, name })
+    + '<div class="ec-subrow-info"><span class="ec-subrow-sym">' + name + '</span>'
+    + '<span class="ec-subrow-when">' + sym + (when ? ' · ' + when : '') + '</span></div>' + btn + '</div>';
+}
+
+window.ecBuilderSearch = async function(v) {
+  _ecBuilderQuery = (v || '').trim();
+  const q = _ecBuilderQuery.toLowerCase();
+  if (!q) { _ecBuilderResults = []; _ecRenderBuilderResults(); return; }
+  // 1) Local : univers populaire + items déjà connus.
+  const bySym = _ecUniverseBySym();
+  const seen = new Set();
+  const local = [];
+  _EC_POPULAR.forEach(sym => {
+    const k = _ecNorm(sym);
+    if (seen.has(k)) return;
+    const it = bySym[k] || { symbol: k, name: k };
+    if (k.toLowerCase().includes(q) || (it.name || k).toLowerCase().includes(q)) { seen.add(k); local.push(it); }
+  });
+  _ecBuilderResults = local.slice(0, 8);
+  _ecRenderBuilderResults();
+  // 2) Recherche en ligne si peu de résultats locaux.
+  if (q.length >= 2 && local.length < 5) {
+    try {
+      const sugg = await fetchSuggestions(_ecBuilderQuery);
+      if (_ecBuilderQuery.toLowerCase() !== q) return; // requête changée entre-temps
+      sugg.forEach(s2 => {
+        const k = _ecNorm(s2.symbol);
+        if (!seen.has(k)) { seen.add(k); _ecBuilderResults.push({ symbol: s2.symbol, name: s2.name }); }
+      });
+      _ecBuilderResults = _ecBuilderResults.slice(0, 10);
+      _ecRenderBuilderResults();
+    } catch(_) {}
+  }
+};
+
+window.ecToggleCustom = async function(sym, name) {
+  const s = _ecNorm(sym);
+  if (_ecCustom[s]) delete _ecCustom[s];
+  else _ecCustom[s] = { name: name || s };
+  await _ecSaveCustom();
+  _ecRenderBuilderMine();
+  _ecRenderBuilderResults();
 };
 
 // Modale "Entreprises ciblées" : univers interrogé, filtrable par zone + recherche.
