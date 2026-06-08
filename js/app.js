@@ -5104,11 +5104,18 @@ function _ecGroupHtml(items, descending) {
   }).join('');
 }
 
+// Items à afficher selon le mode courant : le cache local (_ecMergeSeen) peut
+// retenir des titres d'un autre mode, on filtre donc sur la liste affichée.
+function _ecVisibleItems() {
+  const allow = new Set(_ecDisplaySymbols().map(_ecNorm));
+  return _ecItems.filter(it => allow.has(_ecNorm(it.symbol)));
+}
+
 function _ecRenderAgenda() {
   const el = document.getElementById('ec-agenda');
   if (!el) return;
   const todayStr = _ecDateStr(new Date());
-  const up = _ecItems.filter(it => it.date >= todayStr);
+  const up = _ecVisibleItems().filter(it => it.date >= todayStr);
   el.innerHTML = up.length ? _ecGroupHtml(up, false)
     : '<div class="ec-agenda-empty">Aucune publication de résultats à venir pour les titres affichés.</div>';
 }
@@ -5119,7 +5126,7 @@ function _ecRenderPrev() {
   if (!panel) return;
   const todayStr = _ecDateStr(new Date());
   const lo = _ecDateStr(new Date(Date.now() - 31 * 86400 * 1000));
-  const past = _ecItems.filter(it => it.date >= lo && it.date < todayStr);
+  const past = _ecVisibleItems().filter(it => it.date >= lo && it.date < todayStr);
   panel.innerHTML = past.length ? _ecGroupHtml(past, true)
     : '<div class="ec-agenda-empty">Aucun résultat sur le mois précédent. Cette section se remplit au fil du temps (cache local).</div>';
 }
@@ -5453,10 +5460,13 @@ window.ecOpenSubs = function() {
     + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3);flex-shrink:0" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
     + '<input type="text" autocomplete="off" placeholder="Rechercher une entreprise ou un ticker" oninput="ecUniverseSearch(this.value)" aria-label="Rechercher dans les entreprises ciblées"></div>';
   const body = document.getElementById('ec-detail-body');
-  body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-name">Entreprises ciblées</div>'
+  const editBtn = '<button class="ec-choice-edit" style="width:100%;margin-bottom:14px" onclick="ecOpenCustomBuilder()">'
+    + '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>'
+    + 'Modifier ma liste</button>';
+  body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-name ec-modal-name--plain">Entreprises ciblées</div>'
     + '<div class="ec-modal-sub">' + total + ' titres interrogés par l\'app. Cloche = alerte résultats.</div></div>'
     + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
-    + search + bar + '<div id="ec-universe-list" class="ec-subs-list"></div>';
+    + editBtn + search + bar + '<div id="ec-universe-list" class="ec-subs-list"></div>';
   _ecRenderUniverseList();
   _ecShowDetail();
 };
