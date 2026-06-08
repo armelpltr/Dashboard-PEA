@@ -399,6 +399,34 @@ export default {
         });
       }
 
+      // ── GET /logo?domain=... ────────────────────────────────────────────
+      // Proxy logo (Clearbit → favicon gstatic) avec en-tête CORS pour
+      // permettre l'analyse de transparence côté client (canvas non taché).
+      if (url.pathname === '/logo' && request.method === 'GET') {
+        const domain = (url.searchParams.get('domain') || '').toLowerCase().replace(/[^a-z0-9.\-]/g, '');
+        if (!domain || !domain.includes('.')) return json({ error: 'domaine invalide' }, 400);
+        const sources = [
+          `https://logo.clearbit.com/${domain}?size=128`,
+          `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${domain}&size=128`,
+        ];
+        for (const src of sources) {
+          try {
+            const r = await fetch(src, {
+              signal: AbortSignal.timeout(6000),
+              cf: { cacheTtl: 86400, cacheEverything: true },
+            });
+            const ct = r.headers.get('Content-Type') || '';
+            if (r.ok && ct.startsWith('image')) {
+              return new Response(r.body, {
+                status: 200,
+                headers: { 'Content-Type': ct, 'Cache-Control': 'public, max-age=604800', ...corsHeaders },
+              });
+            }
+          } catch {}
+        }
+        return json({ error: 'logo introuvable' }, 404);
+      }
+
       return json({ error: 'Not found' }, 404);
 
     } catch (e) {

@@ -5007,19 +5007,34 @@ function _ecLogoHtml(it) {
     domain = clean ? clean + '.com' : '';
   }
   if (!domain) return '<span class="ec-logo ec-logo-ph">' + letter + '</span>';
-  return '<img class="ec-logo" loading="lazy" src="https://logo.clearbit.com/' + domain + '?size=128"'
-    + ' data-d="' + domain + '" data-l="' + letter + '" alt="" onerror="ecLogoFallback(this)">';
+  // Proxy Worker (cascade Clearbit→favicon + CORS) → canvas non taché pour
+  // détecter la transparence. crossorigin obligatoire pour getImageData.
+  return '<img class="ec-logo" loading="lazy" crossorigin="anonymous"'
+    + ' src="' + WORKER_URL + '/logo?domain=' + encodeURIComponent(domain) + '"'
+    + ' data-l="' + letter + '" alt="" onload="ecLogoBg(this)" onerror="ecLogoFallback(this)">';
 }
 
-// Repli en cascade : Clearbit échoue → favicon Google → pastille-lettre.
+// Détecte la transparence : si pixels alpha < 240 → fond blanc (logos noirs
+// transparents type Nike). Logos à fond plein restent sans cadre.
+window.ecLogoBg = function(img) {
+  try {
+    const n = 24;
+    const c = document.createElement('canvas');
+    c.width = n; c.height = n;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, n, n);
+    const d = ctx.getImageData(0, 0, n, n).data;
+    for (let i = 3; i < d.length; i += 4) {
+      if (d[i] < 240) { img.classList.add('ec-logo--bg'); return; }
+    }
+  } catch (e) { /* canvas taché → laisse transparent */ }
+};
+
+// Repli : proxy échoue → pastille-lettre (la cascade Clearbit/favicon est
+// gérée côté Worker).
 window.ecLogoFallback = function(img) {
-  const d = img.dataset.d, l = img.dataset.l || '?';
-  if (img.dataset.step !== '1') {
-    img.dataset.step = '1';
-    img.src = 'https://www.google.com/s2/favicons?domain=' + d + '&sz=128';
-  } else {
-    img.outerHTML = '<span class="ec-logo ec-logo-ph">' + l + '</span>';
-  }
+  const l = img.dataset.l || '?';
+  img.outerHTML = '<span class="ec-logo ec-logo-ph">' + l + '</span>';
 };
 
 // Regroupe des earnings par jour. descending=true pour le volet « mois précédent ».
@@ -5169,16 +5184,16 @@ function _ecUpdateSubsCount() {
   el.textContent = n ? ' (' + n + ')' : '';
 }
 
-// Continent d'un symbole (d'après le suffixe d'échange Yahoo + ADR connus).
+// Zone d'un symbole (suffixe d'échange Yahoo) : us | eu | other.
 function _ecRegion(sym) {
   const s = (sym || '').toUpperCase();
   if (/\.(PA|AS|DE|F|SW|L|MI|MC|BR|VI|LS|HE|ST|OL|CO|IR)$/.test(s)) return 'eu';
-  if (/\.(KS|KQ|HK|T|TW|SS|SZ|SI|BO|NS|JK)$/.test(s)) return 'asia';
-  if (['TSM','BABA','SONY','TM','JD','PDD','NIO','BIDU','HMC','SE','SHG','LFC'].includes(s)) return 'asia';
-  return 'us';
+  if (!s.includes('.')) return 'us';            // NYSE/Nasdaq (+ ADR) = pas de suffixe
+  return 'other';                               // Asie & reste du monde
 }
 
 let _ecUniverseFilter = 'all';
+let _ecUniverseQuery = '';
 
 // Map symbole → meilleur item connu (nom/logo/prochaine date).
 function _ecUniverseBySym() {
@@ -5190,44 +5205,75 @@ function _ecUniverseBySym() {
   return bySym;
 }
 
+function _ecUniRow(sym, it, subbed) {
+  const name = (it && it.name) || sym;
+  const when = it ? _ecFmtDateFr(it.date) : 'Aucune date annoncée';
+  return '<div class="ec-subrow">' + _ecLogoHtml(it || { symbol: sym, name })
+    + '<div class="ec-subrow-info"><span class="ec-subrow-sym">' + name + '</span>'
+    + '<span class="ec-subrow-when">' + sym + ' · ' + when + '</span></div>'
+    + _ecBellBtn(sym, name, subbed) + '</div>';
+}
+
 function _ecRenderUniverseList() {
   const el = document.getElementById('ec-universe-list');
   if (!el) return;
   const bySym = _ecUniverseBySym();
+  const q = _ecUniverseQuery;
   const syms = _ecDisplaySymbols()
     .filter(s => _ecUniverseFilter === 'all' || _ecRegion(s) === _ecUniverseFilter)
+    .filter(s => !q || s.toLowerCase().includes(q) || ((bySym[s] && bySym[s].name) || '').toLowerCase().includes(q))
     .sort((a, b) => ((bySym[a] && bySym[a].name) || a).localeCompare((bySym[b] && bySym[b].name) || b));
-  if (!syms.length) { el.innerHTML = '<div class="ec-subs-empty">Aucun titre dans cette zone.</div>'; return; }
-  el.innerHTML = syms.map(s => {
-    const it = bySym[s];
-    const name = (it && it.name) || s;
-    const when = it ? _ecFmtDateFr(it.date) : 'Aucune date annoncée';
-    const subbed = !!_ecSubs[s];
-    return '<div class="ec-subrow">' + _ecLogoHtml(it || { symbol: s, name })
-      + '<div class="ec-subrow-info"><span class="ec-subrow-sym">' + name + '</span>'
-      + '<span class="ec-subrow-when">' + s + ' · ' + when + '</span></div>'
-      + _ecBellBtn(s, name, subbed) + '</div>';
-  }).join('');
+  let html = syms.map(s => _ecUniRow(s, bySym[s], !!_ecSubs[s])).join('');
+  if (!syms.length) html = '<div class="ec-subs-empty">Aucun titre dans la liste pour cette recherche.</div>';
+  // Recherche en ligne pour suivre un titre hors univers par défaut.
+  if (q.length >= 2) {
+    html += '<button class="ec-region-btn ec-uni-online" onclick="ecUniverseOnline()">Rechercher « ' + q + ' » en ligne</button>';
+  }
+  el.innerHTML = html;
 }
 
 window.ecSetRegion = function(r) {
   _ecUniverseFilter = r;
-  document.querySelectorAll('.ec-region-btn').forEach(b => b.classList.toggle('active', b.dataset.r === r));
+  document.querySelectorAll('.ec-region-btn[data-r]').forEach(b => b.classList.toggle('active', b.dataset.r === r));
   _ecRenderUniverseList();
 };
 
-// Modale "Entreprises ciblées" : tout l'univers interrogé, filtrable par continent.
+window.ecUniverseSearch = function(v) {
+  _ecUniverseQuery = (v || '').trim().toLowerCase();
+  _ecRenderUniverseList();
+};
+
+// Recherche web (fetchSuggestions) pour suivre un titre absent de l'univers.
+window.ecUniverseOnline = async function() {
+  const el = document.getElementById('ec-universe-list');
+  if (!el || !_ecUniverseQuery) return;
+  el.innerHTML = '<div class="ec-search-loading">Recherche en ligne…</div>';
+  try {
+    const sugg = await fetchSuggestions(_ecUniverseQuery);
+    if (!sugg.length) { el.innerHTML = '<div class="ec-subs-empty">Aucun résultat en ligne.</div>'; return; }
+    el.innerHTML = sugg.slice(0, 8).map(s => {
+      const sym = _ecNorm(s.symbol);
+      return _ecUniRow(s.symbol, { symbol: s.symbol, name: s.name }, !!_ecSubs[sym]);
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="ec-subs-empty">Erreur de recherche.</div>'; }
+};
+
+// Modale "Entreprises ciblées" : univers interrogé, filtrable par zone + recherche.
 window.ecOpenSubs = function() {
+  _ecUniverseQuery = '';
   const total = _ecDisplaySymbols().length;
-  const REGIONS = [['all','Tous'], ['us','US'], ['eu','Europe'], ['asia','Asie']];
+  const REGIONS = [['all','Tous'], ['us','USA'], ['eu','EU'], ['other','Autre']];
   const bar = '<div class="ec-region-bar">' + REGIONS.map(([r, lbl]) =>
     '<button class="ec-region-btn' + (r === _ecUniverseFilter ? ' active' : '') + '" data-r="' + r + '" onclick="ecSetRegion(\'' + r + '\')">' + lbl + '</button>'
   ).join('') + '</div>';
+  const search = '<div class="ec-searchbar" style="margin-bottom:14px">'
+    + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3);flex-shrink:0" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+    + '<input type="text" autocomplete="off" placeholder="Rechercher une entreprise ou un ticker" oninput="ecUniverseSearch(this.value)" aria-label="Rechercher dans les entreprises ciblées"></div>';
   const body = document.getElementById('ec-detail-body');
   body.innerHTML = '<div class="ec-modal-head"><div><div class="ec-modal-name">Entreprises ciblées</div>'
     + '<div class="ec-modal-sub">' + total + ' titres interrogés par l\'app. Cloche = alerte résultats.</div></div>'
     + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
-    + bar + '<div id="ec-universe-list" class="ec-subs-list"></div>';
+    + search + bar + '<div id="ec-universe-list" class="ec-subs-list"></div>';
   _ecRenderUniverseList();
   _ecShowDetail();
 };
