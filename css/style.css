@@ -1410,6 +1410,7 @@ button.ec-choice:hover { border-color: var(--accent); background: var(--s3); }
 .ec-modal-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .ec-modal-id .ec-logo { width: 40px; height: 40px; border-radius: 9px; }
 .ec-modal-name, .ec-modal-date { font-size: 20px; font-weight: 800; letter-spacing: -.02em; color: var(--text); font-family: var(--mono); }
+.ec-modal-name--plain { font-family: var(--sans); font-size: 18px; letter-spacing: -.01em; }
 .ec-modal-sub { font-size: 12px; color: var(--text3); margin-top: 3px; }
 .ec-modal-close { background: none; border: none; color: var(--text3); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; }
 .ec-modal-close:hover { color: var(--text); }

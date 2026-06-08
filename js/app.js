@@ -2945,7 +2945,7 @@ async function fetchSuggestions(query) {
   if (cached) return cached;
   const localETF = searchETFLocal(query);
   if (localETF) {
-    const suggs = [{ symbol: localETF.ticker, name: localETF.name, exchange: 'ETF' }];
+    const suggs = [{ symbol: localETF.ticker, name: localETF.name, exchange: 'ETF', type: 'ETF' }];
     setCachedSearch(query, suggs);
     return suggs;
   }
@@ -2959,7 +2959,7 @@ async function fetchSuggestions(query) {
     const raw = await fetchWithFallback(url);
     const sd = JSON.parse(raw);
     const quotes = (sd.quotes || []).filter(q => q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND').slice(0, 5);
-    const suggs = quotes.map(q => ({ symbol: q.symbol, name: q.longname || q.shortname || q.symbol, exchange: q.exchDisp || q.exchange || '' }));
+    const suggs = quotes.map(q => ({ symbol: q.symbol, name: q.longname || q.shortname || q.symbol, exchange: q.exchDisp || q.exchange || '', type: q.quoteType || '' }));
     setCachedSearch(query, suggs);
     return suggs;
   } catch { return []; }
@@ -4887,6 +4887,13 @@ let _ecLoaded  = false;
 let _ecLoading = false;
 
 function _ecNorm(s)    { return (s || '').trim().toUpperCase(); }
+// Vrai si la suggestion est un ETF / fonds (exclu de la liste perso : actions seulement).
+function _ecIsEtf(s) {
+  const t = (s.type || '').toUpperCase();
+  if (t === 'ETF' || t === 'MUTUALFUND') return true;
+  if ((s.exchange || '').toUpperCase() === 'ETF') return true;
+  return isETF(_ecNorm(s.symbol));
+}
 function _ecDateStr(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 const _EC_MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const _EC_DOWS   = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
@@ -4907,11 +4914,9 @@ function _ecRelevantSymbols() {
   return [...set];
 }
 function _ecDisplaySymbols() {
-  // Mode « ma liste » : uniquement la liste perso + titres avec alerte cloche.
+  // Mode « ma liste » : strictement la liste perso (rien d'autre).
   if (_ecListMode === 'custom') {
-    const set = new Set(Object.keys(_ecCustom).map(_ecNorm));
-    Object.keys(_ecSubs).forEach(s => set.add(_ecNorm(s)));
-    return [...set];
+    return Object.keys(_ecCustom).map(_ecNorm);
   }
   // Mode « sélection Capital Board » : grandes valeurs + détenus/suivis.
   const set = new Set(_ecRelevantSymbols());
@@ -5312,7 +5317,7 @@ window.ecOpenChooser = function() {
         + '<button class="ec-choice-edit" onclick="ecOpenCustomBuilder()">Modifier</button></div>'
     : '<button class="ec-choice-go" onclick="ecOpenCustomBuilder()">Composer ma liste</button>';
   body.innerHTML =
-    '<div class="ec-modal-head"><div><div class="ec-modal-name">Calendrier des résultats</div>'
+    '<div class="ec-modal-head"><div><div class="ec-modal-name ec-modal-name--plain">Calendrier des résultats</div>'
     + '<div class="ec-modal-sub">Choisissez les entreprises à afficher.</div></div>'
     + '<button class="ec-modal-close" onclick="ecCloseDetail()" aria-label="Fermer">&times;</button></div>'
     + '<div class="ec-choices">'
@@ -5349,7 +5354,7 @@ window.ecOpenCustomBuilder = function() {
   const body = document.getElementById('ec-detail-body');
   if (!body) return;
   body.innerHTML =
-    '<div class="ec-modal-head"><div><div class="ec-modal-name">Ma liste</div>'
+    '<div class="ec-modal-head"><div><div class="ec-modal-name ec-modal-name--plain">Ma liste</div>'
     + '<div class="ec-modal-sub">Ajoutez les entreprises à suivre dans le calendrier.</div></div>'
     + '<button class="ec-modal-close" onclick="ecOpenChooser()" aria-label="Retour">&times;</button></div>'
     + '<div class="ec-searchbar" style="margin-bottom:14px">'
@@ -5418,6 +5423,7 @@ window.ecBuilderSearch = async function(v) {
       if (_ecBuilderQuery.toLowerCase() !== q) return; // requête changée entre-temps
       sugg.forEach(s2 => {
         const k = _ecNorm(s2.symbol);
+        if (_ecIsEtf(s2)) return;                       // actions seulement, pas d'ETF
         if (!seen.has(k)) { seen.add(k); _ecBuilderResults.push({ symbol: s2.symbol, name: s2.name }); }
       });
       _ecBuilderResults = _ecBuilderResults.slice(0, 10);
